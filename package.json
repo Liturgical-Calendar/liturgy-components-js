@@ -1,0 +1,38 @@
+{
+    "packageManager": "yarn@4.5.0",
+    "name": "liturgy-components-js",
+    "version": "1.0.0",
+    "description": "Liturgical calendar components for javascript: create an html select populated with liturgical calendars supported by the Liturgical Calendar API; create a form with parameters that are supported by the Liturgical Calendar API; create a webcalendar",
+    "main": "dist/liturgy-components-js.bundle.js",
+    "module": "dist/liturgy-components-js.bundle.js",
+    "browser": "dist/liturgy-components-js.bundle.js",
+    "files": [
+      "dist"
+    ],
+    "scripts": {
+      "test": "jest",
+      "minify": "yarn pnpify gulp compress && yarn pnpify gulp bundle",
+      "clean": "rimraf ./dist && mkdir dist",
+      "build": "webpack && yarn minify"
+    },
+    "keywords": [
+      "jquery",
+      "plugin"
+    ],
+    "author": "John R. D'Orazio <priest@johnromanodorazio.com",
+    "license": "MIT",
+    "peerDependencies": {
+      "jquery": ">=3.0.0"
+    },
+    "devDependencies": {
+      "@yarnpkg/pnpify": "^4.1.2",
+      "gulp": "^5.0.0",
+      "gulp-concat": "^2.6.1",
+      "gulp-rename": "^2.0.0",
+      "gulp-terser": "^2.1.0",
+      "jest": "^29.7.0",
+      "rimraf": "^6.0.1",
+      "webpack": "^5.95.0",
+      "webpack-cli": "^5.1.4"
+    }
+  }
