@@ -28,7 +28,9 @@ LitcalApiClient.init('http://localhost:8000').then( () => {
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
     }).id('liturgicalCalendarSelectEngDioceses').class('form-select').filter('dioceses')
-        .linkToNationsSelect( liturgicalCalendarSelectEngNations ).appendTo( '#calendarSelectEnglish');
+        .linkToNationsSelect( liturgicalCalendarSelectEngNations )
+        .after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>This calendar selector is linked to the previous nations calendar selector.</i></small>')
+        .appendTo( '#calendarSelectEnglish');
 
     liturgicalCalendarSelectEng.label({
         class: 'form-label d-block mb-1',

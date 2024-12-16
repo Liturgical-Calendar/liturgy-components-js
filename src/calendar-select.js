@@ -22,11 +22,14 @@ class CalendarSelect {
     #locale                               = 'en';
     #filter                               = 'none';
     #domElement                           = null;
-    #hasLabel                             = false;
+    #afterElement                         = null;
+    #hasAfter                             = false;
+    #afterSet                             = false;
     #labelElement                         = null;
+    #hasLabel                             = false;
     #labelSet                             = false;
-    #hasWrapper                           = false;
     #wrapperElement                       = null;
+    #hasWrapper                           = false;
     #wrapperSet                           = false;
     #filterSet                            = false;
     #linked                               = false;
@@ -275,6 +278,7 @@ class CalendarSelect {
             this.#hasLabel = false;
             this.#labelElement = null;
             this.#domElement.removeAttribute( 'aria-labelledby' );
+            this.#afterSet = true;
             return this;
         }
         else if ( false === (typeof labelOptions === 'object') || Array.isArray(labelOptions) ) {
@@ -344,6 +348,7 @@ class CalendarSelect {
         if ( null === wrapperOptions ) {
             this.#hasWrapper = false;
             this.#wrapperElement = null;
+            this.#wrapperSet = true;
             return this;
         }
         else if ( false === (typeof wrapperOptions === 'object') || Array.isArray(wrapperOptions) ) {
@@ -394,6 +399,36 @@ class CalendarSelect {
         return this;
     }
 
+    after( contents = null ) {
+        if ( this.#afterSet ) {
+            throw new Error('After has already been set.');
+        }
+        if ( null === contents ) {
+            this.#hasAfter = false;
+            this.#afterElement = null;
+            this.#afterSet = true;
+            return this;
+        }
+
+        // remove php tags and script tags from contents
+        // the regex is doing the following:
+        //  - `<\?(?:php)?` matches the start of a php tag, optionally with the word "php" after the "?"
+        //  - `|` is a logical OR operator
+        //  - `\?>` matches the end of a php tag
+        //  - `|` is a logical OR operator
+        //  - `<script(.*?)>.*?<\/script>` matches the start of a script tag, any attributes, the contents of the script tag, and the end of the script tag
+        //  - `g` flag makes the regex replacement global, so it will replace all occurrences of the regex, not just the first one
+        contents = contents.replace(/<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g, '');
+
+
+        const fragment = document.createRange().createContextualFragment(contents);
+        this.#afterElement = fragment;
+        this.#hasAfter = true;
+        this.#afterSet = true;
+
+        return this;
+    }
+
     allowNull( allowNull = true ) {
         if ( this.#allowNullSet ) {
             throw new Error('AllowNull has already been set to `' + this.#domElement.allowNull + '`.');
@@ -439,6 +474,11 @@ class CalendarSelect {
         if ( this.#hasLabel ) {
             this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
         }
+        if ( this.#hasAfter ) {
+            if (this.#domElement.parentNode) {
+                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+            }
+        }
     }
 
     appendTo( element ) {
@@ -451,6 +491,11 @@ class CalendarSelect {
         }
         if ( this.#hasLabel ) {
             this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        }
+        if ( this.#hasAfter ) {
+            if (this.#domElement.parentNode) {
+                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+            }
         }
     }
 
