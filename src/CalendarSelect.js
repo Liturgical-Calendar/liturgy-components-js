@@ -88,11 +88,9 @@ export default class CalendarSelect {
     }
 
     static init() {
-        console.log('Initializing CalendarSelect');
         if ( null === LitCalApiClient.metadata ) {
             throw new Error('LitCalApiClient has not been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
         } else {
-            console.log(`LitCalApiClient already initialized`);
             if (LitCalApiClient.metadata === false) {
                 throw new Error('The LitCalApiClient class was unable to initialize.');
             }
@@ -119,7 +117,6 @@ export default class CalendarSelect {
             }
             this.#locale = canonicalLocales[0];
             this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
-            console.log(`Locale set to ${this.#locale}`);
         } catch (e) {
             throw new Error('Invalid locale: ' + locale);
         }
@@ -197,8 +194,8 @@ export default class CalendarSelect {
     }
 
     filter( filter = 'none' ) {
-        if ( this.#filterSet ) {
-            throw new Error('Filter has already been set to `' + this.#filter + '`.');
+        if ( this.#filterSet && this.#filter !== filter ) {
+            throw new Error('Filter has already been set to `' + this.#filter + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( 'nations' !== filter && 'dioceses' !== filter && 'none' !== filter ) {
             throw new Error('Invalid filter: ' + filter);
@@ -218,7 +215,7 @@ export default class CalendarSelect {
 
     class( className ) {
         if ( typeof className !== 'string' ) {
-            throw new Error('Invalid type for class name, must be of type string but found type: ' + typeof className);
+            throw new Error('Invalid type for class name on CalendarSelect instance with locale ' + this.#locale + ', must be of type string but found type: ' + typeof className);
         }
         let classNames = className.split( /\s+/ );
         classNames = classNames.map( className => CalendarSelect.#sanitizeInput( className ) );
@@ -237,8 +234,8 @@ export default class CalendarSelect {
     }
 
     id( id ) {
-        if ( this.#idSet ) {
-            throw new Error('ID has already been set to `' + this.#domElement.id + '`.');
+        if ( this.#idSet && this.#domElement.id !== id ) {
+            throw new Error('ID has already been set to `' + this.#domElement.id + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( typeof id !== 'string' ) {
             throw new Error('Invalid type for id, must be of type string but found type: ' + typeof id);
@@ -259,8 +256,8 @@ export default class CalendarSelect {
     }
 
     name( name ) {
-        if ( this.#nameSet ) {
-            throw new Error('Name has already been set to `' + this.#domElement.name + '`.');
+        if ( this.#nameSet && this.#domElement.name !== name ) {
+            throw new Error('Name has already been set to `' + this.#domElement.name + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( typeof name !== 'string' ) {
             throw new Error('Invalid type for name, must be of type string but found type: ' + typeof name);
@@ -271,8 +268,8 @@ export default class CalendarSelect {
     }
 
     label( labelOptions = null ) {
-        if ( this.#labelSet) {
-            throw new Error('Label has already been set.');
+        if ( this.#labelSet ) {
+            throw new Error('Label has already been set on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( null === labelOptions ) {
             this.#hasLabel = false;
@@ -343,7 +340,7 @@ export default class CalendarSelect {
 
     wrapper( wrapperOptions = null ) {
         if ( this.#wrapperSet ) {
-            throw new Error('Wrapper has already been set.');
+            throw new Error('Wrapper has already been set on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( null === wrapperOptions ) {
             this.#hasWrapper = false;
@@ -430,11 +427,11 @@ export default class CalendarSelect {
     }
 
     allowNull( allowNull = true ) {
-        if ( this.#allowNullSet ) {
-            throw new Error('AllowNull has already been set to `' + this.#domElement.allowNull + '`.');
+        if ( this.#allowNullSet && this.#allowNull !== allowNull ) {
+            throw new Error('allowNull has already been set to `' + this.#allowNull + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
         if ( typeof allowNull !== 'boolean' ) {
-            throw new Error('Invalid type for allowNull, must be of type boolean but found type: ' + typeof allowNull);
+            throw new Error('Invalid type for allowNull on CalendarSelect instance with locale ' + this.#locale + ', must be of type boolean but found type: ' + typeof allowNull);
         }
         this.#allowNull = allowNull;
         this.#allowNullSet = true;

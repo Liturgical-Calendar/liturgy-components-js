@@ -8,10 +8,10 @@ Input.setGlobalWrapperClass('form-group col col-md-3');
 LitCalApiClient.init('http://localhost:8000').then( () => {
     const liturgicalCalendarSelectEngNations = new CalendarSelect(); // default English
     const liturgicalCalendarSelectEngDioceses = new CalendarSelect(); // default English
-    const liturgicalCalendarSelectEng = new CalendarSelect( 'en-US' );
-    const liturgicalCalendarSelectEsp = new CalendarSelect( 'es-ES' );
-    const liturgicalCalendarSelectIta = new CalendarSelect( 'it-IT' );
-    const liturgicalCalendarSelectDeu = new CalendarSelect( 'de-DE' );
+    const liturgicalCalendarSelectEng = (new CalendarSelect( 'en-US' )).allowNull();
+    const liturgicalCalendarSelectEsp = (new CalendarSelect( 'es-ES' )).allowNull();
+    const liturgicalCalendarSelectIta = (new CalendarSelect( 'it-IT' )).allowNull();
+    const liturgicalCalendarSelectDeu = (new CalendarSelect( 'de-DE' )).allowNull();
     const apiOptionsEng = new ApiOptions( 'en-US' );
     const apiOptionsEsp = new ApiOptions( 'es-ES' );
     const apiOptionsIta = new ApiOptions( 'it-IT' );
@@ -20,6 +20,10 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     apiOptionsEsp.localeInput.selectedValue( 'es' );
     apiOptionsIta.localeInput.selectedValue( 'it' );
     apiOptionsDeu.localeInput.selectedValue( 'de' );
+    apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng );
+    apiOptionsEsp.linkToCalendarSelect( liturgicalCalendarSelectEsp );
+    apiOptionsIta.linkToCalendarSelect( liturgicalCalendarSelectIta );
+    apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu );
 
     /**
      * English
