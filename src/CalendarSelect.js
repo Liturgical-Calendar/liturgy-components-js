@@ -10,7 +10,7 @@
 
 import { LitCalApiClient } from './index.js';
 
-class CalendarSelect {
+export default class CalendarSelect {
     static #metadata                    = null;
     static #nationalCalendars             = [];
     static #diocesanCalendars             = [];
@@ -530,5 +530,3 @@ class CalendarSelect {
         return this;
     }
 }
-
-export default CalendarSelect;

@@ -1,27 +1,33 @@
-import Input from "../input.js";
+import Input from "../Input.js";
+import Messages from "../Messages.js";
 
+export default class YearTypeInput extends Input {
 
-export default class AscensionInput extends Input {
+    #options = null;
 
-    static #options = Object.freeze(Object.entries({
-        '': '--',
-        'THURSDAY': 'Thursday',
-        'SUNDAY': 'Sunday'
-    }));
-
-    constructor() {
+    constructor(locale = null) {
         super();
-        this._domElement.name = 'ascension';
-        this._domElement.id = 'ascension';
+        this._domElement.name = 'year_type';
+        this._domElement.id = 'year_type';
+        if (locale === null) {
+            throw new Error('Locale cannot be null.');
+        }
+        if (false === locale instanceof Intl.Locale) {
+            throw new Error('Invalid type for locale, must be of type `Intl.Locale` but found type: ' + typeof locale);
+        }
+        this.#options = Object.freeze(Object.entries({
+            'LITURGICAL': Messages[locale.language]['LITURGICAL_YEAR'],
+            'CIVIL': Messages[locale.language]['CIVIL_YEAR']
+        }));
     }
 
     #processInput() {
-        this._labelElement.textContent = 'ascension';
-        AscensionInput.#options.forEach(([value, label]) => {
+        this._labelElement.textContent = 'year_type';
+        this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
             option.textContent = label;
-            option.selected = this.selectedOption === value;
+            option.selected = this._selectedValue === value;
             this._domElement.appendChild(option);
         });
     }

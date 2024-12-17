@@ -1,4 +1,4 @@
-import Input from "../input.js";
+import Input from "../Input.js";
 import { LitCalApiClient, ApiOptions } from "../../index.js";
 
 export default class LocaleInput extends Input {
@@ -8,7 +8,6 @@ export default class LocaleInput extends Input {
     //#regionNames              = null;
     #languageNames            = null;
     #options                  = null;
-    #locale                    = null;
 
     constructor( locale = null) {
         super();
@@ -20,23 +19,24 @@ export default class LocaleInput extends Input {
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
-        this.#locale = locale;
-        //this.#regionNames = new Intl.DisplayNames([this.#locale.language], { type: 'region' });
-        console.log(typeof this.#locale);
-        this.#languageNames = new Intl.DisplayNames([this.#locale.language], { type: 'language' });
+        if (false === locale instanceof Intl.Locale) {
+            throw new Error('Invalid type for locale, must be of type `Intl.Locale` but found type: ' + typeof locale);
+        }
+        //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
+        this.#languageNames = new Intl.DisplayNames([locale.language], { type: 'language' });
         if (LocaleInput.#apiLocales === null) {
             LocaleInput.#apiLocales = LitCalApiClient.metadata.locales;
         }
-        if (false === LocaleInput.#apiLocalesDisplay.hasOwnProperty(this.#locale.language)) {
-            LocaleInput.#apiLocalesDisplay[this.#locale.language] = new Map();
-            LocaleInput.#apiLocales.forEach((locale) => {
-                LocaleInput.#apiLocalesDisplay[this.#locale.language].set(locale, this.#languageNames.of(locale));
+        if (false === LocaleInput.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
+            LocaleInput.#apiLocalesDisplay[locale.language] = new Map();
+            LocaleInput.#apiLocales.forEach((localeVal) => {
+                LocaleInput.#apiLocalesDisplay[locale.language].set(localeVal, this.#languageNames.of(localeVal));
             });
-            LocaleInput.#apiLocalesDisplay[this.#locale.language] = new Map(
-                [...LocaleInput.#apiLocalesDisplay[this.#locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
+            LocaleInput.#apiLocalesDisplay[locale.language] = new Map(
+                [...LocaleInput.#apiLocalesDisplay[locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
             );
         }
-        this.#options = Array.from(LocaleInput.#apiLocalesDisplay[this.#locale.language]);
+        this.#options = Array.from(LocaleInput.#apiLocalesDisplay[locale.language]);
     }
 
     #processInput() {
@@ -45,7 +45,7 @@ export default class LocaleInput extends Input {
             const option = document.createElement('option');
             option.value = value;
             option.textContent = label;
-            option.selected = this.selectedOption === value;
+            option.selected = this._selectedValue === value;
             this._domElement.appendChild(option);
         });
     }

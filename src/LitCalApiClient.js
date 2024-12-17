@@ -1,4 +1,4 @@
-class LitCalApiClient {
+export default class LitCalApiClient {
   static #apiUrl = 'https://litcal.johnromanodorazio.com/api/dev';
   static paths = Object.freeze( {
     calendars: '/calendars',
@@ -49,5 +49,3 @@ class LitCalApiClient {
     return this.getCalendars();
   }
 }
-
-export default LitCalApiClient;

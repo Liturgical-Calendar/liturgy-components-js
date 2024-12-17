@@ -1,6 +1,6 @@
-import LitCalApiClient from "./litcal-api-client.js";
-import CalendarSelect from "./calendar-select.js";
-import ApiOptions from "./api-options.js";
-import Input from './ApiOptions/input.js';
+import LitCalApiClient from "./LitCalApiClient.js";
+import CalendarSelect from "./CalendarSelect.js";
+import ApiOptions from "./ApiOptions.js";
+import Input from './ApiOptions/Input.js';
 
 export { LitCalApiClient, CalendarSelect, ApiOptions, Input };

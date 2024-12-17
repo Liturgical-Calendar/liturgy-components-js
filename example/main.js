@@ -16,6 +16,10 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     const apiOptionsEsp = new ApiOptions( 'es-ES' );
     const apiOptionsIta = new ApiOptions( 'it-IT' );
     const apiOptionsDeu = new ApiOptions( 'de-DE' );
+    apiOptionsEng.localeInput.selectedValue( 'en' );
+    apiOptionsEsp.localeInput.selectedValue( 'es' );
+    apiOptionsIta.localeInput.selectedValue( 'it' );
+    apiOptionsDeu.localeInput.selectedValue( 'de' );
 
     /**
      * English

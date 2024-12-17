@@ -19,13 +19,12 @@ export default class ApiOptions {
             throw new Error('Invalid locale: ' + locale);
         }
         this.#locale = new Intl.Locale(canonicalLocales[0]);
-        console.log(`typeof ApiOptions.#locale: ${typeof this.#locale}`);
-        this.epiphanyInput = new EpiphanyInput();
-        this.ascensionInput = new AscensionInput();
-        this.corpusChristiInput = new CorpusChristiInput();
+        this.epiphanyInput = new EpiphanyInput(this.#locale);
+        this.ascensionInput = new AscensionInput(this.#locale);
+        this.corpusChristiInput = new CorpusChristiInput(this.#locale);
+        this.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
         this.localeInput = new LocaleInput(this.#locale);
-        this.eternalHighPriestInput = new EternalHighPriestInput();
-        this.yearTypeInput = new YearTypeInput();
+        this.yearTypeInput = new YearTypeInput(this.#locale);
         this.acceptHeaderInput = new AcceptHeaderInput();
     }
 

@@ -1,10 +1,10 @@
-import AcceptHeaderInput from './accept-header-input.js';
-import AscensionInput from './ascension-input.js';
-import CorpusChristiInput from './corpus-christi-input.js';
-import EpiphanyInput from './epiphany-input.js';
-import LocaleInput from './locale-input.js';
-import EternalHighPriestInput from './eternal-high-priest-input.js';
-import YearTypeInput from './year-type-input.js';
+import AcceptHeaderInput from './AcceptHeaderInput.js';
+import AscensionInput from './AscensionInput.js';
+import CorpusChristiInput from './CorpusChristiInput.js';
+import EpiphanyInput from './EpiphanyInput.js';
+import LocaleInput from './LocaleInput.js';
+import EternalHighPriestInput from './EternalHighPriestInput.js';
+import YearTypeInput from './YearTypeInput.js';
 
 export {
     AcceptHeaderInput,

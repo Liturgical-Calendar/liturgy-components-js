@@ -1,27 +1,36 @@
-import Input from "../input.js";
+import Input from "../Input.js";
 
+export default class AscensionInput extends Input {
 
-export default class YearTypeInput extends Input {
+    #options = null;
 
-    static #options = Object.freeze(Object.entries({
-        '': '--',
-        'THURSDAY': 'Thursday',
-        'SUNDAY': 'Sunday'
-    }));
-
-    constructor() {
+    constructor(locale = null) {
         super();
-        this._domElement.name = 'corpus_christi';
-        this._domElement.id = 'corpus_christi';
+        this._domElement.name = 'ascension';
+        this._domElement.id = 'ascension';
+        if (locale === null) {
+            throw new Error('Locale cannot be null.');
+        }
+        if (false === locale instanceof Intl.Locale) {
+            throw new Error('Invalid type for locale, must be of type `Intl.Locale` but found type: ' + typeof locale);
+        }
+        const weekdayFormatter = new Intl.DateTimeFormat(locale.language, { weekday: 'long' });
+        const thursday = new Date(Date.UTC(2025, 0, 2, 0, 0, 0));
+        const sunday = new Date(Date.UTC(2025, 0, 5, 0, 0, 0));
+        this.#options = Object.freeze(Object.entries({
+            '': '--',
+            'THURSDAY': weekdayFormatter.format(thursday),
+            'SUNDAY': weekdayFormatter.format(sunday)
+        }));
     }
 
     #processInput() {
-        this._labelElement.textContent = 'corpus_christi';
-        YearTypeInput.#options.forEach(([value, label]) => {
+        this._labelElement.textContent = 'ascension';
+        this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
             option.textContent = label;
-            option.selected = this.selectedOption === value;
+            option.selected = this._selectedValue === value;
             this._domElement.appendChild(option);
         });
     }
