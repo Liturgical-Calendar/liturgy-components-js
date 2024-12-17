@@ -1,12 +1,21 @@
-import { LitcalApiClient, CalendarSelect } from "../src/index.js";
+import { LitCalApiClient, CalendarSelect, ApiOptions, Input } from "../src/index.js";
 
-LitcalApiClient.init('http://localhost:8000').then( () => {
+Input.setGlobalInputClass('form-select');
+Input.setGlobalLabelClass('form-label d-block mb-1');
+Input.setGlobalWrapper('div');
+Input.setGlobalWrapperClass('form-group col col-md-3');
+
+LitCalApiClient.init('http://localhost:8000').then( () => {
     const liturgicalCalendarSelectEngNations = new CalendarSelect(); // default English
     const liturgicalCalendarSelectEngDioceses = new CalendarSelect(); // default English
     const liturgicalCalendarSelectEng = new CalendarSelect( 'en-US' );
     const liturgicalCalendarSelectEsp = new CalendarSelect( 'es-ES' );
     const liturgicalCalendarSelectIta = new CalendarSelect( 'it-IT' );
     const liturgicalCalendarSelectDeu = new CalendarSelect( 'de-DE' );
+    const apiOptionsEng = new ApiOptions( 'en-US' );
+    const apiOptionsEsp = new ApiOptions( 'es-ES' );
+    const apiOptionsIta = new ApiOptions( 'it-IT' );
+    const apiOptionsDeu = new ApiOptions( 'de-DE' );
 
     /**
      * English
@@ -41,6 +50,8 @@ LitcalApiClient.init('http://localhost:8000').then( () => {
         id: 'liturgicalCalendarSelectEngNationsWrapper'
     }).id('liturgicalCalendarSelectEng').class('form-select').appendTo( '#calendarSelectEnglish');
 
+    apiOptionsEng.appendTo( '#calendarOptionsEnglish' );
+
     /**
      * Spanish
      */
@@ -52,6 +63,8 @@ LitcalApiClient.init('http://localhost:8000').then( () => {
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
     }).id('liturgicalCalendarSelectEsp').class('form-select').allowNull().appendTo( '#calendarSelectOtherLangs');
+
+    apiOptionsEsp.appendTo( '#calendarOptionsSpanish' );
 
     /**
      * Italian
@@ -65,6 +78,8 @@ LitcalApiClient.init('http://localhost:8000').then( () => {
         id: 'liturgicalCalendarSelectEngNationsWrapper'
     }).id('liturgicalCalendarSelectIta').class('form-select').appendTo( '#calendarSelectOtherLangs');
 
+    apiOptionsIta.appendTo( '#calendarOptionsItalian' );
+
     /**
      * German
      */
@@ -76,4 +91,6 @@ LitcalApiClient.init('http://localhost:8000').then( () => {
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
     }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarSelectOtherLangs');
+
+    apiOptionsDeu.appendTo( '#calendarOptionsGerman' );
 });

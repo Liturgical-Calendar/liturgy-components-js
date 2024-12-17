@@ -8,7 +8,7 @@
  * Description: Creates a select menu populated with available liturgical calendars from the Liturgical Calendar API
  */
 
-import LitCalApiClient from './litcal-api-client.js';
+import { LitCalApiClient } from './index.js';
 
 class CalendarSelect {
     static #metadata                    = null;
@@ -281,7 +281,7 @@ class CalendarSelect {
             this.#afterSet = true;
             return this;
         }
-        else if ( false === (typeof labelOptions === 'object') || Array.isArray(labelOptions) ) {
+        else if ( typeof labelOptions !== 'object' || Array.isArray(labelOptions) ) {
             const labelOptionsType = Array.isArray(labelOptions) ? 'array' : typeof labelOptions;
             throw new Error('Invalid type for label options, must be of type object (not null or array) but found type: ' + labelOptionsType);
         }
@@ -351,7 +351,7 @@ class CalendarSelect {
             this.#wrapperSet = true;
             return this;
         }
-        else if ( false === (typeof wrapperOptions === 'object') || Array.isArray(wrapperOptions) ) {
+        else if ( typeof wrapperOptions !== 'object' || Array.isArray(wrapperOptions) ) {
             const wrapperOptionsType = Array.isArray(wrapperOptions) ? 'array' : typeof wrapperOptions;
             throw new Error('Invalid type for wrapper options, must be of type object (not null or array) but found type: ' + wrapperOptionsType);
         }
