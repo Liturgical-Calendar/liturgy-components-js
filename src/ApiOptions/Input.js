@@ -128,15 +128,17 @@ export default class Input {
     }
 
     id( id = '' ) {
-        if (this.#idSet) {
-            throw new Error('ID has already been set to `' + this.#domElement.id + '`.');
+        if (this.#idSet && this.#domElement.id !== id) {
+            console.error('ID has already been set to `' + this.#domElement.id + '` on Input instance.');
+            console.error(this);
+            throw new Error('ID has already been set to `' + this.#domElement.id + '` on Input instance.');
         }
         if (false === (typeof id === 'string')) {
-            throw new Error('Invalid type for id, must be of type string but found type: ' + typeof id);
+            throw new Error('Invalid type for id on Input instance, must be of type string but found type: ' + typeof id);
         }
         id = Input.#sanitizeInput(id);
         if (false === Input.#isValidId(id)) {
-            throw new Error('Invalid id, must be a valid CSS selector: ' + id);
+            throw new Error(`Invalid id '${id}' on Input instance, must be a valid CSS selector`);
         }
         this.#domElement.id = id;
         this.#idSet = true;
@@ -144,14 +146,16 @@ export default class Input {
     }
 
     name( name = '' ) {
-        if (this.#nameSet) {
-            throw new Error('Name has already been set to `' + this.#domElement.name + '`.');
+        if (this.#nameSet && this.#domElement.name !== name) {
+            console.error('Name has already been set to `' + this.#domElement.name + '` on Input instance.');
+            console.error(this);
+            throw new Error('Name has already been set to `' + this.#domElement.name + '` on Input instance.');
         }
         if (false === (typeof name === 'string')) {
-            throw new Error('Invalid type for name, must be of type string but found type: ' + typeof name);
+            throw new Error('Invalid type for name on Input instance, must be of type string but found type: ' + typeof name);
         }
         if ( '' === name ) {
-            throw new Error('Name cannot be empty.');
+            throw new Error('Name cannot be empty on Input instance.');
         }
         this.#domElement.name = Input.#sanitizeInput(name);
         this.#nameSet = true;
@@ -159,11 +163,15 @@ export default class Input {
     }
 
     class( className = '' ) {
-        if (this.#classSet) {
-            throw new Error('Class has already been set to `' + this.#domElement.className + '`.');
+        if (this.#classSet && this.#domElement.className !== className) {
+            console.error('Class has already been set to `' + this.#domElement.className + '` on Input instance:');
+            console.error(this);
+            throw new Error('Class has already been set to `' + this.#domElement.className + '` on Input instance.');
         }
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for class name, must be of type string but found type: ' + typeof className);
+            console.error('Invalid type for class name on Input instance, must be of type string but found type: ' + typeof className);
+            console.error(this);
+            throw new Error('Invalid type for class name on Input instance, must be of type string but found type: ' + typeof className);
         }
         className = Input.#sanitizeInput(className);
         const classNames = className.split(/\s+/);
@@ -178,17 +186,19 @@ export default class Input {
     }
 
     labelClass( labelClass = '' ) {
-        if (this.#labelClassSet) {
-            throw new Error('Label class has already been set to `' + this.#labelElement.className + '`.');
+        if (this.#labelClassSet && this.#labelElement.className !== labelClass) {
+            console.error('Label class has already been set to `' + this.#labelElement.className + '` on Input instance.');
+            console.error(this);
+            throw new Error('Label class has already been set to `' + this.#labelElement.className + '` on Input instance.');
         }
         if (false === (typeof labelClass === 'string')) {
-            throw new Error('Invalid type for label class, must be of type string but found type: ' + typeof labelClass);
+            throw new Error('Invalid type for label class on Input instance, must be of type string but found type: ' + typeof labelClass);
         }
         labelClass = Input.#sanitizeInput(labelClass);
         const classNames = labelClass.split(/\s+/);
         classNames.forEach(className => {
             if (false === Input.#isValidClassName(className)) {
-                throw new Error('Invalid label class: ' + className);
+                throw new Error(`Invalid label class '${className}' on Input instance, must be a valid CSS class`);
             }
         });
         this.#labelElement.className = classNames.join(' ');
@@ -228,20 +238,22 @@ export default class Input {
     }
 
     wrapperClass( wrapperClass = '') {
-        if (this.#wrapperClassSet) {
-            throw new Error('Wrapper class has already been set to `' + this.#wrapperElement.className + '`.');
+        if (this.#wrapperClassSet && this.#wrapperElement.className !== wrapperClass) {
+            console.error('Wrapper class has already been set to `' + this.#wrapperElement.className + '` on Input instance.');
+            console.error(this);
+            throw new Error('Wrapper class has already been set to `' + this.#wrapperElement.className + '` on Input instance.');
         }
         if (typeof wrapperClass !== 'string') {
-            throw new Error('Invalid type for wrapper class, must be of type string but found type: ' + typeof wrapperClass);
+            throw new Error('Invalid type for wrapper class on Input instance, must be of type string but found type: ' + typeof wrapperClass);
         }
         if (null === this.#wrapperElement) {
-            throw new Error('Wrapper has not been set, cannot set wrapper class.');
+            throw new Error('Wrapper has not been set, cannot set wrapper class on Input instance.');
         }
         wrapperClass = Input.#sanitizeInput(wrapperClass);
         const classNames = wrapperClass.split(/\s+/);
         classNames.forEach(className => {
             if (false === Input.#isValidClassName(className)) {
-                throw new Error('Invalid wrapper class: ' + className);
+                throw new Error(`Invalid wrapper class '${className}' on Input instance, must be a valid CSS class`);
             }
         });
         this.#wrapperElement.className = classNames.join(' ');
@@ -251,7 +263,9 @@ export default class Input {
 
     data( data = {} ) {
         if (this.#dataSet) {
-            throw new Error('Data attributes have already been set.');
+            console.error('Data attributes have already been set on Input instance.');
+            console.error(this);
+            throw new Error('Data attributes have already been set on Input instance.');
         }
         if (typeof data !== 'object') {
             throw new Error('Invalid type for data, must be of type object but found type: ' + typeof data);
