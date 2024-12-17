@@ -29,6 +29,7 @@ export default class AscensionInput extends Input {
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
+            option.title = value;
             option.textContent = label;
             option.selected = this._selectedValue === value;
             this._domElement.appendChild(option);
