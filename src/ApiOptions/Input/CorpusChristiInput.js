@@ -1,7 +1,6 @@
-import Input from "../Input.js";
+import SelectInput from "../SelectInput.js";
 
-
-export default class CorpusChristiInput extends Input {
+export default class CorpusChristiInput extends SelectInput {
 
     #options = null;
 
@@ -34,24 +33,4 @@ export default class CorpusChristiInput extends Input {
         });
     }
 
-    appendTo( elementSelector = '' ) {
-        if (typeof elementSelector !== 'string') {
-            throw new Error('Invalid type for elementSelector, must be of type string but found type: ' + typeof elementSelector);
-        }
-        if (elementSelector === '') {
-            throw new Error('Element selector cannot be empty.');
-        }
-        const element = document.querySelector(elementSelector);
-        if (element === null) {
-            throw new Error('Element not found: ' + elementSelector);
-        }
-        if (null !== this._wrapperElement) {
-            this._wrapperElement.appendChild(this._labelElement);
-            this._wrapperElement.appendChild(this._domElement);
-            element.appendChild(this._wrapperElement);
-        } else {
-            element.appendChild(this._labelElement);
-            element.appendChild(this._domElement);
-        }
-    }
 }

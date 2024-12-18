@@ -1,6 +1,17 @@
 export default class LitCalApiClient {
+  /**
+   * @type {string}
+   * @private
+   * @static
+   */
   static #apiUrl = 'https://litcal.johnromanodorazio.com/api/dev';
-  static paths = Object.freeze( {
+
+  /**
+   * @type {Object}
+   * @private
+   * @constant
+   */
+  static #paths = Object.freeze({
     calendars: '/calendars',
     calendar: '/calendar',
     events: '/events',
@@ -10,42 +21,95 @@ export default class LitCalApiClient {
     missals: '/missals',
     tests: '/tests',
     schemas: '/schemas'
-  } );
-  static metadata = null;
-  //static litcal_missals = null;
-  //static litcal_events = null;
+  });
 
-  static getCalendars() {
-    return fetch( `${this.#apiUrl}${this.paths.calendars}` ).then( response => {
-      if ( response.ok ) {
-        return response.json();
-      }
-    } ).then( data => {
-      const { litcal_metadata } = data;
-      this.metadata = litcal_metadata;
-      return this.metadata;
-    } ).catch( error => {
-      console.error( error );
-      return false;
-    } );
-  }
+  /**
+   * @type {Object | null}
+   * @private
+   * @static
+   */
+  static #metadata = null;
 
-  static getCalendar( year = null ) {
-    return fetch( `${this.apiUrl}${this.paths.calendar}${year ? `/${year}` : ''}` );
-  }
+  #calendarData = {};
 
-  static getNationalCalendar( calendar_id, year = null ) {
-    return fetch( `${this.apiUrl}${this.paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}` );
-  }
-
-  static getDiocesanCalendar( calendar_id, year = null ) {
-    return fetch( `${this.apiUrl}${this.paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}` );
-  }
+  #headers = {
+    'Content-Type': 'application/json'
+  };
+  #params = {};
 
   static init( url = null ) {
     if ( url ) {
       this.#apiUrl = url;
     }
-    return this.getCalendars();
+    return LitCalApiClient.fetchCalendars();
+  }
+
+  static fetchCalendars() {
+    return fetch( `${this.#apiUrl}${this.#paths.calendars}` ).then(response => {
+      if ( response.ok ) {
+        return response.json();
+      }
+    }).then(data => {
+      const { litcal_metadata } = data;
+      LitCalApiClient.#metadata = litcal_metadata;
+      return this.#metadata;
+    }).catch(error => {
+      console.error( error );
+      return false;
+    });
+  }
+
+  constructor() {
+
+  }
+
+  fetchCalendar( year = null ) {
+    return fetch( `${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}${year ? `/${year}` : ''}` ).then( response => {
+      if ( response.ok ) {
+        return response.json();
+      }
+    }).then( data => {
+      this.#calendarData = data;
+      return this.#calendarData;
+    }).catch( error => {
+      console.error( error );
+      return false;
+    });
+  }
+
+  fetchNationalCalendar( calendar_id, year = null ) {
+    return fetch( `${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}` ).then( response => {
+      if ( response.ok ) {
+        return response.json();
+      }
+    }).then( data => {
+      this.#calendarData = data;
+      return this.#calendarData;
+    }).catch( error => {
+      console.error( error );
+      return false;
+    });
+  }
+
+  fetchDiocesanCalendar( calendar_id, year = null ) {
+    return fetch( `${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}` ).then( response => {
+      if ( response.ok ) {
+        return response.json();
+      }
+    }).then( data => {
+      this.#calendarData = data;
+      return this.#calendarData;
+    }).catch( error => {
+      console.error( error );
+      return false;
+    });
+  }
+
+  static get _metadata() {
+    return LitCalApiClient.#metadata;
+  }
+
+  get _calendarData() {
+    return this.#calendarData;
   }
 }

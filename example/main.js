@@ -16,10 +16,18 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     const apiOptionsEsp = new ApiOptions( 'es-ES' );
     const apiOptionsIta = new ApiOptions( 'it-IT' );
     const apiOptionsDeu = new ApiOptions( 'de-DE' );
-    apiOptionsEng.localeInput.selectedValue( 'en' );
-    apiOptionsEsp.localeInput.selectedValue( 'es' );
-    apiOptionsIta.localeInput.selectedValue( 'it' );
-    apiOptionsDeu.localeInput.selectedValue( 'de' );
+    apiOptionsEng.localeInput.defaultValue( 'en' );
+    apiOptionsEsp.localeInput.defaultValue( 'es' );
+    apiOptionsIta.localeInput.defaultValue( 'it' );
+    apiOptionsDeu.localeInput.defaultValue( 'de' );
+    apiOptionsEng.acceptHeaderInput.hide();
+    apiOptionsEsp.acceptHeaderInput.hide();
+    apiOptionsIta.acceptHeaderInput.hide();
+    apiOptionsDeu.acceptHeaderInput.hide();
+    apiOptionsEng.yearInput.class( 'form-control' );
+    apiOptionsEsp.yearInput.class( 'form-control' );
+    apiOptionsIta.yearInput.class( 'form-control' );
+    apiOptionsDeu.yearInput.class( 'form-control' );
 
     /**
      * English

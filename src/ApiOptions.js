@@ -1,5 +1,6 @@
-import { AcceptHeaderInput, AscensionInput, CorpusChristiInput, EpiphanyInput, LocaleInput, EternalHighPriestInput, YearTypeInput } from './ApiOptions/Input/index.js';
-import { CalendarSelect, LitCalApiClient } from './index.js';
+import { AcceptHeaderInput, AscensionInput, CorpusChristiInput, EpiphanyInput, LocaleInput, EternalHighPriestInput, YearInput, YearTypeInput } from './ApiOptions/Input/index.js';
+import CalendarSelect from './CalendarSelect.js';
+import LitCalApiClient from './LitCalApiClient.js';
 
 export default class ApiOptions {
 
@@ -17,6 +18,8 @@ export default class ApiOptions {
     eternalHighPriestInput = null;
     /** @type {?LocaleInput} */
     localeInput            = null;
+    /** @type {?YearInput} */
+    yearInput              = null;
     /** @type {?YearTypeInput} */
     yearTypeInput          = null;
     /** @type {?AcceptHeaderInput} */
@@ -44,6 +47,7 @@ export default class ApiOptions {
         this.corpusChristiInput = new CorpusChristiInput(this.#locale);
         this.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
         this.localeInput = new LocaleInput(this.#locale);
+        this.yearInput = new YearInput();
         this.yearTypeInput = new YearTypeInput(this.#locale);
         this.acceptHeaderInput = new AcceptHeaderInput();
     }
@@ -93,7 +97,7 @@ export default class ApiOptions {
             let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
             switch(currentSelectedCalendarType) {
                 case 'national': {
-                    const selectedNationalCalendar = LitCalApiClient.metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId)[0];
+                    const selectedNationalCalendar = LitCalApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId)[0];
                     const {settings, locales} = selectedNationalCalendar;
                     Object.entries(settings).forEach(([key, value]) => {
                         // transform the key from snake_case to camelCase
@@ -108,9 +112,9 @@ export default class ApiOptions {
                     break;
                 }
                 case 'diocesan': {
-                    const selectedDiocesanCalendar = LitCalApiClient.metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId)[0];
+                    const selectedDiocesanCalendar = LitCalApiClient._metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId)[0];
                     const {nation, locales} = selectedDiocesanCalendar;
-                    const nationalCalendarForDiocese = LitCalApiClient.metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
+                    const nationalCalendarForDiocese = LitCalApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                     const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                     Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
                         // transform the key from snake_case to camelCase
@@ -164,7 +168,7 @@ export default class ApiOptions {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
                 switch(selectedCalendarType) {
                     case 'national': {
-                        const selectedNationalCalendar = LitCalApiClient.metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value)[0];
+                        const selectedNationalCalendar = LitCalApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value)[0];
                         const {settings, locales} = selectedNationalCalendar;
                         Object.entries(settings).forEach(([key, value]) => {
                             // transform the key from snake_case to camelCase
@@ -179,9 +183,9 @@ export default class ApiOptions {
                         break;
                     }
                     case 'diocesan': {
-                        const selectedDiocese = LitCalApiClient.metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === ev.target.value)[0];
+                        const selectedDiocese = LitCalApiClient._metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === ev.target.value)[0];
                         const {nation, locales} = selectedDiocese;
-                        const nationalCalendarForDiocese = LitCalApiClient.metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
+                        const nationalCalendarForDiocese = LitCalApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                         const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                         Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
                             // transform the key from snake_case to camelCase
@@ -280,6 +284,7 @@ export default class ApiOptions {
             if (false === this.acceptHeaderInput.isHidden()) {
                 this.acceptHeaderInput.appendTo(elementSelector);
             }
+            this.yearInput.appendTo(elementSelector);
         }
         if (null === pathType || pathType === 'basePath') {
             this.epiphanyInput.appendTo(elementSelector);

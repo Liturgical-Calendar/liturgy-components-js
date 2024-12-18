@@ -8,7 +8,7 @@
  * Description: Creates a select menu populated with available liturgical calendars from the Liturgical Calendar API
  */
 
-import { LitCalApiClient } from './index.js';
+import LitCalApiClient from './LitCalApiClient.js';
 
 export default class CalendarSelect {
     static #metadata                    = null;
@@ -88,19 +88,19 @@ export default class CalendarSelect {
     }
 
     static init() {
-        if ( null === LitCalApiClient.metadata ) {
+        if ( null === LitCalApiClient._metadata ) {
             throw new Error('LitCalApiClient has not been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
         } else {
-            if (LitCalApiClient.metadata === false) {
+            if (LitCalApiClient._metadata === false) {
                 throw new Error('The LitCalApiClient class was unable to initialize.');
             }
-            if (typeof LitCalApiClient.metadata !== 'object') {
-                throw new Error('The LitCalApiClient class was unable to initialize: expected object, found ' + typeof LitCalApiClient.metadata + '.');
+            if (typeof LitCalApiClient._metadata !== 'object') {
+                throw new Error('The LitCalApiClient class was unable to initialize: expected object, found ' + typeof LitCalApiClient._metadata + '.');
             }
-            if (false === LitCalApiClient.metadata.hasOwnProperty('national_calendars') || false === LitCalApiClient.metadata.hasOwnProperty('diocesan_calendars')) {
+            if (false === LitCalApiClient._metadata.hasOwnProperty('national_calendars') || false === LitCalApiClient._metadata.hasOwnProperty('diocesan_calendars')) {
                 throw new Error('The LitCalApiClient class was unable to initialize: expected object with `national_calendars` and `diocesan_calendars` properties.');
             }
-            CalendarSelect.#metadata = LitCalApiClient.metadata;
+            CalendarSelect.#metadata = LitCalApiClient._metadata;
             CalendarSelect.#nationalCalendars =  CalendarSelect.#metadata.national_calendars;
             CalendarSelect.#diocesanCalendars = CalendarSelect.#metadata.diocesan_calendars;
         }

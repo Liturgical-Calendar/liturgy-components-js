@@ -4,6 +4,7 @@ export default class Input {
     static #globalLabelClass   = null;
     static #globalWrapper      = null;
     static #globalWrapperClass = null;
+    /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
     #idSet            = false;
     #nameSet          = false;
@@ -14,7 +15,7 @@ export default class Input {
     #labelAfter       = null;
     #wrapperElement   = null;
     #wrapperClassSet  = false;
-    #selectedValue    = '';
+    #defaultValue    = '';
 
     static #sanitizeInput(input) {
         let doc = new DOMParser().parseFromString(input, 'text/html');
@@ -108,8 +109,16 @@ export default class Input {
         Input.#globalWrapperClass = classNames.join(' ');
     }
 
-    constructor() {
-        this.#domElement = document.createElement('select');
+    constructor(element = 'select') {
+        if (false === ['select', 'input[type="number"]'].includes(element)) {
+            throw new Error('Invalid element parameter: ' + element + ', valid values are: select, input[type="number"]');
+        }
+        const parseType = /^(.*?)(\[type="(.*?)"\])?$/.exec(element);
+        console.log(parseType);
+        this.#domElement = document.createElement(parseType[1]);
+        if (parseType[3] !== null) {
+            this.#domElement.setAttribute('type', parseType[3]);
+        }
         if (Input.#globalInputClass !== null) {
             this.#domElement.className = Input.#globalInputClass;
         }
@@ -300,14 +309,35 @@ export default class Input {
         return this;
     }
 
-    selectedValue( value = '' )
+    defaultValue( value = '' )
     {
         if (typeof value !== 'string') {
-            throw new Error('Invalid type for selectedValue, must be of type string but found type: ' + typeof value);
+            throw new Error('Invalid type for defaultValue, must be of type string but found type: ' + typeof value);
         }
         this.#domElement.value = Input.#sanitizeInput(value);
-        this.#selectedValue = value;
+        this.#defaultValue = value;
         return this;
+    }
+
+    appendTo( elementSelector = '' ) {
+        if (typeof elementSelector !== 'string') {
+            throw new Error('Invalid type for elementSelector, must be of type string but found type: ' + typeof elementSelector);
+        }
+        if (elementSelector === '') {
+            throw new Error('Element selector cannot be empty.');
+        }
+        const element = document.querySelector(elementSelector);
+        if (element === null) {
+            throw new Error('Element not found: ' + elementSelector);
+        }
+        if (null !== this._wrapperElement) {
+            this._wrapperElement.appendChild(this._labelElement);
+            this._wrapperElement.appendChild(this._domElement);
+            element.appendChild(this._wrapperElement);
+        } else {
+            element.appendChild(this._labelElement);
+            element.appendChild(this._domElement);
+        }
     }
 
     get _domElement() {
@@ -338,7 +368,7 @@ export default class Input {
         return this.#wrapperClassSet;
     }
 
-    get _selectedValue() {
-        return this.#selectedValue;
+    get _defaultValue() {
+        return this.#defaultValue;
     }
 }

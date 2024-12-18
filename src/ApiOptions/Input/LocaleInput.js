@@ -1,7 +1,7 @@
-import Input from "../Input.js";
-import { LitCalApiClient, ApiOptions } from "../../index.js";
+import SelectInput from "../SelectInput.js";
+import LitCalApiClient from "../../LitCalApiClient.js";
 
-export default class LocaleInput extends Input {
+export default class LocaleInput extends SelectInput {
 
     static #apiLocales        = null;
     static #apiLocalesDisplay = {};
@@ -15,7 +15,7 @@ export default class LocaleInput extends Input {
         this._domElement.name = 'locale';
         this._domElement.id = 'locale';
         this._labelElement.textContent = 'locale';
-        if (LitCalApiClient.metadata === null) {
+        if (LitCalApiClient._metadata === null) {
             throw new Error('LitCalApiClient has not yet been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
         }
         if (locale === null) {
@@ -27,7 +27,7 @@ export default class LocaleInput extends Input {
         //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
         this.#languageNames = new Intl.DisplayNames([locale.language], { type: 'language' });
         if (LocaleInput.#apiLocales === null) {
-            LocaleInput.#apiLocales = LitCalApiClient.metadata.locales;
+            LocaleInput.#apiLocales = LitCalApiClient._metadata.locales;
         }
         if (false === LocaleInput.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
             LocaleInput.#apiLocalesDisplay[locale.language] = new Map();
@@ -73,24 +73,4 @@ export default class LocaleInput extends Input {
         this._domElement.value = this._selectedValue !== '' ? this._selectedValue : 'la';
     }
 
-    appendTo( elementSelector = '' ) {
-        if (typeof elementSelector !== 'string') {
-            throw new Error('Invalid type for elementSelector, must be of type string but found type: ' + typeof elementSelector);
-        }
-        if (elementSelector === '') {
-            throw new Error('Element selector cannot be empty.');
-        }
-        const element = document.querySelector(elementSelector);
-        if (element === null) {
-            throw new Error('Element not found: ' + elementSelector);
-        }
-        if (null !== this._wrapperElement) {
-            this._wrapperElement.appendChild(this._labelElement);
-            this._wrapperElement.appendChild(this._domElement);
-            element.appendChild(this._wrapperElement);
-        } else {
-            element.appendChild(this._labelElement);
-            element.appendChild(this._domElement);
-        }
-    }
 }
