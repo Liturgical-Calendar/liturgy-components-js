@@ -126,6 +126,7 @@ export default class CalendarSelect {
         }
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
+        this.filter( this.#filter );
     }
 
     #filterDioceseOptionsForNation( nation ) {
@@ -209,7 +210,9 @@ export default class CalendarSelect {
         } else {
             this.#domElement.innerHTML = firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
         }
-        this.#filterSet = true;
+        if ( filter !== this.#filter ) {
+            this.#filterSet = true;
+        }
         return this;
     }
 
@@ -434,6 +437,7 @@ export default class CalendarSelect {
             throw new Error('Invalid type for allowNull on CalendarSelect instance with locale ' + this.#locale + ', must be of type boolean but found type: ' + typeof allowNull);
         }
         this.#allowNull = allowNull;
+        this.filter( this.#filter );
         this.#allowNullSet = true;
         return this;
     }
@@ -449,9 +453,6 @@ export default class CalendarSelect {
     #validateElementSelector( element ) {
         if (typeof element !== 'string') {
             throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
-        }
-        if ( this.#filter === 'none' ) {
-            this.filter();
         }
         const domNode = document.querySelector( element );
         if ( null === domNode ) {
@@ -496,11 +497,11 @@ export default class CalendarSelect {
         }
     }
 
-    getDomElement() {
+    get _domElement() {
         return this.#domElement;
     }
 
-    getFilter() {
+    get _filter() {
         return this.#filter;
     }
 
@@ -514,10 +515,10 @@ export default class CalendarSelect {
         if ( this.#filter !== 'dioceses' ) {
             throw new Error('Can only link a `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance. Instead of expected `dioceses` filter, found filter: ' + this.#filter);
         }
-        if ( calendarSelectInstance.getFilter() !== 'nations' ) {
-            throw new Error('Can only link a `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance.getFilter());
+        if ( calendarSelectInstance._filter !== 'nations' ) {
+            throw new Error('Can only link a `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
         }
-        const linkedDomElement = calendarSelectInstance.getDomElement();
+        const linkedDomElement = calendarSelectInstance._domElement;
         this.#filterDioceseOptionsForNation( linkedDomElement.value );
         linkedDomElement.addEventListener( 'change', (ev) => {
             const newNationValue = ev.target.value;

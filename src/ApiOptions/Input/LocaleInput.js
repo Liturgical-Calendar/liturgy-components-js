@@ -7,12 +7,14 @@ export default class LocaleInput extends Input {
     static #apiLocalesDisplay = {};
     //#regionNames              = null;
     #languageNames            = null;
+    /** @type {HTMLOptionElement[]} */
     #options                  = null;
 
     constructor( locale = null) {
         super();
         this._domElement.name = 'locale';
         this._domElement.id = 'locale';
+        this._labelElement.textContent = 'locale';
         if (LitCalApiClient.metadata === null) {
             throw new Error('LitCalApiClient has not yet been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
         }
@@ -36,19 +38,39 @@ export default class LocaleInput extends Input {
                 [...LocaleInput.#apiLocalesDisplay[locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
             );
         }
-        this.#options = Array.from(LocaleInput.#apiLocalesDisplay[locale.language]);
-    }
-
-    #processInput() {
-        this._labelElement.textContent = 'locale';
-        this.#options.forEach(([value, label]) => {
+        this.#options = Array.from(LocaleInput.#apiLocalesDisplay[locale.language]).map(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
             option.title = value;
             option.textContent = label;
             option.selected = this._selectedValue === value;
-            this._domElement.appendChild(option);
+            return option;
         });
+        this._domElement.replaceChildren(...this.#options);
+        console.log(this);
+        console.log(this.#options);
+        console.log(this._domElement.children);
+    }
+
+    setOptionsForCalendarLocales(calendarLocales = []) {
+        if (calendarLocales.length === 0) {
+            console.error('`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.');
+            console.error(this);
+            throw new Error('`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.');
+        }
+        const newChildren = calendarLocales.map((calendarLocale) => {
+            const option = document.createElement('option');
+            option.value = calendarLocale;
+            option.title = calendarLocale;
+            option.textContent = this.#languageNames.of(calendarLocale.replaceAll('_', '-'));
+            return option;
+        });
+        this._domElement.replaceChildren(...newChildren);
+    }
+
+    resetOptions() {
+        this._domElement.replaceChildren(...this.#options);
+        this._domElement.value = this._selectedValue !== '' ? this._selectedValue : 'la';
     }
 
     appendTo( elementSelector = '' ) {
@@ -62,7 +84,6 @@ export default class LocaleInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);

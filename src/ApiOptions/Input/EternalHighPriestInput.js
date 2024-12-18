@@ -9,6 +9,7 @@ export default class EternalHighPriestInput extends Input {
         super();
         this._domElement.name = 'eternal_high_priest';
         this._domElement.id = 'eternal_high_priest';
+        this._labelElement.textContent = 'eternal_high_priest';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -19,10 +20,6 @@ export default class EternalHighPriestInput extends Input {
             'false': Messages[locale.language]['FALSE'],
             'true': Messages[locale.language]['TRUE']
         }));
-    }
-
-    #processInput() {
-        this._labelElement.textContent = 'eternal_high_priest';
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -44,7 +41,6 @@ export default class EternalHighPriestInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);

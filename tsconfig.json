@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+      // Basic compiler options
+      "target": "esnext", // Set the target JavaScript version to modern ES modules
+      "module": "ESNext", // Set the module system to ES modules
+      "strict": true, // Enable all strict type checking options
+      "esModuleInterop": true, // Allow emit ES modules and JSX files into ES modules
+      "outDir": "./dist", // Output directory for compiled files
+      "rootDir": "./src", // Root directory for source files
+      "declaration": true, // Generate declaration files
+      "allowJs": true, // Allow JavaScript files
+    },
+    "include": [
+      "./src/**/*"
+    ],
+    "exclude": [
+      "**/node_modules/**", // Exclude the yarn pnp package directory from being included
+      "**/node_modules/**/*" // Recursively exclude all files within the node_modules directory
+    ]
+}

@@ -20,10 +20,6 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     apiOptionsEsp.localeInput.selectedValue( 'es' );
     apiOptionsIta.localeInput.selectedValue( 'it' );
     apiOptionsDeu.localeInput.selectedValue( 'de' );
-    apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng );
-    apiOptionsEsp.linkToCalendarSelect( liturgicalCalendarSelectEsp );
-    apiOptionsIta.linkToCalendarSelect( liturgicalCalendarSelectIta );
-    apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu );
 
     /**
      * English
@@ -56,9 +52,9 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     }).wrapper({
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
-    }).id('liturgicalCalendarSelectEng').class('form-select').appendTo( '#calendarSelectEnglish');
+    }).id('liturgicalCalendarSelectEng').class('form-select').appendTo( '#calendarOptionsEnglish');
 
-    apiOptionsEng.appendTo( '#calendarOptionsEnglish' );
+    apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng ).appendTo( '#calendarOptionsEnglish' )
 
     /**
      * Spanish
@@ -70,9 +66,9 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     }).wrapper({
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
-    }).id('liturgicalCalendarSelectEsp').class('form-select').allowNull().appendTo( '#calendarSelectOtherLangs');
+    }).id('liturgicalCalendarSelectEsp').class('form-select').allowNull().appendTo( '#calendarOptionsSpanish');
 
-    apiOptionsEsp.appendTo( '#calendarOptionsSpanish' );
+    apiOptionsEsp.linkToCalendarSelect( liturgicalCalendarSelectEsp ).appendTo( '#calendarOptionsSpanish' );
 
     /**
      * Italian
@@ -84,9 +80,9 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     }).wrapper({
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
-    }).id('liturgicalCalendarSelectIta').class('form-select').appendTo( '#calendarSelectOtherLangs');
+    }).id('liturgicalCalendarSelectIta').class('form-select').appendTo( '#calendarOptionsItalian');
 
-    apiOptionsIta.appendTo( '#calendarOptionsItalian' );
+    apiOptionsIta.linkToCalendarSelect( liturgicalCalendarSelectIta ).appendTo( '#calendarOptionsItalian' );
 
     /**
      * German
@@ -98,7 +94,7 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     }).wrapper({
         class: 'form-group col col-md-3',
         id: 'liturgicalCalendarSelectEngNationsWrapper'
-    }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarSelectOtherLangs');
+    }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarOptionsGerman');
 
-    apiOptionsDeu.appendTo( '#calendarOptionsGerman' );
+    apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu ).appendTo( '#calendarOptionsGerman' );
 });

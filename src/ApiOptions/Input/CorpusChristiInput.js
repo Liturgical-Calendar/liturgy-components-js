@@ -9,6 +9,7 @@ export default class CorpusChristiInput extends Input {
         super();
         this._domElement.name = 'corpus_christi';
         this._domElement.id = 'corpus_christi';
+        this._labelElement.textContent = 'corpus_christi';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -23,10 +24,6 @@ export default class CorpusChristiInput extends Input {
             'THURSDAY': weekdayFormatter.format(thursday),
             'SUNDAY': weekdayFormatter.format(sunday)
         }));
-    }
-
-    #processInput() {
-        this._labelElement.textContent = 'corpus_christi';
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -48,7 +45,6 @@ export default class CorpusChristiInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);

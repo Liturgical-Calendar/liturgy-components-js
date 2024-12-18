@@ -9,6 +9,7 @@ export default class EpiphanyInput extends Input {
         super();
         this._domElement.name = 'epiphany';
         this._domElement.id = 'epiphany';
+        this._labelElement.textContent = 'epiphany';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -26,10 +27,6 @@ export default class EpiphanyInput extends Input {
             'JAN6': monthDayFormatter.format(jan6),
             'SUNDAY_JAN2_JAN8': Messages[locale.language]['SUNDAY_JAN2_JAN8']
         }));
-   }
-
-    #processInput() {
-        this._labelElement.textContent = 'epiphany';
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -38,7 +35,7 @@ export default class EpiphanyInput extends Input {
             option.selected = this._selectedValue === value;
             this._domElement.appendChild(option);
         });
-    }
+   }
 
     appendTo( elementSelector = '' ) {
         if (typeof elementSelector !== 'string') {
@@ -51,7 +48,6 @@ export default class EpiphanyInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);

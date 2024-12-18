@@ -8,6 +8,7 @@ export default class AscensionInput extends Input {
         super();
         this._domElement.name = 'ascension';
         this._domElement.id = 'ascension';
+        this._labelElement.textContent = 'ascension';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -22,10 +23,6 @@ export default class AscensionInput extends Input {
             'THURSDAY': weekdayFormatter.format(thursday),
             'SUNDAY': weekdayFormatter.format(sunday)
         }));
-    }
-
-    #processInput() {
-        this._labelElement.textContent = 'ascension';
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -47,7 +44,6 @@ export default class AscensionInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);

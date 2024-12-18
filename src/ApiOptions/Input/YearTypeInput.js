@@ -9,6 +9,7 @@ export default class YearTypeInput extends Input {
         super();
         this._domElement.name = 'year_type';
         this._domElement.id = 'year_type';
+        this._labelElement.textContent = 'year_type';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -19,10 +20,6 @@ export default class YearTypeInput extends Input {
             'LITURGICAL': Messages[locale.language]['LITURGICAL_YEAR'],
             'CIVIL': Messages[locale.language]['CIVIL_YEAR']
         }));
-    }
-
-    #processInput() {
-        this._labelElement.textContent = 'year_type';
         this.#options.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -44,7 +41,6 @@ export default class YearTypeInput extends Input {
         if (element === null) {
             throw new Error('Element not found: ' + elementSelector);
         }
-        this.#processInput();
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);
