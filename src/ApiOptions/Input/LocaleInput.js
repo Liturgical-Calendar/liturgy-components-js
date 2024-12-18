@@ -47,9 +47,6 @@ export default class LocaleInput extends Input {
             return option;
         });
         this._domElement.replaceChildren(...this.#options);
-        console.log(this);
-        console.log(this.#options);
-        console.log(this._domElement.children);
     }
 
     setOptionsForCalendarLocales(calendarLocales = []) {
@@ -69,7 +66,10 @@ export default class LocaleInput extends Input {
     }
 
     resetOptions() {
+        console.log('resetting options for LocaleInput');
+        console.log(this);
         this._domElement.replaceChildren(...this.#options);
+        console.log(this._selectedValue);
         this._domElement.value = this._selectedValue !== '' ? this._selectedValue : 'la';
     }
 

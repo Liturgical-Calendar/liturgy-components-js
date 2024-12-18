@@ -306,6 +306,7 @@ export default class Input {
             throw new Error('Invalid type for selectedValue, must be of type string but found type: ' + typeof value);
         }
         this.#domElement.value = Input.#sanitizeInput(value);
+        this.#selectedValue = value;
         return this;
     }
 
