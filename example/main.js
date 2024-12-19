@@ -28,6 +28,9 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     apiOptionsEsp.yearInput.class( 'form-control' );
     apiOptionsIta.yearInput.class( 'form-control' );
     apiOptionsDeu.yearInput.class( 'form-control' );
+    const apiClientEng = new LitCalApiClient();
+    apiClientEng.listenToCalendarSelect( liturgicalCalendarSelectEng );
+    apiClientEng.listenToApiOptions( apiOptionsEng );
 
     /**
      * English
