@@ -53,7 +53,7 @@ export default class LitCalApiClient {
   });
 
   /**
-   * @type {Object | null}
+   * @type {import('./typedefs.js').CalendarMetadata | null}
    * @private
    * @static
    * Response object from the API /calendars path
@@ -146,9 +146,15 @@ export default class LitCalApiClient {
     });
   }
 
-  constructor() {
-
-  }
+  /**
+   * Instantiates a new instance of the LitCalApiClient class.
+   *
+   * The constructor does not perform any specific actions, but it provides
+   * access to instance methods and private properties of the class.
+   * This allows the client to interact with the Liturgical Calendar API,
+   * possibly listening to changes in the UI components.
+   */
+  constructor() {}
 
   /**
    * Refetches calendar data based on the current category and calendar ID.
@@ -295,7 +301,8 @@ export default class LitCalApiClient {
   }
 
   /**
-   * @param {CalendarSelect} calendarSelect
+   * Listens to changes in the CalendarSelect instance and fetches the corresponding calendar from the API.
+   * @param {CalendarSelect} calendarSelect - The CalendarSelect instance to listen to
    */
   listenToCalendarSelect( calendarSelect = null ) {
     if ( false === calendarSelect instanceof CalendarSelect ) {
@@ -328,9 +335,17 @@ export default class LitCalApiClient {
   }
 
   /**
-   * @param {ApiOptions} apiOptions
+   * Listens to changes in the API options and updates the parameters accordingly.
+   *
+   * This function attaches event listeners to various inputs within the ApiOptions instance.
+   * When the user changes the value of these inputs, the corresponding parameter in the
+   * request configuration is updated. If the current category is not set, it triggers
+   * a refetch of the calendar data.
+   *
+   * @param {ApiOptions} apiOptions - The ApiOptions instance containing inputs to listen to
+   * @throws {Error} If the provided argument is not an instance of ApiOptions
    */
-  listenToApiOptions( apiOptions = null ) {
+  listenToApiOptions(apiOptions = null) {
     if (false === apiOptions instanceof ApiOptions) {
       throw new Error('Expected an instance of ApiOptions');
     }
@@ -382,10 +397,23 @@ export default class LitCalApiClient {
     });
   }
 
+  /**
+   * This static getter provides access to the metadata object that contains information
+   * about the available liturgical calendars, including national and diocesan calendars.
+   * The metadata is initially fetched from the API during the client initialization.
+   *
+   * @returns {import('./typedefs.js').CalendarMetadata} An object containing the metadata of the liturgical calendars.
+   */
   static get _metadata() {
     return LitCalApiClient.#metadata;
   }
 
+  /**
+   * @returns {import('./typedefs.js').CalendarData} The currently cached calendar data.
+   * This property can be used to retrieve the current liturgical calendar data.
+   * Note that the data is only available after `fetchCalendar()`, `fetchNationalCalendar()`,
+   * or `fetchDiocesanCalendar()` has been called.
+   */
   get _calendarData() {
     return this.#calendarData;
   }
