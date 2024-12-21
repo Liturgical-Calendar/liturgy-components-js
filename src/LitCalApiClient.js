@@ -1,5 +1,6 @@
 import ApiOptions from './ApiOptions.js';
 import CalendarSelect from './CalendarSelect.js';
+import EventEmitter from './EventEmitter.js';
 
 /**
  * A client for interacting with the Liturgical Calendar API.
@@ -105,6 +106,8 @@ export default class LitCalApiClient {
    */
   #currentCalendarId = '';
 
+  #eventBus = null;
+
   /**
    * Initializes the LitCalApiClient with an optional API URL.
    * If a URL is provided, it sets the internal API URL to the given value.
@@ -154,7 +157,9 @@ export default class LitCalApiClient {
    * This allows the client to interact with the Liturgical Calendar API,
    * possibly listening to changes in the UI components.
    */
-  constructor() {}
+  constructor() {
+    this.#eventBus = new EventEmitter();
+  }
 
   /**
    * Refetches calendar data based on the current category and calendar ID.
@@ -172,16 +177,19 @@ export default class LitCalApiClient {
       this.fetchNationalCalendar( this.#currentCalendarId ).then(() => {
         console.log( 'Fetched national calendar' );
         console.log( this.#calendarData );
+        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
       });
     } else if ( this.#currentCategory === 'diocesan' ) {
       this.fetchDiocesanCalendar( this.#currentCalendarId ).then(() => {
         console.log( 'Fetched diocesan calendar' );
         console.log( this.#calendarData );
+        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
       });
     } else {
       this.fetchCalendar().then(() => {
         console.log( 'Fetched General Roman Calendar' );
         console.log( this.#calendarData );
+        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
       });
     }
   }
@@ -319,16 +327,19 @@ export default class LitCalApiClient {
         this.fetchNationalCalendar( this.#currentCalendarId ).then(() => {
           console.log( 'Fetched national calendar' );
           console.log( this.#calendarData );
+          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
         });
       } else if ( this.#currentCategory === 'diocesan' ) {
         this.fetchDiocesanCalendar( this.#currentCalendarId ).then(() => {
           console.log( 'Fetched diocesan calendar' );
           console.log( this.#calendarData );
+          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
         });
       } else {
         this.fetchCalendar().then(() => {
           console.log( 'Fetched General Roman Calendar' );
           console.log( this.#calendarData );
+          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
         });
       }
     });
@@ -416,5 +427,9 @@ export default class LitCalApiClient {
    */
   get _calendarData() {
     return this.#calendarData;
+  }
+
+  get _eventBus() {
+    return this.#eventBus;
   }
 }

@@ -3,6 +3,7 @@
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
  * @prop {int} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
+ * @prop {Date|int} date - The date of the liturgical event
  * @prop {int} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
@@ -62,6 +63,14 @@
  * @prop {{event_key: string, date: string, timezone_type: number, timezone: string}[]} reinstated_events - An array of liturgical events with their keys and dates that are having been suppressed were reinstated for whatever reason in the current calendar calculation (usually because of a transferral defined in a national calendar)
  * @prop {string[]} reinstated_events_keys - An array of liturgical events keys that are having been suppressed were reinstated for whatever reason in the current calendar calculation (usually because of a transferral defined in a national calendar)
  * @prop {string} [diocese_name] - The name of the diocese for which the calendar was calculated
+ */
+
+/**
+ * @typedef {Object} Counter
+ * @prop {number} cm - The count of the liturgical events within the same month
+ * @prop {number} cs - The count of the liturgical events within the same season
+ * @prop {number} cw - The count of the liturgical events within the same week
+ * @prop {number} cd - The count of the liturgical events within the same day
  */
 
 export default {};

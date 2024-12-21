@@ -1,4 +1,4 @@
-import { LitCalApiClient, CalendarSelect, ApiOptions, Input } from "../src/index.js";
+import { LitCalApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from "../src/index.js";
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');
@@ -31,6 +31,20 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     const apiClientEng = new LitCalApiClient();
     apiClientEng.listenToCalendarSelect( liturgicalCalendarSelectEng );
     apiClientEng.listenToApiOptions( apiOptionsEng );
+    const webCalendar = new WebCalendar();
+    webCalendar.id('LitCalTable')
+    .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
+    .psalterWeekGrouping()
+    .removeHeaderRow()
+    .seasonColor(ColorAs.CSS_CLASS)
+    .seasonColorColumns(Column.LITURGICAL_SEASON)
+    .eventColor(ColorAs.INDICATOR)
+    .eventColorColumns(Column.EVENT)
+    .monthHeader()
+    .dateFormat(DateFormat.DAY_ONLY)
+    .columnOrder(ColumnOrder.GRADE_FIRST)
+    .gradeDisplay(GradeDisplay.ABBREVIATED)
+    .attachTo( '#litcalWebcalendar' ).listenTo(apiClientEng);
 
     /**
      * English
@@ -108,4 +122,6 @@ LitCalApiClient.init('http://localhost:8000').then( () => {
     }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarOptionsGerman');
 
     apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu ).appendTo( '#calendarOptionsGerman' );
+
+
 });
