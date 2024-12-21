@@ -1161,7 +1161,7 @@ export default class WebCalendar {
             }
             console.log('Received data in WebCalendar Component:', data);
             data.litcal = data.litcal.map(event => {
-                event.date = new Date(Date.UTC(0, 0, 0, 0, 0, event.date));
+                event.date = new Date(event.date * 1000);
                 return event;
             });
             this.#calendarData = data;
