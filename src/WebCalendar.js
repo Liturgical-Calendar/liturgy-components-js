@@ -4,6 +4,10 @@ import LitCalApiClient from './LitCalApiClient.js';
 import Messages from './Messages.js';
 
 export default class WebCalendar {
+    /**
+     * @type {HTMLElement}
+     * @private
+     */
     #domElement = null;
     #locale = 'en-US';
     #baseLocale = 'en';
@@ -12,32 +16,80 @@ export default class WebCalendar {
      */
     #calendarData = null;
     #daysCreated = 0;
+    /**
+     * @type {Grouping}
+     * @private
+     */
     #firstColumnGrouping = Grouping.BY_MONTH;
+    /**
+     * @type {ColorAs}
+     * @private
+     */
     #eventColor = ColorAs.INDICATOR;
+    /**
+     * @type {ColorAs}
+     * @private
+     */
     #seasonColor = ColorAs.BACKGROUND;
+    /**
+     * @type {ColumnSet}
+     * @private
+     */
     #seasonColorColumns = new ColumnSet(Column.LITURGICAL_SEASON | Column.MONTH | Column.DATE | Column.PSALTER_WEEK);
+    /**
+     * @type {ColumnSet}
+     * @private
+     */
     #eventColorColumns = new ColumnSet(Column.EVENT | Column.GRADE);
+    /**
+     * @type {ColumnOrder}
+     * @private
+     */
     #columnOrder = ColumnOrder.EVENT_DETAILS_FIRST;
     /**
      * @type {DateFormat}
+     * @private
      */
     #dateFormat = DateFormat.FULL;
     /**
      * @type {GradeDisplay}
+     * @private
      */
     #gradeDisplay = GradeDisplay.FULL;
     #removeHeaderRow = false;
     #removeCaption = false;
     #psalterWeekGrouping = false;
     #monthHeader = false;
+    /**
+     * @type {HTMLElement}
+     * @private
+     */
     #attachedElement = null;
+    /**
+     * @type {HTMLElement}
+     * @private
+     */
     #lastSeasonCell = null;
+    /**
+     * @type {HTMLElement}
+     * @private
+     */
     #lastPsalterWeekCell = null;
     #monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
     #dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
 
+    /**
+     * @type {['purple', 'red', 'green']}
+     * @private
+     * @readonly
+     */
     static #HIGH_CONTRAST = Object.freeze(['purple', 'red', 'green']);
 
+    /**
+     * @type {['dies Solis', 'dies Lunæ', 'dies Martis', 'dies Mercurii', 'dies Iovis', 'dies Veneris', 'dies Saturni']}
+     * @private
+     * @readonly
+     */
     static #DAYS_OF_THE_WEEK_LATIN = Object.freeze([
         "dies Solis",
         "dies Lunæ",
@@ -48,6 +100,11 @@ export default class WebCalendar {
         "dies Saturni"
     ]);
 
+    /**
+     * @type {['', 'Ianuarius', 'Februarius', 'Martius', 'Aprilis', 'Maius', 'Iunius', 'Iulius', 'Augustus', 'September', 'October', 'November', 'December']}
+     * @private
+     * @readonly
+     */
     static #MONTHS_LATIN = Object.freeze([
         "",
         "Ianuarius",
@@ -64,16 +121,42 @@ export default class WebCalendar {
         "December"
     ]);
 
+    /**
+     * @type {['', 'I', 'II', 'III', 'IV']}
+     * @private
+     * @readonly
+     */
     static #PSALTER_WEEK = Object.freeze([
         '', 'I', 'II', 'III', 'IV'
     ]);
 
-    //kudos to https://stackoverflow.com/a/47140708/394921 for the idea
+    /**
+     * Sanitizes the given input string to prevent XSS attacks.
+     *
+     * It uses the DOMParser to parse the string as HTML and then extracts the
+     * text content of the parsed HTML document. This effectively strips any HTML
+     * tags from the input string.
+     *
+     * @param {string} input - The input string to sanitize.
+     * @returns {string} The sanitized string.
+     * @private
+     * @see https://stackoverflow.com/a/47140708/394921
+     */
     static #sanitizeInput(input) {
         let doc = new DOMParser().parseFromString(input, 'text/html');
         return doc.body.textContent || "";
     }
 
+    /**
+     * Validates the given class name to ensure it is a valid CSS class name.
+     *
+     * A valid CSS class name is a string that starts with a letter, underscore or dash,
+     * followed by any number of alphanumeric characters, dashes or underscores.
+     *
+     * @param {string} className - The class name to validate.
+     * @returns {boolean} True if the class name is valid, false otherwise.
+     * @private
+     */
     static #isValidClassName( className ) {
         /**
          * The regex pattern used to validate class names:
@@ -88,6 +171,16 @@ export default class WebCalendar {
         return pattern.test(className);
     }
 
+    /**
+     * Validates the given ID to ensure it is a valid HTML ID.
+     *
+     * A valid HTML ID is a string that starts with a letter, underscore or dash,
+     * followed by any number of alphanumeric characters, dashes or underscores.
+     *
+     * @param {string} id - The ID to validate.
+     * @returns {boolean} True if the ID is valid, false otherwise.
+     * @private
+     */
     static #isValidId( id ) {
         /**
          * The regex pattern used to validate IDs:
@@ -109,6 +202,14 @@ export default class WebCalendar {
         return pattern.test(id);
     }
 
+    /**
+     * Validates the given element selector to ensure it is a valid HTML element selector.
+     *
+     * @param {string} element - The element selector to validate.
+     * @returns {Element} The DOM element that the selector matches.
+     * @throws {Error} If the element selector is invalid or does not match any elements.
+     * @private
+     */
     static #validateElementSelector( element ) {
         if (typeof element !== 'string') {
             throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
@@ -120,6 +221,30 @@ export default class WebCalendar {
         return domNode;
     }
 
+    /**
+     * Constructor for the WebCalendar class.
+     *
+     * Creates a new instance of the WebCalendar class.
+     *
+     * The options object is optional and can contain any of the following properties:
+     * - class: string, the class to apply to the table element
+     * - id: string, the id to apply to the table element
+     * - firstColumnGrouping: Grouping, the grouping for the first column
+     * - removeHeaderRow: boolean, whether to remove the header row
+     * - removeCaption: boolean, whether to remove the caption element
+     * - psalterWeekGrouping: boolean, whether to group events by psalter week
+     * - eventColor: ColorAs, the color to apply to events
+     * - seasonColor: ColorAs, the color to apply to seasons
+     * - seasonColorColumns: Column, the columns to apply the season color to
+     * - eventColorColumns: Column, the columns to apply the event color to
+     * - monthHeader: boolean, whether to include a month header
+     * - dateFormat: DateFormat, the format to use for dates
+     * - columnOrder: ColumnOrder, the order of the columns
+     * - gradeDisplay: GradeDisplay, the display of grades
+     *
+     * @param {Object} [options] - An object containing any of the above properties.
+     * @throws {Error} If any of the properties in the options object are invalid.
+     */
     constructor(options = {}) {
         this.#domElement = document.createElement('table');
         if (typeof options !== 'object') {
@@ -552,6 +677,8 @@ export default class WebCalendar {
      *
      * @param {int} eventIdx The current position in the array of liturgical events on the given day.
      * @param {import('./typedefs.js').Counter} counter [counter.cd] The count of subsequent liturgical events in the same day.
+     * @private
+     * @returns
      */
     #countSameDayEvents(eventIdx, counter) {
         return new Promise((resolve) => {
@@ -576,6 +703,8 @@ export default class WebCalendar {
      *
      * @param {int} eventIdx  The current position in the array of liturgical events on the given month.
      * @param {import('./typedefs.js').Counter} counter [counter.cm] The count of subsequent liturgical events in the same month
+     * @private
+     * @returns
      */
     #countSameMonthEvents(eventIdx, counter) {
         return new Promise((resolve) => {
@@ -600,6 +729,8 @@ export default class WebCalendar {
      *
      * @param {int} eventIdx The current position in the array of liturgical events in the given liturgical season.
      * @param {import('./typedefs.js').Counter} counter [counter.cs] The count of subsequent liturgical events in the same liturgical season.
+     * @private
+     * @returns
      */
     #countSameSeasonEvents(eventIdx, counter) {
         return new Promise((resolve) => {
@@ -626,6 +757,8 @@ export default class WebCalendar {
      *
      * @param {int} eventIdx The current position in the array of liturgical events on the given psalter week.
      * @param {import('./typedefs.js').Counter} counter [counter.cw] The count of subsequent liturgical events in the same psalter week.
+     * @private
+     * @returns
      */
     #countSamePsalterWeekEvents(eventIdx, counter) {
         return new Promise((resolve) => {
@@ -659,8 +792,9 @@ export default class WebCalendar {
     }
 
     /**
-     *
+     * Determines the liturgical season for a given liturgical event.
      * @param {import('./typedefs.js').CalendarEvent} litevent
+     * @private
      * @returns
      */
     #determineSeason(litevent) {
@@ -698,6 +832,12 @@ export default class WebCalendar {
         return 'CHRISTMAS';
     }
 
+    /**
+     * Given a liturgical event, returns the liturgical color for the liturgical season.
+     * @param {import('./typedefs.js').CalendarEvent} litEvent
+     * @private
+     * @returns
+     */
     #getSeasonColor(litEvent) {
         switch (litEvent.liturgical_season) {
             case 'ADVENT':
@@ -713,6 +853,17 @@ export default class WebCalendar {
         }
     }
 
+    /**
+     * Given a cell, column flag, and season color, applies the season color
+     * to the cell based on the value of the `seasonColor` property,
+     * if the column in which it is found (indicated by `columnFlag`)
+     * is enabled in the `#seasonColorColumns` private class field,
+     * and in the manner specified by the private class field `this.#seasonColor`.
+     * @param {string} seasonColor The color representing the liturgical season
+     * @param {HTMLTableCellElement} cell The table cell to which the color should be applied
+     * @param {Column} columnFlag The column for which the color should be applied
+     * @private
+     */
     #handleSeasonColorForColumn(seasonColor, cell, columnFlag) {
         if (this.#seasonColorColumns.has(columnFlag)) {
             switch(this.#seasonColor) {
@@ -740,6 +891,17 @@ export default class WebCalendar {
         }
     }
 
+    /**
+     * Given a cell, column flag, and event color, applies the event color
+     * to the cell based on the value of the `eventColor` property,
+     * if the column in which it is found (indicated by `columnFlag`)
+     * is enabled in the `#eventColorColumns` private class field,
+     * and in the manner specified by the private class field `#eventColor`.
+     * @param {string|string[]} eventColor The color(s) representing the event color(s)
+     * @param {HTMLTableCellElement} cell The table cell to which the color should be applied
+     * @param {Column} columnFlag The column for which the color should be applied
+     * @private
+     */
     #handleEventColorForColumn(eventColor, cell, columnFlag) {
         if (typeof eventColor === 'string') {
             eventColor = [eventColor];
@@ -772,6 +934,19 @@ export default class WebCalendar {
         }
     }
 
+    /**
+     * Builds a table row for a liturgical event.
+     *
+     * @param {LiturgicalEvent} litevent - The liturgical event to display.
+     * @param {{newMonth: boolean, newSeason: boolean, newPsalterWeek: boolean}} newCheck - Flags indicating new month or season.
+     * @param {import('./typedefs.js').Counter} counter - Counts of celebrations in different scopes (month, liturgical season, psalter week, liturgical day).
+     * @param {?number} ev - Index of liturgical events within the same day.
+     *                        If null, there's only one event for the day and rowspan is not set on the dateCell.
+     *                        If zero, we are on the first iteration of events within the same day, so we must create a dateCell and set the rowspan.
+     *                        Otherwise, we are on a subsequent iteration of events within the same day, so there is no need to create a dateCell.
+     * @returns {HTMLTableRowElement | HTMLTableRowElement[]} The table row for the given liturgical event.
+     * @private
+     */
     #buildTableRow(litevent, newCheck, counter, ev) {
         const seasonColor = this.#getSeasonColor(litevent);
         let monthHeaderRow = null;
@@ -944,6 +1119,11 @@ export default class WebCalendar {
         return [tr];
     }
 
+    /**
+     * @description Builds the HTML table from the JSON data for the Liturgical Calendar.
+     * @async
+     * @returns {WebCalendar} The current instance of the WebCalendar class
+     */
     async buildTable() {
         this.locale(this.#calendarData.settings.locale.replaceAll('_', '-'));
 
@@ -960,7 +1140,7 @@ export default class WebCalendar {
             col.setAttribute('class', 'col' + (i + 1));
             colGroup.appendChild(col);
         }
-        this.#domElement.appendChild(colGroup);
+        this.#domElement.replaceChildren(colGroup);
 
         if (false === this.#removeCaption) {
             const caption = document.createElement('caption');
@@ -1048,6 +1228,9 @@ export default class WebCalendar {
         let currentSeason = '';
         let currentPsalterWeek = 5;
 
+        /**
+         * @type {{newMonth: boolean, newSeason: boolean, newPsalterWeek: boolean}}
+         */
         const newCheck = {
             newMonth: false,
             newSeason: false,
@@ -1139,12 +1322,33 @@ export default class WebCalendar {
         return this;
     }
 
-    attachTo( element ) {
-        const domNode = WebCalendar.#validateElementSelector( element );
+    /**
+     * Attaches the WebCalendar to a given element. If the element does not yet exist in the DOM, the WebCalendar will be attached when the element is inserted.
+     * @param {string} elementSelector - Element selector for the DOM element to attach the WebCalendar to
+     * @return {WebCalendar} - The same instance of WebCalendar
+     */
+    attachTo( elementSelector ) {
+        const domNode = WebCalendar.#validateElementSelector( elementSelector );
         this.#attachedElement = domNode;
         return this;
     }
 
+    /**
+     * Subscribes the WebCalendar instance to the `calendarFetched` event emitted by the LitCalApiClient.
+     *
+     * Upon receiving the event, it processes the liturgical calendar data and updates the calendar display.
+     * The method will validate that the `apiClient` is an instance of LitCalApiClient and listen to
+     * the `calendarFetched` event on the client's event bus. When the event is triggered, it checks
+     * the integrity of the received data, ensuring it contains the necessary properties and is of the correct type.
+     * It then converts event dates from UNIX timestamps to Date objects, updates the internal calendar data,
+     * and rebuilds the calendar table. If the WebCalendar is attached to a DOM element, the new calendar table
+     * replaces the current content of the attached element.
+     *
+     * @param {LitCalApiClient} apiClient - The API client to listen to for calendar data events.
+     * @throws {Error} If the provided `apiClient` is not an instance of LitCalApiClient or if the received
+     * data is invalid or malformed.
+     * @return {WebCalendar} - Returns the instance of WebCalendar for method chaining.
+     */
     listenTo( apiClient ) {
         if ( false === apiClient instanceof LitCalApiClient ) {
             throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of LitCalApiClient, but found: ' + typeof apiClient + '.' );
@@ -1166,7 +1370,7 @@ export default class WebCalendar {
             });
             this.#calendarData = data;
 
-            await this.buildTable();
+            this.buildTable();
             if (this.#attachedElement && this.#domElement) {
                 this.#attachedElement.replaceChildren(this.#domElement);
             } else {
@@ -1181,6 +1385,11 @@ export default class WebCalendar {
         return this;
     }
 
+    /**
+     * The locale used by the WebCalendar instance.
+     * @type {string}
+     * @readonly
+     */
     get _locale() {
         return this.#locale;
     }

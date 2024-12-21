@@ -2,28 +2,54 @@ import { AcceptHeaderInput, AscensionInput, CorpusChristiInput, EpiphanyInput, L
 import CalendarSelect from './CalendarSelect.js';
 import LitCalApiClient from './LitCalApiClient.js';
 
+/**
+ * Class to generate an options form for the Liturgical Calendar API.
+ *
+ * The class contains methods to generate the form, form label, form wrapper, and form submit elements.
+ * The form elements can be fully customized using the methods provided by the class.
+ *
+ * __ __construct()__ Initializes the ApiOptions object with default or provided settings:
+ *                                             - __locale__: The locale to use for the API options form.
+ *
+ * The following properties are initialized on the object instance:
+ * - ___epiphanyInput__: The seslect input with options for when the Epiphany is celebrated.
+ * - ___ascensionInput__: The select input with options for when the Ascension is celebrated.
+ * - ___corpusChristiInput__: The select input with options for when Corpus Christi is celebrated.
+ * - ___eternalHighPriestInput__: The select input with options for whether the Eternal High Priest is celebrated.
+ * - ___yearTypeInput__: The select input with options for the type of year to produce, whether liturgical or civil.
+ * - ___localeInput__: The select input with options for the locale to use for the calendar response from the API.
+ * - ___acceptHeaderInput__: The select input with options for the Accept header to use for the calendar response from the API.
+ *
+ * @example
+ * const apiOptions = new ApiOptions();
+ * apiOptions.localeInput.defaultValue( 'en' );
+ * apiOptions.acceptHeaderInput.hide();
+ *
+ * @example
+ * const apiOptions = new ApiOptions('it-IT');
+ * apiOptions.localeInput.defaultValue( 'it' );
+ *
+ * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
+ * @license Apache-2.0
+ * @see https://github.com/Liturgical-Calendar/liturgy-components-js
+ */
 export default class ApiOptions {
 
     /** @type {boolean} */
     #linked                = false;
     /** @type {?Intl.Locale} */
     #locale                = null;
-    /** @type {?EpiphanyInput} */
-    epiphanyInput          = null;
-    /** @type {?AscensionInput} */
-    ascensionInput         = null;
-    /** @type {?CorpusChristiInput} */
-    corpusChristiInput     = null;
-    /** @type {?EternalHighPriestInput} */
-    eternalHighPriestInput = null;
-    /** @type {?LocaleInput} */
-    localeInput            = null;
-    /** @type {?YearInput} */
-    yearInput              = null;
-    /** @type {?YearTypeInput} */
-    yearTypeInput          = null;
-    /** @type {?AcceptHeaderInput} */
-    acceptHeaderInput      = null;
+    /** @type {{epiphanyInput: ?EpiphanyInput, ascensionInput: ?AscensionInput, corpusChristiInput: ?CorpusChristiInput, eternalHighPriestInput: ?EternalHighPriestInput, localeInput: ?LocaleInput, yearInput: ?YearInput, yearTypeInput: ?YearTypeInput, acceptHeaderInput: ?AcceptHeaderInput}} */
+    #inputs                = {
+        epiphanyInput: null,
+        ascensionInput: null,
+        corpusChristiInput: null,
+        eternalHighPriestInput: null,
+        localeInput: null,
+        yearInput: null,
+        yearTypeInput: null,
+        acceptHeaderInput: null
+    };
 
     /**
      * Constructs an instance of the ApiOptions class, initializing various input components
@@ -42,34 +68,34 @@ export default class ApiOptions {
             throw new Error('Invalid locale: ' + locale);
         }
         this.#locale = new Intl.Locale(canonicalLocales[0]);
-        this.epiphanyInput = new EpiphanyInput(this.#locale);
-        this.ascensionInput = new AscensionInput(this.#locale);
-        this.corpusChristiInput = new CorpusChristiInput(this.#locale);
-        this.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
-        this.localeInput = new LocaleInput(this.#locale);
-        this.yearInput = new YearInput();
-        this.yearTypeInput = new YearTypeInput(this.#locale);
-        this.acceptHeaderInput = new AcceptHeaderInput();
+        this.#inputs.epiphanyInput = new EpiphanyInput(this.#locale);
+        this.#inputs.ascensionInput = new AscensionInput(this.#locale);
+        this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);
+        this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
+        this.#inputs.localeInput = new LocaleInput(this.#locale);
+        this.#inputs.yearInput = new YearInput();
+        this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
+        this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
     }
 
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
-        const nationSelector = calendarSelect[0]._filter === 'nations' ? calendarSelect[0] : calendarSelect[1];
-        const dioceseSelector = calendarSelect[0]._filter === 'dioceses' ? calendarSelect[0] : calendarSelect[1];
+        const nationSelector = calendarSelects[0]._filter === 'nations' ? calendarSelects[0] : calendarSelects[1];
+        const dioceseSelector = calendarSelects[0]._filter === 'dioceses' ? calendarSelects[0] : calendarSelects[1];
         nationSelector._domElement.addEventListener('change', (ev) => {
             // TODO: set selected values based on selected calendar
             // TODO: set available options for locale select based on selected calendar
             if (ev.target.value === '' && dioceseSelector._domElement.value === '') {
                 // all API options enabled
-                this.epiphanyInput.disabled(false);
-                this.ascensionInput.disabled(false);
-                this.corpusChristiInput.disabled(false);
-                this.eternalHighPriestInput.disabled(false);
+                this.#inputs.epiphanyInput.disabled(false);
+                this.#inputs.ascensionInput.disabled(false);
+                this.#inputs.corpusChristiInput.disabled(false);
+                this.#inputs.eternalHighPriestInput.disabled(false);
             } else {
                 // all API options disabled
-                this.epiphanyInput.disabled(true);
-                this.ascensionInput.disabled(true);
-                this.corpusChristiInput.disabled(true);
-                this.eternalHighPriestInput.disabled(true);
+                this.#inputs.epiphanyInput.disabled(true);
+                this.#inputs.ascensionInput.disabled(true);
+                this.#inputs.corpusChristiInput.disabled(true);
+                this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
         dioceseSelector._domElement.addEventListener('change', (ev) => {
@@ -77,16 +103,16 @@ export default class ApiOptions {
             // TODO: set available options for locale select based on selected calendar
             if (ev.target.value === '' && nationSelector._domElement.value === '') {
                 // all API options enabled
-                this.epiphanyInput.disabled(false);
-                this.ascensionInput.disabled(false);
-                this.corpusChristiInput.disabled(false);
-                this.eternalHighPriestInput.disabled(false);
+                this.#inputs.epiphanyInput.disabled(false);
+                this.#inputs.ascensionInput.disabled(false);
+                this.#inputs.corpusChristiInput.disabled(false);
+                this.#inputs.eternalHighPriestInput.disabled(false);
             } else {
                 // all API options disabled
-                this.epiphanyInput.disabled(true);
-                this.ascensionInput.disabled(true);
-                this.corpusChristiInput.disabled(true);
-                this.eternalHighPriestInput.disabled(true);
+                this.#inputs.epiphanyInput.disabled(true);
+                this.#inputs.ascensionInput.disabled(true);
+                this.#inputs.corpusChristiInput.disabled(true);
+                this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
     }
@@ -106,9 +132,9 @@ export default class ApiOptions {
                         if (typeof value === 'boolean') {
                             value = value ? 'true' : 'false';
                         }
-                        this[key + 'Input']._domElement.value = value;
+                        this.#inputs[`${key}Input`]._domElement.value = value;
                     });
-                    this.localeInput.setOptionsForCalendarLocales(locales);
+                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
                 }
                 case 'diocesan': {
@@ -123,7 +149,7 @@ export default class ApiOptions {
                         if (typeof value === 'boolean') {
                             value = value ? 'true' : 'false';
                         }
-                        this[key + 'Input']._domElement.value = value;
+                        this.#inputs[`${key}Input`]._domElement.value = value;
                     });
                     if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
                         const {settings} = selectedDiocesanCalendar;
@@ -134,36 +160,36 @@ export default class ApiOptions {
                             if (typeof value === 'boolean') {
                                 value = value ? 'true' : 'false';
                             }
-                            this[key + 'Input']._domElement.value = value;
+                            this.#inputs[`${key}Input`]._domElement.value = value;
                         });
                     }
-                    this.localeInput.setOptionsForCalendarLocales(locales);
+                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
                 }
                 default:
                     throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
             }
-            this.epiphanyInput.disabled(true);
-            this.ascensionInput.disabled(true);
-            this.corpusChristiInput.disabled(true);
-            this.eternalHighPriestInput.disabled(true);
+            this.#inputs.epiphanyInput.disabled(true);
+            this.#inputs.ascensionInput.disabled(true);
+            this.#inputs.corpusChristiInput.disabled(true);
+            this.#inputs.eternalHighPriestInput.disabled(true);
         } else {
-            this.epiphanyInput.disabled(false);
-            this.ascensionInput.disabled(false);
-            this.corpusChristiInput.disabled(false);
-            this.eternalHighPriestInput.disabled(false);
-            this.localeInput.resetOptions();
+            this.#inputs.epiphanyInput.disabled(false);
+            this.#inputs.ascensionInput.disabled(false);
+            this.#inputs.corpusChristiInput.disabled(false);
+            this.#inputs.eternalHighPriestInput.disabled(false);
+            this.#inputs.localeInput.resetOptions();
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
             // TODO: set selected values based on selected calendar
             // TODO: set available options for locale select based on selected calendar
             if (ev.target.value === '') {
                 // all API options enabled
-                this.epiphanyInput.disabled(false);
-                this.ascensionInput.disabled(false);
-                this.corpusChristiInput.disabled(false);
-                this.eternalHighPriestInput.disabled(false);
-                this.localeInput.resetOptions();
+                this.#inputs.epiphanyInput.disabled(false);
+                this.#inputs.ascensionInput.disabled(false);
+                this.#inputs.corpusChristiInput.disabled(false);
+                this.#inputs.eternalHighPriestInput.disabled(false);
+                this.#inputs.localeInput.resetOptions();
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
                 switch(selectedCalendarType) {
@@ -177,9 +203,9 @@ export default class ApiOptions {
                             if (typeof value === 'boolean') {
                                 value = value ? 'true' : 'false';
                             }
-                            this[key + 'Input']._domElement.value = value;
+                            this.#inputs[`${key}Input`]._domElement.value = value;
                         });
-                        this.localeInput.setOptionsForCalendarLocales(locales);
+                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         break;
                     }
                     case 'diocesan': {
@@ -194,7 +220,7 @@ export default class ApiOptions {
                             if (typeof value === 'boolean') {
                                 value = value ? 'true' : 'false';
                             }
-                            this[key + 'Input']._domElement.value = value;
+                            this.#inputs[`${key}Input`]._domElement.value = value;
                         });
                         if (selectedDiocese.hasOwnProperty('settings')) {
                             const {settings} = selectedDiocese;
@@ -205,18 +231,18 @@ export default class ApiOptions {
                                 if (typeof value === 'boolean') {
                                     value = value ? 'true' : 'false';
                                 }
-                                this[key + 'Input']._domElement.value = value;
+                                this.#inputs[`${key}Input`]._domElement.value = value;
                             });
                         }
-                        this.localeInput.setOptionsForCalendarLocales(locales);
+                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         break;
                     }
                 }
                 // all API options disabled
-                this.epiphanyInput.disabled(true);
-                this.ascensionInput.disabled(true);
-                this.corpusChristiInput.disabled(true);
-                this.eternalHighPriestInput.disabled(true);
+                this.#inputs.epiphanyInput.disabled(true);
+                this.#inputs.ascensionInput.disabled(true);
+                this.#inputs.corpusChristiInput.disabled(true);
+                this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
     }
@@ -279,18 +305,50 @@ export default class ApiOptions {
      */
     appendTo(elementSelector, pathType = null) {
         if (null === pathType || pathType === 'allPaths') {
-            this.localeInput.appendTo(elementSelector);
-            this.yearTypeInput.appendTo(elementSelector);
-            if (false === this.acceptHeaderInput.isHidden()) {
-                this.acceptHeaderInput.appendTo(elementSelector);
+            this.#inputs.localeInput.appendTo(elementSelector);
+            this.#inputs.yearTypeInput.appendTo(elementSelector);
+            if (false === this.#inputs.acceptHeaderInput.isHidden()) {
+                this.#inputs.acceptHeaderInput.appendTo(elementSelector);
             }
-            this.yearInput.appendTo(elementSelector);
+            this.#inputs.yearInput.appendTo(elementSelector);
         }
         if (null === pathType || pathType === 'basePath') {
-            this.epiphanyInput.appendTo(elementSelector);
-            this.ascensionInput.appendTo(elementSelector);
-            this.corpusChristiInput.appendTo(elementSelector);
-            this.eternalHighPriestInput.appendTo(elementSelector);
+            this.#inputs.epiphanyInput.appendTo(elementSelector);
+            this.#inputs.ascensionInput.appendTo(elementSelector);
+            this.#inputs.corpusChristiInput.appendTo(elementSelector);
+            this.#inputs.eternalHighPriestInput.appendTo(elementSelector);
         }
+    }
+
+    get _epiphanyInput() {
+        return this.#inputs.epiphanyInput;
+    }
+
+    get _ascensionInput() {
+        return this.#inputs.ascensionInput;
+    }
+
+    get _corpusChristiInput() {
+        return this.#inputs.corpusChristiInput;
+    }
+
+    get _eternalHighPriestInput() {
+        return this.#inputs.eternalHighPriestInput;
+    }
+
+    get _localeInput() {
+        return this.#inputs.localeInput;
+    }
+
+    get _yearTypeInput() {
+        return this.#inputs.yearTypeInput;
+    }
+
+    get _yearInput() {
+        return this.#inputs.yearInput;
+    }
+
+    get _acceptHeaderInput() {
+        return this.#inputs.acceptHeaderInput;
     }
 }

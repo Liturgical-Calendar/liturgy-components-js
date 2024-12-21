@@ -5,6 +5,17 @@ export default class EpiphanyInput extends SelectInput {
 
     #options = null;
 
+    /**
+     * Constructor for the EpiphanyInput class.
+     *
+     * @param {string|Intl.Locale|null} locale - The locale to use for the Epiphany input.
+     *                                          The locale should be a valid string that can be parsed by the
+     *                                          Intl.getCanonicalLocales function or an instance of Intl.Locale.
+     *                                          If the locale string contains an underscore, the underscore will be replaced
+     *                                          with a hyphen.
+     *
+     * @throws {Error} If the locale is invalid.
+     */
     constructor(locale = null) {
         super();
         this._domElement.name = 'epiphany';
@@ -36,5 +47,4 @@ export default class EpiphanyInput extends SelectInput {
             this._domElement.appendChild(option);
         });
    }
-
 }

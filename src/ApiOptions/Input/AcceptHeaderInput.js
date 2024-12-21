@@ -15,6 +15,14 @@ export default class AcceptHeaderInput extends SelectInput {
     #asReturnTypeParamSet = false;
     #hidden = false;
 
+    /**
+     * Constructor.
+     *
+     * @param {boolean} [as_return_type_param] - if true, the select element's name will be set to 'return_type' and the options will be set to the accepted return types of the API.  If false, the select element's name will be set to 'Accept' and the options will be set to the accepted accept headers of the API.
+     *
+     * @throws {Error} if as_return_type_param is set more than once.
+     * @throws {Error} if as_return_type_param is not of type boolean.
+     */
     constructor(as_return_type_param = null) {
         super();
         if (null !== as_return_type_param) {
@@ -49,6 +57,14 @@ export default class AcceptHeaderInput extends SelectInput {
         }
     }
 
+    /**
+     * @param {boolean} [as_return_type_param=true] - if true, the select element's name will be set to 'return_type' and the options will be set to the accepted return types of the API.  If false, the select element's name will be set to 'Accept' and the options will be set to the accepted accept headers of the API.
+     *
+     * @returns {AcceptHeaderInput} The instance of the class, for chaining.
+     *
+     * @throws {Error} if as_return_type_param is set more than once.
+     * @throws {Error} if as_return_type_param is not of type boolean.
+     */
     asReturnTypeParam( as_return_type_param = true) {
         if (this.#asReturnTypeParamSet && this.#asReturnTypeParam !== as_return_type_param) {
             throw new Error('Cannot set as_return_type_param more than once.');
@@ -69,11 +85,21 @@ export default class AcceptHeaderInput extends SelectInput {
         return this;
     }
 
+    /**
+     * Hides the accept header input field.
+     *
+     * @return this The instance of the class, for chaining.
+     */
     hide() {
         this.#hidden = true;
         return this;
     }
 
+    /**
+     * Returns whether the accept header input field is hidden.
+     *
+     * @return boolean true if the accept header input field is hidden, false otherwise.
+     */
     isHidden() {
         return this.#hidden;
     }

@@ -363,45 +363,45 @@ export default class LitCalApiClient {
     if (null === apiOptions) {
       throw new Error('Expected an instance of ApiOptions');
     }
-    apiOptions.epiphanyInput._domElement.addEventListener( 'change', event => {
+    apiOptions._epiphanyInput._domElement.addEventListener( 'change', event => {
       this.#params.epiphany = event.target.value;
       console.log(`updated epiphany to ${this.#params.epiphany}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
-    apiOptions.ascensionInput._domElement.addEventListener( 'change', event => {
+    apiOptions._ascensionInput._domElement.addEventListener( 'change', event => {
       this.#params.ascension = event.target.value;
       console.log(`updated ascension to ${this.#params.ascension}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
-    apiOptions.corpusChristiInput._domElement.addEventListener( 'change', event => {
+    apiOptions._corpusChristiInput._domElement.addEventListener( 'change', event => {
       this.#params.corpus_christi = event.target.value;
       console.log(`updated corpus_christi to ${this.#params.corpus_christi}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
-    apiOptions.eternalHighPriestInput._domElement.addEventListener( 'change', event => {
+    apiOptions._eternalHighPriestInput._domElement.addEventListener( 'change', event => {
       this.#params.eternal_high_priest = event.target.value === 'true';
       console.log(`updated eternal_high_priest to ${this.#params.eternal_high_priest}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
-    apiOptions.yearInput._domElement.addEventListener( 'change', event => {
+    apiOptions._yearInput._domElement.addEventListener( 'change', event => {
       this.#params.year = event.target.value;
       console.log(`updated year to ${this.#params.year}`);
       this.refetchCalendarData();
     });
-    apiOptions.yearTypeInput._domElement.addEventListener( 'change', event => {
+    apiOptions._yearTypeInput._domElement.addEventListener( 'change', event => {
       this.#params.year_type = event.target.value;
       console.log(`updated year_type to ${this.#params.year_type}`);
       this.refetchCalendarData();
     });
-    apiOptions.localeInput._domElement.addEventListener( 'change', event => {
+    apiOptions._localeInput._domElement.addEventListener( 'change', event => {
       this.#fetchCalendarHeaders['Accept-Language'] = event.target.value;
       console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
       this.refetchCalendarData();
@@ -429,6 +429,14 @@ export default class LitCalApiClient {
     return this.#calendarData;
   }
 
+  /**
+   * The event bus that can be used to subscribe to events emitted by the LitCalApiClient.
+   *
+   * The event bus emits events of type `calendarFetched` when a new calendar is fetched
+   * from the API. The event detail is an object of type `CalendarData` containing the
+   * liturgical events of the fetched calendar.
+   * @type {import('./typedefs.js').EventBus}
+   */
   get _eventBus() {
     return this.#eventBus;
   }

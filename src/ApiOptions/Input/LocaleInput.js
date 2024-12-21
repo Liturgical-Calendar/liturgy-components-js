@@ -10,6 +10,17 @@ export default class LocaleInput extends SelectInput {
     /** @type {HTMLOptionElement[]} */
     #options                  = null;
 
+    /**
+     * Constructs a LocaleInput object.
+     *
+     * @param {string|Intl.Locale|null} locale - The locale to use for the select element.
+     *                                          The locale should be a valid string that can be parsed by the
+     *                                          Intl.getCanonicalLocales function or an instance of Intl.Locale.
+     *                                          If the locale string contains an underscore, the underscore will be replaced
+     *                                          with a hyphen.
+     *
+     * @throws {Error} If the locale is invalid.
+     */
     constructor( locale = null) {
         super();
         this._domElement.name = 'locale';
@@ -49,6 +60,16 @@ export default class LocaleInput extends SelectInput {
         this._domElement.replaceChildren(...this.#options);
     }
 
+    /**
+     * Updates the options for the calendar locales select input.
+     *
+     * This method takes an array of calendar locale identifiers and updates
+     * the select input with corresponding option elements. Each option element
+     * is created with the locale identifier as its value and display name.
+     *
+     * @param {string[]} calendarLocales - An array of calendar locale identifiers.
+     * @throws {Error} If the `calendarLocales` array is empty.
+     */
     setOptionsForCalendarLocales(calendarLocales = []) {
         if (calendarLocales.length === 0) {
             console.error('`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.');
@@ -65,11 +86,16 @@ export default class LocaleInput extends SelectInput {
         this._domElement.replaceChildren(...newChildren);
     }
 
+    /**
+     * Resets the options for this LocaleInput instance.
+     *
+     * This method is typically called when the user selects a new calendar.
+     * It will reset the options to the default locales supported by the API, and
+     * set the selected value of the input to the value of the `selectedValue` property
+     * of the LocaleInput instance, or to "la" if no value is set.
+     */
     resetOptions() {
-        console.log('resetting options for LocaleInput');
-        console.log(this);
         this._domElement.replaceChildren(...this.#options);
-        console.log(this._selectedValue);
         this._domElement.value = this._selectedValue !== '' ? this._selectedValue : 'la';
     }
 
