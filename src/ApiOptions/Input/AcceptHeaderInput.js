@@ -100,7 +100,7 @@ export default class AcceptHeaderInput extends SelectInput {
      *
      * @return boolean true if the accept header input field is hidden, false otherwise.
      */
-    isHidden() {
+    get _hidden() {
         return this.#hidden;
     }
 

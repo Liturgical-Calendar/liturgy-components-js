@@ -1,4 +1,4 @@
-import LitCalApiClient from './LitCalApiClient.js';
+import ApiClient from './ApiClient.js';
 
 /**
  * Creates a select menu populated with available liturgical calendars from the Liturgical Calendar API
@@ -145,29 +145,31 @@ export default class CalendarSelect {
     /**
      * Initializes the CalendarSelect class.
      *
-     * This method initializes the CalendarSelect class by storing the metadata obtained from the LitCalApiClient
+     * This method initializes the CalendarSelect class by storing the metadata obtained from the ApiClient
      * class in a private class property. This method must be called before any CalendarSelect instances are created.
-     * If the LitCalApiClient class has not been initialized, or failed to initialize, an error will be thrown.
+     * If the ApiClient class has not been initialized, or failed to initialize, an error will be thrown.
      *
-     * @throws {Error} If the LitCalApiClient class has not been initialized.
-     * @throws {Error} If the LitCalApiClient class failed to initialize.
-     * @throws {Error} If the LitCalApiClient class initialized with an invalid object.
-     * @throws {Error} If the LitCalApiClient class initialized with an object that does not contain the expected properties.
+     * @throws {Error} If the ApiClient class has not been initialized.
+     * @throws {Error} If the ApiClient class failed to initialize.
+     * @throws {Error} If the ApiClient class initialized with an invalid object.
+     * @throws {Error} If the ApiClient class initialized with an object that does not contain the expected properties.
+     * @static
+     * @private
      */
-    static init() {
-        if ( null === LitCalApiClient._metadata ) {
-            throw new Error('LitCalApiClient has not been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
+    static #init() {
+        if ( null === ApiClient._metadata ) {
+            throw new Error('ApiClient has not been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
         } else {
-            if (LitCalApiClient._metadata === false) {
-                throw new Error('The LitCalApiClient class was unable to initialize.');
+            if (ApiClient._metadata === false) {
+                throw new Error('The ApiClient class was unable to initialize.');
             }
-            if (typeof LitCalApiClient._metadata !== 'object') {
-                throw new Error('The LitCalApiClient class was unable to initialize: expected object, found ' + typeof LitCalApiClient._metadata + '.');
+            if (typeof ApiClient._metadata !== 'object') {
+                throw new Error('The ApiClient class was unable to initialize: expected object, found ' + typeof ApiClient._metadata + '.');
             }
-            if (false === LitCalApiClient._metadata.hasOwnProperty('national_calendars') || false === LitCalApiClient._metadata.hasOwnProperty('diocesan_calendars')) {
-                throw new Error('The LitCalApiClient class was unable to initialize: expected object with `national_calendars` and `diocesan_calendars` properties.');
+            if (false === ApiClient._metadata.hasOwnProperty('national_calendars') || false === ApiClient._metadata.hasOwnProperty('diocesan_calendars')) {
+                throw new Error('The ApiClient class was unable to initialize: expected object with `national_calendars` and `diocesan_calendars` properties.');
             }
-            CalendarSelect.#metadata = LitCalApiClient._metadata;
+            CalendarSelect.#metadata = ApiClient._metadata;
             CalendarSelect.#nationalCalendars =  CalendarSelect.#metadata.national_calendars;
             CalendarSelect.#diocesanCalendars = CalendarSelect.#metadata.diocesan_calendars;
         }
@@ -198,7 +200,7 @@ export default class CalendarSelect {
         }
 
         if (null === CalendarSelect.#metadata) {
-            CalendarSelect.init();
+            CalendarSelect.#init();
         }
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');

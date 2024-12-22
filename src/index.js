@@ -1,4 +1,4 @@
-import LitCalApiClient from "./LitCalApiClient.js";
+import ApiClient from "./ApiClient.js";
 import CalendarSelect from "./CalendarSelect.js";
 import ApiOptions from "./ApiOptions.js";
 import WebCalendar from "./WebCalendar.js";
@@ -7,7 +7,7 @@ import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from
 import ColumnSet from './WebCalendar/ColumnSet.js';
 
 export {
-    LitCalApiClient,
+    ApiClient,
     CalendarSelect,
     ApiOptions,
     WebCalendar,

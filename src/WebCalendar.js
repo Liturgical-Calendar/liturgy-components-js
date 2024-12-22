@@ -1,6 +1,6 @@
 import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay } from './WebCalendar/Enums.js';
 import ColumnSet from './WebCalendar/ColumnSet.js';
-import LitCalApiClient from './LitCalApiClient.js';
+import ApiClient from './ApiClient.js';
 import Messages from './Messages.js';
 
 export default class WebCalendar {
@@ -58,7 +58,7 @@ export default class WebCalendar {
     #gradeDisplay = GradeDisplay.FULL;
     #removeHeaderRow = false;
     #removeCaption = false;
-    #psalterWeekGrouping = false;
+    #psalterWeekColumn = false;
     #monthHeader = false;
     /**
      * @type {HTMLElement}
@@ -232,7 +232,7 @@ export default class WebCalendar {
      * - firstColumnGrouping: Grouping, the grouping for the first column
      * - removeHeaderRow: boolean, whether to remove the header row
      * - removeCaption: boolean, whether to remove the caption element
-     * - psalterWeekGrouping: boolean, whether to group events by psalter week
+     * - psalterWeekColumn: boolean, whether to group events by psalter week
      * - eventColor: ColorAs, the color to apply to events
      * - seasonColor: ColorAs, the color to apply to seasons
      * - seasonColorColumns: Column, the columns to apply the season color to
@@ -251,7 +251,7 @@ export default class WebCalendar {
             throw new Error('Invalid type for options on WebCalendar instance, must be of type object but found type: ' + typeof options);
         }
         if (options.hasOwnProperty('class')) {
-            this.className(options.class);
+            this.class(options.class);
         }
         if (options.hasOwnProperty('id')) {
             this.id(options.id);
@@ -265,8 +265,8 @@ export default class WebCalendar {
         if (options.hasOwnProperty('removeCaption')) {
             this.removeCaption(options.removeCaption);
         }
-        if (options.hasOwnProperty('psalterWeekGrouping')) {
-            this.psalterWeekGrouping(options.psalterWeekGrouping);
+        if (options.hasOwnProperty('psalterWeekColumn')) {
+            this.psalterWeekColumn(options.psalterWeekColumn);
         }
         if (options.hasOwnProperty('eventColor')) {
             this.eventColor(options.eventColor);
@@ -308,7 +308,7 @@ export default class WebCalendar {
      * invalid.
      * @returns {WebCalendar} The current WebCalendar instance for chaining.
      */
-    className( className ) {
+    class( className ) {
         if ( typeof className !== 'string' ) {
             throw new Error('Invalid type for class name on WebCalendar instance, must be of type string but found type: ' + typeof className);
         }
@@ -484,16 +484,16 @@ export default class WebCalendar {
      *
      * The default is true, meaning that the psalter week grouping should be applied.
      *
-     * @param {boolean} psalterWeekGrouping Whether the psalter week grouping should be applied or not.
+     * @param {boolean} boolVal Whether the psalter week grouping should be applied or not.
      *
      * @throws {Error} If the input is not a boolean.
      * @returns {WebCalendar} The current instance of the class.
      */
-    psalterWeekGrouping(psalterWeekGrouping = true) {
-        if (typeof psalterWeekGrouping !== 'boolean') {
-            throw new Error('Invalid type for psalter week grouping, must be of type boolean but found type: ' + typeof psalterWeekGrouping);
+    psalterWeekColumn(boolVal = true) {
+        if (typeof boolVal !== 'boolean') {
+            throw new Error('Invalid type for psalter week grouping, must be of type boolean but found type: ' + typeof psalterWeekColumn);
         }
-        this.#psalterWeekGrouping = psalterWeekGrouping;
+        this.#psalterWeekColumn = boolVal;
         return this;
     }
 
@@ -1089,11 +1089,11 @@ export default class WebCalendar {
         }
 
         // Fifth column is Psalter Week if Psalter week grouping is enabled
-        if (this.#psalterWeekGrouping && false === newCheck.newPsalterWeek && null !== monthHeaderRow) {
+        if (this.#psalterWeekColumn && false === newCheck.newPsalterWeek && null !== monthHeaderRow) {
             const psalterWeekCellRowSpan = this.#lastPsalterWeekCell.getAttribute('rowspan');
             this.#lastPsalterWeekCell.setAttribute('rowspan', parseInt(psalterWeekCellRowSpan) + 1);
         }
-        if (this.#psalterWeekGrouping && newCheck.newPsalterWeek) {
+        if (this.#psalterWeekColumn && newCheck.newPsalterWeek) {
             const psalterWeekCell = document.createElement('td');
             psalterWeekCell.setAttribute('class', 'psalterWeek');
             this.#lastPsalterWeekCell = psalterWeekCell;
@@ -1133,7 +1133,7 @@ export default class WebCalendar {
         // or directly on the table element itself using the provided methods.
 
         const colGroup = document.createElement('colgroup');
-        const colCount = this.#psalterWeekGrouping ? 5 : 4;
+        const colCount = this.#psalterWeekColumn ? 5 : 4;
 
         for (let i = 0; i < colCount; i++) {
             const col = document.createElement('col');
@@ -1211,7 +1211,7 @@ export default class WebCalendar {
                     break;
             }
 
-            if (this.#psalterWeekGrouping) {
+            if (this.#psalterWeekColumn) {
                 const th5 = document.createElement('th');
                 th5.appendChild(document.createTextNode('Psalter'));
                 theadRow.appendChild(th5);
@@ -1272,7 +1272,7 @@ export default class WebCalendar {
 
                 // Check if we are at the start of a new Psalter week, and if so count how many events we have with the same Psalter week,
                 // so we can display the Psalter week table cell with the correct colspan
-                if (litevent.psalter_week !== currentPsalterWeek) {
+                if (litevent.psalter_week !== currentPsalterWeek || litevent.psalter_week === 0) {
                     newCheck.newPsalterWeek = true;
                     counter.cw = 0;
                     currentPsalterWeek = litevent.psalter_week;
@@ -1334,24 +1334,24 @@ export default class WebCalendar {
     }
 
     /**
-     * Subscribes the WebCalendar instance to the `calendarFetched` event emitted by the LitCalApiClient.
+     * Subscribes the WebCalendar instance to the `calendarFetched` event emitted by the ApiClient.
      *
      * Upon receiving the event, it processes the liturgical calendar data and updates the calendar display.
-     * The method will validate that the `apiClient` is an instance of LitCalApiClient and listen to
+     * The method will validate that the `apiClient` is an instance of ApiClient and listen to
      * the `calendarFetched` event on the client's event bus. When the event is triggered, it checks
      * the integrity of the received data, ensuring it contains the necessary properties and is of the correct type.
      * It then converts event dates from UNIX timestamps to Date objects, updates the internal calendar data,
      * and rebuilds the calendar table. If the WebCalendar is attached to a DOM element, the new calendar table
      * replaces the current content of the attached element.
      *
-     * @param {LitCalApiClient} apiClient - The API client to listen to for calendar data events.
-     * @throws {Error} If the provided `apiClient` is not an instance of LitCalApiClient or if the received
+     * @param {ApiClient} apiClient - The API client to listen to for calendar data events.
+     * @throws {Error} If the provided `apiClient` is not an instance of ApiClient or if the received
      * data is invalid or malformed.
      * @return {WebCalendar} - Returns the instance of WebCalendar for method chaining.
      */
     listenTo( apiClient ) {
-        if ( false === apiClient instanceof LitCalApiClient ) {
-            throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of LitCalApiClient, but found: ' + typeof apiClient + '.' );
+        if ( false === apiClient instanceof ApiClient ) {
+            throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.' );
         }
         apiClient._eventBus.on('calendarFetched', async (data) => {
             if (typeof data !== 'object') {

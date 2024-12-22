@@ -8,26 +8,26 @@ import EventEmitter from './EventEmitter.js';
  * including the General Roman Calendar, National Calendars, and Diocesan Calendars.
  *
  * @class
- * @description The LitCalApiClient handles all API interactions for retrieving liturgical calendar data.
+ * @description The ApiClient handles all API interactions for retrieving liturgical calendar data.
  * It supports fetching calendar metadata, managing calendar settings, and retrieving specific calendar types
  * (General Roman, National, or Diocesan). The class maintains internal state for calendar data and request parameters,
  * and provides methods to listen to UI component changes.
  *
  * @example
- * const client = new LitCalApiClient();
+ * const client = new ApiClient();
  * // Initialize with default API URL
- * await LitCalApiClient.init();
+ * await ApiClient.init();
  * // Fetch General Roman Calendar
  * const calendarData = await client.fetchCalendar();
  *
  * @example
  * // Fetch a National Calendar
- * const client = new LitCalApiClient();
+ * const client = new ApiClient();
  * const nationalCalendarData = client.fetchNationalCalendar('IT').then( data => {
  *   // Handle the response data
  * });
  */
-export default class LitCalApiClient {
+export default class ApiClient {
   /**
    * @type {string}
    * @private
@@ -106,51 +106,61 @@ export default class LitCalApiClient {
    */
   #currentCalendarId = '';
 
+  /**
+   * The event bus that can be used to subscribe to events emitted by the ApiClient.
+   * @type {EventEmitter}
+   * @private
+   */
   #eventBus = null;
 
   /**
-   * Initializes the LitCalApiClient with an optional API URL.
+   * Initializes the ApiClient with an optional API URL.
    * If a URL is provided, it sets the internal API URL to the given value.
    * Then, it fetches the available liturgical calendars from the API.
    *
    * @param {string|null} url - Optional API URL to override the default URL.
-   * @returns {Promise} A promise that resolves when the calendar metadata has been fetched.
+   * @returns {Promise<ApiClient|boolean>} A promise that resolves to an `ApiClient` instance when the calendar metadata has been fetched, or `false` if an error occurs.
    * @static
    */
   static init( url = null ) {
     if ( url ) {
       this.#apiUrl = url;
     }
-    return LitCalApiClient.fetchCalendars();
+    return ApiClient.#fetchCalendars();
   }
 
   /**
    * Fetches metadata about available liturgical calendars from the API.
    *
-   * This method sends a GET request to the API endpoint for calendars metadata and processes the response.
-   * If the request is successful, it extracts the `litcal_metadata` from the response data and
-   * assigns it to the `#metadata` property of the `LitCalApiClient` class.
+   * This method sends a GET request to the API endpoint for calendars metadata when the `#metadata` property is null, and processes the response.
+   * If the request is successful, it extracts the `litcal_metadata` from the response data
+   * and assigns it to the `#metadata` property of the `ApiClient` class.
+   * If the `#metadata` property is not null, it returns a resolved promise with the `ApiClient` instance.
+   * This way, if the static init method is called more than once, initialization is only performed once, and only one fetch request is made to the API.
    *
-   * @returns {Promise<import('./typedefs.js').CalendarMetadata|boolean>} A promise that resolves to the metadata object if the request
-   * is successful, or `false` if an error occurs.
+   * @returns {Promise<ApiClient|boolean>} A promise that resolves to an `ApiClient` instance if the request is successful, or `false` if an error occurs.
    */
-  static fetchCalendars() {
-    return fetch( `${this.#apiUrl}${this.#paths.calendars}` ).then(response => {
-      if ( response.ok ) {
-        return response.json();
-      }
-    }).then(data => {
-      const { litcal_metadata } = data;
-      LitCalApiClient.#metadata = litcal_metadata;
-      return this.#metadata;
-    }).catch(error => {
-      console.error( error );
-      return false;
-    });
+  static #fetchCalendars() {
+    if ( null === this.#metadata ) {
+      return fetch( `${this.#apiUrl}${this.#paths.calendars}` ).then(response => {
+        if ( response.ok ) {
+          return response.json();
+        }
+      }).then(data => {
+        const { litcal_metadata } = data;
+        ApiClient.#metadata = litcal_metadata;
+        return new ApiClient();
+      }).catch(error => {
+        console.error( error );
+        return false;
+      });
+    } else {
+      return Promise.resolve(new ApiClient());
+    }
   }
 
   /**
-   * Instantiates a new instance of the LitCalApiClient class.
+   * Instantiates a new instance of the ApiClient class.
    *
    * The constructor does not perform any specific actions, but it provides
    * access to instance methods and private properties of the class.
@@ -174,23 +184,11 @@ export default class LitCalApiClient {
    */
   refetchCalendarData() {
     if ( this.#currentCategory === 'national' ) {
-      this.fetchNationalCalendar( this.#currentCalendarId ).then(() => {
-        console.log( 'Fetched national calendar' );
-        console.log( this.#calendarData );
-        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-      });
+      this.fetchNationalCalendar( this.#currentCalendarId );
     } else if ( this.#currentCategory === 'diocesan' ) {
-      this.fetchDiocesanCalendar( this.#currentCalendarId ).then(() => {
-        console.log( 'Fetched diocesan calendar' );
-        console.log( this.#calendarData );
-        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-      });
+      this.fetchDiocesanCalendar( this.#currentCalendarId );
     } else {
-      this.fetchCalendar().then(() => {
-        console.log( 'Fetched General Roman Calendar' );
-        console.log( this.#calendarData );
-        this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-      });
+      this.fetchCalendar();
     }
   }
 
@@ -201,19 +199,11 @@ export default class LitCalApiClient {
    * The year parameter is extracted from the request body and placed in the URL path.
    * The remaining parameters are sent in the request body as JSON.
    *
-   * @returns {Promise<{
-  *   litcal: import('./typedefs.js').CalendarEvent[],
-  *   settings: import('./typedefs.js').CalendarSettings,
-  *   metadata: import('./typedefs.js').CalendarMetadata,
-  *   messages: string[]
-  * }|boolean>} A promise that resolves to:
-  * - The calendar data object containing liturgical events, settings, metadata and messages if successful
-  * - false if an error occurs during the request
-  */
- fetchCalendar() {
+   */
+  fetchCalendar() {
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
-    return fetch(`${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}${year ? `/${year}` : ''}`, {
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -223,6 +213,7 @@ export default class LitCalApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -233,14 +224,6 @@ export default class LitCalApiClient {
   /**
    * Fetches a national liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the national calendar to fetch
-   * @returns {Promise<{
-   *   litcal: import('./typedefs.js').CalendarEvent[],
-   *   settings: import('./typedefs.js').CalendarSettings,
-   *   metadata: import('./typedefs.js').CalendarMetadata,
-   *   messages: string[]
-   * }|boolean>} A promise that resolves to:
-   * - The calendar data object containing liturgical events, settings, metadata and messages if successful
-   * - false if an error occurs during the request
    * @throws {Error} When network request fails
    * @description This method fetches a national liturgical calendar by its ID. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
@@ -252,7 +235,7 @@ export default class LitCalApiClient {
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, ...params } = this.#params;
-    return fetch(`${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -262,6 +245,7 @@ export default class LitCalApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -272,14 +256,6 @@ export default class LitCalApiClient {
   /**
    * Fetches a diocesan liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the diocesan calendar to fetch
-   * @returns {Promise<{
-   *   litcal: import('./typedefs.js').CalendarEvent[],
-   *   settings: import('./typedefs.js').CalendarSettings,
-   *   metadata: import('./typedefs.js').CalendarMetadata,
-   *   messages: string[]
-   * }|boolean>} A promise that resolves to:
-   * - The calendar data object containing liturgical events, settings, metadata and messages if successful
-   * - false if an error occurs during the request
    * @throws {Error} When network request fails
    * @description This method fetches a diocesan liturgical calendar by its ID. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
@@ -291,7 +267,7 @@ export default class LitCalApiClient {
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, ...params } = this.#params;
-    return fetch(`${LitCalApiClient.#apiUrl}${LitCalApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -301,6 +277,7 @@ export default class LitCalApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -308,41 +285,43 @@ export default class LitCalApiClient {
     });
   }
 
+  listenTo( uiComponent = null ) {
+    if ( false === uiComponent instanceof CalendarSelect && false === uiComponent instanceof ApiOptions ) {
+      throw new Error( 'ApiClient.listenTo(): Expected an instance of CalendarSelect or ApiOptions' );
+    }
+    if (uiComponent instanceof CalendarSelect) {
+      return this.#listenToCalendarSelect( uiComponent );
+    } else if (uiComponent instanceof ApiOptions) {
+      return this.#listenToApiOptions( uiComponent );
+    }
+  }
+
   /**
    * Listens to changes in the CalendarSelect instance and fetches the corresponding calendar from the API.
    * @param {CalendarSelect} calendarSelect - The CalendarSelect instance to listen to
+   * @throws {Error} If the provided argument is not an instance of CalendarSelect
+   * @returns {ApiClient} The current instance
    */
-  listenToCalendarSelect( calendarSelect = null ) {
+  #listenToCalendarSelect( calendarSelect = null ) {
     if ( false === calendarSelect instanceof CalendarSelect ) {
       throw new Error( 'Expected an instance of CalendarSelect' );
     }
     if ( null === calendarSelect ) {
       throw new Error( 'Expected an instance of CalendarSelect' );
     }
-    calendarSelect._domElement.addEventListener( 'change', event => {
+    calendarSelect._domElement.addEventListener( 'change', () => {
       const selectedOption = calendarSelect._domElement.selectedOptions[0];
       this.#currentCalendarId = selectedOption.value;
       this.#currentCategory = selectedOption.dataset.calendartype ?? '';
       if ( this.#currentCategory === 'national' ) {
-        this.fetchNationalCalendar( this.#currentCalendarId ).then(() => {
-          console.log( 'Fetched national calendar' );
-          console.log( this.#calendarData );
-          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-        });
+        this.fetchNationalCalendar( this.#currentCalendarId );
       } else if ( this.#currentCategory === 'diocesan' ) {
-        this.fetchDiocesanCalendar( this.#currentCalendarId ).then(() => {
-          console.log( 'Fetched diocesan calendar' );
-          console.log( this.#calendarData );
-          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-        });
+        this.fetchDiocesanCalendar( this.#currentCalendarId );
       } else {
-        this.fetchCalendar().then(() => {
-          console.log( 'Fetched General Roman Calendar' );
-          console.log( this.#calendarData );
-          this.#eventBus.emit( 'calendarFetched', this.#calendarData );
-        });
+        this.fetchCalendar();
       }
     });
+    return this;
   }
 
   /**
@@ -355,8 +334,9 @@ export default class LitCalApiClient {
    *
    * @param {ApiOptions} apiOptions - The ApiOptions instance containing inputs to listen to
    * @throws {Error} If the provided argument is not an instance of ApiOptions
+   * @returns {ApiClient} The current instance
    */
-  listenToApiOptions(apiOptions = null) {
+  #listenToApiOptions(apiOptions = null) {
     if (false === apiOptions instanceof ApiOptions) {
       throw new Error('Expected an instance of ApiOptions');
     }
@@ -406,6 +386,7 @@ export default class LitCalApiClient {
       console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
       this.refetchCalendarData();
     });
+    return this;
   }
 
   /**
@@ -416,7 +397,17 @@ export default class LitCalApiClient {
    * @returns {import('./typedefs.js').CalendarMetadata} An object containing the metadata of the liturgical calendars.
    */
   static get _metadata() {
-    return LitCalApiClient.#metadata;
+    return ApiClient.#metadata;
+  }
+
+  /**
+   * This static getter provides access to the internal API URL
+   * used by the ApiClient to make requests to the liturgical calendar API.
+   *
+   * @returns {string} The API URL.
+   */
+  static get _apiUrl() {
+    return ApiClient.#apiUrl;
   }
 
   /**
@@ -430,12 +421,12 @@ export default class LitCalApiClient {
   }
 
   /**
-   * The event bus that can be used to subscribe to events emitted by the LitCalApiClient.
+   * The event bus that can be used to subscribe to events emitted by the ApiClient.
    *
    * The event bus emits events of type `calendarFetched` when a new calendar is fetched
    * from the API. The event detail is an object of type `CalendarData` containing the
    * liturgical events of the fetched calendar.
-   * @type {import('./typedefs.js').EventBus}
+   * @type {EventEmitter}
    */
   get _eventBus() {
     return this.#eventBus;

@@ -1,5 +1,5 @@
 import SelectInput from "../SelectInput.js";
-import LitCalApiClient from "../../LitCalApiClient.js";
+import ApiClient from "../../ApiClient.js";
 
 export default class LocaleInput extends SelectInput {
 
@@ -26,8 +26,8 @@ export default class LocaleInput extends SelectInput {
         this._domElement.name = 'locale';
         this._domElement.id = 'locale';
         this._labelElement.textContent = 'locale';
-        if (LitCalApiClient._metadata === null) {
-            throw new Error('LitCalApiClient has not yet been initialized. Please initialize with `LitCalApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
+        if (ApiClient._metadata === null) {
+            throw new Error('ApiClient has not yet been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
         }
         if (locale === null) {
             throw new Error('Locale cannot be null.');
@@ -38,7 +38,7 @@ export default class LocaleInput extends SelectInput {
         //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
         this.#languageNames = new Intl.DisplayNames([locale.language], { type: 'language' });
         if (LocaleInput.#apiLocales === null) {
-            LocaleInput.#apiLocales = LitCalApiClient._metadata.locales;
+            LocaleInput.#apiLocales = ApiClient._metadata.locales;
         }
         if (false === LocaleInput.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
             LocaleInput.#apiLocalesDisplay[locale.language] = new Map();
