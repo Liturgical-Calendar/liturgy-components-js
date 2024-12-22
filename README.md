@@ -11,19 +11,19 @@ The `liturgy-components-js` component library can be used directly from a CDN (r
 
 To install the `liturgy-components-js` component library locally, run one of the following commands in your project folder, according to your package manager:
 
-```bash
+```console
 yarn add liturgy-components-js
 ```
 
 or
 
-```bash
+```console
 npm install liturgy-components-js
 ```
 
 or
 
-```bash
+```console
 pnpm add liturgy-components-js
 ```
 
@@ -63,13 +63,14 @@ In either case, it can be helpful to define an `importmap` to assist the browser
 }
 
 // importmap.json (when component is installed to .yarn/unplugged)
-// in this case, you have to manually check the path to the component library
+// In this case, you have to manually check the path to the component library
 // within the `.yarn/unplugged` folder, it should look something like this:
 {
     "imports": {
         "liturgy-components-js": "./.yarn/unplugged/liturgy-components-js-file-764297067f/node_modules/liturgy-components-js/dist/index.js"
     }
 }
+// You will have to update the path in the importmap every time you update the component library
 ```
 
 Then you can load the `importmap` before loading your `module` type script:
@@ -86,6 +87,7 @@ With the `importmap` in place, you can now import the component library using ES
 import { CalendarSelect } from 'liturgy-components-js';
 ```
 
+By far the easiest way to use ES Modules in the browser is by importing from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
 
 ## Components
 
