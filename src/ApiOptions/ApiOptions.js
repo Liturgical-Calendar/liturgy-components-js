@@ -1,6 +1,16 @@
-import { AcceptHeaderInput, AscensionInput, CorpusChristiInput, EpiphanyInput, LocaleInput, EternalHighPriestInput, YearInput, YearTypeInput } from './ApiOptions/Input/index.js';
-import CalendarSelect from './CalendarSelect.js';
-import ApiClient from './ApiClient.js';
+import {
+    AcceptHeaderInput,
+    AscensionInput,
+    CorpusChristiInput,
+    EpiphanyInput,
+    LocaleInput,
+    EternalHighPriestInput,
+    YearInput,
+    YearTypeInput
+} from './Input/index.js';
+import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import ApiClient from '../ApiClient/ApiClient.js';
+import { ApiOptionsFilter } from '../Enums.js';
 
 /**
  * Class to generate an options form for the Liturgical Calendar API.
@@ -296,15 +306,18 @@ export default class ApiOptions {
     }
 
     /**
-     * Appends input elements to the specified DOM element based on the specified path type.
+     * Appends input elements to the specified DOM element, optionally filtered based on the ApiOptionsFilter.
+     * A value of ApiOptionsFilter.NONE will append all inputs.
+     * A value of ApiOptionsFilter.GENERAL_ROMAN will append only epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
+     * A value of ApiOptionsFilter.ALL_CALENDARS will append only locale, yearType, and conditionally acceptHeader inputs.
      *
      * @param {string} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
-     * @param {string|null} [pathType=null] - The type of path to append. If 'basePath', appends
-     *      epiphany, ascension, corpusChristi, and eternalHighPriest inputs. If 'allPaths', appends
-     *      locale, yearType, and conditionally acceptHeader inputs. If null, appends all inputs.
+     * @param {ApiOptionsFilter} [optionsFilter=ApiOptionsFilter.NONE] - The filter to apply. If `ApiOptionsFilter.GENERAL_ROMAN`, appends
+     *      epiphany, ascension, corpusChristi, and eternalHighPriest inputs. If `ApiOptionsFilter.ALL_CALENDARS`, appends
+     *      locale, yearType, and conditionally acceptHeader inputs. If `ApiOptionsFilter.NONE`, appends all inputs.
      */
-    appendTo(elementSelector, pathType = null) {
-        if (null === pathType || pathType === 'allPaths') {
+    appendTo(elementSelector, optionsFilter = ApiOptionsFilter.NONE) {
+        if (ApiOptionsFilter.NONE === optionsFilter || ApiOptionsFilter.ALL_CALENDARS === optionsFilter) {
             this.#inputs.localeInput.appendTo(elementSelector);
             this.#inputs.yearTypeInput.appendTo(elementSelector);
             if (false === this.#inputs.acceptHeaderInput._hidden) {
@@ -312,7 +325,7 @@ export default class ApiOptions {
             }
             this.#inputs.yearInput.appendTo(elementSelector);
         }
-        if (null === pathType || pathType === 'basePath') {
+        if (ApiOptionsFilter.NONE === optionsFilter || ApiOptionsFilter.GENERAL_ROMAN === optionsFilter) {
             this.#inputs.epiphanyInput.appendTo(elementSelector);
             this.#inputs.ascensionInput.appendTo(elementSelector);
             this.#inputs.corpusChristiInput.appendTo(elementSelector);

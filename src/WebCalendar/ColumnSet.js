@@ -1,4 +1,4 @@
-import { Column } from './Enums.js';
+import { Column } from '../Enums.js';
 
 /**
  * Manages a set of column flags for the WebCalendar.

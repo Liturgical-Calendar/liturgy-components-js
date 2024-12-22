@@ -1,10 +1,9 @@
-import ApiClient from "./ApiClient.js";
-import CalendarSelect from "./CalendarSelect.js";
-import ApiOptions from "./ApiOptions.js";
-import WebCalendar from "./WebCalendar.js";
-import Input from './ApiOptions/Input.js';
-import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from './WebCalendar/Enums.js';
-import ColumnSet from './WebCalendar/ColumnSet.js';
+import ApiClient from "./ApiClient/ApiClient.js";
+import CalendarSelect from "./CalendarSelect/CalendarSelect.js";
+import ApiOptions from "./ApiOptions/ApiOptions.js";
+import WebCalendar from "./WebCalendar/WebCalendar.js";
+import Input from './ApiOptions/Input/Input.js';
+import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter } from './Enums.js';
 
 export {
     ApiClient,
@@ -18,5 +17,6 @@ export {
     ColumnOrder,
     DateFormat,
     GradeDisplay,
-    ColumnSet
+    ApiOptionsFilter,
+    CalendarSelectFilter
 };

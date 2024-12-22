@@ -1,4 +1,4 @@
-import NumberInput from "../NumberInput.js";
+import NumberInput from "./NumberInput.js";
 
 export default class YearInput extends NumberInput {
 

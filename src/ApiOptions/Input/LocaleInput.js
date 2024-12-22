@@ -1,5 +1,5 @@
-import SelectInput from "../SelectInput.js";
-import ApiClient from "../../ApiClient.js";
+import SelectInput from "./SelectInput.js";
+import ApiClient from "../../ApiClient/ApiClient.js";
 
 export default class LocaleInput extends SelectInput {
 

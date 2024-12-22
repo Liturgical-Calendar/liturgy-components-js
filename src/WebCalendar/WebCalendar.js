@@ -1,7 +1,7 @@
-import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay } from './WebCalendar/Enums.js';
-import ColumnSet from './WebCalendar/ColumnSet.js';
-import ApiClient from './ApiClient.js';
-import Messages from './Messages.js';
+import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay } from '../Enums.js';
+import ColumnSet from './ColumnSet.js';
+import ApiClient from '../ApiClient/ApiClient.js';
+import Messages from '../Messages.js';
 
 export default class WebCalendar {
     /**
@@ -12,7 +12,7 @@ export default class WebCalendar {
     #locale = 'en-US';
     #baseLocale = 'en';
     /**
-     * @type {{litcal: import('./typedefs.js').CalendarEvent[], settings: import('./typedefs.js').CalendarSettings, metadata: import('./typedefs.js').CalendarMetadata, messages: string[]}}
+     * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
      */
     #calendarData = null;
     #daysCreated = 0;
@@ -317,11 +317,11 @@ export default class WebCalendar {
         }
         let classNames = className.split( /\s+/ );
         classNames = classNames.map( className => WebCalendar.#sanitizeInput( className ) );
-        classNames.forEach(className => {
+        for(className of classNames) {
             if ( false === WebCalendar.#isValidClassName( className ) ) {
                 throw new Error('Invalid class name: ' + className);
             }
-        });
+        };
         className = classNames.join( ' ' );
         if ( className === '' ) {
             this.#domElement.removeAttribute( 'class' );
@@ -502,11 +502,11 @@ export default class WebCalendar {
      *
      * This method sets how the color of a single liturgical event is applied to the table.
      * The following options are supported:
-     * - ColorAs.BACKGROUND: the color of the event is applied as the background color of the table cells
-     * - ColorAs.CSS_CLASS: the color of the event is applied as a CSS class to the table cells
-     * - ColorAs.INDICATOR: the color of the event is applied as a small 10px inline block element with radius 5px
+     * - `ColorAs.BACKGROUND`: the color of the event is applied as the background color of the table cells
+     * - `ColorAs.CSS_CLASS`: the color of the event is applied as a CSS class to the table cells
+     * - `ColorAs.INDICATOR`: the color of the event is applied as a small 10px inline block element with radius 5px
      *
-     * The default is ColorAs.INDICATOR.
+     * The default is `ColorAs.INDICATOR`.
      *
      * @param {ColorAs} eventColor The color representation to use for the events.
      * @throws {Error} If the input is not a valid ColorAs.
@@ -676,7 +676,7 @@ export default class WebCalendar {
      * Recursively counts the number of subsequent liturgical events in the same day.
      *
      * @param {int} eventIdx The current position in the array of liturgical events on the given day.
-     * @param {import('./typedefs.js').Counter} counter [counter.cd] The count of subsequent liturgical events in the same day.
+     * @param {import('../typedefs.js').Counter} counter [counter.cd] The count of subsequent liturgical events in the same day.
      * @private
      * @returns
      */
@@ -702,7 +702,7 @@ export default class WebCalendar {
      * Recursively counts the number of subsequent liturgical events in the same month.
      *
      * @param {int} eventIdx  The current position in the array of liturgical events on the given month.
-     * @param {import('./typedefs.js').Counter} counter [counter.cm] The count of subsequent liturgical events in the same month
+     * @param {import('../typedefs.js').Counter} counter [counter.cm] The count of subsequent liturgical events in the same month
      * @private
      * @returns
      */
@@ -728,7 +728,7 @@ export default class WebCalendar {
      * Recursively counts the number of subsequent liturgical events in the same liturgical season.
      *
      * @param {int} eventIdx The current position in the array of liturgical events in the given liturgical season.
-     * @param {import('./typedefs.js').Counter} counter [counter.cs] The count of subsequent liturgical events in the same liturgical season.
+     * @param {import('../typedefs.js').Counter} counter [counter.cs] The count of subsequent liturgical events in the same liturgical season.
      * @private
      * @returns
      */
@@ -756,7 +756,7 @@ export default class WebCalendar {
      * Recursively counts the number of subsequent liturgical events in the same psalter week.
      *
      * @param {int} eventIdx The current position in the array of liturgical events on the given psalter week.
-     * @param {import('./typedefs.js').Counter} counter [counter.cw] The count of subsequent liturgical events in the same psalter week.
+     * @param {import('../typedefs.js').Counter} counter [counter.cw] The count of subsequent liturgical events in the same psalter week.
      * @private
      * @returns
      */
@@ -793,7 +793,7 @@ export default class WebCalendar {
 
     /**
      * Determines the liturgical season for a given liturgical event.
-     * @param {import('./typedefs.js').CalendarEvent} litevent
+     * @param {import('../typedefs.js').CalendarEvent} litevent
      * @private
      * @returns
      */
@@ -834,7 +834,7 @@ export default class WebCalendar {
 
     /**
      * Given a liturgical event, returns the liturgical color for the liturgical season.
-     * @param {import('./typedefs.js').CalendarEvent} litEvent
+     * @param {import('../typedefs.js').CalendarEvent} litEvent
      * @private
      * @returns
      */
@@ -918,7 +918,7 @@ export default class WebCalendar {
                     cell.classList.add(eventColor[0]);
                     break;
                 case ColorAs.INDICATOR:
-                    eventColor.forEach(color => {
+                    for(const color of eventColor) {
                         let colorSpan = document.createElement('span');
                         colorSpan.style.backgroundColor = color;
                         colorSpan.style.width = '10px';
@@ -928,7 +928,7 @@ export default class WebCalendar {
                         colorSpan.style.borderRadius = '5px';
                         colorSpan.style.marginRight = '5px';
                         cell.insertBefore(colorSpan, cell.firstChild);
-                    });
+                    }
                     break;
             }
         }
@@ -939,7 +939,7 @@ export default class WebCalendar {
      *
      * @param {LiturgicalEvent} litevent - The liturgical event to display.
      * @param {{newMonth: boolean, newSeason: boolean, newPsalterWeek: boolean}} newCheck - Flags indicating new month or season.
-     * @param {import('./typedefs.js').Counter} counter - Counts of celebrations in different scopes (month, liturgical season, psalter week, liturgical day).
+     * @param {import('../typedefs.js').Counter} counter - Counts of celebrations in different scopes (month, liturgical season, psalter week, liturgical day).
      * @param {?number} ev - Index of liturgical events within the same day.
      *                        If null, there's only one event for the day and rowspan is not set on the dateCell.
      *                        If zero, we are on the first iteration of events within the same day, so we must create a dateCell and set the rowspan.
@@ -1238,7 +1238,7 @@ export default class WebCalendar {
         };
 
         /**
-         * @type {import('./typedefs.js').Counter}
+         * @type {import('../typedefs.js').Counter}
          */
         const counter = {
             cm: 0,
@@ -1307,7 +1307,9 @@ export default class WebCalendar {
                         }
 
                         let trs = this.#buildTableRow(litevent, newCheck, counter, ev);
-                        trs.forEach(tr => tbody.appendChild(tr));
+                        for(const tr of trs) {
+                            tbody.appendChild(tr);
+                        }
                         eventIdx++;
                     }
                     eventIdx--;
@@ -1363,7 +1365,6 @@ export default class WebCalendar {
             if (!data.hasOwnProperty('settings') || !data.hasOwnProperty('metadata') || !data.hasOwnProperty('messages')) {
                 throw new Error('WebCalendar: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
-            console.log('Received data in WebCalendar Component:', data);
             data.litcal = data.litcal.map(event => {
                 event.date = new Date(event.date * 1000);
                 return event;

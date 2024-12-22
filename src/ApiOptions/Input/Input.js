@@ -193,7 +193,6 @@ export default class Input {
             throw new Error('Invalid element parameter: ' + element + ', valid values are: select, input[type="number"]');
         }
         const parseType = /^(.*?)(\[type="(.*?)"\])?$/.exec(element);
-        console.log(parseType);
         this.#domElement = document.createElement(parseType[1]);
         if (parseType[3] !== null) {
             this.#domElement.setAttribute('type', parseType[3]);

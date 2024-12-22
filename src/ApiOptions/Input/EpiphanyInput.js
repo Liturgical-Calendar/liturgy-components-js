@@ -1,4 +1,4 @@
-import SelectInput from "../SelectInput.js";
+import SelectInput from "./SelectInput.js";
 import Messages from "../../Messages.js";
 
 export default class EpiphanyInput extends SelectInput {

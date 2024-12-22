@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from "../src/index.js";
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from "../src/index.js";
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');
@@ -41,7 +41,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         .seasonColor(ColorAs.CSS_CLASS)
         .seasonColorColumns(Column.LITURGICAL_SEASON)
         .eventColor(ColorAs.INDICATOR)
-        .eventColorColumns(Column.EVENT)
+        .eventColorColumns(Column.EVENT_DETAILS)
         .monthHeader()
         .dateFormat(DateFormat.DAY_ONLY)
         .columnOrder(ColumnOrder.GRADE_FIRST)
@@ -58,7 +58,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         }).wrapper({
             class: 'form-group col col-md-3',
             id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEngNations').class('form-select').filter('nations').appendTo( '#calendarSelectEnglish');
+        }).id('liturgicalCalendarSelectEngNations').class('form-select').filter(CalendarSelectFilter.NATIONAL_CALENDARS).appendTo( '#calendarSelectEnglish');
 
         liturgicalCalendarSelectEngDioceses.label({
             class: 'form-label d-block mb-1',
@@ -67,7 +67,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         }).wrapper({
             class: 'form-group col col-md-3',
             id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEngDioceses').class('form-select').filter('dioceses')
+        }).id('liturgicalCalendarSelectEngDioceses').class('form-select').filter(CalendarSelectFilter.DIOCESAN_CALENDARS)
             .linkToNationsSelect( liturgicalCalendarSelectEngNations )
             .after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>This calendar selector is linked to the previous nations calendar selector.</i></small>')
             .appendTo( '#calendarSelectEnglish');
@@ -79,7 +79,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         }).wrapper({
             class: 'form-group col col-md-3',
             id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEng').class('form-select').appendTo( '#calendarOptionsEnglish');
+        }).id('liturgicalCalendarSelectEng').class('form-select').after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>The WebCalendar instance is listening to this CalendarSelect instance; any changes will produce a calendar below all of the forms.</i></small>').appendTo( '#calendarOptionsEnglish');
 
         apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng ).appendTo( '#calendarOptionsEnglish' )
 

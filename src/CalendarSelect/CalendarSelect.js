@@ -1,4 +1,5 @@
-import ApiClient from './ApiClient.js';
+import ApiClient from '../ApiClient/ApiClient.js';
+import { CalendarSelectFilter } from '../Enums.js';
 
 /**
  * Creates a select menu populated with available liturgical calendars from the Liturgical Calendar API
@@ -32,7 +33,7 @@ export default class CalendarSelect {
     #dioceseOptionsGrouped                = [];
     #countryNames                         = null;
     #locale                               = 'en';
-    #filter                               = 'none';
+    #filter                               = CalendarSelectFilter.NONE;
     #domElement                           = null;
     #afterElement                         = null;
     #hasAfter                             = false;
@@ -324,32 +325,32 @@ export default class CalendarSelect {
     /**
      * Sets the filter for the select element.
      *
-     * The filter can be either 'nations', 'dioceses', or 'none'.
-     * - 'nations' will show only the nation options.
-     * - 'dioceses' will show only the diocese options grouped by nation.
-     * - 'none' will show all options, that is, both nation and diocese options.
+     * The filter can be either `CalendarSelectFilter.NATIONAL_CALENDARS`, `CalendarSelectFilter.DIOCESAN_CALENDARS`, or `CalendarSelectFilter.NONE`.
+     * - `CalendarSelectFilter.NATIONAL_CALENDARS` will show only the nation options.
+     * - `CalendarSelectFilter.DIOCESAN_CALENDARS` will show only the diocese options grouped by nation.
+     * - `CalendarSelectFilter.NONE` will show all options, that is, for all calendars whether national or diocesan.
      *
-     * If the filter is set to a value that is not 'nations', 'dioceses', or 'none',
+     * If the filter is set to a value that is not a valid value for the `CalendarSelectFilter` enum,
      * an error will be thrown.
      *
      * If the filter is set to a value that is different from the current filter,
-     * the innerHTML of the select element will be updated accordingly.
+     * the innerHTML of the select element will be updated accordingly, and will not be able to be set again.
      *
-     * @param {string} [filter='none'] The filter to set.
+     * @param {string} [filter=CalendarSelectFilter.NONE] The filter to set.
      * @returns {this}
      */
-    filter( filter = 'none' ) {
+    filter( filter = CalendarSelectFilter.NONE ) {
         if ( this.#filterSet && this.#filter !== filter ) {
             throw new Error('Filter has already been set to `' + this.#filter + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
-        if ( 'nations' !== filter && 'dioceses' !== filter && 'none' !== filter ) {
+        if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
             throw new Error('Invalid filter: ' + filter);
         }
         this.#filter = filter;
         const firstElement = this.#allowNull ? '<option value="">---</option>' : '';
-        if ( this.#filter === 'nations' ) {
+        if ( this.#filter === CalendarSelectFilter.NATIONAL_CALENDARS ) {
             this.#domElement.innerHTML = firstElement + this.nationsInnerHtml;
-        } else if ( this.#filter === 'dioceses' ) {
+        } else if ( this.#filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) {
             this.#domElement.innerHTML = firstElement + this.diocesesInnerHtml;
         } else {
             this.#domElement.innerHTML = firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
@@ -823,10 +824,10 @@ export default class CalendarSelect {
     /**
      * Gets the current filter of the CalendarSelect instance.
      *
-     * The filter can be either 'nations', 'dioceses', or 'none'.
-     * - 'nations' will show only the nation options.
-     * - 'dioceses' will show only the diocese options grouped by nation.
-     * - 'none' will show all options, that is, both nation and diocese options.
+     * The filter can be either `CalendarSelectFilter.NATIONAL_CALENDARS`, `CalendarSelectFilter.DIOCESAN_CALENDARS`, or `CalendarSelectFilter.NONE`.
+     * - `CalendarSelectFilter.NATIONAL_CALENDARS` will show only the nation options.
+     * - `CalendarSelectFilter.DIOCESAN_CALENDARS` will show only the diocese options grouped by nation.
+     * - `CalendarSelectFilter.NONE` will show all options, that is, both nation and diocese options.
      *
      * @returns {string} The current filter of the CalendarSelect instance.
      * @private
@@ -853,11 +854,11 @@ export default class CalendarSelect {
         if (false === calendarSelectInstance instanceof CalendarSelect) {
             throw new Error('Invalid type for parameter passed to linkToNationsSelect, must be of type `CalendarSelect` but found type: ' + typeof calendarSelectInstance);
         }
-        if ( this.#filter !== 'dioceses' ) {
-            throw new Error('Can only link a `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance. Instead of expected `dioceses` filter, found filter: ' + this.#filter);
+        if ( this.#filter !== CalendarSelectFilter.DIOCESAN_CALENDARS ) {
+            throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `dioceses` filter, found filter: ' + this.#filter);
         }
-        if ( calendarSelectInstance._filter !== 'nations' ) {
-            throw new Error('Can only link a `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
+        if ( calendarSelectInstance._filter !== CalendarSelectFilter.NATIONAL_CALENDARS ) {
+            throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
         }
         const linkedDomElement = calendarSelectInstance._domElement;
         this.#filterDioceseOptionsForNation( linkedDomElement.value );

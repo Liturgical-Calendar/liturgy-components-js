@@ -1,4 +1,4 @@
-import SelectInput from "../SelectInput.js";
+import SelectInput from "./SelectInput.js";
 
 export default class CorpusChristiInput extends SelectInput {
 

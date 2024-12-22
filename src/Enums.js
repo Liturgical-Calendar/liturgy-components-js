@@ -15,16 +15,16 @@ const ColumnOrder = Object.freeze({
 });
 
 /**
- * @enum {{LITURGICAL_SEASON: 1, MONTH: 2, DATE: 4, EVENT: 8, GRADE: 16, PSALTER_WEEK: 32, ALL: 47, NONE: 0}}
+ * @enum {{LITURGICAL_SEASON: 1, MONTH: 2, DATE: 4, EVENT: 8, GRADE: 16, PSALTER_WEEK: 32, ALL: 63, NONE: 0}}
  */
 const Column = Object.freeze({
     LITURGICAL_SEASON: 1 << 0, // 1
     MONTH:             1 << 1, // 2
     DATE:              1 << 2, // 4
-    EVENT:             1 << 3, // 8
+    EVENT_DETAILS:     1 << 3, // 8
     GRADE:             1 << 4, // 16
     PSALTER_WEEK:      1 << 5, // 32
-    ALL:               63,     // 1 | 2 | 4 | 8 | 16 | 32
+    ALL:               (1 | 2 | 4 | 8 | 16 | 32), // 63
     NONE:              0
 });
 
@@ -57,4 +57,22 @@ const GradeDisplay = Object.freeze({
     ABBREVIATED: 'abbreviated'
 });
 
-export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay };
+/**
+ * @enum {{GENERAL_ROMAN: 'basePath', ALL_CALENDARS: 'allPaths', NONE: null}}
+ */
+const ApiOptionsFilter = Object.freeze({
+    GENERAL_ROMAN: 'basePath',
+    ALL_CALENDARS: 'allPaths',
+    NONE: null
+});
+
+/**
+ * @enum {{NATIONAL_CALENDARS: 'nations', DIOCESAN_CALENDARS: 'dioceses', NONE: 'none'}}
+ */
+const CalendarSelectFilter = Object.freeze({
+    NATIONAL_CALENDARS: 'nations',
+    DIOCESAN_CALENDARS: 'dioceses',
+    NONE: 'none'
+});
+
+export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter };

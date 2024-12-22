@@ -1,5 +1,5 @@
-import ApiOptions from './ApiOptions.js';
-import CalendarSelect from './CalendarSelect.js';
+import ApiOptions from '../ApiOptions/ApiOptions.js';
+import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import EventEmitter from './EventEmitter.js';
 
 /**
@@ -54,7 +54,7 @@ export default class ApiClient {
   });
 
   /**
-   * @type {import('./typedefs.js').CalendarMetadata | null}
+   * @type {import('../typedefs.js').CalendarMetadata | null}
    * @private
    * @static
    * Response object from the API /calendars path
@@ -62,7 +62,7 @@ export default class ApiClient {
   static #metadata = null;
 
   /**
-   * @type {{litcal: import('./typedefs.js').CalendarEvent[], settings: import('./typedefs.js').CalendarSettings, metadata: import('./typedefs.js').CalendarMetadata, messages: string[]}}
+   * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
    * @private
    * @static
    */
@@ -394,7 +394,7 @@ export default class ApiClient {
    * about the available liturgical calendars, including national and diocesan calendars.
    * The metadata is initially fetched from the API during the client initialization.
    *
-   * @returns {import('./typedefs.js').CalendarMetadata} An object containing the metadata of the liturgical calendars.
+   * @returns {import('../typedefs.js').CalendarMetadata} An object containing the metadata of the liturgical calendars.
    */
   static get _metadata() {
     return ApiClient.#metadata;
@@ -411,7 +411,7 @@ export default class ApiClient {
   }
 
   /**
-   * @returns {import('./typedefs.js').CalendarData} The currently cached calendar data.
+   * @returns {import('../typedefs.js').CalendarData} The currently cached calendar data.
    * This property can be used to retrieve the current liturgical calendar data.
    * Note that the data is only available after `fetchCalendar()`, `fetchNationalCalendar()`,
    * or `fetchDiocesanCalendar()` has been called.
