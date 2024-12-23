@@ -207,12 +207,13 @@ The default is 'en' (English). Locales with region extensions are also supported
 
 By default, a `CalendarSelect` instance will be populated with all available national and diocesan calendars (grouped by nation).
 
-It is also possible to filter the options in the select element to only include national calendars or diocesan calendars, by calling the `filter()` method.
+It is also possible to filter the options in the select element to only include national calendars or diocesan calendars, by calling the `filter()` method and passing in a value of either `CalendarSelectFilter.NATIONAL_CALENDARS` or `CalendarSelectFilter.DIOCESAN_CALENDARS`.
 
 Example:
 ```javascript
+import { CalendarSelect, CalendarSelectFilter } from 'liturgy-components-js';
 const calendarSelect = new CalendarSelect( 'en-US' );
-calendarSelect.filter('diocesan').appendTo( '#calendarOptions');
+calendarSelect.filter(CalendarSelectFilter.DIOCESAN_CALENDARS).appendTo( '#calendarOptions');
 ```
 
 The `CalendarSelect` instance is inserted into the DOM by calling the `appendTo(elementSelector)` method, and passing the CSS selector for the element to which the select element should be appended.
