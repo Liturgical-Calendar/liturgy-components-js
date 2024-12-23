@@ -260,7 +260,7 @@ Once either of the two above non chainable methods are called, the `CalendarSele
 
 The `CalendarSelect` instances expose the following readonly instance properties:
 * `_domElement`: the underlying DOM element of the `CalendarSelect` instance
-* `_filter`: the current filter applied to the `CalendarSelect` instance, if any. If none is applied, the value should be __'none'__.
+* `_filter`: the current filter applied to the `CalendarSelect` instance, if any. If none is applied, the value should be __'none'__ (which is the underlying value of `CalendarSelectFilter.NONE`).
 
 ### ApiOptions
 
@@ -268,7 +268,7 @@ The `ApiOptions` class is a JavaScript class that generates form controls for th
 
 The `ApiOptions` class can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (such as values in the select dropdowns).
 
-The `ApiOptions` class will instantiate eight form controls, four of which are only useful for the General Roman Calendar, while the other four are useful for any calendar, whether General Roman or National or Diocesan. Most applications will only find use for the first four form controls, which are useful for any calendar.
+The `ApiOptions` class will instantiate eight form controls, four of which are only useful for the General Roman Calendar, while the other four are useful for any calendar, whether General Roman or National or Diocesan. Most applications will only find use for the first four form controls as follows, which are useful for any calendar.
 
 #### Form controls useful for any calendar
 * `_yearInput`: a number input for the calendar year
@@ -286,7 +286,7 @@ They allow to tweak parameters that the national or diocesan calendar would othe
 * `_eternalHighPriestInput`: a select input with options for whether the Eternal High Priest is celebrated
 
 #### Filtering the form controls
-The `ApiOptions` instance is inserted into the DOM by calling the non chainable `appendTo(elementSelector, inputsFilter=ApiOptionsFilter.NONE)` method, and passing the CSS selector for the element to which the form should be appended. You can optionally pass a second `inputsFilter` parameter to specify which form controls should be appended. The `inputsFilter` parameter can have a value of either __ApiOptionsFilter.GENERAL_ROMAN__ or __ApiOptionsFilter.ALL_CALENDARS__. If no inputs filter is passed, the default is __ApiOptionsFilter.NONE__ (which means all possible form controls will be appended). This can be useful if you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would pass in an `inputsFilter` of __OptionsFilter.ALL_CALENDARS__. Whereas only the form controls that are useful only for the General Roman Calendar can be appended by passing an `inputsFilter` of __ApiOptionsFilter.GENERAL_ROMAN__.
+The `ApiOptions` instance is inserted into the DOM by calling the non chainable `appendTo(elementSelector, inputsFilter=ApiOptionsFilter.NONE)` method, and passing the CSS selector for the element to which the form should be appended. You can optionally pass a second `inputsFilter` parameter to specify which form controls should be appended. The `inputsFilter` parameter can have a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__. If no inputs filter is passed, the default is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). This can be useful if you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would pass in an `inputsFilter` of __`OptionsFilter.ALL_CALENDARS`__. Whereas only the form controls that are useful only for the General Roman Calendar can be appended by passing an `inputsFilter` of __`ApiOptionsFilter.GENERAL_ROMAN`__.
 
 Example:
 ```javascript
@@ -302,7 +302,7 @@ All of the form controls produced by the `ApiOptions` class inherit from a commo
 * `Input.setGlobalWrapper(element)`: the tag name of the wrapper element that will wrap each form control element, currently only values of __'div'__ and __'td'__ are supported
 * `Input.setGlobalWrapperClass(className)`: a space separated string of class names to be assigned globally to each wrapper element
 
-For this very reason, the `Input` class is also exported by the `liturgy-components-js` package's main `dist/index.js`. Exporting the `Input` class is not meant for instantiation, but rather for simplifying the global configuration of the form controls produced by the `ApiOptions` class.
+For this very reason, the `Input` class is also exported by the `liturgy-components-js` package's main `dist/index.js`. The `Input` class is not meant to be instantiated, but rather used statically to simplify the global configuration of the form controls produced by the `ApiOptions` class.
 
 Other than the global configurations, each individual form control can be configured using the following chainable configuration methods on the single form control instances:
 * `class( className )`: sets the class or classes to apply to the form control element
@@ -373,7 +373,7 @@ The WebCalendar class instances provide a number of chainable methods to configu
 * `dateFormat(DateFormat.DAY_ONLY)`: sets how the date should be displayed in the Date column. You can import the `DateFormat` enum to assist with these values: `DateFormat.FULL`, `DateFormat.LONG`, `DateFormat.MEDIUM`, `DateFormat.SHORT`, `DateFormat.DAY_ONLY`. Values of `FULL`, `LONG`, `MEDIUM` and `SHORT` correspond with the values that can be set on the `dateStyle` parameter of an `Intl.DateTimeFormat` instance, whereas `DAY_ONLY` will display only the day of the month and the weekday
 * `columnOrder(ColumnOrder.GRADE_FIRST)`: whether the event details column should come before the liturgical grade column. You can import the `ColumnOrder` enum to assist with these values: `ColumnOrder.GRADE_FIRST`, `ColumnOrder.EVENT_DETAILS_FIRST`.
 * `gradeDisplay(GradeDisplay.ABBREVIATED)`: whether the liturgical grade should be displayed in full or abbreviated form. You can import the `GradeDisplay` enum to assist with these values: `GradeDisplay.FULL`, `GradeDisplay.ABBREVIATED`.
-* `attachTo( elementSelector )`: the element in which the web calendar will be rendered, every time the calendar is updated
+* `attachTo( elementSelector )`: the selector for the DOM element in which the web calendar will be rendered, every time the calendar is updated
 * `listenTo( apiClient )`: the `WebCalendar` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance, and update the calendar when the event is triggered. If the `ApiClient` instance is configured to listen to the `CalendarSelect` instance, the `WebCalendar` instance will dynamically update the calendar based on the selected calendar; if it is configured to listen to the `ApiOptions` instance, the `WebCalendar` instance will dynamically update the calendar based on the selected options.
 
 Example:
@@ -445,7 +445,7 @@ ApiClient.init('http://localhost:8000').then( (apiClient) => {
     apiOptions._yearInput.class( 'form-control' ); // override the global input class
     apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' );
 
-    apiClient.listenToCalendarSelect( calendarSelect ).listenToApiOptions( apiOptions );
+    apiClient.listenTo( calendarSelect ).listenTo( apiOptions );
 
     const webCalendar = new WebCalendar();
     webCalendar.id('LitCalTable')
