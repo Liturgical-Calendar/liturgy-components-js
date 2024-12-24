@@ -1,7 +1,7 @@
 # liturgy-components-js
 This component library for the Liturgical Calendar API is a collection of reusable frontend components, that work with the Liturgical Calendar API (currently hosted at https://litcal.johnromanodorazio.com/api/dev/).
 
-You can also use a local instance of the API by passing in the url for your local API instance to the `ApiClient` class upon instantiation.
+You can also use a local instance of the API by passing in the url for your local API instance to the `ApiClient` class static `init()` method.
 
 The components library is written as an ES6 module, so it can be imported using ES6 import statements.
 
