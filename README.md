@@ -29,23 +29,13 @@ pnpm add liturgy-components-js
 
 ## Usage
 
-In order to use ES6 import statements without a build step in your project, your project's script file must be set to `type: module` either in your `package.json` file, or in the script tag of the HTML file that is including your script.
+In order to use ES6 import statements without a build step in your project, your project's script file must be set to `type="module"` in the script tag in the HTML file that is including your script.
 
 Example:
 
 ```html
 <!-- myPage.html -->
 <script type="module" src="myScript.js"></script>
-```
-
-or
-
-```json
-// package.json
-{
-    "main": "myScript.js",
-    "type": "module"
-}
 ```
 
 If you are using __npm__ or __yarn v1__ or __pnpm__, the component library will be installed into the `node_modules` folder. Or if you are using __yarn v2__ or greater, and you have set either `nodeLinker:node_modules` or `nodeLinker:pnpm` in your project's `.yarnrc.yml`, the component library will be installed into the `node_modules` folder. The path is predictable, it will be simply `./node_modules/liturgy-components-js/dist/index.js`.
