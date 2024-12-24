@@ -277,11 +277,11 @@ The `ApiOptions` class will instantiate eight form controls, four of which are o
 #### Form controls useful only for the General Roman Calendar
 These four form controls are useful when producing a liturgical calendar for a geographical area, when the national or diocesan data is not yet available in the API.
 
-They allow to tweak parameters that the national or diocesan calendar would otherwise set, such as the date of the Epiphany, the date of the Ascension, the date of Corpus Christi, and whether the Eternal High Priest is celebrated.
-* `_epiphanyInput`: a select input with options for when the Epiphany is celebrated
-* `_ascensionInput`: a select input with options for when the Ascension is celebrated
+They allow to tweak parameters that the national or diocesan calendar would otherwise set, such as the date of Epiphany, the date of the Ascension, the date of Corpus Christi, and whether Eternal High Priest is celebrated.
+* `_epiphanyInput`: a select input with options for when Epiphany is celebrated
+* `_ascensionInput`: a select input with options for when Ascension is celebrated
 * `_corpusChristiInput`: a select input with options for when Corpus Christi is celebrated
-* `_eternalHighPriestInput`: a select input with options for whether the Eternal High Priest is celebrated
+* `_eternalHighPriestInput`: a select input with options for whether Eternal High Priest is celebrated
 
 #### Filtering the form controls
 The `ApiOptions` instance is inserted into the DOM by calling the non chainable `appendTo(elementSelector, inputsFilter=ApiOptionsFilter.NONE)` method, and passing the CSS selector for the element to which the form should be appended. You can optionally pass a second `inputsFilter` parameter to specify which form controls should be appended. The `inputsFilter` parameter can have a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__. If no inputs filter is passed, the default is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). This can be useful if you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would pass in an `inputsFilter` of __`OptionsFilter.ALL_CALENDARS`__. Whereas only the form controls that are useful only for the General Roman Calendar can be appended by passing an `inputsFilter` of __`ApiOptionsFilter.GENERAL_ROMAN`__.
@@ -351,6 +351,10 @@ apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' )
 Once the `ApiOptions` instance is linked to a `CalendarSelect` instance, the form controls will be dynamically updated based on the selected calendar:
 * The selected calendar's settings will be used to populate the `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput`, and `_eternalHighPriestInput` select elements, and these will be disabled
 * The options for the `_localeInput` select element will be filtered according to the selected calendar
+
+> [!NOTE]
+> Currently an `ApiOptions` instance can only to a single unfiltered `CalendarSelect` instance.
+> Linking to dual filtered `CalendarSelect` instances, one that is filtered with National Calendars and another filtered for Diocesan Calendars, is on the roadmap, but not yet fully tested.
 
 ### WebCalendar
 
