@@ -14,7 +14,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Viering",
         "LITURGICAL_GRADE": "Liturgiese Graad",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Liturgie van die dag"
     },
     "am": {
         "SUNDAY_JAN2_JAN8": "አዳሚድ 2 አማርኛ 8 አማርኛ",
@@ -31,7 +32,8 @@ const Messages = {
         "DATE": "ቀን",
         "LITURGICAL_CELEBRATION": "በቀን",
         "LITURGICAL_GRADE": "የአምልኮ ስም",
-        "PSALTER": "የመዝሙር ሳምንት"
+        "PSALTER": "የመዝሙር ሳምንት",
+        "LITURGY_OF_THE_DAY": "የአምልኮ ቀን"
     },
     "ar": {
         "SUNDAY_JAN2_JAN8": "الأحد بين 2 و 8 يناير",
@@ -48,7 +50,8 @@ const Messages = {
         "DATE": "تاريخ",
         "LITURGICAL_CELEBRATION": "احتفال",
         "LITURGICAL_GRADE": "الدرجة الليتورجية",
-        "PSALTER": "المزامير"
+        "PSALTER": "المزامير",
+        "LITURGY_OF_THE_DAY": "الليتورجية اليومية"
     },
     "as": {
         "SUNDAY_JAN2_JAN8": "সোমবার ২ ও ৮ জানুয়ারির মধ্যে",
@@ -65,7 +68,8 @@ const Messages = {
         "DATE": "তাৰিখ",
         "LITURGICAL_CELEBRATION": "উদযাপন",
         "LITURGICAL_GRADE": "লিটাৰ্জিকেল গ্ৰেড",
-        "PSALTER": "গীতমালাৰ সপ্তাহ"
+        "PSALTER": "গীতমালাৰ সপ্তাহ",
+        "LITURGY_OF_THE_DAY": "দৈনিক লিটাৰ্জিকেল"
     },
     "ast": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de xaneiro e o 8 de xaneiro",
@@ -82,7 +86,8 @@ const Messages = {
         "DATE": "Fecha",
         "LITURGICAL_CELEBRATION": "Celebración",
         "LITURGICAL_GRADE": "Grau litúrxicu",
-        "PSALTER": "Salterio"
+        "PSALTER": "Salterio",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "az": {
         "SUNDAY_JAN2_JAN8": "Pazar 2 və 8 yanvar arasında",
@@ -99,7 +104,8 @@ const Messages = {
         "DATE": "Tarix",
         "LITURGICAL_CELEBRATION": "Bayram",
         "LITURGICAL_GRADE": "Liturgik Səviyyə",
-        "PSALTER": "Məzmur"
+        "PSALTER": "Məzmur",
+        "LITURGY_OF_THE_DAY": "Günlük Liturgiya"
     },
     "be": {
         "SUNDAY_JAN2_JAN8": "Нядзеля між 2 і 8 студзень",
@@ -116,7 +122,8 @@ const Messages = {
         "DATE": "Дата",
         "LITURGICAL_CELEBRATION": "Свята",
         "LITURGICAL_GRADE": "Літургічны клас",
-        "PSALTER": "Псалтыр"
+        "PSALTER": "Псалтыр",
+        "LITURGY_OF_THE_DAY": "Літургічна дзень"
     },
     "bg": {
         "SUNDAY_JAN2_JAN8": "Неделя между 2 и 8 януари",
@@ -133,7 +140,8 @@ const Messages = {
         "DATE": "Дата",
         "LITURGICAL_CELEBRATION": "Празник",
         "LITURGICAL_GRADE": "Литургичен клас",
-        "PSALTER": "Псалтир"
+        "PSALTER": "Псалтир",
+        "LITURGY_OF_THE_DAY": "Денна литургия"
     },
     "bm": {
         "SUNDAY_JAN2_JAN8": "Dimansi Zanwuyekalo tile 2 ni 8 cɛ",
@@ -150,7 +158,8 @@ const Messages = {
         "DATE": "Zan",
         "LITURGICAL_CELEBRATION": "Zan",
         "LITURGICAL_GRADE": "Liturgik Grade",
-        "PSALTER": "Kidung"
+        "PSALTER": "Kidung",
+        "LITURGY_OF_THE_DAY": "Liturgik Zan"
     },
     "bn": {
         "SUNDAY_JAN2_JAN8": "সোমবার ২ ও ৮ জানুয়ারির মধ্যে",
@@ -167,7 +176,8 @@ const Messages = {
         "DATE": "তাৰিখ",
         "LITURGICAL_CELEBRATION": "উদযাপন",
         "LITURGICAL_GRADE": "লিটার্জিকেল গ্ৰেড",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "দৈনিক লিটার্জিকেল"
     },
     "bo": {
         "SUNDAY_JAN2_JAN8": "ཟླ་དང་པོའི་ཚེས་གཉིས་ནས་བརྒྱད་པའི་བར་གྱི་གཟའ་ཉི་མ།",
@@ -184,7 +194,8 @@ const Messages = {
         "DATE": "ཉིན།",
         "LITURGICAL_CELEBRATION": "བར་གཟའ།",
         "LITURGICAL_GRADE": "ཆོ་གའི་སྡེ།",
-        "PSALTER": "མགུར་གླུ།"
+        "PSALTER": "མགུར་གླུ།",
+        "LITURGY_OF_THE_DAY": "སྣོན་ལས་ཆོ་གའི་ལོ།"
     },
     "br": {
         "SUNDAY_JAN2_JAN8": "Dimanche entre 2 et 8 janv.",
@@ -201,7 +212,8 @@ const Messages = {
         "DATE": "Deiziad",
         "LITURGICAL_CELEBRATION": "Gouel",
         "LITURGICAL_GRADE": "Rang litrugel",
-        "PSALTER": "Sizhunvezh ar salmoù"
+        "PSALTER": "Sizhunvezh ar salmoù",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "bs": {
         "SUNDAY_JAN2_JAN8": "Nedelja između 2. i 8. januar",
@@ -218,7 +230,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Proslava",
         "LITURGICAL_GRADE": "Liturgijski razred",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Dnevna liturgija"
     },
     "ca": {
         "SUNDAY_JAN2_JAN8": "Dilluns entre el 2 de gener i el 8 de gener",
@@ -235,7 +248,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Celebració",
         "LITURGICAL_GRADE": "Grau litúrgic",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "ce": {
         "SUNDAY_JAN2_JAN8": "Воскресенье между 2 и 8 января",
@@ -252,7 +266,8 @@ const Messages = {
         "DATE": "Дата",
         "LITURGICAL_CELEBRATION": "Праздник",
         "LITURGICAL_GRADE": "Литургический класс",
-        "PSALTER": "Псалтер"
+        "PSALTER": "Псалтер",
+        "LITURGY_OF_THE_DAY": "Дневная литургия"
     },
     "cs": {
         "SUNDAY_JAN2_JAN8": "Neděle mezi 2. a 8. ledem",
@@ -269,7 +284,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Oslava",
         "LITURGICAL_GRADE": "Liturgická třída",
-        "PSALTER": "žaltář"
+        "PSALTER": "žaltář",
+        "LITURGY_OF_THE_DAY": "Denní liturgie"
     },
     "cy": {
         "SUNDAY_JAN2_JAN8": "Dydd Sul i 2 a 8 Mawrth",
@@ -286,7 +302,8 @@ const Messages = {
         "DATE": "Dyddiad",
         "LITURGICAL_CELEBRATION": "Dathliad",
         "LITURGICAL_GRADE": "Gradd Llythyr",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "da": {
         "SUNDAY_JAN2_JAN8": "Søndag mellem 2. og 8. januar",
@@ -303,7 +320,8 @@ const Messages = {
         "DATE": "Dato",
         "LITURGICAL_CELEBRATION": "Fest",
         "LITURGICAL_GRADE": "Liturgisk Klasse",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Daglig liturgi"
     },
     "de": {
         "SUNDAY_JAN2_JAN8": "Sonntag zwischen dem 2. und dem 8. Januar",
@@ -320,7 +338,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Feier",
         "LITURGICAL_GRADE": "Liturgischer Grad",
-        "PSALTER": "Psalterwoche"
+        "PSALTER": "Psalterwoche",
+        "LITURGY_OF_THE_DAY": "Tägliche Liturgie"
     },
     "ee": {
         "SUNDAY_JAN2_JAN8": "Kwasiɖagbe le January 2nd kple 8th dome",
@@ -337,7 +356,8 @@ const Messages = {
         "DATE": "Ɖa",
         "LITURGICAL_CELEBRATION": "Ɖa",
         "LITURGICAL_GRADE": "Liturgiig Grade",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Liturgiig Ɖa"
     },
     "el": {
         "SUNDAY_JAN2_JAN8": "Κυριακή μεταξύ των 2 και των 8 Ιανουαρίου",
@@ -354,7 +374,8 @@ const Messages = {
         "DATE": "Ημερομηνία",
         "LITURGICAL_CELEBRATION": "Εορτή",
         "LITURGICAL_GRADE": "Λιτουργική Βαθμολογία",
-        "PSALTER": "Ψαλτήρι"
+        "PSALTER": "Ψαλτήρι",
+        "LITURGY_OF_THE_DAY": "Ημερής Λιτουργική"
     },
     "en": {
         "SUNDAY_JAN2_JAN8": "Sunday between January 2nd and 8th",
@@ -371,7 +392,8 @@ const Messages = {
         "DATE": "Date",
         "LITURGICAL_CELEBRATION": "LITURGICAL_CELEBRATION",
         "LITURGICAL_GRADE": "Liturgical Grade",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Liturgy of the Day"
     },
     "eo": {
         "SUNDAY_JAN2_JAN8": "Dimanĉo de 2 al 8 de januo",
@@ -388,7 +410,8 @@ const Messages = {
         "DATE": "Dato",
         "LITURGICAL_CELEBRATION": "Festo",
         "LITURGICAL_GRADE": "Liturgia Gradeco",
-        "PSALTER": "Psaltera"
+        "PSALTER": "Psaltera",
+        "LITURGY_OF_THE_DAY": "Daŭra Liturgio"
     },
     "es": {
         "SUNDAY_JAN2_JAN8": "Domingo entre el 2 de enero y el 8 de enero",
@@ -405,7 +428,8 @@ const Messages = {
         "DATE": "Fecha",
         "LITURGICAL_CELEBRATION": "Celebración",
         "LITURGICAL_GRADE": "Grado litúrgico",
-        "PSALTER": "Salterio"
+        "PSALTER": "Salterio",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "et": {
         "SUNDAY_JAN2_JAN8": "Pühapäev 2. ja 8. jaanuaril",
@@ -422,7 +446,8 @@ const Messages = {
         "DATE": "Kuupäev",
         "LITURGICAL_CELEBRATION": "Tähistamine",
         "LITURGICAL_GRADE": "Liturgiline aste",
-        "PSALTER": "Psalter"
+        "PSALTER": "Psalter",
+        "LITURGY_OF_THE_DAY": "Tähe liturgia"
     },
     "eu": {
         "SUNDAY_JAN2_JAN8": "Astelehena 2 eta 8 urteko",
@@ -439,7 +464,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Jai",
         "LITURGICAL_GRADE": "Liturgiko Maila",
-        "PSALTER": "Salterio"
+        "PSALTER": "Salterio",
+        "LITURGY_OF_THE_DAY": "Liturgia Egutegia"
     },
     "fa": {
         "SUNDAY_JAN2_JAN8": "یکشنبه بین ۲ تا ۸ مهر",
@@ -456,7 +482,8 @@ const Messages = {
         "DATE": "تاریخ",
         "LITURGICAL_CELEBRATION": "جشن",
         "LITURGICAL_GRADE": "درجه لیتورژیک",
-        "PSALTER": "هفته مزمور"
+        "PSALTER": "هفته مزمور",
+        "LITURGY_OF_THE_DAY": "روز لیتورژیک"
     },
     "ff": {
         "SUNDAY_JAN2_JAN8": "Ñalnde alet hakkunde 2 e 8 lewru Yarkomaa",
@@ -473,7 +500,8 @@ const Messages = {
         "DATE": "Date",
         "LITURGICAL_CELEBRATION": "Juboo",
         "LITURGICAL_GRADE": "Liturgik Grade",
-        "PSALTER": "psalter"
+        "PSALTER": "psalter",
+        "LITURGY_OF_THE_DAY": "Liturgik Zan"
     },
     "fi": {
         "SUNDAY_JAN2_JAN8": "Sunnuntaina 2 ja 8 tammikuu",
@@ -490,7 +518,8 @@ const Messages = {
         "DATE": "Päivämäärä",
         "LITURGICAL_CELEBRATION": "Juhla",
         "LITURGICAL_GRADE": "Liturginen Luokka",
-        "PSALTER": "psalttariviikko"
+        "PSALTER": "psalttariviikko",
+        "LITURGY_OF_THE_DAY": "Liturgiikka päivämäärä"
     },
     "fo": {
         "SUNDAY_JAN2_JAN8": "Sunnudagur 2 og 8 januar",
@@ -507,7 +536,8 @@ const Messages = {
         "DATE": "Dagur",
         "LITURGICAL_CELEBRATION": "Høgtíð",
         "LITURGICAL_GRADE": "Liturgiskur Graddur",
-        "PSALTER": "psaltaravika"
+        "PSALTER": "psaltaravika",
+        "LITURGY_OF_THE_DAY": "Liturgiskur Dagur"
     },
     "fr": {
         "SUNDAY_JAN2_JAN8": "Dimanche entre le 2 janvier et le 8 janvier",
@@ -524,7 +554,8 @@ const Messages = {
         "DATE": "Date",
         "LITURGICAL_CELEBRATION": "Célébration",
         "LITURGICAL_GRADE": "Grade liturgique",
-        "PSALTER": "psautier"
+        "PSALTER": "psautier",
+        "LITURGY_OF_THE_DAY": "Liturgie du jour"
     },
     "ga": {
         "SUNDAY_JAN2_JAN8": "Seoimhneann 2 agus 8 Eanáir",
@@ -541,7 +572,8 @@ const Messages = {
         "DATE": "Dáta",
         "LITURGICAL_CELEBRATION": "Ceiliúradh",
         "LITURGICAL_GRADE": "Grada liturgíoch",
-        "PSALTER": "tSaltair"
+        "PSALTER": "tSaltair",
+        "LITURGY_OF_THE_DAY": "Liturgíoch Dáta"
     },
     "gd": {
         "SUNDAY_JAN2_JAN8": "Sunnam 2 agus 8 Eanáir",
@@ -558,7 +590,8 @@ const Messages = {
         "DATE": "Dath",
         "LITURGICAL_CELEBRATION": "Cèilidh",
         "LITURGICAL_GRADE": "Gradh Liturgical",
-        "PSALTER": "t-Salm"
+        "PSALTER": "t-Salm",
+        "LITURGY_OF_THE_DAY": "Liturgical Dath"
     },
     "gl": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de xaneiro e o 8 de xaneiro",
@@ -575,7 +608,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Celebración",
         "LITURGICAL_GRADE": "Grao litúrxico",
-        "PSALTER": "salterio"
+        "PSALTER": "salterio",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "gn": {
         "SUNDAY_JAN2_JAN8": "Domingo 6 jasyporundy ha 8 jasyporundy mbytépe",
@@ -592,7 +626,8 @@ const Messages = {
         "DATE": "Jasy",
         "LITURGICAL_CELEBRATION": "Jepokuaa",
         "LITURGICAL_GRADE": "Litúrgico grado",
-        "PSALTER": "psalter"
+        "PSALTER": "psalter",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "gu": {
         "SUNDAY_JAN2_JAN8": "સોંધવાર પહોંચાં અને શુક્રવાર પહોંચાં",
@@ -609,7 +644,8 @@ const Messages = {
         "DATE": "તારીખ",
         "LITURGICAL_CELEBRATION": "ઉજવણી",
         "LITURGICAL_GRADE": "લિટર્જિકલ ગ્રેડ",
-        "PSALTER": "ઝબોર સપ્તાહ"
+        "PSALTER": "ઝબોર સપ્તાહ",
+        "LITURGY_OF_THE_DAY": "દિવસની લિટર્જિકલ ઉજવણી"
     },
     "gv": {
         "SUNDAY_JAN2_JAN8": "Dydd Sul i 2 a 8 Mawrth",
@@ -626,7 +662,8 @@ const Messages = {
         "DATE": "Dyddiad",
         "LITURGICAL_CELEBRATION": "Dathliad",
         "LITURGICAL_GRADE": "Gradd Llythyr",
-        "PSALTER": "shiaghtin yn psalms"
+        "PSALTER": "shiaghtin yn psalms",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "he": {
         "SUNDAY_JAN2_JAN8": "ראשון בין ה-2 וה-8 ינואר",
@@ -643,7 +680,8 @@ const Messages = {
         "DATE": "תאריך",
         "LITURGICAL_CELEBRATION": "חג",
         "LITURGICAL_GRADE": "דרגה ליטורגית",
-        "PSALTER": "שבוע תהילים"
+        "PSALTER": "שבוע תהילים",
+        "LITURGY_OF_THE_DAY": "ליטורגיה יומית"
     },
     "hi": {
         "SUNDAY_JAN2_JAN8": "सोमवार 2 और 8 जनवरी के बीच",
@@ -660,7 +698,8 @@ const Messages = {
         "DATE": "तारीख",
         "LITURGICAL_CELEBRATION": "उत्सव",
         "LITURGICAL_GRADE": "लिटर्जिकल ग्रेड",
-        "PSALTER": "भजन संहिता सप्ताह"
+        "PSALTER": "भजन संहिता सप्ताह",
+        "LITURGY_OF_THE_DAY": "लिटर्जिकल उत्सव"
     },
     "hr": {
         "SUNDAY_JAN2_JAN8": "Nedjelja između 2. i 8. januar",
@@ -677,7 +716,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Proslava",
         "LITURGICAL_GRADE": "Liturgijski razred",
-        "PSALTER": "psaltirski tjedan"
+        "PSALTER": "psaltirski tjedan",
+        "LITURGY_OF_THE_DAY": "Dnevna liturgija"
     },
     "hu": {
         "SUNDAY_JAN2_JAN8": "Szombat 2 és 8 janúari között",
@@ -694,7 +734,8 @@ const Messages = {
         "DATE": "Dátum",
         "LITURGICAL_CELEBRATION": "Ünnep",
         "LITURGICAL_GRADE": "Liturgikus fokozat",
-        "PSALTER": "zsoltáros hét"
+        "PSALTER": "zsoltáros hét",
+        "LITURGY_OF_THE_DAY": "Egy napos liturgia"
     },
     "hy": {
         "SUNDAY_JAN2_JAN8": "Երկուշակյան 2 երկուշակյան 8",
@@ -711,7 +752,8 @@ const Messages = {
         "DATE": "Ամսաթիվ",
         "LITURGICAL_CELEBRATION": "Տոն",
         "LITURGICAL_GRADE": "Լիտորգիալ Դաս",
-        "PSALTER": "սաղմոսարան շաբաթ"
+        "PSALTER": "սաղմոսարան շաբաթ",
+        "LITURGY_OF_THE_DAY": "Լիտորգիալ Դաս"
     },
     "id": {
         "SUNDAY_JAN2_JAN8": "Minggu antara 2 dan 8 Januari",
@@ -728,7 +770,8 @@ const Messages = {
         "DATE": "Tanggal",
         "LITURGICAL_CELEBRATION": "Perayaan",
         "LITURGICAL_GRADE": "Tingkat Liturgi",
-        "PSALTER": "minggu mazmur"
+        "PSALTER": "minggu mazmur",
+        "LITURGY_OF_THE_DAY": "Liturgi Hari Ini"
     },
     "ig": {
         "SUNDAY_JAN2_JAN8": "Nwenu 2 na 8 nwa mma",
@@ -745,7 +788,8 @@ const Messages = {
         "DATE": "Ụbọchị",
         "LITURGICAL_CELEBRATION": "Ọgbanwe",
         "LITURGICAL_GRADE": "Afọ Liturgical",
-        "PSALTER": "izu psalms"
+        "PSALTER": "izu psalms",
+        "LITURGY_OF_THE_DAY": "Afọ Liturgical"
     },
     "is": {
         "SUNDAY_JAN2_JAN8": "Sunnudagur 2 og 8 januar",
@@ -762,7 +806,8 @@ const Messages = {
         "DATE": "Dagsetning",
         "LITURGICAL_CELEBRATION": "Hátíð",
         "LITURGICAL_GRADE": "Liturgisk stig",
-        "PSALTER": "sálmavika"
+        "PSALTER": "sálmavika",
+        "LITURGY_OF_THE_DAY": "Liturgisk dagur"
     },
     "it": {
         "SUNDAY_JAN2_JAN8": "Domenica tra il 2 gennaio e l'8 gennaio",
@@ -779,7 +824,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Celebrazione",
         "LITURGICAL_GRADE": "Grado liturgico",
-        "PSALTER": "Salterio"
+        "PSALTER": "Salterio",
+        "LITURGY_OF_THE_DAY": "Liturgia del giorno"
     },
     "ja": {
         "SUNDAY_JAN2_JAN8": "1月2日から1月8日までの日曜日",
@@ -796,7 +842,8 @@ const Messages = {
         "DATE": "日付",
         "LITURGICAL_CELEBRATION": "祝典",
         "LITURGICAL_GRADE": "リトルジカルグレード",
-        "PSALTER": "詩篇の週"
+        "PSALTER": "詩篇の週",
+        "LITURGY_OF_THE_DAY": "今日のリトルジカル"
     },
     "jv": {
         "SUNDAY_JAN2_JAN8": "Minggu antara 2 dan 8 Januari",
@@ -813,7 +860,8 @@ const Messages = {
         "DATE": "Tanggal",
         "LITURGICAL_CELEBRATION": "Perayaan",
         "LITURGICAL_GRADE": "Tingkat Liturgi",
-        "PSALTER": "Mazmur"
+        "PSALTER": "Mazmur",
+        "LITURGY_OF_THE_DAY": "Liturgi Hari Ini"
     },
     "ka": {
         "SUNDAY_JAN2_JAN8": "კვარისი 2-დან 8-მდე",
@@ -830,7 +878,8 @@ const Messages = {
         "DATE": "თარიღი",
         "LITURGICAL_CELEBRATION": "დღესასწაული",
         "LITURGICAL_GRADE": "ლიტრული ხარი",
-        "PSALTER": "ფსალმუნთა კვირა"
+        "PSALTER": "ფსალმუნთა კვირა",
+        "LITURGY_OF_THE_DAY": "დღის ლიტრული"
     },
     "kk": {
         "SUNDAY_JAN2_JAN8": "1-ненде 2 жаны 8 жаны",
@@ -847,7 +896,8 @@ const Messages = {
         "DATE": "Күн",
         "LITURGICAL_CELEBRATION": "Той",
         "LITURGICAL_GRADE": "Литургиялық Дәреже",
-        "PSALTER": "псалтыр аптасы"
+        "PSALTER": "псалтыр аптасы",
+        "LITURGY_OF_THE_DAY": "Күнін Литургиялық"
     },
     "kl": {
         "SUNDAY_JAN2_JAN8": "Sunndag 2 og 8 januar",
@@ -864,7 +914,8 @@ const Messages = {
         "DATE": "Dato",
         "LITURGICAL_CELEBRATION": "Fest",
         "LITURGICAL_GRADE": "Liturgisk Klasse",
-        "PSALTER": "psalmi sapaatip-akunnera"
+        "PSALTER": "psalmi sapaatip-akunnera",
+        "LITURGY_OF_THE_DAY": "Liturgisk dag"
     },
     "ko": {
         "SUNDAY_JAN2_JAN8": "1月2日~1月8日",
@@ -881,7 +932,8 @@ const Messages = {
         "DATE": "일",
         "LITURGICAL_CELEBRATION": "축하합니다",
         "LITURGICAL_GRADE": "리터그리컬 그레드",
-        "PSALTER": "시편 주간"
+        "PSALTER": "시편 주간",
+        "LITURGY_OF_THE_DAY": "오늘의 리터그리컬"
     },
     "ku": {
         "SUNDAY_JAN2_JAN8": "Dewa 2 ve 8 Aralık arasında",
@@ -898,7 +950,8 @@ const Messages = {
         "DATE": "Dîrok",
         "LITURGICAL_CELEBRATION": "Ji bo pîrozbahiya",
         "LITURGICAL_GRADE": "Liturgik Şaredar",
-        "PSALTER": "hefteya zebbûrê"
+        "PSALTER": "hefteya zebbûrê",
+        "LITURGY_OF_THE_DAY": "Ji bo pîrozbahiya"
     },
     "la": {
         "SUNDAY_JAN2_JAN8": "Dominica inter 2 Januarii et 8 Januarii",
@@ -915,7 +968,8 @@ const Messages = {
         "DATE": "Dies",
         "LITURGICAL_CELEBRATION": "Celebratio",
         "LITURGICAL_GRADE": "Gradus Liturgicus",
-        "PSALTER": "hebdomada psalterii"
+        "PSALTER": "hebdomada psalterii",
+        "LITURGY_OF_THE_DAY": "Liturgia dies"
     },
     "lb": {
         "SUNDAY_JAN2_JAN8": "Sonntag zwischen dem 2. und dem 8. Januar",
@@ -932,7 +986,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Feier",
         "LITURGICAL_GRADE": "Liturgesche Grad",
-        "PSALTER": "psalchterwoch"
+        "PSALTER": "psalchterwoch",
+        "LITURGY_OF_THE_DAY": "Tägliche Liturgie"
     },
     "lt": {
         "SUNDAY_JAN2_JAN8": "Sekmadienis nuo 2 iki 8 g.",
@@ -949,7 +1004,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Šventė",
         "LITURGICAL_GRADE": "Liturginis laipsnis",
-        "PSALTER": "psalmių savaitė"
+        "PSALTER": "psalmių savaitė",
+        "LITURGY_OF_THE_DAY": "Dienės liturgija"
     },
     "lv": {
         "SUNDAY_JAN2_JAN8": "Svētdiena no 2. līdz 8. gada",
@@ -966,7 +1022,8 @@ const Messages = {
         "DATE": "Datums",
         "LITURGICAL_CELEBRATION": "Sviņojums",
         "LITURGICAL_GRADE": "Liturgiska pakāpe",
-        "PSALTER": "psalmu nedēļa"
+        "PSALTER": "psalmu nedēļa",
+        "LITURGY_OF_THE_DAY": "Dienas liturgija"
     },
     "mi": {
         "SUNDAY_JAN2_JAN8": "Rātā 2 a 8 Mawrth",
@@ -983,7 +1040,8 @@ const Messages = {
         "DATE": "Rā",
         "LITURGICAL_CELEBRATION": "Whakanui",
         "LITURGICAL_GRADE": "Tātai Liturgical",
-        "PSALTER": "wiki psalter"
+        "PSALTER": "wiki psalter",
+        "LITURGY_OF_THE_DAY": "Whakatutu"
     },
     "mk": {
         "SUNDAY_JAN2_JAN8": "Недела од 2 до 8 јануари",
@@ -1000,7 +1058,8 @@ const Messages = {
         "DATE": "Датум",
         "LITURGICAL_CELEBRATION": "Празник",
         "LITURGICAL_GRADE": "Литургички степен",
-        "PSALTER": "псалтирска недела"
+        "PSALTER": "псалтирска недела",
+        "LITURGY_OF_THE_DAY": "Деновна литургия"
     },
     "ml": {
         "SUNDAY_JAN2_JAN8": "ഞായര്‍ 2 മാര്‍ച്ച് 8 മാര്‍ച്ച്",
@@ -1017,7 +1076,8 @@ const Messages = {
         "DATE": "തീയതി",
         "LITURGICAL_CELEBRATION": "ആഘോഷം",
         "LITURGICAL_GRADE": "ലിറ്റർഗികൽ ഗ്രേഡ്",
-        "PSALTER": "സങ്കീർത്തന വാരം"
+        "PSALTER": "സങ്കീർത്തന വാരം",
+        "LITURGY_OF_THE_DAY": "ദിവസിക ലിറ്റർഗികൽ"
     },
     "mn": {
         "SUNDAY_JAN2_JAN8": "1-р сарын 2-оос 8-ны хооронд Ням гараг",
@@ -1034,7 +1094,8 @@ const Messages = {
         "DATE": "Огноо",
         "LITURGICAL_CELEBRATION": "Тэмдэглэл",
         "LITURGICAL_GRADE": "Литургик Зэрэг",
-        "PSALTER": "псалмын долоо хоног"
+        "PSALTER": "псалмын долоо хоног",
+        "LITURGY_OF_THE_DAY": "Дээд Литургийн"
     },
     "mt": {
         "SUNDAY_JAN2_JAN8": "Il-Ħadd bejn it-2 u t-8 ta’ Jannar",
@@ -1051,7 +1112,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Ċelebrazzjoni",
         "LITURGICAL_GRADE": "Livell Liturgiku",
-        "PSALTER": "ġimgħa tas-salterju"
+        "PSALTER": "ġimgħa tas-salterju",
+        "LITURGY_OF_THE_DAY": "Ħadd Liturgiku"
     },
     "nb": {
         "SUNDAY_JAN2_JAN8": "Søndag mellom 2 og 8 januar",
@@ -1068,7 +1130,8 @@ const Messages = {
         "DATE": "Dato",
         "LITURGICAL_CELEBRATION": "Feiring",
         "LITURGICAL_GRADE": "Liturgisk Grad",
-        "PSALTER": "salmeuke"
+        "PSALTER": "salmeuke",
+        "LITURGY_OF_THE_DAY": "Dagliturgi"
     },
     "nl": {
         "SUNDAY_JAN2_JAN8": "Zondag tussen 2 en 8 januari",
@@ -1085,7 +1148,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Viering",
         "LITURGICAL_GRADE": "Liturgische graad",
-        "PSALTER": "psalmenweek"
+        "PSALTER": "psalmenweek",
+        "LITURGY_OF_THE_DAY": "Dagliturgie"
     },
     "pl": {
         "SUNDAY_JAN2_JAN8": "Niedziela pomiedzy 2 i 8 stycznia",
@@ -1102,7 +1166,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Uroczystość",
         "LITURGICAL_GRADE": "Stopien liturgiczny",
-        "PSALTER": "tydzień psałterza"
+        "PSALTER": "tydzień psałterza",
+        "LITURGY_OF_THE_DAY": "Dzien liturgiczny"
     },
     "pt": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de janeiro e o 8 de janeiro",
@@ -1119,7 +1184,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Celebração",
         "LITURGICAL_GRADE": "Grau litúrgico",
-        "PSALTER": "semana do saltério"
+        "PSALTER": "semana do saltério",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "qu": {
         "SUNDAY_JAN2_JAN8": "Suyuk 2 a 8 Mawrth",
@@ -1136,7 +1202,8 @@ const Messages = {
         "DATE": "Takay",
         "LITURGICAL_CELEBRATION": "Raymi",
         "LITURGICAL_GRADE": "Liturgic Grade",
-        "PSALTER": "simikuna semana"
+        "PSALTER": "simikuna semana",
+        "LITURGY_OF_THE_DAY": "Liturgia diaria"
     },
     "ro": {
         "SUNDAY_JAN2_JAN8": "Duminică dintre 2 și 8 ianuarie",
@@ -1153,7 +1220,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Sărbătoare",
         "LITURGICAL_GRADE": "Grad liturgic",
-        "PSALTER": "săptămâna psaltirii"
+        "PSALTER": "săptămâna psaltirii",
+        "LITURGY_OF_THE_DAY": "Liturgia zilnic"
     },
     "ru": {
         "SUNDAY_JAN2_JAN8": "Воскресенье между 2 и 8 января",
@@ -1170,7 +1238,8 @@ const Messages = {
         "DATE": "Дата",
         "LITURGICAL_CELEBRATION": "Праздник",
         "LITURGICAL_GRADE": "Литургический класс",
-        "PSALTER": "псалтырная неделя"
+        "PSALTER": "псалтырная неделя",
+        "LITURGY_OF_THE_DAY": "Дневная литургия"
     },
     "sk": {
         "SUNDAY_JAN2_JAN8": "Nedeľa medzi 2. a 8. januára",
@@ -1187,7 +1256,8 @@ const Messages = {
         "DATE": "Dátum",
         "LITURGICAL_CELEBRATION": "Oslava",
         "LITURGICAL_GRADE": "Liturgický stupeň",
-        "PSALTER": "žaltárny týždeň"
+        "PSALTER": "žaltárny týždeň",
+        "LITURGY_OF_THE_DAY": "Denná liturgia"
     },
     "sl": {
         "SUNDAY_JAN2_JAN8": "Nedelja med 2. in 8. januarju",
@@ -1204,7 +1274,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Praznovanje",
         "LITURGICAL_GRADE": "Liturgični razred",
-        "PSALTER": "psalmski teden"
+        "PSALTER": "psalmski teden",
+        "LITURGY_OF_THE_DAY": "Dnevna liturgija"
     },
     "sq": {
         "SUNDAY_JAN2_JAN8": "E hënë 2 dhe 8 janar",
@@ -1221,7 +1292,8 @@ const Messages = {
         "DATE": "Data",
         "LITURGICAL_CELEBRATION": "Festimi",
         "LITURGICAL_GRADE": "Klasa liturgjike",
-        "PSALTER": "java e psaltirit"
+        "PSALTER": "java e psaltirit",
+        "LITURGY_OF_THE_DAY": "Liturgia e dita"
     },
     "sr": {
         "SUNDAY_JAN2_JAN8": "Недеља од 2 до 8 јануара",
@@ -1238,7 +1310,8 @@ const Messages = {
         "DATE": "Датум",
         "LITURGICAL_CELEBRATION": "Славље",
         "LITURGICAL_GRADE": "Литургијски степен",
-        "PSALTER": "псалтирска недеља"
+        "PSALTER": "псалтирска недеља",
+        "LITURGY_OF_THE_DAY": "Дневна литургија"
     },
     "sv": {
         "SUNDAY_JAN2_JAN8": "Söndag mellan 2 och 8 januari",
@@ -1255,7 +1328,8 @@ const Messages = {
         "DATE": "Datum",
         "LITURGICAL_CELEBRATION": "Firande",
         "LITURGICAL_GRADE": "Liturgisk grad",
-        "PSALTER": "psaltarvecka"
+        "PSALTER": "psaltarvecka",
+        "LITURGY_OF_THE_DAY": "Dagsliturgi"
     },
     "sw": {
         "SUNDAY_JAN2_JAN8": "Jumapili 2 na 8 Mwaka",
@@ -1272,7 +1346,8 @@ const Messages = {
         "DATE": "Tarehe",
         "LITURGICAL_CELEBRATION": "Sherehe",
         "LITURGICAL_GRADE": "Daraja la Liturujia",
-        "PSALTER": "wiki ya zaburi"
+        "PSALTER": "wiki ya zaburi",
+        "LITURGY_OF_THE_DAY": "Liturujia ya Tarehe"
     },
     "ta": {
         "SUNDAY_JAN2_JAN8": "ஞாயிற்றுக்கிழமை 2 மார்ச் 8 மார்ச்",
@@ -1289,7 +1364,8 @@ const Messages = {
         "DATE": "தேதி",
         "LITURGICAL_CELEBRATION": "கொண்டாட்டம்",
         "LITURGICAL_GRADE": "லிடுர்கிகல் தரம்",
-        "PSALTER": "சங்கீத வாரம்"
+        "PSALTER": "சங்கீத வாரம்",
+        "LITURGY_OF_THE_DAY": "தேதிய லிடுர்கிகல்"
     },
     "th": {
         "SUNDAY_JAN2_JAN8": "วันอาทิตย์ระหว่างวันที่ 2 และ 8 มกราคม",
@@ -1306,7 +1382,8 @@ const Messages = {
         "DATE": "วันที่",
         "LITURGICAL_CELEBRATION": "การเฉลิมฉลอง",
         "LITURGICAL_GRADE": "ระดับพิธีกรรม",
-        "PSALTER": "สัปดาห์สดุดี"
+        "PSALTER": "สัปดาห์สดุดี",
+        "LITURGY_OF_THE_DAY": "ปฏิทินพิธีกรรม"
     },
     "tr": {
         "SUNDAY_JAN2_JAN8": "Pazartesi 2 ve 8 Aralık arasında",
@@ -1323,7 +1400,8 @@ const Messages = {
         "DATE": "Tarih",
         "LITURGICAL_CELEBRATION": "Kutlama",
         "LITURGICAL_GRADE": "Liturgik Derece",
-        "PSALTER": "mezmurlar haftası"
+        "PSALTER": "mezmurlar haftası",
+        "LITURGY_OF_THE_DAY": "Günlük Liturgi"
     },
     "uk": {
         "SUNDAY_JAN2_JAN8": "Неділя між 2 та 8 січня",
@@ -1340,7 +1418,8 @@ const Messages = {
         "DATE": "Дата",
         "LITURGICAL_CELEBRATION": "Свято",
         "LITURGICAL_GRADE": "Літургічний клас",
-        "PSALTER": "псалтирний тиждень"
+        "PSALTER": "псалтирний тиждень",
+        "LITURGY_OF_THE_DAY": "Денна літургія"
     },
     "ur": {
         "SUNDAY_JAN2_JAN8": "الأحد بين 2 و 8 يناير",
@@ -1357,7 +1436,8 @@ const Messages = {
         "DATE": "تاریخ",
         "LITURGICAL_CELEBRATION": "جشن",
         "LITURGICAL_GRADE": "لیٹرگیک درجہ",
-        "PSALTER": "زبور ہفتہ"
+        "PSALTER": "زبور ہفتہ",
+        "LITURGY_OF_THE_DAY": "دندان لیٹرگیک"
     },
     "uz": {
         "SUNDAY_JAN2_JAN8": "Yakshanba 2 va 8 yanvar aralig'ida",
@@ -1374,7 +1454,8 @@ const Messages = {
         "DATE": "Sana",
         "LITURGICAL_CELEBRATION": "Bayram",
         "LITURGICAL_GRADE": "Liturgik daraja",
-        "PSALTER": "zaburlar haftasi"
+        "PSALTER": "zaburlar haftasi",
+        "LITURGY_OF_THE_DAY": "Kunlik liturgiya"
     },
     "vi": {
         "SUNDAY_JAN2_JAN8": "Thứ 7 trong khoảng 2 và 8 tháng 1",
@@ -1391,7 +1472,8 @@ const Messages = {
         "DATE": "Ngày",
         "LITURGICAL_CELEBRATION": "Lễ kỷ",
         "LITURGICAL_GRADE": "Cấp liturgic",
-        "PSALTER": "tuần thánh vịnh"
+        "PSALTER": "tuần thánh vịnh",
+        "LITURGY_OF_THE_DAY": "Lịch lịch sử"
     },
     "yi": {
         "SUNDAY_JAN2_JAN8": "ראשון בין 2 ו-8 ינואר",
@@ -1408,7 +1490,8 @@ const Messages = {
         "DATE": "דאטע",
         "LITURGICAL_CELEBRATION": "פייערן",
         "LITURGICAL_GRADE": "ליטורגיק גראדע",
-        "PSALTER": "זאַלם וואָך"
+        "PSALTER": "זאַלם וואָך",
+        "LITURGY_OF_THE_DAY": "ליטורגיק דיי"
     },
     "zh": {
         "SUNDAY_JAN2_JAN8": "星期日在1月2日至1月8日之间",
@@ -1425,7 +1508,8 @@ const Messages = {
         "DATE": "日期",
         "LITURGICAL_CELEBRATION": "庆祝",
         "LITURGICAL_GRADE": "礼仪等级",
-        "PSALTER": "诗篇周"
+        "PSALTER": "诗篇周",
+        "LITURGY_OF_THE_DAY": "每日礼仪"
     }
 };
 

@@ -1,6 +1,7 @@
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import EventEmitter from './EventEmitter.js';
+import { YearType } from '../Enums.js';
 
 /**
  * A client for interacting with the Liturgical Calendar API.
@@ -86,7 +87,7 @@ export default class ApiClient {
     ascension: 'THURSDAY',
     corpus_christi: 'THURSDAY',
     eternal_high_priest: false,
-    year_type: 'LITURGICAL'
+    year_type: YearType.LITURGICAL
   };
 
   /**
@@ -235,6 +236,8 @@ export default class ApiClient {
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, ...params } = this.#params;
+    this.#currentCategory = 'national';
+    this.#currentCalendarId = calendar_id;
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -267,6 +270,8 @@ export default class ApiClient {
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, ...params } = this.#params;
+    this.#currentCategory = 'diocesan';
+    this.#currentCalendarId = calendar_id;
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -386,6 +391,38 @@ export default class ApiClient {
       console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
       this.refetchCalendarData();
     });
+    return this;
+  }
+
+  /**
+   * Set the year for which the calendar is to be retrieved.
+   * @param {number} year - The year for which to retrieve the calendar. Must be a number and be between 1970 and 9999.
+   * @throws {Error} If no year is given, or if the year is not a number, or if the year is not between 1970 and 9999.
+   */
+  setYear( year ) {
+    if (year !== undefined) {
+      if (typeof year !== 'number' || !Number.isInteger(year) || year < 1970 || year > 9999) {
+        throw new Error('year must be a number and be between 1970 and 9999');
+      }
+      this.#params.year = year;
+    } else {
+      throw new Error('year parameter is required');
+    }
+    return this;
+  }
+
+  /**
+   * Set the type of the year for which the calendar is to be retrieved.
+   * @param {YearType} year_type - The type of the year for which to retrieve the calendar. Must be either LITURGICAL or CIVIL.
+   * @throws {Error} If no year_type is given, or if the year_type is not either LITURGICAL or CIVIL.
+   */
+  setYearType( year_type ) {
+    if (year_type !== undefined) {
+      if (year_type !== YearType.LITURGICAL && year_type !== YearType.CIVIL) {
+        throw new Error('year_type must be either LITURGICAL or CIVIL');
+      }
+      this.#params.year_type = year_type;
+    }
     return this;
   }
 

@@ -98,6 +98,7 @@ export {
     CalendarSelect,
     ApiOptions,
     WebCalendar,
+    LiturgyOfTheDay,
     Input,
     Grouping,
     ColorAs,
@@ -105,13 +106,15 @@ export {
     ColumnOrder,
     DateFormat,
     GradeDisplay,
-    ApiOptionsFilter
+    ApiOptionsFilter,
+    CalendarSelectFilter,
+    YearType
 }
 ```
 
-The first four are the main components of the library.
+The first five are the main components of the library.
 
-The remaining components are classes that are used to configure the `ApiOptions` and `WebCalendar` components.
+The remaining classes are used to configure the `ApiOptions`, `WebCalendar` and `LiturgyOfTheDay` components.
 
 ### ApiClient
 
@@ -165,6 +168,7 @@ It is also possible to directly fetch calendar data from the API without listeni
 * `apiClient.fetchCalendar()`: will fetch the General Roman Calendar with default options (as used in the Vatican)
 * `apiClient.fetchNationalCalendar(calendar_id)`: will fetch a National Calendar by its ID
 * `apiClient.fetchDiocesanCalendar(calendar_id)`: will fetch a Diocesan Calendar by its ID
+* `apiClient.refetchCalendarData()`: will fetch the calendar data based on the current category and calendar ID (for an example of usage, see the `LiturgyOfTheDay` component)
 
 Example:
 
@@ -187,6 +191,10 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     }
 });
 ```
+
+While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the Year or the YearType parameters directly, without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
+* `setYear(year)`: will set the year parameter to the given year
+* `setYearType(yearType)`: will set the yearType parameter to the given yearType (you can import the `YearType` enum to assist with this)
 
 The `ApiClient` class exposes the following static readonly class properties:
 * `_apiUrl`: the API URL that is being used by the `ApiClient` class
@@ -383,204 +391,65 @@ const webCalendar = new WebCalendar();
 webCalendar.listenTo( apiClient ).attachTo( '#litcalWebcalendar' );
 ```
 
-## Final example
+For a full working example of a __Web Calendar component__ listening to an __API Client component__, which in turn is listening to __Calendar Select__ and __API Options__ components, see the `examples/WebCalendar` folder in the current repository.
 
-```html
-<!-- myPage.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Liturgical Calendar Components JS</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
-</head>
-<body class="p-4">
-    <h1>Liturgical Calendar Components JS</h1>
-    <form id="litcalForm">
-        <div class="row mb-4" id="calendarOptions">
-            <h2>Calendar Select / Options</h2>
-        </div>
-    </form>
-    <div id="litcalWebcalendar"></div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/js/all.min.js" integrity="sha512-1JkMy1LR9bTo3psH+H4SV5bO2dFylgOy+UJhMus1zF4VEFuZVu5lsi4I6iIndE4N9p01z1554ZDcvMSjMaqCBQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "liturgy-components-js": "./.yarn/unplugged/liturgy-components-js-file-d72298a6ec/node_modules/liturgy-components-js/dist/index.js"
-            }
-        }
-    </script>
-    <script type="module" src="main.js"></script>
-</body>
-</html>
-```
+This example also demonstrates how to style the calendar events based on liturgical grade. The `WebCalendar` component adds a number of CSS classes to the single table elements, and these classes also reflect the liturgical grade. This allows us to style an event or elements of the event differently based on liturgical grade.
 
+### LiturgyOfTheDay
+
+The LiturgyOfTheDay class is a JavaScript class that generates a widget for the Liturgy of the Day.
+
+Instances of the LiturgyOfTheDay component can be instantiated with a locale code, which will determine the localization for the UI elements (title, date string).
+
+The LiturgyOfTheDay class instances provide a few chainable methods to configure the Liturgy of the Day components, such as:
+* `id( id )`: sets the id to apply to the widget element (without an initial '#')
+* `class( className )`: sets the class or classes to apply to the widget DOM element
+* `titleClass( className )`: sets the class or classes to apply to the title DOM element
+* `dateClass( className )`: sets the class or classes to apply to the date string DOM element
+* `eventsWrapperClass( className )`: sets the class or classes to apply to the events wrapper DOM element
+* `eventsClass( className )`: sets the class or classes to apply to the events DOM elements
+* `listenTo( apiClient )`: the `LiturgyOfTheDay` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance, and update the calendar when the event is triggered
+
+The class instance also provides these two non chainable methods:
+* `appendTo( elementSelector )`: the selector for the DOM element in which the Liturgy of the Day widget will be rendered
+* `replace( elementSelector )`: similar to the `appendTo()` method, but instead of being appended to the specified element, it will replace the specified element with the Liturgy of the Day widget, similarly to how many jQuery plugins work.
+
+Example:
 ```javascript
-// main.js
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from "liturgy-components-js";
+import { ApiClient, LiturgyOfTheDay } from 'liturgy-components-js';
 
-Input.setGlobalInputClass('form-select');
-Input.setGlobalLabelClass('form-label d-block mb-1');
-Input.setGlobalWrapper('div');
-Input.setGlobalWrapperClass('form-group col col-md-3');
+const now = new Date();
+const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
-ApiClient.init('http://localhost:8000').then( (apiClient) => {
-    const calendarSelect = new CalendarSelect( 'en-US' );
-    calendarSelect.allowNull()
-        .label({
-            class: 'form-label d-block mb-1'
-        }).wrapper({
-            class: 'form-group col col-md-3'
-        }).class('form-select')
-        .appendTo( '#calendarOptions');
+ApiClient.init('http://localhost:8000').then(apiClient => {
+    if (false === apiClient || false === apiClient instanceof ApiClient) {
+        alert('Error initializing the Liturgical Calendar API Client');
+    } else {
+        const liturgyOfTheDay = new LiturgyOfTheDay('it-IT');
+        liturgyOfTheDay.id('LiturgyOfTheDay')
+            .class('liturgy-of-the-day')
+            .titleClass('liturgy-of-the-day-title')
+            .dateClass('liturgy-of-the-day-date')
+            .eventsWrapperClass('liturgy-of-the-day-events-wrapper')
+            .eventsClass('liturgy-of-the-day-event p-4 mt-4 border rounded')
+            .listenTo(apiClient)
+            .replace('#liturgyOfTheDay');
 
-    const apiOptions = new ApiOptions( 'en-US' );
-    apiOptions._localeInput.defaultValue( 'en' );
-    apiOptions._acceptHeaderInput.hide();
-    apiOptions._yearInput.class( 'form-control' ); // override the global input class
-    apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' );
-
-    apiClient.listenTo( calendarSelect ).listenTo( apiOptions );
-
-    const webCalendar = new WebCalendar();
-    webCalendar.id('LitCalTable')
-    .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
-    .psalterWeekColumn() // add psalter week column as the right hand most column
-    .removeHeaderRow() // we don't need to see the header row
-    .seasonColor(ColorAs.CSS_CLASS)
-    .seasonColorColumns(Column.LITURGICAL_SEASON)
-    .eventColor(ColorAs.INDICATOR)
-    .eventColorColumns(Column.EVENT_DETAILS)
-    .monthHeader() // enable month header at the start of each month
-    .dateFormat(DateFormat.DAY_ONLY)
-    .columnOrder(ColumnOrder.GRADE_FIRST)
-    .gradeDisplay(GradeDisplay.ABBREVIATED)
-    .attachTo( '#litcalWebcalendar' ) // the element in which the web calendar will be rendered, every time the calendar is updated
-    .listenTo(apiClient);
+        apiClient.fetchDiocesanCalendar('romamo_it');
+    }
 });
 ```
 
-You will probably want to adjust the CSS styling too. The `WebCalendar` component adds a number of CSS classes to the single table elements, based also on liturgical grade. Here is a sample stylsheet to fit the current example, which styles different ranked celebrations differently:
+There is one limitation in this simple example. By default a `year_type` of `LITURGICAL` is fetched from the API.
+Let's assume the current year is 2024.
+For the current year 2024, the ApiClient instance will fetch events from the First Sunday of Advent 2023, to Saturday of the 34th week of Ordinary Time 2024.
+This means that it will not show the Vigil Mass for the First Sunday of Advent 2024, which is on Saturday of the 34th week of Ordinary Time 2024.
+Nor will it show any events from the First Sunday of Advent 2024 until the end of the Civil year on December 31st 2024.
 
-```css
-/** main.css */
-#LitCalTable {
-    width: 90%;
-    margin: 30px auto;
-    padding: 10px;
-    background: white;
-    border-collapse: collapse;
-    border-spacing: 1px;
-}
+In order to see the Vigil Mass for the First Sunday of Advent 2024, you would need to detect whether the today's date is greater than or equal to Saturday of the 34th week of Ordinary Time 2023, and less than Monday of the First week of Advent 2024. If so, you will need to fetch a `year_type` of `CIVIL` for the year 2024.
 
-#LitCalTable caption {
-    caption-side: top;
-    text-align: center;
-}
+If instead the today's date is greater than or equal to Monday of the First week of Advent 2024, and less than or equal to Dec 31st 2024, you will need to fetch a `year_type` of `LITURGICAL` while adding a year to the current year.
 
-#LitCalTable colgroup .col2 {
-    width: 10%;
-}
+In order to accomplish this, we need to do some date calculations, based on the calendar data fetched the first time around. Then we can use the `apiClient.setYearType( yearType )` method to programmatically set the `year_type` parameter for the request to the API, and the `apiClient.setYear( year )` method to programmatically set the `year` parameter for the request to the API, and then use the `apiClient.refetchCalendarData()` method to refetch the calendar data.
 
-#LitCalTable td {
-    padding: 4px 6px;
-    border: 1px dashed lightgray;
-}
-
-#LitCalTable td.rotate {
-    width: 1.5em;
-    white-space: nowrap;
-    text-align: center;
-    vertical-align: middle;
-}
-
-#LitCalTable td.rotate div {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 1.8em;
-    font-weight:bold;
-    writing-mode: vertical-rl;
-    transform: rotate(180.0deg);
-}
-
-#LitCalTable .monthHeader {
-    text-align: center;
-    background-color: #ECA;
-    color: darkslateblue;
-    font-weight: bold;
-}
-
-#LitCalTable .dateEntry {
-    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    font-size:.8em;
-}
-
-#LitCalTable .eventDetails {
-    color: #BD752F;
-}
-
-#LitCalTable .liturgicalGrade {
-    text-align: center;
-    font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-}
-
-#LitCalTable .liturgicalGrade.liturgicalGrade_0 {
-    visibility: hidden;
-}
-
-#LitCalTable .liturgicalGrade_0, #LitCalTable .liturgicalGrade_1, #LitCalTable .liturgicalGrade_2 {
-    font-size: .9em;
-}
-
-#LitCalTable .liturgicalGrade_3 {
-    font-size: .9em;
-}
-
-#LitCalTable .liturgicalGrade_4, #LitCalTable .liturgicalGrade_5 {
-    font-size: 1em;
-}
-
-#LitCalTable .liturgicalGrade_6, #LitCalTable .liturgicalGrade_7 {
-    font-size: 1em;
-    font-weight: bold;
-}
-
-.liturgicalGrade.liturgicalGrade_0, .liturgicalGrade.liturgicalGrade_1, .liturgicalGrade.liturgicalGrade_2 {
-    font-style: italic;
-    color: gray;
-}
-
-#LitCalTable td.purple {
-    background-color: plum;
-    color: black;
-}
-
-#LitCalTable td.EASTER_TRIDUUM.purple {
-    background-color: palevioletred;
-    color: white;
-}
-
-#LitCalTable td.white {
-    background-color: whitesmoke;
-    color: black;
-}
-
-#LitCalTable td.red {
-    background-color: lightpink;
-    color: black;
-}
-
-#LitCalTable td.pink {
-    background-color: mistyrose;
-    color: black;
-}
-
-#LitCalTable td.green {
-    background-color: lightgreen;
-    color: black;
-}
-```
+This however is a little tricky, because we might wind up creating an infinite loop of refetched data. So we would also have to keep track of whether we have already refetched the calendar data or not. For a full working example, see the `examples/LiturgyOfTheDay` folder in the current repository.

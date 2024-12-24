@@ -75,4 +75,12 @@ const CalendarSelectFilter = Object.freeze({
     NONE: 'none'
 });
 
-export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter };
+/**
+ * @enum {{LITURGICAL: 'LITURGICAL', CIVIL: 'CIVIL'}}
+ */
+const YearType = Object.freeze({
+    LITURGICAL: 'LITURGICAL',
+    CIVIL: 'CIVIL'
+});
+
+export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType };

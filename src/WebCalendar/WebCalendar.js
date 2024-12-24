@@ -9,73 +9,94 @@ export default class WebCalendar {
      * @private
      */
     #domElement = null;
+
     #locale = 'en-US';
+
     #baseLocale = 'en';
+
     /**
      * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
      */
     #calendarData = null;
+
     #daysCreated = 0;
+
     /**
      * @type {Grouping}
      * @private
      */
     #firstColumnGrouping = Grouping.BY_MONTH;
+
     /**
      * @type {ColorAs}
      * @private
      */
     #eventColor = ColorAs.INDICATOR;
+
     /**
      * @type {ColorAs}
      * @private
      */
     #seasonColor = ColorAs.BACKGROUND;
+
     /**
      * @type {ColumnSet}
      * @private
      */
     #seasonColorColumns = new ColumnSet(Column.LITURGICAL_SEASON | Column.MONTH | Column.DATE | Column.PSALTER_WEEK);
+
     /**
      * @type {ColumnSet}
      * @private
      */
     #eventColorColumns = new ColumnSet(Column.EVENT | Column.GRADE);
+
     /**
      * @type {ColumnOrder}
      * @private
      */
     #columnOrder = ColumnOrder.EVENT_DETAILS_FIRST;
+
     /**
      * @type {DateFormat}
      * @private
      */
     #dateFormat = DateFormat.FULL;
+
     /**
      * @type {GradeDisplay}
      * @private
      */
     #gradeDisplay = GradeDisplay.FULL;
+
     #removeHeaderRow = false;
+
     #removeCaption = false;
+
     #psalterWeekColumn = false;
+
     #monthHeader = false;
+
     /**
      * @type {HTMLElement}
      * @private
      */
     #attachedElement = null;
+
     /**
      * @type {HTMLElement}
      * @private
      */
     #lastSeasonCell = null;
+
     /**
      * @type {HTMLElement}
      * @private
      */
     #lastPsalterWeekCell = null;
+
     #monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
+
     #dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
 
     /**
@@ -155,6 +176,7 @@ export default class WebCalendar {
      *
      * @param {string} className - The class name to validate.
      * @returns {boolean} True if the class name is valid, false otherwise.
+     * @static
      * @private
      */
     static #isValidClassName( className ) {
@@ -179,6 +201,7 @@ export default class WebCalendar {
      *
      * @param {string} id - The ID to validate.
      * @returns {boolean} True if the ID is valid, false otherwise.
+     * @static
      * @private
      */
     static #isValidId( id ) {
@@ -208,6 +231,7 @@ export default class WebCalendar {
      * @param {string} element - The element selector to validate.
      * @returns {Element} The DOM element that the selector matches.
      * @throws {Error} If the element selector is invalid or does not match any elements.
+     * @static
      * @private
      */
     static #validateElementSelector( element ) {
