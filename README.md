@@ -81,7 +81,7 @@ By far the easiest way to use ES Modules in the browser is by importing from a C
 
 ## Components
 
-The Liturgical Calendar Components library `index.js` exports the following components:
+The Liturgical Calendar Components library `index.js` exports the following components and enums:
 ```javascript
 export {
     ApiClient,
@@ -102,9 +102,9 @@ export {
 }
 ```
 
-The first five are the main components of the library.
+The first five are the main components of the library, and can be instantiated.
 
-The remaining classes are used to configure the `ApiOptions`, `WebCalendar` and `LiturgyOfTheDay` components.
+The remaining classes are used either as static classes (`Input`) or as Enums, to configure the `ApiOptions`, `WebCalendar` and `LiturgyOfTheDay` components.
 
 ### ApiClient
 
