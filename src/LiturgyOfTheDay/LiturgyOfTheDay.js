@@ -43,7 +43,16 @@ export default class LiturgyOfTheDay {
     #eventsElementsWrapper = null;
 
     /** @type {string} */
-    #eventsElementsClassName = '';
+    #eventClassName = '';
+
+    /** @type {string} */
+    #eventGradeClassName = '';
+
+    /** @type {string} */
+    #eventCommonClassName = '';
+
+    /** @type {string} */
+    #eventYearCycleClassName = '';
 
     /**
      * Validates the given class name to ensure it is a valid CSS class name.
@@ -188,8 +197,8 @@ export default class LiturgyOfTheDay {
                 : (!isSundayOrdAdvLentEaster && celebration.grade !== 0 ? lclzdGrade : '');
             const celebrationColor = celebration.color;
             const litEventElement = document.createElement('div');
-            if (this.#eventsElementsClassName !== '') {
-                litEventElement.classList.add(...this.#eventsElementsClassName.split(' '));
+            if (this.#eventClassName !== '') {
+                litEventElement.classList.add(...this.#eventClassName.split(' '));
             }
             litEventElement.style.backgroundColor = celebrationColor[0];
             litEventElement.style.color = LiturgyOfTheDay.#highContrast.includes(celebrationColor[0]) ? "white" : "black";
@@ -200,17 +209,19 @@ export default class LiturgyOfTheDay {
 
             if (celebrationGrade !== '') {
                 const celebrationGradeElement = document.createElement('div');
-                celebrationGradeElement.classList.add('liturgy-of-the-day-grade', `grade-${celebration.grade}`);
-                if (celebration.grade < 3) {
-                    celebrationGradeElement.style.fontStyle = 'italic';
+                if (this.#eventGradeClassName !== '') {
+                    celebrationGradeElement.classList.add(...this.#eventGradeClassName.split(' '));
                 }
+                celebrationGradeElement.classList.add(`grade-${celebration.grade}`);
                 celebrationGradeElement.textContent = celebrationGrade;
                 litEventElement.appendChild(celebrationGradeElement);
             }
 
             if (celebration.common.length) {
                 const celebrationCommonElement = document.createElement('div');
-                celebrationCommonElement.classList.add('liturgy-of-the-day-common');
+                if (this.#eventCommonClassName !== '') {
+                    celebrationCommonElement.classList.add(...this.#eventCommonClassName.split(' '));
+                }
                 celebrationCommonElement.textContent = celebration.common_lcl;
                 //celebrationCommonElement.style.fontStyle = 'italic';
                 litEventElement.appendChild(celebrationCommonElement);
@@ -218,7 +229,9 @@ export default class LiturgyOfTheDay {
 
             if (celebration.hasOwnProperty('liturgical_year')) {
                 const celebrationLiturgicalYearElement = document.createElement('div');
-                celebrationLiturgicalYearElement.classList.add('liturgy-of-the-day-year-cycle');
+                if (this.#eventYearCycleClassName !== '') {
+                    celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
+                }
                 celebrationLiturgicalYearElement.textContent = celebration.liturgical_year;
                 litEventElement.appendChild(celebrationLiturgicalYearElement);
             }
@@ -367,7 +380,7 @@ export default class LiturgyOfTheDay {
      * invalid.
      * @returns {LiturgyOfTheDay} The current LiturgyOfTheDay instance for chaining.
      */
-    eventsClass(className) {
+    eventClass(className) {
         if (typeof className !== 'string') {
             throw new Error('LiturgyOfTheDay.eventsClass: Invalid type for className, must be of type string but found type: ' + typeof className);
         }
@@ -377,7 +390,49 @@ export default class LiturgyOfTheDay {
                 throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
             }
         });
-        this.#eventsElementsClassName = classNames.join(' ');
+        this.#eventClassName = classNames.join(' ');
+        return this;
+    }
+
+    eventGradeClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.eventGradeClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#eventGradeClassName = classNames.join(' ');
+        return this;
+    }
+
+    eventCommonClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.eventCommonClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#eventCommonClassName = classNames.join(' ');
+        return this;
+    }
+
+    eventYearCycleClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.eventYearCycleClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#eventYearCycleClassName = classNames.join(' ');
         return this;
     }
 

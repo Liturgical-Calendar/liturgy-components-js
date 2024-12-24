@@ -15,7 +15,10 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
             .titleClass('liturgy-of-the-day-title')
             .dateClass('liturgy-of-the-day-date')
             .eventsWrapperClass('liturgy-of-the-day-events-wrapper')
-            .eventsClass('liturgy-of-the-day-event p-4 mt-4 border rounded')
+            .eventClass('liturgy-of-the-day-event p-4 mt-4 border rounded')
+            .eventGradeClass('liturgy-of-the-day-event-grade')
+            .eventCommonClass('liturgy-of-the-day-event-common')
+            .eventYearCycleClass('liturgy-of-the-day-event-year-cycle')
             .listenTo(apiClient);
 
         // By default, the apiClient will fetch year_type = 'liturgical'

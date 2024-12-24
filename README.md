@@ -407,7 +407,9 @@ The LiturgyOfTheDay class instances provide a few chainable methods to configure
 * `titleClass( className )`: sets the class or classes to apply to the title DOM element
 * `dateClass( className )`: sets the class or classes to apply to the date string DOM element
 * `eventsWrapperClass( className )`: sets the class or classes to apply to the events wrapper DOM element
-* `eventsClass( className )`: sets the class or classes to apply to the events DOM elements
+* `eventClass( className )`: sets the class or classes to apply to the events DOM elements
+* `eventGradeClass( className )`: sets the class or classes to apply to the liturgical grade DOM elements
+* `eventYearCycleClass( className )`: sets the class or classes to apply to the liturgical year cycle DOM elements
 * `listenTo( apiClient )`: the `LiturgyOfTheDay` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance, and update the calendar when the event is triggered
 
 The class instance also provides these two non chainable methods:
@@ -431,7 +433,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
             .titleClass('liturgy-of-the-day-title')
             .dateClass('liturgy-of-the-day-date')
             .eventsWrapperClass('liturgy-of-the-day-events-wrapper')
-            .eventsClass('liturgy-of-the-day-event p-4 mt-4 border rounded')
+            .eventClass('liturgy-of-the-day-event p-4 mt-4 border rounded')
             .listenTo(apiClient)
             .replace('#liturgyOfTheDay');
 

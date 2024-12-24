@@ -1,0 +1,5 @@
+#LiturgyOfTheDay .grade-0,
+#LiturgyOfTheDay .grade-1,
+#LiturgyOfTheDay .grade-2 {
+    font-style: italic;
+}
