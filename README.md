@@ -182,9 +182,9 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 });
 ```
 
-While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the Year or the YearType parameters directly, without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
+While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the `year` or `year_type` parameters directly, without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
 * `setYear(year)`: will set the year parameter to the given year
-* `setYearType(yearType)`: will set the yearType parameter to the given yearType (you can import the `YearType` enum to assist with this)
+* `setYearType(yearType)`: will set the yearType parameter to the given `YearType` (you can import the `YearType` enum to assist with this)
 
 The `ApiClient` class exposes the following static readonly class properties:
 * `_apiUrl`: the API URL that is being used by the `ApiClient` class
@@ -284,13 +284,17 @@ They allow to tweak parameters that the national or diocesan calendar would othe
 * `_eternalHighPriestInput`: a select input with options for whether Eternal High Priest is celebrated
 
 #### Filtering the form controls
-The `ApiOptions` instance is inserted into the DOM by calling the non chainable `appendTo(elementSelector, inputsFilter=ApiOptionsFilter.NONE)` method, and passing the CSS selector for the element to which the form should be appended. You can optionally pass a second `inputsFilter` parameter to specify which form controls should be appended. The `inputsFilter` parameter can have a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__. If no inputs filter is passed, the default is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). This can be useful if you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would pass in an `inputsFilter` of __`OptionsFilter.ALL_CALENDARS`__. Whereas only the form controls that are useful only for the General Roman Calendar can be appended by passing an `inputsFilter` of __`ApiOptionsFilter.GENERAL_ROMAN`__.
+The `ApiOptions` instance can be filtered to output only the form controls that are useful for the General Roman Calendar, or only the form controls that are useful for any calendar. The default filter value is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). If instead we want to apply a filter to the form controls, we can do so by calling the `filter()` method and passing in a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__.
+
+Applying a filter can be useful if for example you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would call the `filter()` method with a value of __`OptionsFilter.ALL_CALENDARS`__.
+
+If instead you would like to output only the form controls that are useful for the General Roman Calendar but not for other calendars, you would call the `filter()` method with a value of __`ApiOptionsFilter.GENERAL_ROMAN`__.
 
 Example:
 ```javascript
 import { ApiOptions, ApiOptionsFilter } from 'liturgical-calendar-js';
 const apiOptions = new ApiOptions( 'en-US' );
-apiOptions.appendTo( '#calendarOptions', ApiOptionsFilter.ALL_CALENDARS);
+apiOptions.filter(ApiOptionsFilter.ALL_CALENDARS).appendTo( '#calendarOptions');
 ```
 
 #### Configuring the form controls

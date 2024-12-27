@@ -196,14 +196,33 @@ export default class ApiClient {
   /**
    * Fetches the General Roman Calendar data from the API for a given year.
    *
+   * @param {string|null} locale The locale for the General Roman Calendar. If null, the default or last set locale is used.
+   *
    * This method sends a POST request to the calendar endpoint with the configured parameters.
    * The year parameter is extracted from the request body and placed in the URL path.
    * The remaining parameters are sent in the request body as JSON.
    *
    */
-  fetchCalendar() {
+  fetchCalendar(locale = null) {
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
+    if (locale !== null) {
+      if (typeof locale !== 'string') {
+        throw new Error('ApiClient.fetchCalendar: locale must be a string');
+      }
+      if (locale === '') {
+        throw new Error('ApiClient.fetchCalendar: Invalid locale identifier, cannot be an empty string');
+      }
+      locale = locale.replace(/_/g, '-');
+      try {
+        const testLocale = new Intl.Locale(locale);
+        if (ApiClient.#metadata.locales.includes(testLocale.language)) {
+          this.#fetchCalendarHeaders['Accept-Language'] = locale;
+        };
+      } catch (e) {
+        console.error(e);
+      }
+    }
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,

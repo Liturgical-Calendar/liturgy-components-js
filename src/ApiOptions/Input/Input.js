@@ -530,30 +530,36 @@ export default class Input {
      * If a label element has been set, the label element is inserted before the input element.
      * If an after element has been set, the after element is inserted after the input element.
      *
-     * @param {string} [elementSelector=''] - Element selector for the element to append the input element to.
+     * @param {string|HTMLElement} [elementSelector=''] - Element selector for the element to append the input element to.
      * @throws {Error} If the type of elementSelector is not a string.
      * @throws {Error} If the element selector is invalid.
      * @throws {Error} If the element selector does not match any element.
      * @return {Input} - The same instance of Input.
      */
     appendTo( elementSelector = '' ) {
-        if (typeof elementSelector !== 'string') {
-            throw new Error('Invalid type for elementSelector, must be of type string but found type: ' + typeof elementSelector);
+        let domNode;
+        if (typeof elementSelector === 'string') {
+            if (elementSelector === '') {
+                throw new Error('Input.appendTo: Element selector cannot be empty.');
+            }
+            domNode = document.querySelector(elementSelector);
+            if (domNode === null) {
+                throw new Error('Input.appendTo: Element not found: ' + elementSelector);
+            }
         }
-        if (elementSelector === '') {
-            throw new Error('Element selector cannot be empty.');
+        else if (elementSelector instanceof HTMLElement) {
+            domNode = elementSelector;
         }
-        const element = document.querySelector(elementSelector);
-        if (element === null) {
-            throw new Error('Element not found: ' + elementSelector);
+        else {
+            throw new Error('Input.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
         }
         if (null !== this._wrapperElement) {
             this._wrapperElement.appendChild(this._labelElement);
             this._wrapperElement.appendChild(this._domElement);
-            element.appendChild(this._wrapperElement);
+            domNode.appendChild(this._wrapperElement);
         } else {
-            element.appendChild(this._labelElement);
-            element.appendChild(this._domElement);
+            domNode.appendChild(this._labelElement);
+            domNode.appendChild(this._domElement);
         }
     }
 

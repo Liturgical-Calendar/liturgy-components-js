@@ -15,7 +15,7 @@ const ColumnOrder = Object.freeze({
 });
 
 /**
- * @enum {{LITURGICAL_SEASON: 1, MONTH: 2, DATE: 4, EVENT: 8, GRADE: 16, PSALTER_WEEK: 32, ALL: 63, NONE: 0}}
+ * @enum {{LITURGICAL_SEASON: 1, MONTH: 2, DATE: 4, EVENT_DETAILS: 8, GRADE: 16, PSALTER_WEEK: 32, ALL: 63, NONE: 0}}
  */
 const Column = Object.freeze({
     LITURGICAL_SEASON: 1 << 0, // 1

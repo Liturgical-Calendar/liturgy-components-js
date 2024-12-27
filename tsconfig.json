@@ -16,6 +16,10 @@
     ],
     "exclude": [
       "**/node_modules/**", // Exclude the yarn pnp package directory from being included
-      "**/node_modules/**/*" // Recursively exclude all files within the node_modules directory
+      "**/node_modules/**/*", // Recursively exclude all files within the node_modules directory, including under the .yarn folder
+      ".yarn/**/*",
+      "**/*.ts",
+      "**/*.stories.*",
+      "./src/stories/**/*"
     ]
 }

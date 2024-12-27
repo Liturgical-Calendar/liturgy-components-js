@@ -1,28 +1,45 @@
 {
-    "type": "module",
-    "packageManager": "yarn@4.5.0",
-    "name": "liturgy-components-js",
-    "version": "1.0.0",
-    "description": "Liturgical calendar components for javascript: create an html select populated with liturgical calendars supported by the Liturgical Calendar API; create a form with parameters that are supported by the Liturgical Calendar API; create a webcalendar",
-    "main": "dist/index.js",
-    "scripts": {
-        "test": "jest",
-        "compile": "yarn dlx --package typescript tsc"
-    },
-    "files": [ "dist", "src" ],
-    "typings": "dist/index",
-    "keywords": [
-        "catholic",
-        "liturgy",
-        "calendar",
-        "esnext",
-        "esmodule"
-    ],
-    "author": "John R. D'Orazio <priest@johnromanodorazio.com",
-    "license": "MIT",
-    "devDependencies": {
-        "@yarnpkg/pnpify": "^4.1.2",
-        "jest": "^29.7.0",
-        "typescript": "^5.7.2"
-    }
+  "type": "module",
+  "packageManager": "yarn@4.5.0",
+  "name": "liturgy-components-js",
+  "version": "1.0.0",
+  "description": "Liturgical calendar components for javascript: create an html select populated with liturgical calendars supported by the Liturgical Calendar API; create a form with parameters that are supported by the Liturgical Calendar API; create a webcalendar",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "jest",
+    "compile": "yarn dlx --package typescript tsc",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "typings": "dist/index",
+  "keywords": [
+    "catholic",
+    "liturgy",
+    "calendar",
+    "esnext",
+    "esmodule"
+  ],
+  "author": "John R. D'Orazio <priest@johnromanodorazio.com",
+  "license": "MIT",
+  "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.3",
+    "@storybook/addon-actions": "^8.5.0-beta.6",
+    "@storybook/addon-essentials": "^8.5.0-beta.6",
+    "@storybook/addon-interactions": "^8.5.0-beta.6",
+    "@storybook/addon-webpack5-compiler-swc": "^1.0.5",
+    "@storybook/blocks": "^8.5.0-beta.6",
+    "@storybook/html": "^8.5.0-beta.6",
+    "@storybook/html-webpack5": "^8.5.0-beta.6",
+    "@storybook/test": "^8.5.0-beta.6",
+    "@types/bootstrap": "^5",
+    "@yarnpkg/pnpify": "^4.1.2",
+    "bootstrap": "^5.3.3",
+    "jest": "^29.7.0",
+    "storybook": "^8.5.0-beta.6",
+    "typescript": "^5.7.2"
+  }
 }

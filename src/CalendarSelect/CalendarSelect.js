@@ -759,12 +759,20 @@ export default class CalendarSelect {
      * If a label element has been set, the label element is inserted before the select element.
      * If an after element has been set, the after element is inserted after the select element.
      *
-     * @param {string} element - The element selector of the element to be replaced.
+     * @param {string|HTMLElement} element - The element or elector of the element to be replaced.
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
     replace( element ) {
-        const domNode = this.#validateElementSelector( element );
+        let domNode;
+        if (typeof element === 'string') {
+            domNode = this.#validateElementSelector( element );
+        }
+        else if (element instanceof HTMLElement) {
+            domNode = element;
+        } else {
+            throw new Error('CalendarSelect.replace: parameter must be a valid CSS selector or an instance of HTMLElement');
+        }
         if ( this.#hasWrapper ) {
             domNode.replaceWith( this.#wrapperElement );
             this.#wrapperElement.appendChild( this.#domElement );
@@ -782,19 +790,27 @@ export default class CalendarSelect {
     }
 
     /**
-     * Appends the select element to the element matched by the provided element selector.
+     * Appends the select element to the element matched by the provided element selector (or the element provided directly).
      *
      * If a wrapper element has been set, the wrapper element is used to append the select element,
      * and the select element is appended to the wrapper element.
      * If a label element has been set, the label element is inserted before the select element.
      * If an after element has been set, the after element is inserted after the select element.
      *
-     * @param {string} element - The element selector of the element to append the select element to.
+     * @param {string|HTMLElement} element - The element selector of the element to append the select element to.
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
     appendTo( element ) {
-        const domNode = this.#validateElementSelector( element );
+        let domNode;
+        if (typeof element === 'string') {
+            domNode = this.#validateElementSelector( element );
+        }
+        else if (element instanceof HTMLElement) {
+            domNode = element;
+        } else {
+            throw new Error('CalendarSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
+        }
         if ( this.#hasWrapper ) {
             domNode.appendChild( this.#wrapperElement );
             this.#wrapperElement.appendChild( this.#domElement );

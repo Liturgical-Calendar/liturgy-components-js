@@ -469,6 +469,7 @@ export default class LiturgyOfTheDay {
             const todaysEvents = data.litcal.filter(event => {
                 return event.date === todaysTimestamp;
             });
+            console.log('todaysEvents: ', todaysEvents);
             this.#updateEventDetails(todaysEvents);
         });
         return this;
@@ -477,29 +478,43 @@ export default class LiturgyOfTheDay {
     /**
      * Appends the LiturgyOfTheDay instance to the element matched by the provided element selector.
      *
-     * @param {string} elementSelector - The CSS selector for the element to which the LiturgyOfTheDay instance will be appended.
+     * @param {string|HTMLElement} elementSelector - The CSS selector for the element to which the LiturgyOfTheDay instance will be appended.
      * @throws {Error} If the type of elementSelector is not a string.
      * @throws {Error} If the element selector is invalid.
      * @throws {Error} If the element selector does not match any element.
      * @return {LiturgyOfTheDay} - The same instance of LiturgyOfTheDay, allowing method chaining
      */
     appendTo(elementSelector) {
-        const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
-        element.appendChild(this.#domElement);
+        if (elementSelector instanceof HTMLElement) {
+            elementSelector.appendChild(this.#domElement);
+        }
+        else if (typeof elementSelector === 'string') {
+            const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
+            element.appendChild(this.#domElement);
+        } else {
+            throw new Error('LiturgyOfTheDay.appendTo(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector');
+        }
     }
 
     /**
      * Replaces the element matched by the provided element selector with the LiturgyOfTheDay instance.
      *
-     * @param {string} elementSelector - The CSS selector for the element to be replaced.
+     * @param {string|HTMLElement} elementSelector - The CSS selector for the element to be replaced.
      * @throws {Error} If the type of elementSelector is not a string.
      * @throws {Error} If the element selector is invalid.
      * @throws {Error} If the element selector does not match any element.
      * @return {LiturgyOfTheDay} - The same instance of LiturgyOfTheDay, allowing method chaining
      */
     replace(elementSelector) {
-        const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
-        element.replaceWith(this.#domElement);
+        if (elementSelector instanceof HTMLElement) {
+            elementSelector.replaceWith(this.#domElement);
+        }
+        else if (typeof elementSelector === 'string') {
+            const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
+            element.replaceWith(this.#domElement);
+        } else {
+            throw new Error('LiturgyOfTheDay.replaceWith(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector');
+        }
     }
 
     /**

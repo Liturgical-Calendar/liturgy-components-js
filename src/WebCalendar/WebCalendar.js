@@ -49,7 +49,7 @@ export default class WebCalendar {
      * @type {ColumnSet}
      * @private
      */
-    #eventColorColumns = new ColumnSet(Column.EVENT | Column.GRADE);
+    #eventColorColumns = new ColumnSet(Column.EVENT_DETAILS | Column.GRADE);
 
     /**
      * @type {ColumnOrder}
@@ -576,7 +576,7 @@ export default class WebCalendar {
      * - Column.LITURGICAL_SEASON
      * - Column.MONTH
      * - Column.DATE
-     * - Column.EVENT
+     * - Column.EVENT_DETAILS
      * - Column.GRADE
      * - Column.PSALTER_WEEK
      * - Column.ALL
@@ -678,8 +678,12 @@ export default class WebCalendar {
      */
     locale(locale) {
         if (typeof locale !== 'string') {
-            throw new Error('Invalid type for locale, must be of type string but found type: ' + typeof locale);
+            throw new Error('WebCalendar.locale: Invalid type for locale, must be of type string but found type: ' + typeof locale);
         }
+        if (locale === '') {
+            throw new Error('WebCalendar.locale:Invalid locale identifier, cannot be an empty string');
+        }
+        locale = locale.replace(/_/g, '-');
         try {
             const testLocale = new Intl.Locale(locale);
             this.#locale = locale;
@@ -1190,7 +1194,7 @@ export default class WebCalendar {
                 const replacements = {
                     'year': this.#calendarData.settings.year
                 };
-                captionText = Messages[this.#baseLocale]['GENERAL_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
+                captionText = Messages[this.#baseLocale]['GENERAL_ROMAN_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
                     return replacements[p1];
                 });
             }
@@ -1350,12 +1354,22 @@ export default class WebCalendar {
 
     /**
      * Attaches the WebCalendar to a given element. If the element does not yet exist in the DOM, the WebCalendar will be attached when the element is inserted.
-     * @param {string} elementSelector - Element selector for the DOM element to attach the WebCalendar to
+     * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element, to attach the WebCalendar to
      * @return {WebCalendar} - The same instance of WebCalendar
      */
-    attachTo( elementSelector ) {
-        const domNode = WebCalendar.#validateElementSelector( elementSelector );
-        this.#attachedElement = domNode;
+    attachTo( elementSelector = '' ) {
+        if (this.#attachedElement === null) {
+           if (typeof elementSelector === 'string') {
+               if (elementSelector === '') {
+                   throw new Error('WebCalendar.attachTo: Element selector cannot be empty.');
+               }
+               this.#attachedElement = WebCalendar.#validateElementSelector( elementSelector );
+           } else if (elementSelector instanceof HTMLElement) {
+               this.#attachedElement = elementSelector;
+           } else {
+               throw new Error('WebCalendar.attachTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
+           }
+        }
         return this;
     }
 

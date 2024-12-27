@@ -10,7 +10,7 @@ import {
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
-import { ApiOptionsFilter } from '../Enums.js';
+import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
 
 /**
  * Class to generate an options form for the Liturgical Calendar API.
@@ -18,7 +18,7 @@ import { ApiOptionsFilter } from '../Enums.js';
  * The class contains methods to generate the form, form label, form wrapper, and form submit elements.
  * The form elements can be fully customized using the methods provided by the class.
  *
- * __ __construct()__ Initializes the ApiOptions object with default or provided settings:
+ * __ constructor()__ Initializes the ApiOptions object with default or provided settings:
  *                                             - __locale__: The locale to use for the API options form.
  *
  * The following properties are initialized on the object instance:
@@ -47,8 +47,10 @@ export default class ApiOptions {
 
     /** @type {boolean} */
     #linked                = false;
+
     /** @type {?Intl.Locale} */
     #locale                = null;
+
     /** @type {{epiphanyInput: ?EpiphanyInput, ascensionInput: ?AscensionInput, corpusChristiInput: ?CorpusChristiInput, eternalHighPriestInput: ?EternalHighPriestInput, localeInput: ?LocaleInput, yearInput: ?YearInput, yearTypeInput: ?YearTypeInput, acceptHeaderInput: ?AcceptHeaderInput}} */
     #inputs                = {
         epiphanyInput: null,
@@ -60,6 +62,9 @@ export default class ApiOptions {
         yearTypeInput: null,
         acceptHeaderInput: null
     };
+
+    #filter                = ApiOptionsFilter.NONE;
+    #filterSet             = false;
 
     /**
      * Constructs an instance of the ApiOptions class, initializing various input components
@@ -89,8 +94,8 @@ export default class ApiOptions {
     }
 
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
-        const nationSelector = calendarSelects[0]._filter === 'nations' ? calendarSelects[0] : calendarSelects[1];
-        const dioceseSelector = calendarSelects[0]._filter === 'dioceses' ? calendarSelects[0] : calendarSelects[1];
+        const nationSelector = calendarSelects[0]._filter === CalendarSelectFilter.NATIONAL_CALENDARS ? calendarSelects[0] : calendarSelects[1];
+        const dioceseSelector = calendarSelects[0]._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ? calendarSelects[0] : calendarSelects[1];
         nationSelector._domElement.addEventListener('change', (ev) => {
             // TODO: set selected values based on selected calendar
             // TODO: set available options for locale select based on selected calendar
@@ -258,6 +263,60 @@ export default class ApiOptions {
     }
 
     /**
+     * Validates a given element selector and returns the corresponding DOM element.
+     *
+     * If the element selector is not a string, an error is thrown.
+     * If the element selector is a string, it is validated against the DOM and if the element is not found, an error is thrown.
+     *
+     * @private
+     * @param {string} element - The element selector to be validated.
+     * @returns {Element} The DOM element corresponding to the element selector.
+     * @throws {Error} If the type of element is not a string.
+     * @throws {Error} If the element selector is not found in the DOM.
+     */
+    #validateElementSelector( element ) {
+        if (typeof element !== 'string') {
+            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
+        }
+        const domNode = document.querySelector( element );
+        if ( null === domNode ) {
+            throw new Error('Invalid element selector: ' + element);
+        }
+        return domNode;
+    }
+
+    /**
+     * Sets the filter for the ApiOptions instance.
+     *
+     * The filter can be either `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, or `ApiOptionsFilter.NONE`.
+     * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, and conditionally acceptHeader inputs.
+     * - `ApiOptionsFilter.GENERAL_ROMAN` will show only the form controls that are useful for the General Roman Calendar: epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
+     * - `ApiOptionsFilter.NONE` will show all possible form controls.
+     *
+     * If the filter is set to a value that is not a valid value for the `ApiOptionsFilter` enum,
+     * an error will be thrown.
+     *
+     * If the filter is set to a value that is different from the current filter,
+     * the select elements will be filtered accordingly, and the filter will not be able to be set again.
+     *
+     * @param {string} [filter=ApiOptionsFilter.NONE] The filter to set.
+     * @throws {Error} If the filter is set to a value that is not a valid value for the `ApiOptionsFilter` enum.
+     * @throws {Error} If the filter is set to a value that is different from the current filter.
+     * @returns {ApiOptions} The ApiOptions instance.
+     */
+    filter( filter = ApiOptionsFilter.NONE ) {
+        if ( this.#filterSet && this.#filter !== filter ) {
+            throw new Error('Filter has already been set to `' + this.#filter + '` on ApiOptions instance with locale ' + this.#locale + '.');
+        }
+        if ( ApiOptionsFilter.ALL_CALENDARS !== filter && ApiOptionsFilter.GENERAL_ROMAN !== filter && ApiOptionsFilter.NONE !== filter ) {
+            throw new Error('Invalid filter: ' + filter + ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, or `ApiOptionsFilter.NONE`');
+        }
+        this.#filter = filter;
+        this.#filterSet = true;
+        return this;
+    }
+
+    /**
      * Link the ApiOptions instance to a CalendarSelect instance or an array of two CalendarSelect instances.
      * When a CalendarSelect instance is linked, the selected calendar's settings will be used to populate the
      * API options. When the selected calendar is changed, the API options will be updated accordingly.
@@ -307,29 +366,32 @@ export default class ApiOptions {
 
     /**
      * Appends input elements to the specified DOM element, optionally filtered based on the ApiOptionsFilter.
-     * A value of ApiOptionsFilter.NONE will append all inputs.
-     * A value of ApiOptionsFilter.GENERAL_ROMAN will append only epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
-     * A value of ApiOptionsFilter.ALL_CALENDARS will append only locale, yearType, and conditionally acceptHeader inputs.
      *
-     * @param {string} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
-     * @param {ApiOptionsFilter} [optionsFilter=ApiOptionsFilter.NONE] - The filter to apply. If `ApiOptionsFilter.GENERAL_ROMAN`, appends
-     *      epiphany, ascension, corpusChristi, and eternalHighPriest inputs. If `ApiOptionsFilter.ALL_CALENDARS`, appends
-     *      locale, yearType, and conditionally acceptHeader inputs. If `ApiOptionsFilter.NONE`, appends all inputs.
+     * @param {string|HTMLElement} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
      */
-    appendTo(elementSelector, optionsFilter = ApiOptionsFilter.NONE) {
-        if (ApiOptionsFilter.NONE === optionsFilter || ApiOptionsFilter.ALL_CALENDARS === optionsFilter) {
-            this.#inputs.localeInput.appendTo(elementSelector);
-            this.#inputs.yearTypeInput.appendTo(elementSelector);
-            if (false === this.#inputs.acceptHeaderInput._hidden) {
-                this.#inputs.acceptHeaderInput.appendTo(elementSelector);
-            }
-            this.#inputs.yearInput.appendTo(elementSelector);
+    appendTo(elementSelector) {
+        let domNode;
+        if (typeof elementSelector === 'string') {
+            domNode = this.#validateElementSelector( elementSelector );
         }
-        if (ApiOptionsFilter.NONE === optionsFilter || ApiOptionsFilter.GENERAL_ROMAN === optionsFilter) {
-            this.#inputs.epiphanyInput.appendTo(elementSelector);
-            this.#inputs.ascensionInput.appendTo(elementSelector);
-            this.#inputs.corpusChristiInput.appendTo(elementSelector);
-            this.#inputs.eternalHighPriestInput.appendTo(elementSelector);
+        else if(elementSelector instanceof HTMLElement) {
+            domNode = elementSelector;
+        } else {
+            throw new Error('ApiOptions.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
+        }
+        if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.ALL_CALENDARS === this.#filter) {
+            this.#inputs.localeInput.appendTo(domNode);
+            this.#inputs.yearTypeInput.appendTo(domNode);
+            if (false === this.#inputs.acceptHeaderInput._hidden) {
+                this.#inputs.acceptHeaderInput.appendTo(domNode);
+            }
+            this.#inputs.yearInput.appendTo(domNode);
+        }
+        if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.GENERAL_ROMAN === this.#filter) {
+            this.#inputs.epiphanyInput.appendTo(domNode);
+            this.#inputs.ascensionInput.appendTo(domNode);
+            this.#inputs.corpusChristiInput.appendTo(domNode);
+            this.#inputs.eternalHighPriestInput.appendTo(domNode);
         }
     }
 
