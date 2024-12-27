@@ -2,7 +2,29 @@ import { ApiOptions, ApiClient, ApiOptionsFilter } from 'liturgy-components-js';
 import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 
-// Meta configuration
+/**
+ * ApiOptions component
+ *
+ * The `ApiOptions` component is not styled out of the box, so it can be adapted to any use case in any project.
+ *
+ * The `ApiOptions` component generates form select controls that represent the parameters that can be set
+ * in a request for Calendar data from the Liturgical Calendar API.
+ *
+ * The `ApiOptions` component can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (such as values in the select dropdowns).
+ *
+ * The `ApiOptions` component can be filtered to only show `<select>` elements that are applicable
+ * when requesting a National or Diocesan calendar (which will be the majority of use cases).
+ * These `<select>` elements are:
+ * * `locale` (the value should be sent in the request as the `Accept language` header)
+ * * `Accept header` (this is probably not needed in most use cases, it can allow to request a media type other than JSON)
+ * * `year` (the value should be sent in the request as a path parameter)
+ * * `year_type` (the value should be sent in the request as a query parameter)
+ *
+ * However, if National or Dicoesan calendar data for a geographical area has not yet been defined in the Liturgical Calendar API,
+ * yet we would like to produce a calendar in which the celebrations of `Epiphany`, `Ascension`, `Corpus Christi`,
+ * and `Eternal High Priest` are calculated based on the rules laid down by an Episcopal Conference or Diocese,
+ * we can opt to show all possible `<select>` inputs, by not applying any filter.
+ */
 const meta = {
     title: 'Components/ApiOptions/Unstyled',
     tags: [ 'autodocs' ],

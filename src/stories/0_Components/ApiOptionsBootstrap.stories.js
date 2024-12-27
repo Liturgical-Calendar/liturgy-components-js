@@ -3,7 +3,12 @@ import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// Meta configuration
+/**
+ * ApiOptions component
+ *
+ * Here is an example of using the `ApiOptions` component in a bootstrap project.
+ * We set all the necessary classes for bootstrap styled form controls.
+ */
 const meta = {
     title: 'Components/ApiOptions/Bootstrap',
     tags: [ 'autodocs' ],

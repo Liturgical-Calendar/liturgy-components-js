@@ -2,7 +2,20 @@ import { CalendarSelect, ApiClient } from 'liturgy-components-js';
 import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 
-// Meta configuration
+/**
+ * CalendarSelect component
+ *
+ * The `CalendarSelect` component is not styled out of the box, so it can be adapted to any use case in any project.
+ *
+ * The `CalendarSelect` component generates a `<select>` element that allows the user to select a liturgical calendar.
+ *
+ * The available options are filled with the available liturgical calendars that can be requested from the Liturgical Calendar API.
+ *
+ * The component can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (display names of the nations for national calendars).
+ *
+ * If we want to be able to request the General Roman Calendar, perhaps with custom settings, we can use the `allowNull()` method to allow the user
+ * to send a request that does not specify a National or Diocesan calendar (in other words, a request for the General Roman Calendar).
+ */
 const meta = {
   title: 'Components/CalendarSelect/Unstyled',
   tags: ['autodocs'],

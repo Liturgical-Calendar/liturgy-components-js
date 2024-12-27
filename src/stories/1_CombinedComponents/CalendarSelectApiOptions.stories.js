@@ -5,6 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
  * `CalendarSelect` and `ApiOptions`
+ *
  * The `ApiOptions` component is linked to the `CalendarSelect` component.
  * This means that when you select a calendar from the `CalendarSelect` component,
  * the `ApiOptions` are updated to reflect the options available for that calendar.

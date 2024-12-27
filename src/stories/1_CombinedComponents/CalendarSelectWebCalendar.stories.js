@@ -4,7 +4,18 @@ import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../webcalendar.css';
 
-// Meta configuration
+/**
+ * CalendarSelect and WebCalendar
+ *
+ * The `ApiClient` instance is configured to listen to the `CalendarSelect` instance,
+ * and the `WebCalendar` instance is configured to listen to the `ApiClient` instance.
+ *
+ * When a selection is made from the `CalendarSelect` instance, the `ApiClient` will
+ * request the selected calendar from the Liturgical Calendar API, and emit the `calendarFetched` event.
+ *
+ * In response to the `calendarFetched` event, the `WebCalendar` instance produce a liturgical calendar for display
+ * based on the calendar data returned from the Liturgical Calendar API.
+ */
 const meta = {
   title: 'Combined Components/CalendarSelect - WebCalendar',
   tags: ['autodocs'],

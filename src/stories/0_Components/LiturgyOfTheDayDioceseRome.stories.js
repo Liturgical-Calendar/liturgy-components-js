@@ -1,6 +1,11 @@
 import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
 
-// Meta configuration
+/**
+ * LiturgyOfTheDay component
+ *
+ * This is an example of using the `LiturgyOfTheDay` component set to listen to the ApiClient instance,
+ * and requesting the Diocesan Calendar for the Diocese of Rome from the ApiClient instance.
+ */
 const meta = {
   title: 'Components/LiturgyOfTheDay/Diocesan Calendar/Diocese of Rome',
   tags: ['autodocs'],

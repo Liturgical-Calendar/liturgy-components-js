@@ -3,7 +3,12 @@ import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// Meta configuration
+/**
+ * CalendarSelect component
+ *
+ * We can split the `CalendarSelect` component into two instances, one for national calendars and one for diocesan calendars.
+ * To do this, we apply a filter to each instance.
+ */
 const meta = {
     title: 'Components/CalendarSelect/Filtered',
     tags: [ 'autodocs' ],

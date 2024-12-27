@@ -3,7 +3,24 @@ import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import '../webcalendar.css';
 
-// Meta configuration
+/**
+ * WebCalendar component
+ *
+ * Instances of the `WebCalendar` component can be tailored with different layout options.
+ * The examples provided are a progressive transformation from the default layout to a slightly more refined layout.
+ *
+ * The styling of the `WebCalendar` component can be handled with CSS styling rules (see the `webcalendar.css` file).
+ *
+ * The `WebCalendar` component will only produce an actual calendar by "listening" to an instance of the `ApiClient` class,
+ * and will update the calendar when the `calendarFetched` event is triggered.
+ *
+ * The `calendarFetched` event can be emitted by an instance of the `ApiClient` class
+ * in response to interactions with instances of the `CalendarSelect` and `ApiOptions` classes,
+ * but a request can also be triggered via the `fetchCalendar` (or `fetchNationalCalendar`, `fetchDiocesanCalendar`) method(s) of the `ApiClient` instance.
+ *
+ * In this simple example without instances of the `CalendarSelect` and `ApiOptions` classes,
+ * we are using the `fetchCalendar` method of the `ApiClient` instance to fetch the calendar data.
+ */
 const meta = {
     title: 'Components/WebCalendar',
     tags: [ 'autodocs' ],

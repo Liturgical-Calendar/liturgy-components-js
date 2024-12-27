@@ -1,6 +1,11 @@
 import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
 
-// Meta configuration
+/**
+ * LiturgyOfTheDay component
+ *
+ * This is an example of using the `LiturgyOfTheDay` component set to listen to the ApiClient instance,
+ * and requesting the National Calendar for Italy from the ApiClient instance.
+ */
 const meta = {
   title: 'Components/LiturgyOfTheDay/National Calendar/Italy',
   tags: ['autodocs'],

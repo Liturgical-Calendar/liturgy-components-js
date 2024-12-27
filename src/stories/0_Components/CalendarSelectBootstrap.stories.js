@@ -3,7 +3,12 @@ import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// Meta configuration
+/**
+ * CalendarSelect component
+ *
+ * Here is an example of using the `CalendarSelect` component in a bootstrap project.
+ * We set all the necessary classes for bootstrap styled form controls.
+ */
 const meta = {
   title: 'Components/CalendarSelect/Boostrap',
   tags: ['autodocs'],
@@ -120,34 +125,38 @@ export const Default = {
 export const EnglishWithAfter = {
   args: {
     locale: 'en-US',
-    after: '<small class="text-muted"><i>Liturgical calendars loaded from the Liturgical Calendar API</i></small>'
+    after: '<small class="text-muted"><i>Liturgical calendars available on the Liturgical Calendar API</i></small>'
   }
 }
 
 export const ItalianBootstrap = {
   args: {
     locale: 'it-IT',
-    labelText: 'Seleziona calendario'
+    labelText: 'Seleziona calendario',
+    after: '<small class="text-muted"><i>Calendari liturgici disponibili nell\'API del Calendar Liturgico</i></small>'
   }
 }
 
 export const FrenchBootstrap = {
   args: {
     locale: 'fr-FR',
-    labelText: 'Eligir calendrier'
+    labelText: 'Eligir calendrier',
+    after: '<small class="text-muted"><i>Calendriers liturgiques disponibles sur l\'API du Calendrier Liturgique</i></small>'
   }
 }
 
 export const SpanishBootstrap = {
   args: {
     locale: 'es-ES',
-    labelText: 'Seleccione calendario'
+    labelText: 'Seleccione calendario',
+    after: '<small class="text-muted"><i>Calendarios liturgicos disponibles en la API del Calendario Liturgico</i></small>'
   }
 }
 
 export const GermanBootstrap = {
   args: {
     locale: 'de-DE',
-    labelText: 'Kalender auswählen'
+    labelText: 'Kalender auswählen',
+    after: '<small class="text-muted"><i>Verfügbare liturgische Kalender in der Liturgischen Kalender-API</i></small>'
   }
 }
