@@ -1,4 +1,4 @@
-import { ApiOptions, ApiClient, ApiOptionsFilter } from 'liturgy-components-js';
+import { ApiOptions, ApiClient, ApiOptionsFilter, Input } from 'liturgy-components-js';
 import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 
@@ -66,6 +66,11 @@ const meta = {
         if ( false === apiClient || false === apiClient instanceof ApiClient ) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
+            Input.setGlobalInputClass('unstyled');
+            Input.setGlobalLabelClass('unstyled');
+            Input.setGlobalWrapper('div');
+            Input.setGlobalWrapperClass('unstyled');
+
             //apiClient.listenTo(apiOptions);
             const apiOptions = new ApiOptions( args.locale );
             if ( args.filter ) {
