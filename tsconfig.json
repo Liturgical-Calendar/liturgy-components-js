@@ -9,7 +9,8 @@
       "rootDir": "./src", // Root directory for source files
       "declaration": true, // Generate declaration files
       "allowJs": true, // Allow JavaScript files
-      "declarationMap": true // "Go to Definition" in VSCode
+      "declarationMap": true, // "Go to Definition" in VSCode
+      "moduleResolution": "node"
     },
     "include": [
       "./src/**/*"
