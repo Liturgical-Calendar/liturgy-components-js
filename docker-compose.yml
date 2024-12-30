@@ -4,18 +4,19 @@ services:
     build: https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI.git#development
     restart: unless-stopped
     ports:
-      - 8000:8000
+      - 8000:8000 # You may change the port that the API is exposed on, i.e. 8092:8000
   storybook:
     image: liturgy-components-js:latest
     build: https://github.com/Liturgical-Calendar/liturgy-components-js.git#main
     ports:
       - 6006:6006
-    volumes:
-      - ./dist:/app/dist
-      - ./src:/app/src
-      - ./.storybook:/app/.storybook
+    ## If you would like to coninue local development of the storybook, uncomment the following lines ##
+    #volumes:
+    #  - ./dist:/app/dist
+    #  - ./src:/app/src
+    #  - ./.storybook:/app/.storybook
     environment:
-      STORYBOOK_API_PORT: 8000
+      STORYBOOK_API_PORT: 8000 # You may change the port that the API is exposed on, i.e. 8092
     restart: unless-stopped
     depends_on:
       - liturgy-api
