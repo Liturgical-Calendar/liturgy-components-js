@@ -1,13 +1,13 @@
 services:
   liturgy-api:
     image: liturgy-api:latest
-    #build: https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI.git#development
+    build: https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI.git#development
     restart: unless-stopped
     ports:
       - 8000:8000
   storybook:
     image: liturgy-components-js:latest
-    #build: https://github.com/Liturgical-Calendar/liturgy-components-js.git#main
+    build: https://github.com/Liturgical-Calendar/liturgy-components-js.git#main
     ports:
       - 6006:6006
     volumes:
