@@ -2,10 +2,10 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy package manager files to install dependencies
+# Copy package manager files to install dependencies (.dockerignore not working when building from docker compose and remote repo)
 COPY ./src ./src
 COPY ./.storybook ./.storybook
-COPY  ./package.json ./yarn.lock ./tsconfig.json ./
+COPY  package.json yarn.lock tsconfig.json ./
 
 # Install corepack and yarn, install dependencies
 RUN corepack enable && yarn set version stable && yarn install
