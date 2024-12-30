@@ -9,7 +9,7 @@
     "test": "jest",
     "compile": "tsc",
     "compile:watch": "tsc --watch",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev",
     "storybook:ci": "storybook dev -p 6006 --ci",
     "docker": "yarn compile:watch & yarn storybook:ci",
     "build-storybook": "storybook build"

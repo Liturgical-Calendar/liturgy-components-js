@@ -79,6 +79,16 @@ import { CalendarSelect } from 'liturgy-components-js';
 
 By far the easiest way to use ES Modules in the browser is by importing from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
 
+## Storybook
+
+To showcase usage of the components, a storybook is included. Before launching storybook, an instance of the Liturgical Calendar API must be running locally at http://localhost:8000. You can then launch the storybook by running `yarn storybook` (after having installed dependencies with `yarn install`), this will launch the storybook at a random free port  at http://localhost:{PORT}. If you would like to launch storybook on a specific port, you can pass in a port number as a parameter to the `yarn storybook` command, e.g.: `yarn storybook --port 6006`.
+
+If you have a running instance of the Liturgical Calendar API on a port other than 8000, you can set the environment variable `STORYBOOK_API_PORT` to the port of your local API instance, e.g.: `STORYBOOK_API_PORT=8092 yarn storybook`. An `.env.example` file is included to assist with this, just copy to `.env` and set the value of `STORYBOOK_API_PORT` to the port of your local API instance, and the environment variable will be automatically picked up by storybook from the `.env` file.
+
+To simplify getting a running instance of the Liturgical Calendar API on your local machine, you can use a docker container. This way you don't have to worry about setting up PHP with the required packages, composer installing the API, and launching the API with the required environment variables. Just simply build the docker image from the provided [Dockerfile](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI/blob/development/Dockerfile) in the Liturgical Calendar API repository. To simplify this even further, you can use the provided [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml) file to launch both the Liturgical Calendar API and the Liturgical Calendar Components storybook in one command: `docker compose up -d`.
+
+If you would like to customize the port that the API will be running on, or the port that storybook will be running on, you would again use a `.env` file in the same folder as the `docker-compose.yml` file, and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d` (note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable, see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml)). Note that both images built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
+
 ## Components
 
 The Liturgical Calendar Components library `index.js` exports the following components and enums:
