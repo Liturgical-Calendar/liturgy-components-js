@@ -134,15 +134,26 @@ export default class LiturgyOfTheDay {
     /**
      * Constructs a LiturgyOfTheDay object.
      *
-     * @param {string} [locale='en'] - The locale to use for formatting the date and the titles.
+     * @param {string|Object|null} [options=null] - The locale to use for formatting the date and the titles.
      *                                  The locale should be a valid string that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *                                  The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
      *
      * @throws {Error} If the locale is invalid.
      */
-    constructor(locale = 'en') {
-        this.#validateLocale(locale);
+    constructor(options = null) {
+        if (typeof options === 'string') {
+            this.#validateLocale(options);
+        }
+        else if (typeof options === 'object') {
+            if (options.hasOwnProperty('locale')) {
+                this.#validateLocale(options.locale);
+            } else {
+                this.#validateLocale('en');
+            }
+        } else {
+            throw new Error('LiturgyOfTheDay: Invalid options passed to constructor, must be of type string or object but found type: ' + typeof options);
+        }
         const now = new Date();
         this.#date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
         this.#domElement = document.createElement('div');
@@ -157,6 +168,36 @@ export default class LiturgyOfTheDay {
 
         this.#eventsElementsWrapper = document.createElement('div');
         this.#domElement.appendChild(this.#eventsElementsWrapper);
+
+        if (typeof options === 'object') {
+            if (options.hasOwnProperty('id')) {
+                this.id(options.id);
+            }
+            if (options.hasOwnProperty('class')) {
+                this.class(options.class);
+            }
+            if (options.hasOwnProperty('titleClass')) {
+                this.titleClass(options.titleClass);
+            }
+            if (options.hasOwnProperty('dateClass')) {
+                this.dateClass(options.dateClass);
+            }
+            if (options.hasOwnProperty('eventClass')) {
+                this.eventClass(options.eventClass);
+            }
+            if (options.hasOwnProperty('eventGradeClass')) {
+                this.eventGradeClass(options.eventGradeClass);
+            }
+            if (options.hasOwnProperty('eventCommonClass')) {
+                this.eventCommonClass(options.eventCommonClass);
+            }
+            if (options.hasOwnProperty('eventYearCycleClass')) {
+                this.eventYearCycleClass(options.eventYearCycleClass);
+            }
+            if (options.hasOwnProperty('eventsWrapperClass')) {
+                this.eventsWrapperClass(options.eventWrapperClass);
+            }
+        }
     }
 
     /**

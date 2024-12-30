@@ -1,4 +1,5 @@
 import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
+import '../liturgyoftheday.css';
 
 /**
  * LiturgyOfTheDay component
@@ -57,39 +58,11 @@ const meta = {
   },
   render: (args, { loaded: { apiClient } }) => {
     const container = document.createElement('div');
-    const liturgyOfTheDay = new LiturgyOfTheDay(args.locale);
+    const liturgyOfTheDay = new LiturgyOfTheDay(args);
     const now = new Date();
     const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
     let refetched = false;
-
-    if (args.id) {
-      liturgyOfTheDay.id(args.id);
-    }
-    if (args.class) {
-      liturgyOfTheDay.class(args.class);
-    }
-    if (args.titleClass) {
-      liturgyOfTheDay.titleClass(args.titleClass);
-    }
-    if (args.dateClass) {
-      liturgyOfTheDay.dateClass(args.dateClass);
-    }
-    if (args.eventWrapperClass) {
-      liturgyOfTheDay.eventWrapperClass(args.eventWrapperClass);
-    }
-    if (args.eventClass) {
-      liturgyOfTheDay.eventClass(args.eventClass);
-    }
-    if (args.eventGradeClass) {
-      liturgyOfTheDay.eventGradeClass(args.eventGradeClass);
-    }
-    if (args.eventCommonClass) {
-      liturgyOfTheDay.eventCommonClass(args.eventCommonClass);
-    }
-    if (args.eventYearCycleClass) {
-      liturgyOfTheDay.eventYearCycleClass(args.eventYearCycleClass);
-    }
 
     // Initialize API client
     if (false === apiClient || false === apiClient instanceof ApiClient) {
@@ -132,44 +105,30 @@ const meta = {
         liturgyOfTheDay.appendTo(container);
     }
     return container;
+  },
+  args: {
+    class: 'liturgy-of-the-day',
+    titleClass: "liturgy-of-the-day-title",
+    dateClass: "liturgy-of-the-day-date",
+    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
+    eventClass: "liturgy-of-the-day-event",
+    eventGradeClass: "liturgy-of-the-day-event-grade",
+    eventCommonClass: "liturgy-of-the-day-event-common",
+    eventYearCycleClass: "liturgy-of-the-day-year-cycle"
   }
 }
 
 export default meta;
 
-export const Default = {
-  args: {
-    class: 'liturgy-of-the-day'
-  }
-};
-
 // Story definition using CSF3 format
 export const English = {
   args: {
-    locale: 'en-US',
-    id: "LiturgyOfTheDay",
-    class: "liturgy-of-the-day",
-    titleClass: "liturgy-of-the-day-title",
-    dateClass: "liturgy-of-the-day-date",
-    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
-    eventClass: "liturgy-of-the-day-event",
-    eventGradeClass: "liturgy-of-the-day-event-grade",
-    eventCommonClass: "liturgy-of-the-day-event-common",
-    eventYearCycleClass: "liturgy-of-the-day-year-cycle",
+    locale: 'en-US'
   }
 };
 
 export const French = {
   args: {
-    locale: 'fr-FR',
-    id: "LiturgyOfTheDay",
-    class: "liturgy-of-the-day",
-    titleClass: "liturgy-of-the-day-title",
-    dateClass: "liturgy-of-the-day-date",
-    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
-    eventClass: "liturgy-of-the-day-event",
-    eventGradeClass: "liturgy-of-the-day-event-grade",
-    eventCommonClass: "liturgy-of-the-day-event-common",
-    eventYearCycleClass: "liturgy-of-the-day-year-cycle",
+    locale: 'fr-FR'
   }
 }

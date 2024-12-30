@@ -12,7 +12,7 @@ const preview: Preview = {
   },
   loaders: [
     async () => ({
-      apiClient: await ApiClient.init('http://localhost:8000')
+      apiClient: await ApiClient.init('http://localhost:' + (process.env.STORYBOOK_API_PORT || 8000))
     })
   ]
 };

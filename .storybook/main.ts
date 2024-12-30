@@ -15,11 +15,11 @@ const config: StorybookConfig = {
     getAbsolutePath("@storybook/addon-webpack5-compiler-swc"),
     getAbsolutePath("@storybook/addon-essentials"),
     getAbsolutePath("@chromatic-com/storybook"),
-    getAbsolutePath("@storybook/addon-interactions"),
+    getAbsolutePath("@storybook/addon-interactions")
   ],
   framework: {
     name: getAbsolutePath("@storybook/html-webpack5"),
-    options: {},
-  },
+    options: {}
+  }
 };
 export default config;

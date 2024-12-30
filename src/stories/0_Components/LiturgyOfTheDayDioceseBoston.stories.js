@@ -1,4 +1,5 @@
 import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
+import '../liturgyoftheday.css';
 
 /**
  * LiturgyOfTheDay component
