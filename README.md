@@ -1,4 +1,4 @@
-# liturgy-components-js
+# @liturgical-calendar/components-js
 This component library for the Liturgical Calendar API is a collection of reusable frontend components, that work with the Liturgical Calendar API (currently hosted at https://litcal.johnromanodorazio.com/api/dev/).
 
 You can also use a local instance of the API by passing in the url for your local API instance to the `ApiClient` class static `init()` method.
@@ -7,38 +7,36 @@ The components library is written as an ES6 module, so it can be imported using 
 
 ## Installation
 
-The `liturgy-components-js` component library can be used directly from a CDN (recommended), or you can install it locally in your project folder.
+The `@liturgical-calendar/components-js` component library can be used directly from a CDN (recommended), or you can install it locally in your project folder.
 
-To install the `liturgy-components-js` component library locally, run one of the following commands in your project folder, according to your package manager:
+To install the `@liturgical-calendar/components-js` component library locally, run one of the following commands in your project folder, according to your package manager:
 
 ```console
-yarn add liturgy-components-js
+yarn add @liturgical-calendar/components-js
 ```
 
 or
 
 ```console
-npm install liturgy-components-js
+npm install @liturgical-calendar/components-js
 ```
 
 or
 
 ```console
-pnpm add liturgy-components-js
+pnpm add @liturgical-calendar/components-js
 ```
 
 ## Usage
 
-In order to use ES6 import statements without a build step in your project, your project's script file must be set to `type="module"` in the script tag in the HTML file that is including your script.
+> [!TIP]
+> In order to use ES6 import statements without a build step in your project, your project's script tag must have the attribute `type="module"`:
+> ```html
+> <!-- myPage.html -->
+> <script type="module" src="myScript.js"></script>
+> ```
 
-Example:
-
-```html
-<!-- myPage.html -->
-<script type="module" src="myScript.js"></script>
-```
-
-If you are using __npm__ or __yarn v1__ or __pnpm__, the component library will be installed into the `node_modules` folder. Or if you are using __yarn v2__ or greater, and you have set either `nodeLinker:node_modules` or `nodeLinker:pnpm` in your project's `.yarnrc.yml`, the component library will be installed into the `node_modules` folder. The path is predictable, it will be simply `./node_modules/liturgy-components-js/dist/index.js`.
+If you are using __npm__ or __yarn v1__ or __pnpm__, the component library will be installed into the `node_modules` folder. Or if you are using __yarn v2__ or greater, and you have set either `nodeLinker:node_modules` or `nodeLinker:pnpm` in your project's `.yarnrc.yml`, the component library will be installed into the `node_modules` folder. The path is predictable, it will be simply `./node_modules/@liturgical-calendar/components-js/dist/index.js`.
 
 If instead you are using __yarn v2__ or greater with the default `pnp` node linker, the component library will be installed into the `.yarn/unplugged` folder. There is no direct way for the browser to detect the path to the installed component library within the `.yarn/unplugged` folder.
 
@@ -48,7 +46,7 @@ In either case, it can be helpful to define an `importmap` to assist the browser
 // importmap.json (when component is installed to node_modules)
 {
     "imports": {
-        "liturgy-components-js": "./node_modules/liturgy-components-js/dist/index.js"
+        "@liturgical-calendar/components-js": "./node_modules/@liturgical-calendar/components-js/dist/index.js"
     }
 }
 
@@ -57,7 +55,7 @@ In either case, it can be helpful to define an `importmap` to assist the browser
 // within the `.yarn/unplugged` folder, it should look something like this:
 {
     "imports": {
-        "liturgy-components-js": "./.yarn/unplugged/liturgy-components-js-file-764297067f/node_modules/liturgy-components-js/dist/index.js"
+        "@liturgical-calendar/components-js": "./.yarn/unplugged/@liturgical-calendar/components-js-file-764297067f/node_modules/@liturgical-calendar/components-js/dist/index.js"
     }
 }
 // You will have to update the path in the importmap every time you update the component library
@@ -74,7 +72,7 @@ Then you can load the `importmap` before loading your `module` type script:
 With the `importmap` in place, you can now import the component library using ES6 import statements in your script file, without having to transpile or use any build tools, and without having to use folder paths in your import statements:
 ```javascript
 //myScript.js
-import { CalendarSelect } from 'liturgy-components-js';
+import { CalendarSelect } from '@liturgical-calendar/components-js';
 ```
 
 By far the easiest way to use ES Modules in the browser is by importing from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
@@ -127,7 +125,7 @@ The `ApiClient.init()` method returns a promise that resolves when the metadata 
 Example:
 
 ```javascript
-import { ApiClient } from 'liturgy-components-js';
+import { ApiClient } from '@liturgical-calendar/components-js';
 
 // Initialize the ApiClient with a local API URL
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -149,7 +147,7 @@ Instances of the `ApiClient` can be configured to listen to changes in instances
 Example:
 
 ```javascript
-import { ApiClient } from 'liturgy-components-js';
+import { ApiClient } from '@liturgical-calendar/components-js';
 
 // Initialize the ApiClient with a local API URL
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -173,7 +171,7 @@ It is also possible to directly fetch calendar data from the API without listeni
 Example:
 
 ```javascript
-import { ApiClient } from 'liturgy-components-js';
+import { ApiClient } from '@liturgical-calendar/components-js';
 
 // Initialize the ApiClient with a local API URL, and fetch the the Liturgical Calendar for Italy for the current liturgical year
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -219,7 +217,7 @@ It is also possible to filter the options in the select element to only include 
 
 Example:
 ```javascript
-import { CalendarSelect, CalendarSelectFilter } from 'liturgy-components-js';
+import { CalendarSelect, CalendarSelectFilter } from '@liturgical-calendar/components-js';
 const calendarSelect = new CalendarSelect( 'en-US' );
 calendarSelect.filter(CalendarSelectFilter.DIOCESAN_CALENDARS).appendTo( '#calendarOptions');
 ```
@@ -314,7 +312,7 @@ All of the form controls produced by the `ApiOptions` class inherit from a commo
 * `Input.setGlobalWrapper(element)`: the tag name of the wrapper element that will wrap each form control element, currently only values of __'div'__ and __'td'__ are supported
 * `Input.setGlobalWrapperClass(className)`: a space separated string of class names to be assigned globally to each wrapper element
 
-For this very reason, the `Input` class is also exported by the `liturgy-components-js` package's main `dist/index.js`. The `Input` class is not meant to be instantiated, but rather used statically to simplify the global configuration of the form controls produced by the `ApiOptions` class.
+For this very reason, the `Input` class is also exported by the `@liturgical-calendar/components-js` package's main `dist/index.js`. The `Input` class is not meant to be instantiated, but rather used statically to simplify the global configuration of the form controls produced by the `ApiOptions` class.
 
 Other than the global configurations, each individual form control can be configured using the following chainable configuration methods on the single form control instances:
 * `class( className )`: sets the class or classes to apply to the form control element
@@ -332,7 +330,7 @@ Let's say we are using `bootstrap` to theme our UI interface, and we want to sty
 
 Example:
 ```javascript
-import { ApiOptions, Input } from "liturgy-components-js";
+import { ApiOptions, Input } from "@liturgical-calendar/components-js";
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
     if (apiClient instanceof ApiClient) {
@@ -377,7 +375,7 @@ The WebCalendar class is a JavaScript class that generates a Liturgical Calendar
 The WebCalendar class instances provide a number of chainable methods to configure the Liturgical Calendar, such as:
 * `id( id )`: sets the id to apply to the table element (without an initial '#')
 * `class( className )`: sets the class or classes to apply to the table element
-* `firstColumnGrouping( grouping )`: sets the grouping for the first column of the table, can be either `Grouping.BY_MONTH` or `Grouping.BY_LITURGICAL_SEASON` (the `Grouping` enum can be imported from the `liturgy-components-js` package)
+* `firstColumnGrouping( grouping )`: sets the grouping for the first column of the table, can be either `Grouping.BY_MONTH` or `Grouping.BY_LITURGICAL_SEASON` (the `Grouping` enum can be imported from the `@liturgical-calendar/components-js` package)
 * `psalterWeekColumn( boolVal=true )`: whether to show the psalter week column as the right hand most column of the table (psalter week values are grouped by default when enabled)
 * `removeHeaderRow( boolVal=true )`: if we want to hide the header row
 * `removeCaption( boolVal=true )`: if we want to hide the table caption
@@ -426,7 +424,7 @@ The class instance also provides these two non chainable methods:
 
 Example:
 ```javascript
-import { ApiClient, LiturgyOfTheDay } from 'liturgy-components-js';
+import { ApiClient, LiturgyOfTheDay } from '@liturgical-calendar/components-js';
 
 const now = new Date();
 const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
