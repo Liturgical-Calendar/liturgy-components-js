@@ -924,6 +924,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@liturgical-calendar/components-js@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@liturgical-calendar/components-js@workspace:."
+  dependencies:
+    "@chromatic-com/storybook": "npm:^3.2.3"
+    "@storybook/addon-actions": "npm:^8.5.0-beta.6"
+    "@storybook/addon-essentials": "npm:^8.5.0-beta.6"
+    "@storybook/addon-interactions": "npm:^8.5.0-beta.6"
+    "@storybook/addon-webpack5-compiler-swc": "npm:^1.0.5"
+    "@storybook/blocks": "npm:^8.5.0-beta.6"
+    "@storybook/html": "npm:^8.5.0-beta.6"
+    "@storybook/html-webpack5": "npm:^8.5.0-beta.6"
+    "@storybook/test": "npm:^8.5.0-beta.6"
+    "@types/bootstrap": "npm:^5"
+    "@yarnpkg/pnpify": "npm:^4.1.2"
+    bootstrap: "npm:^5.3.3"
+    jest: "npm:^29.7.0"
+    storybook: "npm:^8.5.0-beta.6"
+    typescript: "npm:^5.7.2"
+  languageName: unknown
+  linkType: soft
+
 "@mdx-js/react@npm:^3.0.0":
   version: 3.1.0
   resolution: "@mdx-js/react@npm:3.1.0"
@@ -4959,28 +4981,6 @@ __metadata:
   checksum: 10c0/3da6ee62d4cd9f03f5dc90b4df2540fb85b352081bee77fe4bbcd12c9000ead7f35e0a38b8d09a9bb99b13223446dd8689ff3c4959807620726d788701a83d2d
   languageName: node
   linkType: hard
-
-"liturgy-components-js@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "liturgy-components-js@workspace:."
-  dependencies:
-    "@chromatic-com/storybook": "npm:^3.2.3"
-    "@storybook/addon-actions": "npm:^8.5.0-beta.6"
-    "@storybook/addon-essentials": "npm:^8.5.0-beta.6"
-    "@storybook/addon-interactions": "npm:^8.5.0-beta.6"
-    "@storybook/addon-webpack5-compiler-swc": "npm:^1.0.5"
-    "@storybook/blocks": "npm:^8.5.0-beta.6"
-    "@storybook/html": "npm:^8.5.0-beta.6"
-    "@storybook/html-webpack5": "npm:^8.5.0-beta.6"
-    "@storybook/test": "npm:^8.5.0-beta.6"
-    "@types/bootstrap": "npm:^5"
-    "@yarnpkg/pnpify": "npm:^4.1.2"
-    bootstrap: "npm:^5.3.3"
-    jest: "npm:^29.7.0"
-    storybook: "npm:^8.5.0-beta.6"
-    typescript: "npm:^5.7.2"
-  languageName: unknown
-  linkType: soft
 
 "loader-runner@npm:^4.2.0":
   version: 4.3.0

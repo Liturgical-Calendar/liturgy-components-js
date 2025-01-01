@@ -1,9 +1,9 @@
 {
   "type": "module",
   "packageManager": "yarn@4.5.0",
-  "name": "liturgy-components-js",
+  "name": "@liturgical-calendar/components-js",
   "version": "1.0.0",
-  "description": "Liturgical calendar components for javascript: create an html select populated with liturgical calendars supported by the Liturgical Calendar API; create a form with parameters that are supported by the Liturgical Calendar API; create a webcalendar",
+  "description": "Liturgical calendar components for javascript: an html select populated with liturgical calendars supported by the Liturgical Calendar API; form controls for parameters that are supported by the Liturgical Calendar API; a webcalendar; and liturgy of the day",
   "main": "dist/index.js",
   "scripts": {
     "test": "jest",

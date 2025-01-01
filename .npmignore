@@ -2,6 +2,15 @@
 .yarn/*
 .gitignore
 .npmignore
+.vscode
+node_modules
 tsconfig.json
 tsconfig.tsbuildinfo
 yarn.lock
+.storybook
+src/stories
+.env
+.env.example
+docker-compose.yml
+Dockerfile
+Dockerfile.dockerignore
