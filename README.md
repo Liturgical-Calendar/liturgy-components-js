@@ -38,7 +38,7 @@ pnpm add @liturgical-calendar/components-js
 
 If you are using __npm__ or __yarn v1__ or __pnpm__, the component library will be installed into the `node_modules` folder. Or if you are using __yarn v2__ or greater, and you have set either `nodeLinker:node_modules` or `nodeLinker:pnpm` in your project's `.yarnrc.yml`, the component library will be installed into the `node_modules` folder. The path is predictable, it will be simply `./node_modules/@liturgical-calendar/components-js/dist/index.js`.
 
-If instead you are using __yarn v2__ or greater with the default `pnp` node linker, you will first have to "unpack" the component library to the `.yarn/unplugged` folder:
+If instead you are using __yarn v2__ or greater with the (default) `pnp` node linker, you will first have to "unpack" the component library to the `.yarn/unplugged` folder:
 ```console
 yarn unplug @liturgical-calendar/components-js
 ```
@@ -60,7 +60,7 @@ In either case, it can be helpful to define an `importmap` to assist the browser
 // within the `.yarn/unplugged` folder, it should look something like this:
 {
     "imports": {
-        "@liturgical-calendar/components-js": "./.yarn/unplugged/@liturgical-calendar/components-js-file-764297067f/node_modules/@liturgical-calendar/components-js/dist/index.js"
+        "@liturgical-calendar/components-js": "./.yarn/unplugged/@liturgical-calendar-components-js-npm-1.0.1-b15268015c/node_modules/@liturgical-calendar/components-js/dist/index.js"
     }
 }
 // You will have to update the path in the importmap every time you update the component library
