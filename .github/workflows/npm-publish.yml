@@ -23,6 +23,7 @@ jobs:
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --immutable && yarn compile
-      - run: npm publish --provenance --access public
+      - name: Publish package
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
