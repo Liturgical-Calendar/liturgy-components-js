@@ -7,11 +7,11 @@ The components library is written as an ES6 module, so it can be imported using 
 
 ## Installation
 
-The `@liturgical-calendar/components-js` component library doesn't need to be installed, it can be used directly from a CDN that supports ES6 modules.
+The `@liturgical-calendar/components-js` component library doesn't need to be installed via npm, yarn, or pnpm. Instead, it can be used directly from a CDN that supports ES6 modules.
 
 Example:
 ```javascript
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://esm.run/@liturgical-calendar/components-js'
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm'
 ```
 
 ## Usage

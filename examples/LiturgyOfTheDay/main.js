@@ -1,4 +1,4 @@
-import { ApiClient, LiturgyOfTheDay, YearType} from 'https://esm.run/@liturgical-calendar/components-js';
+import { ApiClient, LiturgyOfTheDay, YearType} from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 const now = new Date();
 const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
