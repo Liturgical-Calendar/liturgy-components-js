@@ -36,4 +36,13 @@ export default class EventEmitter {
             this.#events[event].forEach((listener) => listener(data));
         }
     }
+
+    /**
+     * @type {Object<string, Array<function>>}
+     * @returns {Object<string, Array<function>>} a shallow copy of the object containing all registered events and their respective listeners
+     * @readonly
+     */
+    get _events() {
+        return this.#events;
+    }
 }
