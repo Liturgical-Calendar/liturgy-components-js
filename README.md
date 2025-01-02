@@ -7,24 +7,11 @@ The components library is written as an ES6 module, so it can be imported using 
 
 ## Installation
 
-The `@liturgical-calendar/components-js` component library can be used directly from a CDN (recommended), or you can install it locally in your project folder.
+The `@liturgical-calendar/components-js` component library doesn't need to be installed, it can be used directly from a CDN that supports ES6 modules.
 
-To install the `@liturgical-calendar/components-js` component library locally, run one of the following commands in your project folder, according to your package manager:
-
-```console
-yarn add @liturgical-calendar/components-js
-```
-
-or
-
-```console
-npm install @liturgical-calendar/components-js
-```
-
-or
-
-```console
-pnpm add @liturgical-calendar/components-js
+Example:
+```javascript
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://esm.run/@liturgical-calendar/components-js'
 ```
 
 ## Usage
@@ -36,51 +23,7 @@ pnpm add @liturgical-calendar/components-js
 > <script type="module" src="myScript.js"></script>
 > ```
 
-If you are using __npm__ or __yarn v1__ or __pnpm__, the component library will be installed into the `node_modules` folder. Or if you are using __yarn v2__ or greater, and you have set either `nodeLinker:node_modules` or `nodeLinker:pnpm` in your project's `.yarnrc.yml`, the component library will be installed into the `node_modules` folder. The path is predictable, it will be simply `./node_modules/@liturgical-calendar/components-js/dist/index.js`.
-
-If instead you are using __yarn v2__ or greater with the (default) `pnp` node linker, you will first have to "unpack" the component library to the `.yarn/unplugged` folder:
-```console
-yarn unplug @liturgical-calendar/components-js
-```
-
-There is no direct way for the browser to detect the path to the installed component library within the `.yarn/unplugged` folder.
-
-In either case, it can be helpful to define an `importmap` to assist the browser in finding the component library:
-
-```json
-// importmap.json (when component is installed to node_modules)
-{
-    "imports": {
-        "@liturgical-calendar/components-js": "./node_modules/@liturgical-calendar/components-js/dist/index.js"
-    }
-}
-
-// importmap.json (when component is installed to .yarn/unplugged)
-// In this case, you have to manually check the path to the component library
-// within the `.yarn/unplugged` folder, it should look something like this:
-{
-    "imports": {
-        "@liturgical-calendar/components-js": "./.yarn/unplugged/@liturgical-calendar-components-js-npm-1.0.1-b15268015c/node_modules/@liturgical-calendar/components-js/dist/index.js"
-    }
-}
-// You will have to update the path in the importmap every time you update the component library
-```
-
-Then you can load the `importmap` before loading your `module` type script:
-
-```html
-<!-- myPage.html -->
-<script type="importmap" src="importmap.json"></script>
-<script type="module" src="myScript.js"></script>
-```
-
-With the `importmap` in place, you can now import the component library using ES6 import statements in your script file, without having to transpile or use any build tools, and without having to use folder paths in your import statements:
-```javascript
-//myScript.js
-import { CalendarSelect } from '@liturgical-calendar/components-js';
-```
-
-By far the easiest way to use ES Modules in the browser is by importing from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
+The easiest way to use ES Modules in the browser is by importing directly from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
 
 ## Storybook
 
@@ -90,7 +33,7 @@ If you have a running instance of the Liturgical Calendar API on a port other th
 
 To simplify getting a running instance of the Liturgical Calendar API on your local machine, you can use a docker container. This way you don't have to worry about setting up PHP with the required packages, composer installing the API, and launching the API with the required environment variables. Just simply build the docker image from the provided [Dockerfile](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI/blob/development/Dockerfile) in the Liturgical Calendar API repository. To simplify this even further, you can use the provided [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml) file to launch both the Liturgical Calendar API and the Liturgical Calendar Components storybook in one command: `docker compose up -d`.
 
-If you would like to customize the port that the API will be running on, or the port that storybook will be running on, you would again use a `.env` file in the same folder as the `docker-compose.yml` file, and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d` (note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable, see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml)). Note that both images built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
+If you would like to customize the port that the API will be running on, or the port that storybook will be running on, you would again use a `.env` file in the same folder as the `docker-compose.yml` file, and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d`. Note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable, see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml). Note that the images that are built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
 
 ## Components
 
