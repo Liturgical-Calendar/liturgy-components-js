@@ -22,7 +22,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
       - name: Install dependencies
-        run: yarn install && yarn compile
+        run: yarn install --immutable && yarn compile
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
