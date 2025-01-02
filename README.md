@@ -5,16 +5,15 @@ You can also use a local instance of the API by passing in the url for your loca
 
 The components library is written as an ES6 module, so it can be imported using ES6 import statements.
 
-## Installation
+## Installation and usage
 
 The `@liturgical-calendar/components-js` component library doesn't need to be installed via npm, yarn, or pnpm. Instead, it can be used directly from a CDN that supports ES6 modules.
 
 Example:
 ```javascript
+//myScript.js
 import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm'
 ```
-
-## Usage
 
 > [!TIP]
 > In order to use ES6 import statements without a build step in your project, your project's script tag must have the attribute `type="module"`:
@@ -24,6 +23,9 @@ import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, Co
 > ```
 
 The easiest way to use ES Modules in the browser is by importing directly from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
+
+> [!NOTE]
+> The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so. If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.0.6/+esm`.
 
 ## Storybook
 
@@ -73,7 +75,7 @@ The `ApiClient.init()` method returns a promise that resolves when the metadata 
 Example:
 
 ```javascript
-import { ApiClient } from '@liturgical-calendar/components-js';
+import { ApiClient } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 // Initialize the ApiClient with a local API URL
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -95,7 +97,7 @@ Instances of the `ApiClient` can be configured to listen to changes in instances
 Example:
 
 ```javascript
-import { ApiClient } from '@liturgical-calendar/components-js';
+import { ApiClient } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 // Initialize the ApiClient with a local API URL
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -119,7 +121,7 @@ It is also possible to directly fetch calendar data from the API without listeni
 Example:
 
 ```javascript
-import { ApiClient } from '@liturgical-calendar/components-js';
+import { ApiClient } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 // Initialize the ApiClient with a local API URL, and fetch the the Liturgical Calendar for Italy for the current liturgical year
 ApiClient.init('http://localhost:8000').then((apiClient) => {
@@ -147,7 +149,7 @@ The `ApiClient` class exposes the following static readonly class properties:
 * `_metadata`: the metadata about available liturgical calendars that has been fetched from the API
 
 And `ApiClient` instances expose the following readonly instance properties:
-* `_eventBus`: an instance of the `EventEmitter` class, so as to inspect the events emitted by the `ApiClient` instance
+* `_eventBus`: an instance of the internal `EventEmitter` class which handles registering listeners and emitting events. The `EventEmitter` class in turn exposes a readonly instance property `_events` which can be used to inspect registered events (such as the `calendarFetched` event, which can be inspected from `_eventBus._events.calendarFetched`)
 * `_calendarData`: the JSON data representing the latest fetched calendar data from the API
 
 ### CalendarSelect
@@ -179,7 +181,7 @@ It is also possible to filter the options in the select element to only include 
 
 Example:
 ```javascript
-import { CalendarSelect, CalendarSelectFilter } from '@liturgical-calendar/components-js';
+import { CalendarSelect, CalendarSelectFilter } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 const calendarSelect = new CalendarSelect( 'en-US' );
 calendarSelect.filter(CalendarSelectFilter.DIOCESAN_CALENDARS).appendTo( '#calendarOptions');
 ```
@@ -386,7 +388,7 @@ The class instance also provides these two non chainable methods:
 
 Example:
 ```javascript
-import { ApiClient, LiturgyOfTheDay } from '@liturgical-calendar/components-js';
+import { ApiClient, LiturgyOfTheDay } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 const now = new Date();
 const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
