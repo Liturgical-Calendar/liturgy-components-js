@@ -13,10 +13,9 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
 
 /**
- * Class to generate an options form for the Liturgical Calendar API.
+ * Class to generate form controls for request options to the Liturgical Calendar API.
  *
- * The class contains methods to generate the form, form label, form wrapper, and form submit elements.
- * The form elements can be fully customized using the methods provided by the class.
+ * The form controls can be fully customized using the methods provided by the class.
  *
  * __ constructor()__ Initializes the ApiOptions object with default or provided settings:
  *                                             - __locale__: The locale to use for the API options form.

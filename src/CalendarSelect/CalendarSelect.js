@@ -550,8 +550,8 @@ export default class CalendarSelect {
             const labelOptionsType = Array.isArray(labelOptions) ? 'array' : typeof labelOptions;
             throw new Error('Invalid type for label options, must be of type object (not null or array) but found type: ' + labelOptionsType);
         }
-        else if ( Object.keys( labelOptions ).length === 0 || !labelOptions.hasOwnProperty( 'text' ) ) {
-            throw new Error('Invalid label options, must be an object with at least a `text` property');
+        else if ( Object.keys( labelOptions ).length === 0 || false === Object.keys( labelOptions ).some( key => ['class', 'id', 'text'].includes( key ) ) ) {
+            throw new Error('Invalid label options, must be an object with at least a `text`, `class` or `id` property');
         }
 
         this.#labelElement = document.createElement( 'label' );
@@ -650,8 +650,8 @@ export default class CalendarSelect {
             const wrapperOptionsType = Array.isArray(wrapperOptions) ? 'array' : typeof wrapperOptions;
             throw new Error('Invalid type for wrapper options, must be of type object (not null or array) but found type: ' + wrapperOptionsType);
         }
-        else if ( Object.keys( wrapperOptions ).length === 0 || !wrapperOptions.hasOwnProperty( 'as' ) ) {
-            throw new Error('Invalid wrapper options, must be an object with at least an `as` property');
+        else if ( Object.keys( wrapperOptions ).length === 0 || false === Object.keys( wrapperOptions ).some( key => ['as', 'class', 'id'].includes( key ) ) ) {
+            throw new Error('Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property');
         }
 
         if (wrapperOptions.hasOwnProperty('as')) {
