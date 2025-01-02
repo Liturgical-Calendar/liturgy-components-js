@@ -1,4 +1,5 @@
 import ApiClient from '../ApiClient/ApiClient.js';
+import Messages from '../Messages.js';
 import { CalendarSelectFilter } from '../Enums.js';
 
 /**
@@ -596,7 +597,8 @@ export default class CalendarSelect {
             labelOptions.text = CalendarSelect.#sanitizeInput( labelOptions.text );
             this.#labelElement.innerText = labelOptions.text;
         } else {
-            this.#labelElement.innerText = 'Select a calendar';
+            const locale = new Intl.Locale( this.#locale );
+            this.#labelElement.innerText = Messages[locale.language]['SELECT_A_CALENDAR'];
         }
 
         /*

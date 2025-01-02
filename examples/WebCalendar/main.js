@@ -1,12 +1,15 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from '../../dist/index.js';
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');
 Input.setGlobalWrapper('div');
 Input.setGlobalWrapperClass('form-group col col-md-3');
 
+const lang = 'it-IT';
+const baseLang = lang.split('-')[0];
+
 ApiClient.init('http://localhost:8000').then( (apiClient) => {
-    const calendarSelect = new CalendarSelect( 'en-US' );
+    const calendarSelect = new CalendarSelect( lang );
     calendarSelect.allowNull()
         .label({
             class: 'form-label d-block mb-1'
@@ -15,8 +18,8 @@ ApiClient.init('http://localhost:8000').then( (apiClient) => {
         }).class('form-select')
         .appendTo( '#calendarOptions');
 
-    const apiOptions = new ApiOptions( 'en-US' );
-    apiOptions._localeInput.defaultValue( 'en' );
+    const apiOptions = new ApiOptions( lang );
+    apiOptions._localeInput.defaultValue( baseLang );
     apiOptions._acceptHeaderInput.hide();
     apiOptions._yearInput.class( 'form-control' ); // override the global input class
     apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' );
