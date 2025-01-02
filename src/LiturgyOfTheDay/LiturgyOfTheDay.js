@@ -195,7 +195,7 @@ export default class LiturgyOfTheDay {
                 this.eventYearCycleClass(options.eventYearCycleClass);
             }
             if (options.hasOwnProperty('eventsWrapperClass')) {
-                this.eventsWrapperClass(options.eventWrapperClass);
+                this.eventsWrapperClass(options.eventsWrapperClass);
             }
         }
     }
