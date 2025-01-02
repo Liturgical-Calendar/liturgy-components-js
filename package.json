@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "packageManager": "yarn@4.5.0",
+  "packageManager": "yarn@4.6.0",
   "name": "@liturgical-calendar/components-js",
   "version": "1.0.1",
   "author": "John R. D'Orazio <priest@johnromanodorazio.com (https://www.johnromanodorazio.com)",
