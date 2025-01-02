@@ -1,5 +1,5 @@
 import type { Preview } from "@storybook/html"
-import { ApiClient } from "liturgy-components-js"
+import { ApiClient } from "@liturgical-calendar/components-js"
 
 const preview: Preview = {
   parameters: {

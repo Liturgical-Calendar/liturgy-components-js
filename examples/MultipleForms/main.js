@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from "../../src/index.js";
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://esm.run/@liturgical-calendar/components-js';
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');

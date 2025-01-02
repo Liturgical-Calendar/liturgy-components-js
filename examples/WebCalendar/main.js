@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from "liturgy-components-js";
+import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from 'https://esm.run/@liturgical-calendar/components-js';
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');
