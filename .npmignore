@@ -3,6 +3,7 @@
 /src/stories/
 /.vscode/
 /examples/
+/.github/
 .pnp.*
 .gitignore
 .npmignore
