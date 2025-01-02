@@ -5,7 +5,17 @@ import '../liturgyoftheday.css';
  * LiturgyOfTheDay component
  *
  * This is an example of using the `LiturgyOfTheDay` component set to listen to the ApiClient instance,
- * and requesting the Diocesan Calendar for the Diocese of Rome from the ApiClient instance.
+ * and requesting the Diocesan Calendar indicated in the `calendar_id` parameter from the ApiClient instance.
+ * The `calendar_id` and `locale` parameters are passed to the `ApiClient` instance's `fetchDiocesanCalendar()` method.
+ * All other parameters are passed to the `LiturgyOfTheDay` constructor.
+ *
+ * By default, a `year_type` of `LITURGICAL` is requested from the Liturgical Calendar API.
+ * In order to get a result when the current date is after the 34th week of Ordinary Time
+ * (and so the new liturgical year has started), we do a check against the first calendar data returned,
+ * and if the current date is after Saturday of the 34th week of Ordinary Time,
+ * we refetch the calendar adding a year to the `year` parameter.
+ * However we also have to keep in mind that if we want to correctly see the Vigil Mass for the First Sunday of Advent,
+ * then we need to fetch a `year_type` of `CIVIL` for the current year for Saturday of the 34th week of Ordinary Time.
  */
 const meta = {
   title: 'Components/LiturgyOfTheDay/Diocesan Calendar',
@@ -70,15 +80,15 @@ const meta = {
         const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
         liturgyOfTheDay.listenTo(apiClient);
 
-        // By default, the apiClient will fetch year_type = 'liturgical'
+        // By default, the apiClient will fetch `year_type=LITURGICAL`
         // In order to see the full liturgical events between the end of the liturgical year and the next liturgical year,
         //  we need to check if today's date is greater than or equal to Saturday of the 34th week of Ordinary Time,
         //  and less than Monday of the First week of Advent,
-        //  and if so we will refetch the calendar with year_type = 'civil'
+        //  and if so we will refetch the calendar with `year_type=CIVIL`
         //  (this way we will get the Vigil Mass for the First Sunday of Advent on Saturday of the 34th week of Ordinary Time)
         // If instead today's date is greater than or equal to Monday of the First Week of Advent,
         //  and less than or equal to Dec 31st,
-        //  we will refetch the calendar with year_type = 'liturgical' but adding a year
+        //  we will refetch the calendar with `year_type=LITURGICAL` but adding a year.
         if (false === refetched) {
             apiClient._eventBus.on('calendarFetched', (data) => {
                 if (typeof data === 'object' && data.hasOwnProperty('litcal') && Array.isArray(data.litcal) && data.litcal.length > 0) {

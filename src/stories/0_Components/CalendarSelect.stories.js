@@ -22,8 +22,7 @@ const meta = {
   argTypes: {
     locale: {
       control: 'text',
-      description: 'Locale code for UI elements',
-      defaultValue: 'en-US'
+      description: 'Locale code for UI elements. This option is passed directly to the `CalendarSelect` constructor.'
     },
     id: {
       control: 'text',
@@ -33,26 +32,29 @@ const meta = {
       control: 'text',
       description: 'CSS class(es) for the widget\'s underlying HTML element'
     },
-    labelId: {
-      control: 'text',
-      description: 'ID for the select label\'s underlying HTML element'
+    label: {
+      text: {
+        control: 'text',
+        description: 'Text content for the select label\'s underlying HTML element'
+      },
+      class: {
+        control: 'text',
+        description: 'CSS class(es) for the select label\'s underlying HTML element'
+      },
+      id: {
+        control: 'text',
+        description: 'ID for the select label\'s underlying HTML element'
+      }
     },
-    labelClass: {
-      control: 'text',
-      description: 'CSS class(es) for the select label\'s underlying HTML element'
-    },
-    labelText: {
-      control: 'text',
-      description: 'Text for the select label\'s underlying HTML element',
-      defaultValue: 'Select a calendar'
-    },
-    wrapperId: {
-      control: 'text',
-      description: 'ID for the select wrapper\'s underlying HTML element'
-    },
-    wrapperClass: {
-      control: 'text',
-      description: 'CSS class(es) for the select wrapper\'s underlying HTML element'
+    wrapper: {
+      id: {
+        control: 'text',
+        description: 'ID for the select wrapper\'s underlying HTML element'
+      },
+      class: {
+        control: 'text',
+        description: 'CSS class(es) for the select wrapper\'s underlying HTML element'
+      }
     },
     after: {
       control: 'text',
@@ -63,50 +65,14 @@ const meta = {
     },
     allowNull: {
       control: 'boolean',
-      description: 'Set whether the select element should include an empty option as the first option',
-      defaultValue: false
+      description: 'Set whether the select element should include an empty option as the first option'
     }
   },
   render: (args, { loaded: { apiClient } }) => {
     const container = document.createElement('div');
     container.id = 'calendarSelectContainer';
-    const calendarSelect = new CalendarSelect(args.locale);
 
-    if (args.id) {
-      calendarSelect.id(args.id);
-    }
-    if (args.class) {
-      calendarSelect.class(args.class);
-    }
-    if (args.labelId || args.labelClass || args.labelText) {
-      const label = {};
-      if (args.labelId) {
-        label.id = args.labelId;
-      }
-      if (args.labelClass) {
-        label.class = args.labelClass;
-      }
-      if (args.labelText) {
-        label.text = args.labelText;
-      }
-      calendarSelect.label(label);
-    }
-    if (args.wrapperId || args.wrapperClass) {
-      const wrapper = {};
-      if (args.wrapperId) {
-        wrapper.id = args.wrapperId;
-      }
-      if (args.wrapperClass) {
-        wrapper.class = args.wrapperClass;
-      }
-      calendarSelect.wrapper(wrapper);
-    }
-    if (args.after) {
-      calendarSelect.after(args.after);
-    }
-    if (args.allowNull) {
-      calendarSelect.allowNull(args.allowNull);
-    }
+    const calendarSelect = new CalendarSelect(args);
 
     if (false === apiClient || false === apiClient instanceof ApiClient) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
@@ -123,7 +89,17 @@ const meta = {
   },
   decorators: [withActions],
   args: {
-    labelText: 'Select a calendar',
+    label: {
+      text: 'Select a calendar',
+      class: 'label-class',
+      id: 'label_id'
+    },
+    wrapper: {
+      as: 'div',
+      class: 'wrapper-class',
+      id: 'wrapper_id'
+    },
+    allowNull: false,
     onChange: fn()
   }
 }
@@ -137,14 +113,21 @@ export const Default = {
 export const EnglishWithAfter = {
   args: {
     locale: 'en-US',
-    after: '<small class="text-muted"><i>Liturgical calendars loaded from the Liturgical Calendar API</i></small>'
+    label: {
+      text: 'Select a calendar'
+    },
+    after: '<small class="text-muted"><i>Liturgical calendars loaded from the Liturgical Calendar API</i></small>',
+    wrapper: undefined
   }
 }
 
 export const EnglishAllowNull = {
   args: {
     locale: 'en-US',
-    labelText: 'Select a calendar',
+    label: {
+      text: 'Select a calendar'
+    },
+    wrapper: null,
     allowNull: true
   }
 }
@@ -152,27 +135,39 @@ export const EnglishAllowNull = {
 export const Italian = {
   args: {
     locale: 'it-IT',
-    labelText: 'Seleziona calendario'
+    label: {
+      text: 'Seleziona calendario'
+    },
+    wrapper: undefined
   }
 }
 
 export const French = {
   args: {
     locale: 'fr-FR',
-    labelText: 'Eligir calendrier'
+    label: {
+      text: 'Eligir calendrier'
+    },
+    wrapper: undefined
   }
 }
 
 export const Spanish = {
   args: {
     locale: 'es-ES',
-    labelText: 'Seleccione calendario'
+    label: {
+      text: 'Seleccione calendario'
+    },
+    wrapper: undefined
   }
 }
 
 export const German = {
   args: {
     locale: 'de-DE',
-    labelText: 'Kalender auswählen'
+    label: {
+      text: 'Kalender auswählen'
+    },
+    wrapper: undefined
   }
 }

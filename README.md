@@ -154,10 +154,24 @@ And `ApiClient` instances expose the following readonly instance properties:
 
 The CalendarSelect is a JavaScript class that generates a select element populated with available liturgical calendars from the Liturgical Calendar API. It allows you to easily add a liturgical calendar selector to your website.
 
-In order to populate the select element with the current available liturgical calendars, whether national or diocesan, the `ApiClient` class must be statically initialized before instantiating the `CalendarSelect` class.
+The `ApiClient` class must be statically initialized before instantiating the `CalendarSelect` class. This is the only way for the select element to be populated with the current available liturgical calendars, whether national or diocesan.
 
 The `CalendarSelect` class can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (display names of the nations for national calendars).
 The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc. If the locale has underscores (as is the case with PHP locales), they will be replaced with hyphens.
+
+The `CalendarSelect` class can also be instantiated with an `options` parameter, as an object that can have the following properties:
+* `locale`: The locale to use for the `CalendarSelect` UI elements.
+* `id`: The ID of the `CalendarSelect` element.
+* `class`: The class name for the `CalendarSelect` element.
+* `name`: The name for the `CalendarSelect` element.
+* `filter`: The `CalendarSelectFilter` to apply to the `CalendarSelect` element.
+* `after`: an html string to append after the `CalendarSelect` element.
+* `allowNull`: a boolean to indicate if the `CalendarSelect` element should allow null values.
+* `disabled`: a boolean to indicate if the `CalendarSelect` element should be disabled.
+* `label`: The label for the `CalendarSelect` element (an object with a `text` property, and optionally `class` and `id` properties).
+* `wrapper`: The wrapper for the `CalendarSelect` element (an object with an `as` property, and optionally `class` and `id` properties).
+
+Likewise, the same properties that can be passed in the `options` object, can also be set via the class instance methods of the same name as said properties.
 
 By default, a `CalendarSelect` instance will be populated with all available national and diocesan calendars (grouped by nation).
 

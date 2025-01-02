@@ -179,25 +179,55 @@ export default class CalendarSelect {
     /**
      * Constructor for the CalendarSelect class.
      *
-     * @param {string} [locale='en'] - The locale to use for the calendar select.
+     * @param {Object|string} [options] - The options object or locale string. An options object can have the following properties:
+     *                                  - locale: The locale to use for the CalendarSelect UI elements.
+     *                                  - id: The ID of the CalendarSelect element.
+     *                                  - class: The class name for the CalendarSelect element.
+     *                                  - name: The name for the CalendarSelect element.
+     *                                  - filter: The CalendarSelectFilter to apply to the CalendarSelect element.
+     *                                  - after: an html string to append after the CalendarSelect element.
+     *                                  - allowNull: a boolean to indicate if the CalendarSelect element should allow null values.
+     *                                  - disabled: a boolean to indicate if the CalendarSelect element should be disabled.
+     *                                  - label: The label for the CalendarSelect element (an object with a `text` property, and optionally `class` and `id` properties).
+     *                                  - wrapper: The wrapper for the CalendarSelect element (an object with an `as` property, and optionally `class` and `id` properties).
+     *                                  If a string is passed, it is expected to be the locale code to use for the CalendarSelect UI elements.
      *                                  The locale should be a valid string that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *
      * @throws {Error} If the locale is invalid.
      */
-    constructor(locale = 'en') {
-        if (locale.includes('_')) {
-            locale = locale.replaceAll('_', '-');
+    constructor(options) {
+        if (typeof options === 'string') {
+            options = { locale: options };
         }
-        try {
-            const canonicalLocales = Intl.getCanonicalLocales(locale);
-            if (canonicalLocales.length === 0) {
+        else if (null === options) {
+            options = { locale: 'en' };
+        }
+        else if (typeof options !== 'object' || Array.isArray(options)) {
+            const optionsType = Array.isArray(options) ? 'array' : typeof options;
+            throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
+        }
+        const { locale, id, name, filter, after, label, wrapper, allowNull, disabled } = options;
+        if (locale) {
+            if (typeof locale !== 'string') {
+                throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof locale);
+            }
+            if (locale.includes('_')) {
+                locale = locale.replaceAll('_', '-');
+            }
+            try {
+                const canonicalLocales = Intl.getCanonicalLocales(locale);
+                if (canonicalLocales.length === 0) {
+                    throw new Error('Invalid locale: ' + locale);
+                }
+                this.#locale = canonicalLocales[0];
+                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            } catch (e) {
                 throw new Error('Invalid locale: ' + locale);
             }
-            this.#locale = canonicalLocales[0];
+        } else {
+            this.#locale = 'en';
             this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
-        } catch (e) {
-            throw new Error('Invalid locale: ' + locale);
         }
 
         if (null === CalendarSelect.#metadata) {
@@ -205,7 +235,36 @@ export default class CalendarSelect {
         }
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
-        this.filter( this.#filter );
+
+        if (options.hasOwnProperty('class')) {
+            this.class(options.class);
+        }
+        if (id) {
+            this.id(id);
+        }
+        if (name) {
+            this.name(name);
+        }
+        if (filter) {
+            this.filter(filter);
+        } else {
+            this.filter(this.#filter);
+        }
+        if (after) {
+            this.after(after);
+        }
+        if (label) {
+            this.label(label);
+        }
+        if (wrapper) {
+            this.wrapper(wrapper);
+        }
+        if (allowNull) {
+            this.allowNull(allowNull);
+        }
+        if (disabled) {
+            this.disabled(disabled);
+        }
     }
 
     /**
@@ -484,12 +543,15 @@ export default class CalendarSelect {
             this.#hasLabel = false;
             this.#labelElement = null;
             this.#domElement.removeAttribute( 'aria-labelledby' );
-            this.#afterSet = true;
+            this.#labelSet = true;
             return this;
         }
         else if ( typeof labelOptions !== 'object' || Array.isArray(labelOptions) ) {
             const labelOptionsType = Array.isArray(labelOptions) ? 'array' : typeof labelOptions;
             throw new Error('Invalid type for label options, must be of type object (not null or array) but found type: ' + labelOptionsType);
+        }
+        else if ( Object.keys( labelOptions ).length === 0 || !labelOptions.hasOwnProperty( 'text' ) ) {
+            throw new Error('Invalid label options, must be an object with at least a `text` property');
         }
 
         this.#labelElement = document.createElement( 'label' );
@@ -587,6 +649,9 @@ export default class CalendarSelect {
         else if ( typeof wrapperOptions !== 'object' || Array.isArray(wrapperOptions) ) {
             const wrapperOptionsType = Array.isArray(wrapperOptions) ? 'array' : typeof wrapperOptions;
             throw new Error('Invalid type for wrapper options, must be of type object (not null or array) but found type: ' + wrapperOptionsType);
+        }
+        else if ( Object.keys( wrapperOptions ).length === 0 || !wrapperOptions.hasOwnProperty( 'as' ) ) {
+            throw new Error('Invalid wrapper options, must be an object with at least an `as` property');
         }
 
         if (wrapperOptions.hasOwnProperty('as')) {

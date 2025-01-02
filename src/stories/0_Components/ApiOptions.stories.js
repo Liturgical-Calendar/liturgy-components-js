@@ -50,12 +50,12 @@ const meta = {
         },
         hideAcceptHeaderInput: {
             control: 'boolean',
-            description: 'Hide the Accept header input',
+            description: 'Hide the Accept header input. This option is not passed to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.hide()` method to hide the Accept header input.',
             defaultValue: false
         },
         acceptHeaderAsReturnTypeParam: {
             control: 'boolean',
-            description: 'Display the Accept header select as a `return type` parameter select',
+            description: 'When the Accept header input is not hidden, display the Accept header select as a `return type` parameter select. This option is not passed directly to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.asReturnTypeParam(true)` method to display the Accept header input as a `return type` parameter select.',
             defaultValue: false
         }
     },

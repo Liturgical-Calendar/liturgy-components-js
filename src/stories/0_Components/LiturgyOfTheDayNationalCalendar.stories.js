@@ -5,7 +5,17 @@ import '../liturgyoftheday.css';
  * LiturgyOfTheDay component
  *
  * This is an example of using the `LiturgyOfTheDay` component set to listen to the ApiClient instance,
- * and requesting the National Calendar for Italy from the ApiClient instance.
+ * and requesting the National Calendar indicated in the `calendar_id` parameter from the ApiClient instance.
+ * The `calendar_id` and `locale` parameters are passed to the `ApiClient` instance's `fetchNationalCalendar()` method.
+ * All other parameters are passed to the `LiturgyOfTheDay` constructor.
+ *
+ * By default, a `year_type` of `LITURGICAL` is requested from the Liturgical Calendar API.
+ * In order to get a result when the current date is after the 34th week of Ordinary Time
+ * (and so the new liturgical year has started), we do a check against the first calendar data returned,
+ * and if the current date is after Saturday of the 34th week of Ordinary Time,
+ * we refetch the calendar adding a year to the `year` parameter.
+ * However we also have to keep in mind that if we want to correctly see the Vigil Mass for the First Sunday of Advent,
+ * then we need to fetch a `year_type` of `CIVIL` for the current year for Saturday of the 34th week of Ordinary Time.
  */
 const meta = {
   title: 'Components/LiturgyOfTheDay/National Calendar',
