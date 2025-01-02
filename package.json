@@ -2,7 +2,7 @@
   "type": "module",
   "packageManager": "yarn@4.6.0",
   "name": "@liturgical-calendar/components-js",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "John R. D'Orazio <priest@johnromanodorazio.com (https://www.johnromanodorazio.com)",
   "description": "Liturgical calendar components for javascript: an html select populated with liturgical calendars supported by the Liturgical Calendar API; form controls for parameters that are supported by the Liturgical Calendar API; a webcalendar; and liturgy of the day",
   "homepage": "https://litcal.johnromanodorazio.com",
