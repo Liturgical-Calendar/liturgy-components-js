@@ -1,4 +1,4 @@
-import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
+import { LiturgyOfTheDay, ApiClient, YearType } from '@liturgical-calendar/components-js';
 import '../liturgyoftheday.css';
 
 /**
@@ -8,13 +8,12 @@ import '../liturgyoftheday.css';
  * and requesting the Diocesan Calendar for the Diocese of Rome from the ApiClient instance.
  */
 const meta = {
-  title: 'Components/LiturgyOfTheDay/Diocesan Calendar/Diocese of Rome',
+  title: 'Components/LiturgyOfTheDay/Diocesan Calendar',
   tags: ['autodocs'],
   argTypes: {
     locale: {
       control: 'text',
-      description: 'Locale code for UI elements',
-      defaultValue: 'en-US'
+      description: 'Locale code for UI elements, and also the locale used to fetch the Diocesan Calendar when the calendar supports more than one locale'
     },
     id: {
       control: 'text',
@@ -58,44 +57,17 @@ const meta = {
   },
   render: (args, { loaded: { apiClient } }) => {
     const container = document.createElement('div');
-    const liturgyOfTheDay = new LiturgyOfTheDay(args.locale);
-    const now = new Date();
-    const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
     let refetched = false;
-
-    if (args.id) {
-      liturgyOfTheDay.id(args.id);
-    }
-    if (args.class) {
-      liturgyOfTheDay.class(args.class);
-    }
-    if (args.titleClass) {
-      liturgyOfTheDay.titleClass(args.titleClass);
-    }
-    if (args.dateClass) {
-      liturgyOfTheDay.dateClass(args.dateClass);
-    }
-    if (args.eventWrapperClass) {
-      liturgyOfTheDay.eventWrapperClass(args.eventWrapperClass);
-    }
-    if (args.eventClass) {
-      liturgyOfTheDay.eventClass(args.eventClass);
-    }
-    if (args.eventGradeClass) {
-      liturgyOfTheDay.eventGradeClass(args.eventGradeClass);
-    }
-    if (args.eventCommonClass) {
-      liturgyOfTheDay.eventCommonClass(args.eventCommonClass);
-    }
-    if (args.eventYearCycleClass) {
-      liturgyOfTheDay.eventYearCycleClass(args.eventYearCycleClass);
-    }
 
     // Initialize API client
     if (false === apiClient || false === apiClient instanceof ApiClient) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
-    } else {
+    }
+    else {
+        const liturgyOfTheDay = new LiturgyOfTheDay(args);
+        const now = new Date();
+        const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
         liturgyOfTheDay.listenTo(apiClient);
 
         // By default, the apiClient will fetch year_type = 'liturgical'
@@ -128,49 +100,46 @@ const meta = {
                     }
                 }
             });
-            apiClient.fetchDiocesanCalendar('romamo_it');
+            const diocesanCalendarMetadata = apiClient._metadata.diocesan_calendars.filter(calendar => calendar.calendar_id === args.calendar_id)[0];
+            const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
+            apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
         }
         liturgyOfTheDay.appendTo(container);
     }
     return container;
+  },
+  args: {
+    class: "liturgy-of-the-day",
+    titleClass: "liturgy-of-the-day-title",
+    dateClass: "liturgy-of-the-day-date",
+    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
+    eventClass: "liturgy-of-the-day-event",
+    eventGradeClass: "liturgy-of-the-day-event-grade",
+    eventCommonClass: "liturgy-of-the-day-event-common",
+    eventYearCycleClass: "liturgy-of-the-day-year-cycle",
   }
 }
 
 export default meta;
 
-export const Default = {
-  args: {
-    class: 'liturgy-of-the-day'
-  }
-};
-
 // Story definition using CSF3 format
-export const English = {
-  args: {
-    locale: 'en-US',
-    id: "LiturgyOfTheDay",
-    class: "liturgy-of-the-day",
-    titleClass: "liturgy-of-the-day-title",
-    dateClass: "liturgy-of-the-day-date",
-    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
-    eventClass: "liturgy-of-the-day-event",
-    eventGradeClass: "liturgy-of-the-day-event-grade",
-    eventCommonClass: "liturgy-of-the-day-event-common",
-    eventYearCycleClass: "liturgy-of-the-day-year-cycle",
-  }
-};
-
-export const Italian = {
+export const Diocese_of_Rome_Italy = {
   args: {
     locale: 'it-IT',
-    id: "LiturgyOfTheDay",
-    class: "liturgy-of-the-day",
-    titleClass: "liturgy-of-the-day-title",
-    dateClass: "liturgy-of-the-day-date",
-    eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
-    eventClass: "liturgy-of-the-day-event",
-    eventGradeClass: "liturgy-of-the-day-event-grade",
-    eventCommonClass: "liturgy-of-the-day-event-common",
-    eventYearCycleClass: "liturgy-of-the-day-year-cycle",
+    calendar_id: 'romamo_it'
+  }
+};
+
+export const Archdiocese_of_Boston_MA_USA = {
+  args: {
+    locale: 'en-US',
+    calendar_id: 'boston_us'
+  }
+}
+
+export const Diocese_of_Haarlem_Amsterdam_Netherlands = {
+  args: {
+    locale: 'nl-NL',
+    calendar_id: 'haaams_nl'
   }
 }

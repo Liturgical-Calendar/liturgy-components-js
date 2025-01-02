@@ -1,4 +1,4 @@
-import { WebCalendar, ApiClient, Column, Grouping, DateFormat, ColumnOrder, GradeDisplay, ColorAs } from "liturgy-components-js";
+import { WebCalendar, ApiClient, Column, Grouping, DateFormat, ColumnOrder, GradeDisplay, ColorAs } from "@liturgical-calendar/components-js";
 import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import '../webcalendar.css';

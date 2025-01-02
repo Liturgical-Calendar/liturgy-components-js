@@ -1,20 +1,19 @@
-import { LiturgyOfTheDay, ApiClient, YearType } from 'liturgy-components-js';
+import { LiturgyOfTheDay, ApiClient, YearType } from '@liturgical-calendar/components-js';
 import '../liturgyoftheday.css';
 
 /**
  * LiturgyOfTheDay component
  *
  * This is an example of using the `LiturgyOfTheDay` component set to listen to the ApiClient instance,
- * and requesting the National Calendar for Canada from the ApiClient instance.
+ * and requesting the National Calendar for Italy from the ApiClient instance.
  */
 const meta = {
-  title: 'Components/LiturgyOfTheDay/National Calendar/Canada',
+  title: 'Components/LiturgyOfTheDay/National Calendar',
   tags: ['autodocs'],
   argTypes: {
     locale: {
       control: 'text',
-      description: 'Locale code for UI elements',
-      defaultValue: 'en-US'
+      description: 'Locale code for UI elements and also the locale used to fetch the National Calendar when the calendar supports more than one locale',
     },
     id: {
       control: 'text',
@@ -58,16 +57,16 @@ const meta = {
   },
   render: (args, { loaded: { apiClient } }) => {
     const container = document.createElement('div');
-    const liturgyOfTheDay = new LiturgyOfTheDay(args);
-    const now = new Date();
-    const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
     let refetched = false;
 
     // Initialize API client
     if (false === apiClient || false === apiClient instanceof ApiClient) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {
+        const liturgyOfTheDay = new LiturgyOfTheDay(args);
+        const now = new Date();
+        const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
         liturgyOfTheDay.listenTo(apiClient);
 
         // By default, the apiClient will fetch year_type = 'liturgical'
@@ -81,7 +80,13 @@ const meta = {
         //  we will refetch the calendar with year_type = 'liturgical' but adding a year
         if (false === refetched) {
             apiClient._eventBus.on('calendarFetched', (data) => {
-                if (typeof data === 'object' && data.hasOwnProperty('litcal') && Array.isArray(data.litcal) && data.litcal.length > 0) {
+                if (
+                  typeof data === 'object'
+                  && data !== null
+                  && data.hasOwnProperty('litcal')
+                  && Array.isArray(data.litcal)
+                  && data.litcal.length > 0
+                ) {
                     const ChristKing = data.litcal.filter(event => {
                         return event.event_key === 'ChristKing';
                     });
@@ -98,16 +103,20 @@ const meta = {
                         refetched = true;
                         apiClient.setYearType(YearType.LITURGICAL).setYear(now.getFullYear() + 1).refetchCalendarData();
                     }
+                } else {
+                  console.log('Error fetching Liturgical Calendar data:', data);
                 }
             });
-            apiClient.fetchNationalCalendar('CA');
+            const nationalCalendarMetadata = apiClient._metadata.national_calendars.filter(calendar => calendar.calendar_id === args.calendar_id)[0];
+            const locale = args.locale && args.locale !== '' && nationalCalendarMetadata.locales.includes(args.locale) ? args.locale : nationalCalendarMetadata.locales[0];
+            apiClient.fetchNationalCalendar(args.calendar_id, locale);
         }
         liturgyOfTheDay.appendTo(container);
     }
     return container;
   },
   args: {
-    class: 'liturgy-of-the-day',
+    class: "liturgy-of-the-day",
     titleClass: "liturgy-of-the-day-title",
     dateClass: "liturgy-of-the-day-date",
     eventsWrapperClass: "liturgy-of-the-day-events-wrapper",
@@ -120,15 +129,37 @@ const meta = {
 
 export default meta;
 
-// Story definition using CSF3 format
-export const English = {
+export const Italy = {
   args: {
-    locale: 'en-US'
+    locale: 'it-IT',
+    calendar_id: 'IT'
   }
-};
+}
 
-export const French = {
+export const USA = {
   args: {
-    locale: 'fr-FR'
+    locale: 'en-US',
+    calendar_id: 'US'
+  }
+}
+
+export const Netherlands = {
+  args: {
+    locale: 'nl-NL',
+    calendar_id: 'NL'
+  }
+}
+
+export const Canada_English = {
+  args: {
+    locale: 'en-CA',
+    calendar_id: 'CA'
+  }
+}
+
+export const Canada_French = {
+  args: {
+    locale: 'fr-CA',
+    calendar_id: 'CA'
   }
 }

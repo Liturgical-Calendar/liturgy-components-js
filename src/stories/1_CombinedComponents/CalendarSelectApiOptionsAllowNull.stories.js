@@ -1,4 +1,4 @@
-import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from 'liturgy-components-js';
+import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
 import { fn } from '@storybook/test';
 import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
