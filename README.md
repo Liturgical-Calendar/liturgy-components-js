@@ -27,6 +27,29 @@ The easiest way to use ES Modules in the browser is by importing directly from a
 > [!NOTE]
 > The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so. If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.0.6/+esm`.
 
+> [!TIP]
+> You can optionally define an importmap so that you can import from `@liturgical-calendar/components-js` rather than from the full CDN path:
+> ```html
+> <!-- myPage.html -->
+> <script type='importmap'>
+>     {
+>       "imports": {
+>         "@liturgical-calendar/components-js": "https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.0.7/+esm"
+>       }
+>     }
+> </script>
+> <script type="module" src="myScript.js"></script>
+> ```
+> ```javascript
+> //myScript.js
+> import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from '@liturgical-calendar/components-js'
+> ```
+> The importmap let's the browser know where to look for the `@liturgical-calendar/components-js` package.
+> The importmap must be defined before the script that imports the `@liturgical-calendar/components-js` package.
+> It's recommended to define the importmap in an line `<script type="importmap">` rather than load it from a separate file,
+> to avoid unnecessary network requests and possible timing conflicts in loading the importmap before the script that imports the `@liturgical-calendar/components-js` package.
+
+
 ## Storybook
 
 To showcase usage of the components, a storybook is included. Before launching storybook, an instance of the Liturgical Calendar API must be running locally at http://localhost:8000. You can then launch the storybook by running `yarn storybook` (after having installed dependencies with `yarn install`), this will launch the storybook at a random free port  at http://localhost:{PORT}. If you would like to launch storybook on a specific port, you can pass in a port number as a parameter to the `yarn storybook` command, e.g.: `yarn storybook --port 6006`.
