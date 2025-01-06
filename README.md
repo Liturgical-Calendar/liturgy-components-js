@@ -238,7 +238,7 @@ The following chainable configuration methods are available on the `CalendarSele
     * `class`: the class to apply to the wrapper element
     * `id`: the id to apply to the wrapper element
 * `disabled( disabled = true )`: sets the `disabled` attribute on the select element based on the boolean value passed in
-* `filter(filter)`: filters the options in the select element to only include national calendars or diocesan calendars. The filter can have a value of either __`CalendarSelectFilter.NATIONAL_CALENDARS`__ or __`CalendarSelectFilter.DIOCESAN_CALENDARS`__ or __`CalendarSelectFilter.NONE`__.
+* `filter(filter)`: filters the options in the select element to only include national calendars or diocesan calendars. The filter can have a value of either __`CalendarSelectFilter.NATIONAL_CALENDARS`__ , __`CalendarSelectFilter.DIOCESAN_CALENDARS`__, or __`CalendarSelectFilter.NONE`__.
 * `allowNull( allowNull = true )`: sets whether the select element should include an empty option as the first option. If this method is not called, the default is false; if it is called without a parameter, the default is true. Otherwise, the method will take a boolean parameter to set whether the select element should include an empty option as the first option. An empty option corresponds with the General Roman Calendar for the API, since no national or diocesan calendar is selected.
 * `after( htmlString )`: allows to insert HTML content after the select element, for example to add a description below the select element. The HTML content must be a string, and the string is sanitized and stripped of any PHP or JavaScript script tags.
 * `linkToNationsSelect( calendarSelectInstance )`: in case the current `CalendarSelect` instance has the `CalendarSelectFilter.DIOCESAN_CALENDARS` filter applied, this method can be used to link the current CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance, so that the diocese options of the current CalendarSelect instance will be filtered according to the selected nation in the linked CalendarSelect instance.
@@ -261,7 +261,7 @@ The `ApiOptions` class is a JavaScript class that generates form controls for th
 
 The `ApiOptions` class can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (such as values in the select dropdowns).
 
-The `ApiOptions` class will instantiate eight form controls, four of which are only useful for the General Roman Calendar, while the other four are useful for any calendar, whether General Roman or National or Diocesan. Most applications will only find use for the first four form controls as follows, which are useful for any calendar.
+The `ApiOptions` class will instantiate nine form controls, four of which are only useful for the General Roman Calendar, while the other four are useful for any calendar, whether General Roman or National or Diocesan. Most applications will only find use for the first four form controls as follows, which are useful for any calendar.
 
 #### Form controls useful for any calendar
 * `_yearInput`: a number input for the calendar year
@@ -278,6 +278,10 @@ They allow to tweak parameters that the national or diocesan calendar would othe
 * `_corpusChristiInput`: a select input with options for when Corpus Christi is celebrated
 * `_eternalHighPriestInput`: a select input with options for whether Eternal High Priest is celebrated
 
+#### Path builder form control
+A ninth form control is also available, which is useful to assist in building URLs for the API:
+* `_calendarPathInput`: a select input with options for the path to use for the API requests
+
 #### Filtering the form controls
 The `ApiOptions` instance can be filtered to output only the form controls that are useful for the General Roman Calendar, or only the form controls that are useful for any calendar. The default filter value is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). If instead we want to apply a filter to the form controls, we can do so by calling the `filter()` method and passing in a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__.
 
@@ -291,6 +295,8 @@ import { ApiOptions, ApiOptionsFilter } from 'liturgical-calendar-js';
 const apiOptions = new ApiOptions( 'en-US' );
 apiOptions.filter(ApiOptionsFilter.ALL_CALENDARS).appendTo( '#calendarOptions');
 ```
+
+There is however one other possible filter, which is __`ApiOptionsFilter.PATH_BUILDER`__, which will only produce the `_calendarPathInput` form control and the `_yearInput` form control. If this filter is set on the `ApiOptions` instance and the form controls are appended to the document, a successive call to the `filter()` method with a value of __`ApiOptionsFilter.ALL_CALENDARS`__ will not include a `_yearInput` since it was already included in the __`ApiOptionsFilter.PATH_BUILDER`__ filter. When the __`ApiOptionsFilter.PATH_BUILDER`__ filter is applied, and then the `ApiOptions` instance is linked to a `CalendarSelect` instance, the current selected value of the `_calendarPathInput` form control will determine the options available in the `CalendarSelect` instance.
 
 #### Configuring the form controls
 All of the form controls produced by the `ApiOptions` class inherit from a common `Input` class, and can be configured globally to have the same classes or wrapper elements. This can be accomplished with the following static class methods:

@@ -160,6 +160,32 @@ export default class ApiOptions {
      * @private
      */
     #handleSingleLinkedCalendarSelect(calendarSelect) {
+        if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
+            calendarSelect.allowNull(false).disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
+            let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
+            let lastCalendarSelectValue = calendarSelect._domElement.value;
+            this.#inputs.calendarPathInput._domElement.addEventListener('change', (ev) => {
+                if (ev.target.value !== lastCalendarPathValue) {
+                    lastCalendarPathValue = ev.target.value;
+                    switch (ev.target.value) {
+                        case '/calendar':
+                            calendarSelect.disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
+                            break;
+                        case '/calendar/nation/':
+                            calendarSelect.disabled(false).filter(CalendarSelectFilter.NATIONAL_CALENDARS);
+                            break;
+                        case '/calendar/diocese/':
+                            calendarSelect.disabled(false).filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
+                            break;
+                    }
+                    if (calendarSelect._domElement.firstChild.getAttribute('value') !== lastCalendarSelectValue) {
+                        lastCalendarSelectValue = calendarSelect._domElement.value;
+                        calendarSelect._domElement.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+        }
+
         let currentSelectedCalendarId = calendarSelect._domElement.value;
         if (currentSelectedCalendarId !== '') {
             let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
@@ -287,31 +313,6 @@ export default class ApiOptions {
                 this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
-        if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
-            const allowNull = calendarSelect._allowNull;
-            let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
-            let lastCalendarSelectValue = calendarSelect._domElement.value;
-            this.#inputs.calendarPathInput._domElement.addEventListener('change', (ev) => {
-                if (ev.target.value !== lastCalendarPathValue) {
-                    lastCalendarPathValue = ev.target.value;
-                    switch (ev.target.value) {
-                        case '/calendar':
-                            calendarSelect.allowNull(allowNull).filter(CalendarSelectFilter.NONE);
-                            break;
-                        case '/calendar/nation/':
-                            calendarSelect.allowNull(false).filter(CalendarSelectFilter.NATIONAL_CALENDARS);
-                            break;
-                        case '/calendar/diocese/':
-                            calendarSelect.allowNull(false).filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
-                            break;
-                    }
-                    if (calendarSelect._domElement.firstChild.getAttribute('value') !== lastCalendarSelectValue) {
-                        lastCalendarSelectValue = calendarSelect._domElement.value;
-                        calendarSelect._domElement.dispatchEvent(new Event('change'));
-                    }
-                }
-            });
-        }
     }
 
     /**
