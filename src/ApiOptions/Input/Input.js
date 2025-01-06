@@ -14,6 +14,7 @@ export default class Input {
     #labelClassSet    = false;
     #labelAfter       = null;
     #wrapperElement   = null;
+    #hasWrapper       = false;
     #wrapperClassSet  = false;
     #defaultValue    = '';
 
@@ -147,10 +148,10 @@ export default class Input {
      * Validates the wrapper element to ensure it is a string and is one of the valid values.
      * The input wrapper element is sanitized and assigned to the global wrapper element.
      *
-     * @param {string} [wrapper=''] - The wrapper element, currently only 'div' and 'td' are supported.
+     * @param {string} [wrapper] - The wrapper element, currently only 'div' and 'td' are supported.
      * @throws {Error} If the wrapper is not a string, or if the wrapper is not one of the valid values.
      */
-    static setGlobalWrapper( wrapper = '' ) {
+    static setGlobalWrapper( wrapper ) {
         if (typeof wrapper !== 'string') {
             throw new Error('Invalid type for wrapper, must be of type string but found type: ' + typeof wrapper);
         }
@@ -194,7 +195,7 @@ export default class Input {
         }
         const parseType = /^(.*?)(\[type="(.*?)"\])?$/.exec(element);
         this.#domElement = document.createElement(parseType[1]);
-        if (parseType[3] !== null) {
+        if (parseType[3] !== undefined) {
             this.#domElement.setAttribute('type', parseType[3]);
         }
         if (Input.#globalInputClass !== null) {
@@ -208,6 +209,7 @@ export default class Input {
 
         if (Input.#globalWrapper !== null) {
             this.#wrapperElement = document.createElement(Input.#globalWrapper);
+            this.#hasWrapper = true;
             if (Input.#globalWrapperClass !== null) {
                 this.#wrapperElement.className = Input.#globalWrapperClass;
             }
@@ -398,6 +400,7 @@ export default class Input {
             throw new Error('Invalid wrapper: ' + wrapper + ', valid values are: div, td');
         }
         this.#wrapperElement = document.createElement(wrapper);
+        this.#hasWrapper = true;
         if (Input.#globalWrapperClass !== null) {
             this.#wrapperElement.className = Input.#globalWrapperClass;
         }
@@ -567,7 +570,7 @@ export default class Input {
      * Retrieves the underlying DOM element of the input instance.
      *
      * @returns {HTMLElement} The DOM element associated with the input instance.
-     * @private
+     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -643,5 +646,15 @@ export default class Input {
      */
     get _defaultValue() {
         return this.#defaultValue;
+    }
+
+    /**
+     * Whether a wrapper element has been set.
+     *
+     * @type {boolean}
+     * @readonly
+     */
+    get _hasWrapper() {
+        return this.#hasWrapper;
     }
 }

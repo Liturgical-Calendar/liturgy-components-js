@@ -58,11 +58,14 @@ const GradeDisplay = Object.freeze({
 });
 
 /**
- * @enum {{GENERAL_ROMAN: 'basePath', ALL_CALENDARS: 'allPaths', NONE: null}}
+ * @enum {{GENERAL_ROMAN: 'basePath', ALL_CALENDARS: 'allPaths', BASE_PATH: 'basePath', ALL_PATHS: 'allPaths', NONE: null}}
  */
 const ApiOptionsFilter = Object.freeze({
     GENERAL_ROMAN: 'basePath',
     ALL_CALENDARS: 'allPaths',
+    PATH_BUILDER: 'pathBuilder',
+    BASE_PATH: 'basePath',
+    ALL_PATHS: 'allPaths',
     NONE: null
 });
 

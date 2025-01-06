@@ -6,6 +6,7 @@ import LocaleInput from './LocaleInput.js';
 import EternalHighPriestInput from './EternalHighPriestInput.js';
 import YearInput from './YearInput.js';
 import YearTypeInput from './YearTypeInput.js';
+import CalendarPathInput from './CalendarPathInput.js';
 
 export {
     AcceptHeaderInput,
@@ -15,5 +16,6 @@ export {
     LocaleInput,
     EternalHighPriestInput,
     YearInput,
-    YearTypeInput
+    YearTypeInput,
+    CalendarPathInput
 }

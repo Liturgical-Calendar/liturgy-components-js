@@ -12,16 +12,18 @@
         integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
         crossorigin="anonymous"
         referrerpolicy="no-referrer" />
-    <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
 </head>
 <body class="p-4">
-    <h1>Liturgical Calendar Components JS: Web Calendar example</h1>
-    <form id="litcalForm">
-        <div class="row mb-4" id="calendarOptions">
-            <h2>Calendar Select / Options</h2>
-        </div>
-    </form>
-    <div id="litcalWebcalendar"></div>
+    <h1>Liturgical Calendar Components JS: Path builder example</h1>
+    <div class="row mb-2" id="pathBuilder">
+        <h5 class="fw-bold">Path builder</h5>
+    </div>
+    <div class="row mb-2" id="requestParametersBasePath">
+        <h5 class="fw-bold">Request parameters available on the base <b><code>/calendar</code></b> path</h5>
+    </div>
+    <div class="row mb-2" id="requestParametersAllPaths">
+        <h5 class="fw-bold">Request parameters available on all <b><code>/calendar/*</code></b> paths</h5>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
@@ -29,6 +31,13 @@
         integrity="sha512-1JkMy1LR9bTo3psH+H4SV5bO2dFylgOy+UJhMus1zF4VEFuZVu5lsi4I6iIndE4N9p01z1554ZDcvMSjMaqCBQ=="
         crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "liturgy-components-js": "../../src/index.js"
+            }
+        }
+    </script>
     <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
+import Input from '../ApiOptions/Input/Input.js';
 import { CalendarSelectFilter } from '../Enums.js';
 
 /**
@@ -50,7 +51,6 @@ export default class CalendarSelect {
     #idSet                                = false;
     #nameSet                              = false;
     #allowNull                            = false;
-    #allowNullSet                         = false;
 
     /**
      * Sanitizes a given input string to prevent any potential XSS attacks.
@@ -763,15 +763,11 @@ export default class CalendarSelect {
      * @throws {Error} If the type of allowNull is not a boolean.
      */
     allowNull( allowNull = true ) {
-        if ( this.#allowNullSet && this.#allowNull !== allowNull ) {
-            throw new Error('allowNull has already been set to `' + this.#allowNull + '` on CalendarSelect instance with locale ' + this.#locale + '.');
-        }
         if ( typeof allowNull !== 'boolean' ) {
             throw new Error('Invalid type for allowNull on CalendarSelect instance with locale ' + this.#locale + ', must be of type boolean but found type: ' + typeof allowNull);
         }
         this.#allowNull = allowNull;
         this.filter( this.#filter );
-        this.#allowNullSet = true;
         return this;
     }
 
@@ -895,10 +891,108 @@ export default class CalendarSelect {
     }
 
     /**
+     * Inserts the select element before the element matched by the provided element selector (or the element provided directly).
+     *
+     * If a wrapper element has been set, the wrapper element is used to insert the select element,
+     * and the select element is appended to the wrapper element.
+     * If a label element has been set, the label element is inserted before the select element.
+     * If an after element has been set, the after element is inserted after the select element.
+     *
+     * @param {string|HTMLElement|Input} element - The element selector of the element to insert the select element before.
+     * @throws {Error} If the type of element is not a string.
+     * @throws {Error} If the element selector is invalid.
+     */
+    insertBefore( element ) {
+        let domNode;
+        if (typeof element === 'string') {
+            domNode = this.#validateElementSelector( element );
+        }
+        else if (element instanceof HTMLElement) {
+            domNode = element;
+        }
+        else if (element instanceof Input) {
+            if (element._hasWrapper) {
+                domNode = element._wrapperElement;
+            } else {
+                domNode = element._domElement;
+            }
+        }
+        else {
+            throw new Error('CalendarSelect.insertBefore: parameter must be a valid CSS selector or an instance of HTMLElement');
+        }
+        if ( this.#hasWrapper ) {
+            domNode.insertAdjacentElement( 'beforebegin', this.#wrapperElement );
+            this.#wrapperElement.appendChild( this.#domElement );
+        } else {
+            domNode.insertAdjacentElement( 'beforebegin', this.#domElement );
+        }
+        if ( this.#hasLabel ) {
+            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        }
+        if ( this.#hasAfter ) {
+            if (this.#domElement.parentNode) {
+                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+            }
+        }
+    }
+
+    /**
+     * Inserts the select element after the element matched by the provided element selector (or the element provided directly).
+     *
+     * If a wrapper element has been set, the wrapper element is used to insert the select element,
+     * and the select element is appended to the wrapper element.
+     * If a label element has been set, the label element is inserted before the select element.
+     * If an after element has been set, the after element is inserted after the select element.
+     *
+     * @param {string|HTMLElement|Input} element - The element selector of the element to insert the select element after.
+     * @throws {Error} If the type of element is not a string.
+     * @throws {Error} If the element selector is invalid.
+     */
+    insertAfter( element ) {
+        let domNode;
+        if (typeof element === 'string') {
+            console.log(`element is a CSS selector: ${element}`);
+            domNode = this.#validateElementSelector( element );
+        }
+        else if (element instanceof HTMLElement) {
+            console.log(`element is an HTMLElement:`, element);
+            domNode = element;
+        }
+        else if (element instanceof Input) {
+            console.log(`element is an ApiOptions Input:`, element);
+            if (element._hasWrapper) {
+                console.log(`element has a wrapper element:`, element._wrapperElement);
+                domNode = element._wrapperElement;
+            } else {
+                domNode = element._domElement;
+            }
+        }
+        else {
+            throw new Error('CalendarSelect.insertAfter: parameter must be a valid CSS selector or an instance of HTMLElement');
+        }
+        console.log(`domNode:`, domNode);
+
+        if ( this.#hasWrapper ) {
+            domNode.insertAdjacentElement( 'afterend', this.#wrapperElement );
+            this.#wrapperElement.appendChild( this.#domElement );
+        } else {
+            domNode.insertAdjacentElement( 'afterend', this.#domElement );
+        }
+        if ( this.#hasLabel ) {
+            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        }
+        if ( this.#hasAfter ) {
+            if (this.#domElement.parentNode) {
+                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+            }
+        }
+    }
+
+    /**
      * Gets the underlying DOM element of the CalendarSelect instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the CalendarSelect instance.
-     * @private
+     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -913,10 +1007,52 @@ export default class CalendarSelect {
      * - `CalendarSelectFilter.NONE` will show all options, that is, both nation and diocese options.
      *
      * @returns {string} The current filter of the CalendarSelect instance.
-     * @private
+     * @readonly
      */
     get _filter() {
         return this.#filter;
+    }
+
+    /**
+     * Retrieves the status of whether a wrapper element has been set for the CalendarSelect instance.
+     *
+     * @returns {boolean} True if a wrapper element has been set; otherwise, false.
+     * @readonly
+     */
+    get _hasWrapper() {
+        return this.#hasWrapper;
+    }
+
+    /**
+     * Gets the wrapper element for the CalendarSelect instance.
+     *
+     * The wrapper element is an HTML element that will wrap the select element.
+     * The wrapper element can be an HTML element of type `div` or `td`.
+     *
+     * If the `wrapperOptions` argument was not provided when calling the `wrapper` method,
+     * this will be `null`.
+     *
+     * @returns {HTMLElement|null} The wrapper element for the CalendarSelect instance, or `null` if no wrapper element was set.
+     * @readonly
+     */
+    get _wrapperElement() {
+        return this.#wrapperElement;
+    }
+
+    /**
+     * Gets the status of whether the current CalendarSelect instance allows a null selected value.
+     *
+     * When `true`, the CalendarSelect instance will have an option for "None" or "No selection", and the `value` property
+     * will return `null` when this option is selected.
+     *
+     * When `false`, the CalendarSelect instance will not have an option for "None" or "No selection", and the `value` property
+     * will return an empty string when no option is selected.
+     *
+     * @returns {boolean} True if the current CalendarSelect instance allows a null selected value; otherwise, false.
+     * @readonly
+     */
+    get _allowNull() {
+        return this.#allowNull;
     }
 
     /**

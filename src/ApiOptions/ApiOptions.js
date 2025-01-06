@@ -6,7 +6,8 @@ import {
     LocaleInput,
     EternalHighPriestInput,
     YearInput,
-    YearTypeInput
+    YearTypeInput,
+    CalendarPathInput
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
@@ -50,7 +51,22 @@ export default class ApiOptions {
     /** @type {?Intl.Locale} */
     #locale                = null;
 
-    /** @type {{epiphanyInput: ?EpiphanyInput, ascensionInput: ?AscensionInput, corpusChristiInput: ?CorpusChristiInput, eternalHighPriestInput: ?EternalHighPriestInput, localeInput: ?LocaleInput, yearInput: ?YearInput, yearTypeInput: ?YearTypeInput, acceptHeaderInput: ?AcceptHeaderInput}} */
+    /** @type {boolean} */
+    #pathBuilderEnabled    = false;
+
+    /**
+     * @type {{
+     *  epiphanyInput: ?EpiphanyInput,
+     *  ascensionInput: ?AscensionInput,
+     *  corpusChristiInput: ?CorpusChristiInput,
+     *  eternalHighPriestInput: ?EternalHighPriestInput,
+     *  localeInput: ?LocaleInput,
+     *  yearInput: ?YearInput,
+     *  yearTypeInput: ?YearTypeInput,
+     *  acceptHeaderInput: ?AcceptHeaderInput,
+     *  calendarPathInput: ?CalendarPathInput
+     * }}
+     */
     #inputs                = {
         epiphanyInput: null,
         ascensionInput: null,
@@ -59,11 +75,12 @@ export default class ApiOptions {
         localeInput: null,
         yearInput: null,
         yearTypeInput: null,
-        acceptHeaderInput: null
+        acceptHeaderInput: null,
+        calendarPathInput: null
     };
 
     #filter                = ApiOptionsFilter.NONE;
-    #filterSet             = false;
+    #filtersSet            = [];
 
     /**
      * Constructs an instance of the ApiOptions class, initializing various input components
@@ -74,7 +91,6 @@ export default class ApiOptions {
      *
      * @throws {Error} If the locale is invalid or not recognized.
      */
-
     constructor( locale = 'en' ) {
         locale = locale.replaceAll('_', '-');
         const canonicalLocales = Intl.getCanonicalLocales(locale);
@@ -90,8 +106,10 @@ export default class ApiOptions {
         this.#inputs.yearInput = new YearInput();
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
         this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
+        this.#inputs.calendarPathInput = new CalendarPathInput(this.#locale);
     }
 
+    // TODO: add support for multiple linked calendar selects
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
         const nationSelector = calendarSelects[0]._filter === CalendarSelectFilter.NATIONAL_CALENDARS ? calendarSelects[0] : calendarSelects[1];
         const dioceseSelector = calendarSelects[0]._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ? calendarSelects[0] : calendarSelects[1];
@@ -131,6 +149,16 @@ export default class ApiOptions {
         });
     }
 
+
+    /**
+     * Handles the events for a single linked calendar select.
+     *
+     * This function is called whenever the select element of the single linked calendar select changes.
+     * It takes the value of the currently selected calendar and a boolean indicating whether the select element is disabled.
+     *
+     * @param {CalendarSelect} calendarSelect - The single linked calendar select to handle events for.
+     * @private
+     */
     #handleSingleLinkedCalendarSelect(calendarSelect) {
         let currentSelectedCalendarId = calendarSelect._domElement.value;
         if (currentSelectedCalendarId !== '') {
@@ -259,6 +287,31 @@ export default class ApiOptions {
                 this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
+        if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
+            const allowNull = calendarSelect._allowNull;
+            let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
+            let lastCalendarSelectValue = calendarSelect._domElement.value;
+            this.#inputs.calendarPathInput._domElement.addEventListener('change', (ev) => {
+                if (ev.target.value !== lastCalendarPathValue) {
+                    lastCalendarPathValue = ev.target.value;
+                    switch (ev.target.value) {
+                        case '/calendar':
+                            calendarSelect.allowNull(allowNull).filter(CalendarSelectFilter.NONE);
+                            break;
+                        case '/calendar/nation/':
+                            calendarSelect.allowNull(false).filter(CalendarSelectFilter.NATIONAL_CALENDARS);
+                            break;
+                        case '/calendar/diocese/':
+                            calendarSelect.allowNull(false).filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
+                            break;
+                    }
+                    if (calendarSelect._domElement.firstChild.getAttribute('value') !== lastCalendarSelectValue) {
+                        lastCalendarSelectValue = calendarSelect._domElement.value;
+                        calendarSelect._domElement.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -287,16 +340,20 @@ export default class ApiOptions {
     /**
      * Sets the filter for the ApiOptions instance.
      *
-     * The filter can be either `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, or `ApiOptionsFilter.NONE`.
-     * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, and conditionally acceptHeader inputs.
+     * The filter can be either `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, or `ApiOptionsFilter.NONE`.
+     * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, year, and conditionally acceptHeader inputs.
      * - `ApiOptionsFilter.GENERAL_ROMAN` will show only the form controls that are useful for the General Roman Calendar: epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
+     * - `ApiOptionsFilter.PATH_BUILDER` will show only the form controls that are useful for the Path Builder: calendarPath and year inputs.
      * - `ApiOptionsFilter.NONE` will show all possible form controls.
      *
      * If the filter is set to a value that is not a valid value for the `ApiOptionsFilter` enum,
      * an error will be thrown.
      *
-     * If the filter is set to a value that is different from the current filter,
-     * the select elements will be filtered accordingly, and the filter will not be able to be set again.
+     * If the filter has been previously set to a value that is not ApiOptionsFilter.NONE,
+     * the select elements will be filtered accordingly, but a value of ApiOptionsFilter.NONE cannot be set.
+     *
+     * If the filter has been previously set to ApiOptionsFilter.NONE,
+     * the select elements will be filtered accordingly, but a value other than ApiOptionsFilter.NONE cannot be set.
      *
      * @param {string} [filter=ApiOptionsFilter.NONE] The filter to set.
      * @throws {Error} If the filter is set to a value that is not a valid value for the `ApiOptionsFilter` enum.
@@ -304,14 +361,28 @@ export default class ApiOptions {
      * @returns {ApiOptions} The ApiOptions instance.
      */
     filter( filter = ApiOptionsFilter.NONE ) {
-        if ( this.#filterSet && this.#filter !== filter ) {
-            throw new Error('Filter has already been set to `' + this.#filter + '` on ApiOptions instance with locale ' + this.#locale + '.');
-        }
-        if ( ApiOptionsFilter.ALL_CALENDARS !== filter && ApiOptionsFilter.GENERAL_ROMAN !== filter && ApiOptionsFilter.NONE !== filter ) {
+        if (
+            ApiOptionsFilter.ALL_CALENDARS !== filter
+            && ApiOptionsFilter.GENERAL_ROMAN !== filter
+            && ApiOptionsFilter.PATH_BUILDER !== filter
+            && ApiOptionsFilter.NONE !== filter
+        ) {
             throw new Error('Invalid filter: ' + filter + ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, or `ApiOptionsFilter.NONE`');
         }
+        if (
+            filter === ApiOptionsFilter.NONE
+            && [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER].includes(this.#filter)
+        ) {
+            throw new Error('Cannot set filter to `ApiOptionsFilter.NONE` when filter has already been set to a value that is not `ApiOptionsFilter.NONE`');
+        }
+        if (
+            [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER].includes(filter)
+            && this.#filtersSet.includes(ApiOptionsFilter.NONE)
+        ) {
+            throw new Error('Cannot set filter to a value that is not `ApiOptionsFilter.NONE` when filter has already been set explicitly to `ApiOptionsFilter.NONE`');
+        }
         this.#filter = filter;
-        this.#filterSet = true;
+        this.#filtersSet.push(filter);
         return this;
     }
 
@@ -336,7 +407,7 @@ export default class ApiOptions {
             }
             calendarSelect.forEach(calendarSelectInstance => {
                 if (false === calendarSelectInstance instanceof CalendarSelect) {
-                    throw new Error('Invalid type for items passed to linkToCalendarSelect, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
+                    throw new Error('ApiOptions.linkToCalendarSelect: Invalid type for items passed in parameter, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
                 }
             });
             if (
@@ -349,13 +420,13 @@ export default class ApiOptions {
             this.#handleMultipleLinkedCalendarSelects(calendarSelect);
         } else {
             if (false === calendarSelect instanceof CalendarSelect) {
-                throw new Error('Invalid type for parameter passed to linkToCalendarSelect, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
+                throw new Error('ApiOptions.linkToCalendarSelect: Invalid type for parameter, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
             }
             if (calendarSelect._filter !== 'none') {
-                throw new Error('When linking a single CalendarSelect instance, it must be a `none` filtered CalendarSelect, instead we found: ' + calendarSelect._filter);
+                throw new Error('ApiOptions.linkToCalendarSelect: When linking a single CalendarSelect instance, it must be a `none` filtered CalendarSelect, instead we found: ' + calendarSelect._filter);
             }
             if (calendarSelect._domElement.children.length === 0) {
-                throw new Error('You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
+                throw new Error('ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
             }
             this.#handleSingleLinkedCalendarSelect(calendarSelect);
         }
@@ -378,13 +449,22 @@ export default class ApiOptions {
         } else {
             throw new Error('ApiOptions.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
         }
+        if (ApiOptionsFilter.PATH_BUILDER === this.#filter) {
+            this.#inputs.calendarPathInput.appendTo(domNode);
+            this.#inputs.yearInput.appendTo(domNode);
+            this.#pathBuilderEnabled = true;
+        }
         if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.ALL_CALENDARS === this.#filter) {
             this.#inputs.localeInput.appendTo(domNode);
             this.#inputs.yearTypeInput.appendTo(domNode);
             if (false === this.#inputs.acceptHeaderInput._hidden) {
                 this.#inputs.acceptHeaderInput.appendTo(domNode);
             }
-            this.#inputs.yearInput.appendTo(domNode);
+            // If we have implemented a Path builder, it will have already appended the year input,
+            // so we shouldn't append it again
+            if (false === this.#pathBuilderEnabled) {
+                this.#inputs.yearInput.appendTo(domNode);
+            }
         }
         if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.GENERAL_ROMAN === this.#filter) {
             this.#inputs.epiphanyInput.appendTo(domNode);
@@ -392,37 +472,130 @@ export default class ApiOptions {
             this.#inputs.corpusChristiInput.appendTo(domNode);
             this.#inputs.eternalHighPriestInput.appendTo(domNode);
         }
+        // This should only be the case when no filter has been set explicitly via the filter method,
+        // and therefore this.#filter = ApiOptionsFilter.NONE
+        if (this.#filtersSet.length === 0) {
+            this.#filtersSet.push(this.#filter);
+        }
     }
 
+    /**
+     * Gets the Epiphany input element.
+     *
+     * @returns {EpiphanyInput} The Epiphany input element.
+     * @readonly
+     */
     get _epiphanyInput() {
         return this.#inputs.epiphanyInput;
     }
 
+    /**
+     * Gets the Ascension input element.
+     *
+     * @returns {AscensionInput} The Ascension input element.
+     * @readonly
+     */
     get _ascensionInput() {
         return this.#inputs.ascensionInput;
     }
 
+    /**
+     * Gets the Corpus Christi input element.
+     *
+     * @returns {CorpusChristiInput} The Corpus Christi input element.
+     * @readonly
+     */
     get _corpusChristiInput() {
         return this.#inputs.corpusChristiInput;
     }
 
+    /**
+     * Gets the Eternal High Priest input element.
+     *
+     * @returns {EternalHighPriestInput} The Eternal High Priest input element.
+     * @readonly
+     */
     get _eternalHighPriestInput() {
         return this.#inputs.eternalHighPriestInput;
     }
 
+    /**
+     * Gets the locale input element.
+     *
+     * @returns {LocaleInput} The locale input element.
+     * @readonly
+     */
     get _localeInput() {
         return this.#inputs.localeInput;
     }
 
+    /**
+     * Gets the year type input element.
+     *
+     * @returns {YearTypeInput} The year type input element.
+     * @readonly
+     */
     get _yearTypeInput() {
         return this.#inputs.yearTypeInput;
     }
 
+    /**
+     * Gets the year input element.
+     *
+     * @returns {YearInput} The year input element.
+     * @readonly
+     */
     get _yearInput() {
         return this.#inputs.yearInput;
     }
 
+    /**
+     * Gets the Accept header input element.
+     *
+     * @returns {AcceptHeaderInput} The Accept header input element.
+     * @readonly
+     */
     get _acceptHeaderInput() {
         return this.#inputs.acceptHeaderInput;
+    }
+
+    /**
+     * Gets the calendar path input element.
+     *
+     * @returns {CalendarPathInput} The calendar path input element.
+     * @readonly
+     */
+    get _calendarPathInput() {
+        return this.#inputs.calendarPathInput;
+    }
+
+    /**
+     * Gets the CURRENT filter of the ApiOptions instance.
+     * The filter can be set explicitly multiple times, and the last set filter will be returned.
+     *
+     * The filter can be either `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.PATH_BUILDER`, or `ApiOptionsFilter.NONE`.
+     * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, year, and conditionally acceptHeader inputs.
+     * - `ApiOptionsFilter.GENERAL_ROMAN` will show only the form controls that are useful for the General Roman Calendar: epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
+     * - `ApiOptionsFilter.PATH_BUILDER` will show only the form controls that are useful for the Path Builder: calendarPath and year inputs.
+     * - `ApiOptionsFilter.NONE` will show all possible form controls.
+     *
+     * @returns {string} The current filter of the ApiOptions instance.
+     * @readonly
+     */
+    get _filter() {
+        return this.#filter;
+    }
+
+    /**
+     * Gets the set of filters that have been applied to the ApiOptions instance.
+     *
+     * This is a list of filter values that have been set, and may contain multiple
+     * entries if filters have been set in succession.
+     *
+     * @returns {Array<string>} An array of filter values applied to the ApiOptions instance.
+     * @readonly
+     */
+    get _filtersSet() {
+        return this.#filtersSet;
     }
 }
