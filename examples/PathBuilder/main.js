@@ -11,7 +11,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         alert('Error initializing the Liturgical Calendar API Client');
     } else {
         const apiOptions = (new ApiOptions( 'en-US' ));
-        apiOptions._localeInput.defaultValue( 'en' );
+        apiOptions._localeInput.defaultValue( 'la' );
         apiOptions._acceptHeaderInput.hide();
         apiOptions._yearInput.class( 'form-control' );
         apiOptions.filter( ApiOptionsFilter.PATH_BUILDER ).appendTo('#pathBuilder');

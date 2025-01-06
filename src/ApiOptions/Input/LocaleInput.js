@@ -54,7 +54,7 @@ export default class LocaleInput extends SelectInput {
             option.value = value;
             option.title = value;
             option.textContent = label;
-            option.selected = this._selectedValue === value;
+            option.selected = this._defaultValue === value;
             return option;
         });
         this._domElement.replaceChildren(...this.#options);
@@ -96,7 +96,7 @@ export default class LocaleInput extends SelectInput {
      */
     resetOptions() {
         this._domElement.replaceChildren(...this.#options);
-        this._domElement.value = this._selectedValue !== '' ? this._selectedValue : 'la';
+        this._domElement.value = this._defaultValue !== '' ? this._defaultValue : 'la';
     }
 
 }
