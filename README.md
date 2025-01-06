@@ -25,7 +25,7 @@ import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, Co
 The easiest way to use ES Modules in the browser is by importing directly from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
 
 > [!NOTE]
-> The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so. If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.0.6/+esm`.
+> The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so. If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.1.0/+esm`.
 
 > [!TIP]
 > You can optionally define an importmap so that you can import from `@liturgical-calendar/components-js` rather than from the full CDN path:
@@ -34,7 +34,7 @@ The easiest way to use ES Modules in the browser is by importing directly from a
 > <script type='importmap'>
 >     {
 >       "imports": {
->         "@liturgical-calendar/components-js": "https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.0.7/+esm"
+>         "@liturgical-calendar/components-js": "https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.1.0/+esm"
 >       }
 >     }
 > </script>
