@@ -70,6 +70,7 @@ export {
     ApiOptions,
     WebCalendar,
     LiturgyOfTheDay,
+    PathBuilder,
     Input,
     Grouping,
     ColorAs,
@@ -454,3 +455,22 @@ If instead the today's date is greater than or equal to Monday of the First week
 In order to accomplish this, we need to do some date calculations, based on the calendar data fetched the first time around. Then we can use the `apiClient.setYearType( yearType )` method to programmatically set the `year_type` parameter for the request to the API, and the `apiClient.setYear( year )` method to programmatically set the `year` parameter for the request to the API, and then use the `apiClient.refetchCalendarData()` method to refetch the calendar data.
 
 This however is a little tricky, because we might wind up creating an infinite loop of refetched data. So we would also have to keep track of whether we have already refetched the calendar data or not. For a full working example, see the `examples/LiturgyOfTheDay` folder in the current repository.
+
+### PathBuilder
+
+The `PathBuilder` component assists in "building" an API `GET` request, by listening to `ApiOptions` and `CalendarSelect` instances
+and displaying in a text field in real time the resulting GET request with all necessary path parameters based on the selections made.
+
+This component is intended to be used in conjunction with an `ApiOptions._calendarPathInput` form control.
+
+A `PathBuilder` component is instantiated by passing in the `ApiOptions` instance and the `CalendarSelect` instance.
+
+Example:
+```javascript
+const apiOptions = new ApiOptions();
+const calendarSelect = new CalendarSelect();
+const pathBuilder = new PathBuilder( apiOptions, calendarSelect );
+pathBuilder.appendTo( '#pathBuilder' );
+```
+
+For a full working example, see the `examples/PathBuilder` folder in the current repository.
