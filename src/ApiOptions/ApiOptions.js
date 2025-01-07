@@ -12,6 +12,7 @@ import {
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
+import Utils from '../Utils.js';
 
 /**
  * Class to generate form controls for request options to the Liturgical Calendar API.
@@ -274,6 +275,7 @@ export default class ApiOptions {
                             this.#inputs[`${key}Input`]._domElement.value = value;
                         });
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
+                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
                         break;
                     }
                     case 'diocesan': {
@@ -303,6 +305,7 @@ export default class ApiOptions {
                             });
                         }
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
+                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
                         break;
                     }
                 }
@@ -313,29 +316,6 @@ export default class ApiOptions {
                 this.#inputs.eternalHighPriestInput.disabled(true);
             }
         });
-    }
-
-    /**
-     * Validates a given element selector and returns the corresponding DOM element.
-     *
-     * If the element selector is not a string, an error is thrown.
-     * If the element selector is a string, it is validated against the DOM and if the element is not found, an error is thrown.
-     *
-     * @private
-     * @param {string} element - The element selector to be validated.
-     * @returns {Element} The DOM element corresponding to the element selector.
-     * @throws {Error} If the type of element is not a string.
-     * @throws {Error} If the element selector is not found in the DOM.
-     */
-    #validateElementSelector( element ) {
-        if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
-        }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
-            throw new Error('Invalid element selector: ' + element);
-        }
-        return domNode;
     }
 
     /**
@@ -443,7 +423,7 @@ export default class ApiOptions {
     appendTo(elementSelector) {
         let domNode;
         if (typeof elementSelector === 'string') {
-            domNode = this.#validateElementSelector( elementSelector );
+            domNode = Utils.validateElementSelector( elementSelector );
         }
         else if(elementSelector instanceof HTMLElement) {
             domNode = elementSelector;

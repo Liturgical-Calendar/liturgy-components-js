@@ -2,6 +2,7 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
 import { CalendarSelectFilter } from '../Enums.js';
+import Utils from '../Utils.js';
 
 /**
  * Creates a select menu populated with available liturgical calendars from the Liturgical Calendar API
@@ -51,24 +52,6 @@ export default class CalendarSelect {
     #idSet                                = false;
     #nameSet                              = false;
     #allowNull                            = false;
-
-    /**
-     * Sanitizes a given input string to prevent any potential XSS attacks.
-     * This method takes a string, parses it as HTML, and returns the inner text of the resulting document.
-     * This effectively removes any HTML tags and attributes from the input string.
-     *
-     * @param {string} input - The string to sanitize.
-     * @returns {string} The sanitized string.
-     * @see https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet# RULE_.3a_Never_Insert_Untrusted_Data_Except_in_Local_User_Data
-     * @see https://stackoverflow.com/a/47140708/394921
-     * @private
-     * @static
-     */
-    static #sanitizeInput(input) {
-        let doc = new DOMParser().parseFromString(input, 'text/html');
-        return doc.body.textContent || "";
-    }
-
 
     /**
      * Validates if the given class name adheres to standard CSS class naming conventions.
@@ -440,9 +423,9 @@ export default class CalendarSelect {
             throw new Error('Invalid type for class name on CalendarSelect instance with locale ' + this.#locale + ', must be of type string but found type: ' + typeof className);
         }
         let classNames = className.split( /\s+/ );
-        classNames = classNames.map( className => CalendarSelect.#sanitizeInput( className ) );
+        classNames = classNames.map( className => Utils.sanitizeInput( className ) );
         classNames.forEach(className => {
-            if ( false === CalendarSelect.#isValidClassName( className ) ) {
+            if ( false === Utils.validateClassName( className ) ) {
                 throw new Error('Invalid class name: ' + className);
             }
         });
@@ -479,8 +462,8 @@ export default class CalendarSelect {
         if ( typeof id !== 'string' ) {
             throw new Error('Invalid type for id, must be of type string but found type: ' + typeof id);
         }
-        id = CalendarSelect.#sanitizeInput( id );
-        if (CalendarSelect.#isValidId( id ) === false) {
+        id = Utils.sanitizeInput( id );
+        if (Utils.validateId( id ) === false) {
             throw new Error('Invalid id, cannot contain any kind of whitespace character: ' + id);
         }
         this.#domElement.id = id;
@@ -568,9 +551,9 @@ export default class CalendarSelect {
                 throw new Error('Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class);
             }
             let classNames = labelOptions.class.split( /\s+/ );
-            classNames = classNames.map( className => CalendarSelect.#sanitizeInput( className ) );
+            classNames = classNames.map( className => Utils.sanitizeInput( className ) );
             classNames.forEach(className => {
-                if ( false === CalendarSelect.#isValidClassName( className ) ) {
+                if ( false === Utils.validateClassName( className ) ) {
                     throw new Error('Invalid class name: ' + className);
                 }
             });
@@ -582,8 +565,8 @@ export default class CalendarSelect {
             if (typeof labelOptions.id !== 'string') {
                 throw new Error('Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id);
             }
-            labelOptions.id = CalendarSelect.#sanitizeInput( labelOptions.id );
-            if (false === CalendarSelect.#isValidId( labelOptions.id )) {
+            labelOptions.id = Utils.sanitizeInput( labelOptions.id );
+            if (false === Utils.validateId( labelOptions.id )) {
                 throw new Error('Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' + labelOptions.id);
             }
             this.#labelElement.id = labelOptions.id;
@@ -594,11 +577,11 @@ export default class CalendarSelect {
             if ( typeof labelOptions.text !== 'string' ) {
                 throw new Error('Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text);
             }
-            labelOptions.text = CalendarSelect.#sanitizeInput( labelOptions.text );
-            this.#labelElement.innerText = labelOptions.text;
+            labelOptions.text = Utils.sanitizeInput( labelOptions.text );
+            this.#labelElement.textContent = labelOptions.text;
         } else {
             const locale = new Intl.Locale( this.#locale );
-            this.#labelElement.innerText = Messages[locale.language]['SELECT_A_CALENDAR'];
+            this.#labelElement.textContent = Messages[locale.language]['SELECT_A_CALENDAR'];
         }
 
         /*
@@ -676,9 +659,9 @@ export default class CalendarSelect {
                 throw new Error('Invalid type for wrapper class, must be of type string but found type: ' + typeof wrapperOptions.class);
             }
             let classNames = wrapperOptions.class.split( /\s+/ );
-            classNames = classNames.map( className => CalendarSelect.#sanitizeInput( className ) );
+            classNames = classNames.map( className => Utils.sanitizeInput( className ) );
             classNames.forEach(className => {
-                if ( false === CalendarSelect.#isValidClassName( className ) ) {
+                if ( false === Utils.validateClassName( className ) ) {
                     throw new Error('Invalid class name: ' + className);
                 }
             });
@@ -690,8 +673,8 @@ export default class CalendarSelect {
             if ( typeof wrapperOptions.id !== 'string' ) {
                 throw new Error('Invalid type for wrapper id, must be of type string but found type: ' + typeof wrapperOptions.id);
             }
-            wrapperOptions.id = CalendarSelect.#sanitizeInput( wrapperOptions.id );
-            if (false === CalendarSelect.#isValidId( wrapperOptions.id )) {
+            wrapperOptions.id = Utils.sanitizeInput( wrapperOptions.id );
+            if (false === Utils.validateId( wrapperOptions.id )) {
                 throw new Error('Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' + wrapperOptions.id);
             }
             this.#wrapperElement.id = wrapperOptions.id;
@@ -792,29 +775,6 @@ export default class CalendarSelect {
     }
 
     /**
-     * Validates a given element selector and returns the corresponding DOM element.
-     *
-     * If the element selector is not a string, an error is thrown.
-     * If the element selector is a string, it is validated against the DOM and if the element is not found, an error is thrown.
-     *
-     * @private
-     * @param {string} element - The element selector to be validated.
-     * @returns {Element} The DOM element corresponding to the element selector.
-     * @throws {Error} If the type of element is not a string.
-     * @throws {Error} If the element selector is not found in the DOM.
-     */
-    #validateElementSelector( element ) {
-        if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
-        }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
-            throw new Error('Invalid element selector: ' + element);
-        }
-        return domNode;
-    }
-
-    /**
      * Replaces the element matched by the provided element selector with the select element.
      *
      * If a wrapper element has been set, the wrapper element is used to replace the element,
@@ -829,7 +789,7 @@ export default class CalendarSelect {
     replace( element ) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = this.#validateElementSelector( element );
+            domNode = Utils.validateElementSelector( element );
         }
         else if (element instanceof HTMLElement) {
             domNode = element;
@@ -867,7 +827,7 @@ export default class CalendarSelect {
     appendTo( element ) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = this.#validateElementSelector( element );
+            domNode = Utils.validateElementSelector( element );
         }
         else if (element instanceof HTMLElement) {
             domNode = element;
@@ -905,7 +865,7 @@ export default class CalendarSelect {
     insertBefore( element ) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = this.#validateElementSelector( element );
+            domNode = Utils.validateElementSelector( element );
         }
         else if (element instanceof HTMLElement) {
             domNode = element;
@@ -952,7 +912,7 @@ export default class CalendarSelect {
         let domNode;
         if (typeof element === 'string') {
             console.log(`element is a CSS selector: ${element}`);
-            domNode = this.#validateElementSelector( element );
+            domNode = Utils.validateElementSelector( element );
         }
         else if (element instanceof HTMLElement) {
             console.log(`element is an HTMLElement:`, element);

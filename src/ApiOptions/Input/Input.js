@@ -1,3 +1,4 @@
+import Utils from '../../Utils.js';
 
 export default class Input {
     static #globalInputClass   = null;
@@ -19,82 +20,6 @@ export default class Input {
     #defaultValue    = '';
 
     /**
-     * Sanitizes the given input string to prevent XSS attacks.
-     *
-     * It uses the DOMParser to parse the string as HTML and then extracts the
-     * text content of the parsed HTML document. This effectively strips any HTML
-     * tags from the input string.
-     *
-     * @param {string} input - The input string to sanitize.
-     * @returns {string} The sanitized string.
-     * @see https://stackoverflow.com/a/47140708/394921
-     */
-    static #sanitizeInput(input) {
-        let doc = new DOMParser().parseFromString(input, 'text/html');
-        return doc.body.textContent || "";
-    }
-
-
-    /**
-     * Checks if the provided class name is valid.
-     *
-     * The regex pattern used to validate class names:
-     *   - `^` asserts the start of a line
-     *   - `(?!\d|--|-?\d)` is a negative look ahead that prevents the class name
-     *                  from starting with a digit, or a sequence of dashes, or a number with a leading dash
-     *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-     *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore
-     *
-     * @param {string} className - The class name to be validated.
-     * @returns {boolean} `true` if the class name is valid, `false` otherwise.
-     */
-    static #isValidClassName( className ) {
-        /**
-         * The regex pattern used to validate class names:
-         *   - `^` asserts the start of a line
-         *   - `(?!\d|--|-?\d)` is a negative look ahead that prevents the class name
-         *                  from starting with a digit, or a sequence of dashes, or a number with a leading dash
-         *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-         *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore at least once
-         *   - `$` asserts the end of a line
-         */
-        const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
-        return pattern.test(className);
-    }
-
-    /**
-     * Validates if the given string is a valid CSS selector.
-     *
-     * A valid CSS selector must:
-     * - Not start with a digit, a sequence of dashes, or a number with a leading dash.
-     * - Consist of letters, dashes, or underscores.
-     * - Contain at least one alphanumeric character, dash, or underscore.
-     *
-     * @param {string} className - The class name to validate.
-     * @returns {boolean} True if the class name is valid, false otherwise.
-     */
-    static #isValidId( id ) {
-        /**
-         * The regex pattern used to validate IDs:
-         *   - `^` asserts the start of a line
-         *   - `(?!\d|--|-?\d)` is a negative lookahead that prevents the ID
-         *     from starting with a digit, a sequence of dashes, or a number with a leading dash
-         *   - `(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)` matches either a sequence starting with an underscore or dash
-         *      followed by a letter followed by zero or more word characters or dashes,
-         *      or it matches a letter followed by zero or more word characters or dashes
-         *   - `$` asserts the end of a line
-         *
-         * >> Technically, the value for an ID attribute may contain any other Unicode character.
-         * >> However, when used in CSS selectors,
-         * >>  either from JavaScript using APIs like Document.querySelector()
-         * >>  or in CSS stylesheets, ID attribute values must be valid CSS identifiers.
-         * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
-         */
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
-        return pattern.test(id);
-    }
-
-    /**
      * Sets a global class attribute for all input elements created by this class.
      *
      * Validates the input class name(s) to ensure they are strings and conform to
@@ -109,10 +34,10 @@ export default class Input {
         if (typeof className !== 'string') {
             throw new Error('Invalid type for value passed to globalInputClass, must be of type string but found type: ' + typeof className);
         }
-        className = Input.#sanitizeInput(className);
+        className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class value passed to globalInputClass: ' + className);
             }
         });
@@ -132,10 +57,10 @@ export default class Input {
         if (typeof className !== 'string') {
             throw new Error('Invalid type for value passed to globalLabelClass, must be of type string but found type: ' + typeof className);
         }
-        className = Input.#sanitizeInput(className);
+        className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class value passed to globalLabelClass: ' + className);
             }
         });
@@ -174,10 +99,10 @@ export default class Input {
         if (typeof className !== 'string') {
             throw new Error('Invalid type for value passed to globalWrapperClass, must be of type string but found type: ' + typeof className);
         }
-        className = Input.#sanitizeInput(className);
+        className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class value passed to globalWrapperClass: ' + className);
             }
         });
@@ -237,8 +162,8 @@ export default class Input {
         if (false === (typeof id === 'string')) {
             throw new Error('Invalid type for id on Input instance, must be of type string but found type: ' + typeof id);
         }
-        id = Input.#sanitizeInput(id);
-        if (false === Input.#isValidId(id)) {
+        id = Utils.sanitizeInput(id);
+        if (false === Utils.validateId(id)) {
             throw new Error(`Invalid id '${id}' on Input instance, must be a valid CSS selector`);
         }
         this.#domElement.id = id;
@@ -269,7 +194,7 @@ export default class Input {
         if ( '' === name ) {
             throw new Error('Name cannot be empty on Input instance.');
         }
-        this.#domElement.name = Input.#sanitizeInput(name);
+        this.#domElement.name = Utils.sanitizeInput(name);
         this.#nameSet = true;
         return this;
     }
@@ -299,10 +224,10 @@ export default class Input {
             console.error(this);
             throw new Error('Invalid type for class name on Input instance, must be of type string but found type: ' + typeof className);
         }
-        className = Input.#sanitizeInput(className);
+        className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class name: ' + className);
             }
         });
@@ -334,10 +259,10 @@ export default class Input {
         if (false === (typeof labelClass === 'string')) {
             throw new Error('Invalid type for label class on Input instance, must be of type string but found type: ' + typeof labelClass);
         }
-        labelClass = Input.#sanitizeInput(labelClass);
+        labelClass = Utils.sanitizeInput(labelClass);
         const classNames = labelClass.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error(`Invalid label class '${className}' on Input instance, must be a valid CSS class`);
             }
         });
@@ -395,7 +320,7 @@ export default class Input {
         if (typeof wrapper !== 'string') {
             throw new Error('Invalid type for wrapper, must be of type string but found type: ' + typeof wrapper);
         }
-        wrapper = Input.#sanitizeInput(wrapper);
+        wrapper = Utils.sanitizeInput(wrapper);
         if (false === ['div', 'td'].includes(wrapper)) {
             throw new Error('Invalid wrapper: ' + wrapper + ', valid values are: div, td');
         }
@@ -435,10 +360,10 @@ export default class Input {
         if (null === this.#wrapperElement) {
             throw new Error('Wrapper has not been set, cannot set wrapper class on Input instance.');
         }
-        wrapperClass = Input.#sanitizeInput(wrapperClass);
+        wrapperClass = Utils.sanitizeInput(wrapperClass);
         const classNames = wrapperClass.split(/\s+/);
         classNames.forEach(className => {
-            if (false === Input.#isValidClassName(className)) {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error(`Invalid wrapper class '${className}' on Input instance, must be a valid CSS class`);
             }
         });
@@ -471,11 +396,11 @@ export default class Input {
             if (typeof key !== 'string') {
                 throw new Error('Invalid type for data key, must be of type string but found type: ' + typeof key);
             }
-            key = Input.#sanitizeInput(key);
+            key = Utils.sanitizeInput(key);
             if (typeof value !== 'string') {
                 throw new Error('Invalid type for data value, must be of type string but found type: ' + typeof value);
             }
-            value = Input.#sanitizeInput(value);
+            value = Utils.sanitizeInput(value);
 
             // This regex ensures that the key is a valid HTML data attribute name.
             // It starts with a letter, and is followed by any number of alphanumeric characters, underscores, or dashes.
@@ -521,7 +446,7 @@ export default class Input {
         if (typeof value !== 'string') {
             throw new Error('Invalid type for defaultValue, must be of type string but found type: ' + typeof value);
         }
-        this.#domElement.value = Input.#sanitizeInput(value);
+        this.#domElement.value = Utils.sanitizeInput(value);
         this.#defaultValue = value;
         return this;
     }

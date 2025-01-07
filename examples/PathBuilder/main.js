@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, ApiOptionsFilter } from 'liturgy-components-js';
+import { ApiClient, CalendarSelect, ApiOptions, Input, ApiOptionsFilter, PathBuilder } from 'liturgy-components-js';
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label mb-1');
@@ -32,10 +32,16 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         apiOptions.filter( ApiOptionsFilter.ALL_PATHS ).appendTo('#requestParametersAllPaths');
         apiOptions.linkToCalendarSelect( calendarSelect );
 
-        apiClient.listenTo( calendarSelect );
+        const pathBuilder = new PathBuilder(apiOptions, calendarSelect)
+            .class('row align-items-center ps-2')
+            .pathWrapperClass('col-sm-8 border border-secondary rounded bg-light px-3 py-1')
+            .buttonWrapperClass('col-sm-3')
+            .buttonClass('btn btn-primary')
+            .replace('#pathBuilderResult');
+        /*apiClient.listenTo( calendarSelect );
         apiClient.listenTo( apiOptions );
         apiClient._eventBus.on( 'calendarFetched', ( data ) => {
             console.log('calendarFetch event received with data:', data );
-        });
+        });*/
     }
 });
