@@ -97,10 +97,10 @@ const meta = {
                   && Array.isArray(data.litcal)
                   && data.litcal.length > 0
                 ) {
-                    const ChristKing = data.litcal.filter(event => {
+                    const ChristKing = data.litcal.find(event => {
                         return event.event_key === 'ChristKing';
                     });
-                    const ChristKingDate = new Date(ChristKing[0].date * 1000);
+                    const ChristKingDate = new Date(ChristKing.date * 1000);
                     const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
                     Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
                     const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());
@@ -117,7 +117,7 @@ const meta = {
                   console.log('Error fetching Liturgical Calendar data:', data);
                 }
             });
-            const nationalCalendarMetadata = apiClient._metadata.national_calendars.filter(calendar => calendar.calendar_id === args.calendar_id)[0];
+            const nationalCalendarMetadata = apiClient._metadata.national_calendars.find(calendar => calendar.calendar_id === args.calendar_id);
             const locale = args.locale && args.locale !== '' && nationalCalendarMetadata.locales.includes(args.locale) ? args.locale : nationalCalendarMetadata.locales[0];
             apiClient.fetchNationalCalendar(args.calendar_id, locale);
         }

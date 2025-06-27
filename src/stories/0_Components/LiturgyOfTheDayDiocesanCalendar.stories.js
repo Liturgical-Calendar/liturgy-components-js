@@ -92,10 +92,10 @@ const meta = {
         if (false === refetched) {
             apiClient._eventBus.on('calendarFetched', (data) => {
                 if (typeof data === 'object' && data.hasOwnProperty('litcal') && Array.isArray(data.litcal) && data.litcal.length > 0) {
-                    const ChristKing = data.litcal.filter(event => {
+                    const ChristKing = data.litcal.find(event => {
                         return event.event_key === 'ChristKing';
                     });
-                    const ChristKingDate = new Date(ChristKing[0].date * 1000);
+                    const ChristKingDate = new Date(ChristKing.date * 1000);
                     const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
                     Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
                     const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());
@@ -110,7 +110,7 @@ const meta = {
                     }
                 }
             });
-            const diocesanCalendarMetadata = apiClient._metadata.diocesan_calendars.filter(calendar => calendar.calendar_id === args.calendar_id)[0];
+            const diocesanCalendarMetadata = apiClient._metadata.diocesan_calendars.find(calendar => calendar.calendar_id === args.calendar_id);
             const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
             apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
         }
