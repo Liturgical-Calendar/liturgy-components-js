@@ -457,8 +457,8 @@ apiClient.setYearType( YearType.CIVIL ).refetchCalendarData();
 
 > [!TIP]
 > There is one limitation in this simple example: whichever `year_type` is requested from the `ApiClient` instance, whether `LITURGICAL` or `CIVIL`, there will always be a day in which not all events are included:
-> * in the case of `LITURGICAL`, the _Vigil Mass for the First Sunday of Advent_ for the current year, which falls on _Saturday of the 34th week of Ordinary Time_, as well as all events including and following the _First Sunday of Advent_ for the current year will not be included; whereas the _Vigil Mass for the First Sunday of Advent_ for the previous year will be included as well as all events including and following the _First Sunday of Advent_ for the previous year
-> * in the case of `CIVIL`, the _Vigil Mass for Mary, Mother of God_ will not be included on December 31st
+> * in the case of `LITURGICAL`, the _Vigil Mass for the First Sunday of Advent_ for the current solar year, which falls on _Saturday of the 34th week of Ordinary Time_, as well as all events including and following the _First Sunday of Advent_ for the current solar year will not be included
+> * in the case of `CIVIL`, the _Vigil Mass for Mary, Mother of God_ will not be included on _December 31st_
 >
 > If you would like to see all events for the current year, there are a couple approaches to achieving this:
 > 1. initially set the `year_type` to `CIVIL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance to re-fetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year, if the current date is _December 31st_
