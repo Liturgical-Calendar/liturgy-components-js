@@ -46,8 +46,8 @@ The easiest way to use ES Modules in the browser is by importing directly from a
 > ```
 > The importmap let's the browser know where to look for the `@liturgical-calendar/components-js` package.
 > The importmap must be defined before the script that imports the `@liturgical-calendar/components-js` package.
-> It's recommended to define the importmap in an line `<script type="importmap">` rather than load it from a separate file,
-> to avoid unnecessary network requests and possible timing conflicts in loading the importmap before the script that imports the `@liturgical-calendar/components-js` package.
+> It's recommended to define the importmap in an inline `<script type="importmap">` rather than load it from a separate file,
+> to avoid unnecessary network requests and possible timing conflicts in loading the importmap before any scripts that import the `@liturgical-calendar/components-js` package.
 
 
 ## Storybook
@@ -59,10 +59,13 @@ If you have a running instance of the Liturgical Calendar API on a port other th
 To simplify getting a running instance of the Liturgical Calendar API on your local machine, you can use a docker container. This way you don't have to worry about setting up PHP with the required packages, composer installing the API, and launching the API with the required environment variables. Just simply build the docker image from the provided [Dockerfile](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI/blob/development/Dockerfile) in the Liturgical Calendar API repository. To simplify this even further, you can use the provided [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml) file to launch both the Liturgical Calendar API and the Liturgical Calendar Components storybook in one command: `docker compose up -d`.
 
 If you would like to customize the port that the API will be running on, or the port that storybook will be running on, you would again use a `.env` file in the same folder as the `docker-compose.yml` file, and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d`. Note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable, see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml). Note that the images that are built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
+> [!NOTE]
+> While it is often possible to reduce the size of docker images by using multi-stage builds with an alpine image in the last stage,
+> in the case of the Liturgical Calendar API this is not possible due to the need to install system language packages, which are not available in the alpine image.
 
 ## Components
 
-The Liturgical Calendar Components library `index.js` exports the following components and enums:
+The `index.js` file of the Liturgical Calendar Components library exports the following components and enums:
 ```javascript
 export {
     ApiClient,
@@ -442,26 +445,29 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 });
 ```
 
-There is one limitation in this simple example. By default a `year_type` of `LITURGICAL` is fetched from the API.
-Let's assume the current year is 2024.
-For the current year 2024, the ApiClient instance will fetch events from the First Sunday of Advent 2023, to Saturday of the 34th week of Ordinary Time 2024.
-This means that it will not show the Vigil Mass for the First Sunday of Advent 2024, which is on Saturday of the 34th week of Ordinary Time 2024.
-Nor will it show any events from the First Sunday of Advent 2024 until the end of the Civil year on December 31st 2024.
+By default a `year_type` of `LITURGICAL` is fetched from the API, though perhaps a `year_type` of `CIVIL` better suits this component so as to produce liturgical events from January 1st to December 31st, otherwise there won't be any results for the current year after _Saturday of the 34th week of Ordinary Time_. This can be achieved by calling the `setYearType( YearType.CIVIL )` method on the `ApiClient` instance before fetching the calendar, i.e.:
+```javascript
+apiClient.setYearType( YearType.CIVIL );
+```
 
-In order to see the Vigil Mass for the First Sunday of Advent 2024, you would need to detect whether the today's date is greater than or equal to Saturday of the 34th week of Ordinary Time 2023, and less than Monday of the First week of Advent 2024. If so, you will need to fetch a `year_type` of `CIVIL` for the year 2024.
+In case the calendar has already been fetched, it will need to be re-fetched:
+```javascript
+apiClient.setYearType( YearType.CIVIL ).refetchCalendarData();
+```
 
-If instead the today's date is greater than or equal to Monday of the First week of Advent 2024, and less than or equal to Dec 31st 2024, you will need to fetch a `year_type` of `LITURGICAL` while adding a year to the current year.
+> [!TIP] There is one limitation in this simple example: whichever `year_type` is requested from the `ApiClient` instance, whether `LITURGICAL` or `CIVIL`, there will always be a day in which not all events are included:
+> * in the case of `LITURGICAL`, the _Vigil Mass for the First Sunday of Advent_ for the current year, which falls on _Saturday of the 34th week of Ordinary Time_, as well as all events including and following the _First Sunday of Advent_ for the current year will not be included; whereas the _Vigil Mass for the First Sunday of Advent_ for the previous year will be included as well as all events including and following the _First Sunday of Advent_ for the previous year
+> * in the case of `CIVIL`, the _Vigil Mass for Mary, Mother of God_ will not be included on December 31st
+> If you would like to see all events for the current year, there are a couple approaches to achieving this:
+> 1. initially set the `year_type` to `CIVIL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance to re-fetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year, if the current date is _December 31st_
+> 2. initially leave the default `year_type` of `LITURGICAL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance to re-fetch the calendar with `year_type` set to `CIVIL` if the current date is `greater than or equal to` _Saturday of the 34th week of Ordinary Time_ and `less than` _Monday of the First week of Advent_ of the following liturgical year (i.e. the current solar year), but refetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year if the current date is `greater than or equal to` _Monday of the First week of Advent_. For an example on achieving this while avoiding infinite fetch loops, see the (examples/LiturgyOfTheDay)[examples/LiturgyOfTheDay/main.js] example in the current repository or the (LiturgyOfTheDayNationalCalendar.stories.js)[stories/0_Components/LiturgyOfTheDayNationalCalendar.stories.js] or (LiturgyOfTheDayDiocesanCalendar.stories.js)[stories/0_Components/LiturgyOfTheDayDiocesanCalendar.stories.js] examples in the current repository.
 
-In order to accomplish this, we need to do some date calculations, based on the calendar data fetched the first time around. Then we can use the `apiClient.setYearType( yearType )` method to programmatically set the `year_type` parameter for the request to the API, and the `apiClient.setYear( year )` method to programmatically set the `year` parameter for the request to the API, and then use the `apiClient.refetchCalendarData()` method to refetch the calendar data.
-
-This however is a little tricky, because we might wind up creating an infinite loop of refetched data. So we would also have to keep track of whether we have already refetched the calendar data or not. For a full working example, see the `examples/LiturgyOfTheDay` folder in the current repository.
 
 ### PathBuilder
 
 The `PathBuilder` component assists in "building" an API `GET` request, by listening to `ApiOptions` and `CalendarSelect` instances
 and displaying in a text field in real time the resulting GET request with all necessary path parameters based on the selections made.
-
-This component is intended to be used in conjunction with an `ApiOptions._calendarPathInput` form control.
+Besides a text field, a button is also provided with a link to the same API `GET` request.
 
 A `PathBuilder` component is instantiated by passing in the `ApiOptions` instance and the `CalendarSelect` instance.
 
