@@ -1,5 +1,7 @@
 # @liturgical-calendar/components-js
-This component library for the Liturgical Calendar API is a collection of reusable frontend components, that work with the Liturgical Calendar API (currently hosted at https://litcal.johnromanodorazio.com/api/dev/).
+
+This component library for the Liturgical Calendar API is a collection of reusable frontend components,
+that work with the Liturgical Calendar API (currently hosted at [https://litcal.johnromanodorazio.com/api/dev/](https://litcal.johnromanodorazio.com/api/dev/)).
 
 You can also use a local instance of the API by passing in the url for your local API instance to the `ApiClient` class static `init()` method.
 
@@ -10,6 +12,7 @@ The components library is written as an ES6 module, so it can be imported using 
 The `@liturgical-calendar/components-js` component library doesn't need to be installed via npm, yarn, or pnpm. Instead, it can be used directly from a CDN that supports ES6 modules.
 
 Example:
+
 ```javascript
 //myScript.js
 import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm'
@@ -17,6 +20,7 @@ import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, Co
 
 > [!TIP]
 > In order to use ES6 import statements without a build step in your project, your project's script tag must have the attribute `type="module"`:
+>
 > ```html
 > <!-- myPage.html -->
 > <script type="module" src="myScript.js"></script>
@@ -25,10 +29,15 @@ import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, Co
 The easiest way to use ES Modules in the browser is by importing directly from a CDN rather than pulling in locally via `yarn`, `npm`, or `pnpm`.
 
 > [!NOTE]
-> The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so. If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.1.0/+esm`.
+> The jsdelivr CDN caches the packages for 7 days, so when requesting the `@latest` tag you might not actually get the latest version for another week or so.
+> If you want to implement the most recent release before the CDN cache expires, you should explicitly request the version number
+> instead of the `@latest` tag, e.g. `https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.1.0/+esm`.
+
+<!-- split between blockquotes -->
 
 > [!TIP]
 > You can optionally define an importmap so that you can import from `@liturgical-calendar/components-js` rather than from the full CDN path:
+>
 > ```html
 > <!-- myPage.html -->
 > <script type='importmap'>
@@ -40,25 +49,44 @@ The easiest way to use ES Modules in the browser is by importing directly from a
 > </script>
 > <script type="module" src="myScript.js"></script>
 > ```
+>
 > ```javascript
 > //myScript.js
 > import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from '@liturgical-calendar/components-js'
 > ```
+>
 > The importmap let's the browser know where to look for the `@liturgical-calendar/components-js` package.
 > The importmap must be defined before the script that imports the `@liturgical-calendar/components-js` package.
 > It's recommended to define the importmap in an inline `<script type="importmap">` rather than load it from a separate file,
 > to avoid unnecessary network requests and possible timing conflicts in loading the importmap before any scripts that import the `@liturgical-calendar/components-js` package.
 
-
 ## Storybook
 
-To showcase usage of the components, a storybook is included. Before launching storybook, an instance of the Liturgical Calendar API must be running locally at http://localhost:8000. You can then launch the storybook by running `yarn storybook` (after having installed dependencies with `yarn install`), this will launch the storybook at a random free port  at http://localhost:{PORT}. If you would like to launch storybook on a specific port, you can pass in a port number as a parameter to the `yarn storybook` command, e.g.: `yarn storybook --port 6006`.
+To showcase usage of the components, a storybook is included. Before launching storybook,
+an instance of the Liturgical Calendar API must be running locally at [http://localhost:8000](http://localhost:8000).
+You can then launch the storybook by running `yarn storybook` (after having installed dependencies with `yarn install`),
+this will launch the storybook on a random free port (e.g. `http://localhost:6006`).
+If you would like to launch storybook on a specific port, you can pass in a port number as a parameter to the `yarn storybook` command, e.g.: `yarn storybook --port 6006`.
 
-If you have a running instance of the Liturgical Calendar API on a port other than 8000, you can set the environment variable `STORYBOOK_API_PORT` to the port of your local API instance, e.g.: `STORYBOOK_API_PORT=8092 yarn storybook`. An `.env.example` file is included to assist with this, just copy to `.env` and set the value of `STORYBOOK_API_PORT` to the port of your local API instance, and the environment variable will be automatically picked up by storybook from the `.env` file.
+If you have a running instance of the Liturgical Calendar API on a port other than 8000,
+you can set the environment variable `STORYBOOK_API_PORT` to the port of your local API instance, e.g.: `STORYBOOK_API_PORT=8092 yarn storybook`.
+An `.env.example` file is included to assist with this, just copy to `.env` and set the value of `STORYBOOK_API_PORT` to the port of your local API instance,
+and the environment variable will be automatically picked up by storybook from the `.env` file.
 
-To simplify getting a running instance of the Liturgical Calendar API on your local machine, you can use a docker container. This way you don't have to worry about setting up PHP with the required packages, composer installing the API, and launching the API with the required environment variables. Just simply build the docker image from the provided [Dockerfile](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI/blob/development/Dockerfile) in the Liturgical Calendar API repository. To simplify this even further, you can use the provided [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml) file to launch both the Liturgical Calendar API and the Liturgical Calendar Components storybook in one command: `docker compose up -d`.
+To simplify getting a running instance of the Liturgical Calendar API on your local machine, you can use a docker container.
+This way you don't have to worry about setting up PHP with the required packages, composer installing the API, and launching the API with the required environment variables.
+Just simply build the docker image from the provided [Dockerfile](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI/blob/development/Dockerfile)
+in the Liturgical Calendar API repository.
+To simplify this even further, you can use the provided [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml) file
+to launch both the Liturgical Calendar API and the Liturgical Calendar Components storybook in one command: `docker compose up -d`.
 
-If you would like to customize the port that the API will be running on, or the port that storybook will be running on, you would again use a `.env` file in the same folder as the `docker-compose.yml` file, and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d`. Note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable, see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml). Note that the images that are built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
+If you would like to customize the port that the API will be running on, or the port that storybook will be running on,
+you would again use a `.env` file in the same folder as the `docker-compose.yml` file,
+and set the value of `STORYBOOK_API_PORT` to the port that you want the API to run on before issuing `docker compose up -d`.
+Note that in this case, you would also have to mount the `.env` file into the container, otherwise storybook will not see the environment variable,
+see the comments in [docker-compose.yml](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docker-compose.yml).
+Note that the images that are built will be about 1.09GB and 657MB respectively, for a total of 1.76GB.
+
 > [!NOTE]
 > While it is often possible to reduce the size of docker images by using multi-stage builds with an alpine image in the last stage,
 > in the case of the Liturgical Calendar API this is not possible due to the need to install system language packages, which are not available in the alpine image.
@@ -66,6 +94,7 @@ If you would like to customize the port that the API will be running on, or the 
 ## Components
 
 The `index.js` file of the Liturgical Calendar Components library exports the following components and enums:
+
 ```javascript
 export {
     ApiClient,
@@ -83,7 +112,8 @@ export {
     GradeDisplay,
     ApiOptionsFilter,
     CalendarSelectFilter,
-    YearType
+    YearType,
+    LatinInterface
 }
 ```
 
@@ -93,11 +123,15 @@ The remaining classes are used either as static classes (`Input`) or as Enums, t
 
 ### ApiClient
 
-The `ApiClient` is not a UI component, but rather takes care of fetching data from the Liturgical Calendar API based on interactions with the UI components and providing the fetched data to the UI components.
+The `ApiClient` is not a UI component, but rather takes care of fetching data from the Liturgical Calendar API based on interactions with the UI components,
+and providing the fetched data to the UI components.
 
-The `ApiClient` must be statically initialized before any UI components can be used, since the UI components depend on the data provided by the ApiClient. By default, the `ApiClient` will initialize itself with the API URL at https://litcal.johnromanodorazio.com/api/dev/, but you can provide a different API URL, whether local or remote, by passing the url as a parameter to the `ApiClient.init()` method.
+The `ApiClient` must be statically initialized before any UI components can be used, since the UI components depend on the data provided by the ApiClient.
+By default, the `ApiClient` will initialize itself with the API URL at [https://litcal.johnromanodorazio.com/api/dev/](https://litcal.johnromanodorazio.com/api/dev/),
+but you can provide a different API URL, whether local or remote, by passing the url as a parameter to the `ApiClient.init()` method (for example: `ApiClient.init('http://localhost:8000')`).
 
-The `ApiClient.init()` method returns a promise that resolves when the metadata about available liturgical calendars has been fetched from the API. The promise will resolve to an instance of the `ApiClient` class if successful, or to false if an error occurs.
+The `ApiClient.init()` method returns a promise that resolves when the metadata about available liturgical calendars has been fetched from the API.
+The promise will resolve to an instance of the `ApiClient` class if successful, or to false if an error occurs.
 
 Example:
 
@@ -136,7 +170,9 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 });
 ```
 
-Then every time a new calendar is selected from the Calendar Select dropdown, the API Client will fetch the calendar data from the API. And every time a new API option is selected from the API Options form, the API Client will fetch the new calendar data from the API and emit an internal `calendarFetched` event that a `WebCalendar` component instance can listen to.
+Then every time a new calendar is selected from the Calendar Select dropdown, the API Client will fetch the calendar data from the API.
+And every time a new API option is selected from the API Options form, the API Client will fetch the new calendar data from the API
+and emit an internal `calendarFetched` event that a `WebCalendar` component instance can listen to.
 
 It is also possible to directly fetch calendar data from the API without listening to UI components, by calling one of the following publicly exposed instance methods:
 
@@ -167,28 +203,38 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 });
 ```
 
-While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the `year` or `year_type` parameters directly, without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
+While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the `year` or `year_type` parameters directly,
+without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
+
 * `setYear(year)`: will set the year parameter to the given year
 * `setYearType(yearType)`: will set the yearType parameter to the given `YearType` (you can import the `YearType` enum to assist with this)
 
 The `ApiClient` class exposes the following static readonly class properties:
+
 * `_apiUrl`: the API URL that is being used by the `ApiClient` class
 * `_metadata`: the metadata about available liturgical calendars that has been fetched from the API
 
 And `ApiClient` instances expose the following readonly instance properties:
-* `_eventBus`: an instance of the internal `EventEmitter` class which handles registering listeners and emitting events. The `EventEmitter` class in turn exposes a readonly instance property `_events` which can be used to inspect registered events (such as the `calendarFetched` event, which can be inspected from `_eventBus._events.calendarFetched`)
+
+* `_eventBus`: an instance of the internal `EventEmitter` class which handles registering listeners and emitting events.
+  The `EventEmitter` class in turn exposes a readonly instance property `_events` which can be used to inspect registered events
+  (such as the `calendarFetched` event, which can be inspected from `_eventBus._events.calendarFetched`).
 * `_calendarData`: the JSON data representing the latest fetched calendar data from the API
 
 ### CalendarSelect
 
-The CalendarSelect is a JavaScript class that generates a select element populated with available liturgical calendars from the Liturgical Calendar API. It allows you to easily add a liturgical calendar selector to your website.
+The `CalendarSelect` component generates a select element populated with available liturgical calendars from the Liturgical Calendar API.
+It allows you to easily add a liturgical calendar selector to your website.
 
-The `ApiClient` class must be statically initialized before instantiating the `CalendarSelect` class. This is the only way for the select element to be populated with the current available liturgical calendars, whether national or diocesan.
+The `ApiClient` class must be statically initialized before instantiating the `CalendarSelect` class.
+This is the only way for the select element to be populated with the current available liturgical calendars, whether national or diocesan.
 
 The `CalendarSelect` class can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (display names of the nations for national calendars).
-The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc. If the locale has underscores (as is the case with PHP locales), they will be replaced with hyphens.
+The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
+If the locale has underscores (as is the case with PHP locales), they will be replaced with hyphens.
 
 The `CalendarSelect` class can also be instantiated with an `options` parameter, as an object that can have the following properties:
+
 * `locale`: The locale to use for the `CalendarSelect` UI elements.
 * `id`: The ID of the `CalendarSelect` element.
 * `class`: The class name for the `CalendarSelect` element.
@@ -204,20 +250,24 @@ Likewise, the same properties that can be passed in the `options` object, can al
 
 By default, a `CalendarSelect` instance will be populated with all available national and diocesan calendars (grouped by nation).
 
-It is also possible to filter the options in the select element to only include national calendars or diocesan calendars, by calling the `filter()` method and passing in a value of either `CalendarSelectFilter.NATIONAL_CALENDARS` or `CalendarSelectFilter.DIOCESAN_CALENDARS`.
+It is also possible to filter the options in the select element to only include national calendars or diocesan calendars,
+by calling the `filter()` method and passing in a value of either `CalendarSelectFilter.NATIONAL_CALENDARS` or `CalendarSelectFilter.DIOCESAN_CALENDARS`.
 
 Example:
+
 ```javascript
 import { CalendarSelect, CalendarSelectFilter } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 const calendarSelect = new CalendarSelect( 'en-US' );
 calendarSelect.filter(CalendarSelectFilter.DIOCESAN_CALENDARS).appendTo( '#calendarOptions');
 ```
 
-The `CalendarSelect` instance is inserted into the DOM by calling the `appendTo(elementSelector)` method, and passing the CSS selector for the element to which the select element should be appended.
+The `CalendarSelect` instance is inserted into the DOM by calling the `appendTo(elementSelector)` method,
+and passing the CSS selector for the element to which the select element should be appended.
 
 All of the `CalendarSelect` configuration methods are chainable, except for the `appendTo()` method which must be called at the end of the chain.
 
 Example:
+
 ```javascript
 const calendarSelect = new CalendarSelect( 'en-US' );
 calendarSelect.allowNull()
@@ -230,88 +280,131 @@ calendarSelect.allowNull()
 ```
 
 The following chainable configuration methods are available on the `CalendarSelect` instance:
+
 * `class( className )`: sets the class or classes to apply to the select element
 * `id( id )`: sets the id to apply to the select element (without an initial '#')
 * `name( name )`: sets the name to apply to the select element (usually the same as the id, not very useful since we probably won't be submitting the form)
 * `label( options )`: configures the <kbd>\<label\></kbd> element for the select element. The options object can have the following properties:
-    * `class`: the class to apply to the label element
-    * `id`: the id to apply to the label element
-    * `text`: the text to use for the label element (default is __'Select a calendar'__)
+  * `class`: the class to apply to the label element
+  * `id`: the id to apply to the label element
+  * `text`: the text to use for the label element (default is __'Select a calendar'__)
 * `wrapper( options )`: configures a wrapper element, which the select element will be wrapped in. The options object can have the following properties:
-    * `as`: the tag name to use for the wrapper element (can be either __'div'__ or __'td'__, default is __'div'__)
-    * `class`: the class to apply to the wrapper element
-    * `id`: the id to apply to the wrapper element
+  * `as`: the tag name to use for the wrapper element (can be either __'div'__ or __'td'__, default is __'div'__)
+  * `class`: the class to apply to the wrapper element
+  * `id`: the id to apply to the wrapper element
 * `disabled( disabled = true )`: sets the `disabled` attribute on the select element based on the boolean value passed in
-* `filter(filter)`: filters the options in the select element to only include national calendars or diocesan calendars. The filter can have a value of either __`CalendarSelectFilter.NATIONAL_CALENDARS`__ , __`CalendarSelectFilter.DIOCESAN_CALENDARS`__, or __`CalendarSelectFilter.NONE`__.
-* `allowNull( allowNull = true )`: sets whether the select element should include an empty option as the first option. If this method is not called, the default is false; if it is called without a parameter, the default is true. Otherwise, the method will take a boolean parameter to set whether the select element should include an empty option as the first option. An empty option corresponds with the General Roman Calendar for the API, since no national or diocesan calendar is selected.
-* `after( htmlString )`: allows to insert HTML content after the select element, for example to add a description below the select element. The HTML content must be a string, and the string is sanitized and stripped of any PHP or JavaScript script tags.
-* `linkToNationsSelect( calendarSelectInstance )`: in case the current `CalendarSelect` instance has the `CalendarSelectFilter.DIOCESAN_CALENDARS` filter applied, this method can be used to link the current CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance, so that the diocese options of the current CalendarSelect instance will be filtered according to the selected nation in the linked CalendarSelect instance.
+* `filter(filter)`: filters the options in the select element to only include national calendars or diocesan calendars.
+  The filter can have a value of either __`CalendarSelectFilter.NATIONAL_CALENDARS`__ , __`CalendarSelectFilter.DIOCESAN_CALENDARS`__, or __`CalendarSelectFilter.NONE`__.
+* `allowNull( allowNull = true )`: sets whether the select element should include an empty option as the first option.
+  If this method is not called, the default is false; if it is called without a parameter, the default is true.
+  Otherwise, the method will take a boolean parameter to set whether the select element should include an empty option as the first option.
+  An empty option corresponds to the General Roman Calendar for the API, since no national or diocesan calendar is selected.
+* `after( htmlString )`: allows to insert HTML content after the select element, for example to add a description below the select element.
+  The HTML content must be a string, and the string is sanitized and stripped of any PHP or JavaScript script tags.
+* `linkToNationsSelect( calendarSelectInstance )`: in case the current `CalendarSelect` instance has the `CalendarSelectFilter.DIOCESAN_CALENDARS` filter applied,
+  this method can be used to link the current CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance,
+  so that the diocese options of the current CalendarSelect instance will be filtered according to the selected nation in the linked CalendarSelect instance.
 
-All of the above stated methods can only be called once on the `CalendarSelect` instance. They are however idempotent, so if called multiple times with the same value no error will be thrown. If however you attempt to call them multiple times with different values, an error will be thrown.
+All of the above stated methods can only be called once on the `CalendarSelect` instance.
+They are however idempotent, so if called multiple times with the same value no error will be thrown.
+If however you attempt to call them multiple times with different values, an error will be thrown.
 
 And as previously stated, the following non chainable methods are available on the `CalendarSelect` instance, and so should be the last method of the chain:
-* `appendTo(elementSelector)`: inserts the select element into the DOM, by passing the CSS selector for the element to which the select element should be appended. This must be a valid CSS selector, and the relative element must exist in the DOM, otherwise an error will be thrown.
+
+* `appendTo(elementSelector)`: inserts the select element into the DOM, by passing the CSS selector for the element to which the select element should be appended.
+  This must be a valid CSS selector, and the relative element must exist in the DOM, otherwise an error will be thrown.
 * `replace(elementSelector)`: similar to the `appendTo()` method, but instead of being appended to the specified element, it will replace the specified element with the select element.
 
 Once either of the two above non chainable methods are called, the `CalendarSelect` instance can no longer be configured using the chainable configuration methods.
 
 The `CalendarSelect` instances expose the following readonly instance properties:
+
 * `_domElement`: the underlying DOM element of the `CalendarSelect` instance
-* `_filter`: the current filter applied to the `CalendarSelect` instance, if any. If none is applied, the value should be __'none'__ (which is the underlying value of `CalendarSelectFilter.NONE`).
+* `_filter`: the current filter applied to the `CalendarSelect` instance, if any.
+  If none is applied, the value should be __'none'__ (which is the underlying value of `CalendarSelectFilter.NONE`).
 
 ### ApiOptions
 
-The `ApiOptions` class is a JavaScript class that generates form controls for the Liturgical Calendar API options. It allows you to easily add an options form to your website, alongside a `CalendarSelect` widget.
+The `ApiOptions` component generates form controls for the Liturgical Calendar API options.
+It allows you to easily add an options form to your website, alongside a `CalendarSelect` widget.
 
 The `ApiOptions` class can be instantiated with a `locale` parameter, which will determine the localization for the UI elements (such as values in the select dropdowns).
 
-The `ApiOptions` class will instantiate nine form controls, four of which are only useful for the General Roman Calendar, while the other four are useful for any calendar, whether General Roman or National or Diocesan. Most applications will only find use for the first four form controls as follows, which are useful for any calendar.
+The `ApiOptions` class will instantiate nine form controls, four of which are only useful for the General Roman Calendar,
+while the other four are useful for any calendar, whether General Roman or National or Diocesan.
+Most applications will only find use for the first four form controls as follows, which are useful for any calendar.
 
 #### Form controls useful for any calendar
+
 * `_yearInput`: a number input for the calendar year
 * `_yearTypeInput`: a select input with options for the type of year to produce, whether liturgical or civil
 * `_localeInput`: a select input with options for the locale to use for the calendar response from the API
 * `_acceptHeaderInput`: a select input with options for the Accept header to use for the calendar response from the API
 
 #### Form controls useful only for the General Roman Calendar
-These four form controls are useful when producing a liturgical calendar for a geographical area, when the national or diocesan data is not yet available in the API.
 
-They allow to tweak parameters that the national or diocesan calendar would otherwise set, such as the date of Epiphany, the date of the Ascension, the date of Corpus Christi, and whether Eternal High Priest is celebrated.
+These four form controls are useful for fine-tuning the General Roman Calendar, when the national or diocesan data is not requested,
+for example to see what the API results would look like for a particular calendar that has not yet been implemented in the API.
+
+They allow to tweak parameters that the national or diocesan calendar would otherwise set,
+such as the date of Epiphany, the date of the Ascension, the date of Corpus Christi, and whether Eternal High Priest is celebrated.
+
 * `_epiphanyInput`: a select input with options for when Epiphany is celebrated
 * `_ascensionInput`: a select input with options for when Ascension is celebrated
 * `_corpusChristiInput`: a select input with options for when Corpus Christi is celebrated
 * `_eternalHighPriestInput`: a select input with options for whether Eternal High Priest is celebrated
 
 #### Path builder form control
+
 A ninth form control is also available, which is useful to assist in building URLs for the API:
+
 * `_calendarPathInput`: a select input with options for the path to use for the API requests
 
 #### Filtering the form controls
-The `ApiOptions` instance can be filtered to output only the form controls that are useful for the General Roman Calendar, or only the form controls that are useful for any calendar. The default filter value is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended). If instead we want to apply a filter to the form controls, we can do so by calling the `filter()` method and passing in a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__.
 
-Applying a filter can be useful if for example you're only interested in dealing with National or Diocesan liturgical calendars, and have no need for the tweakable options that only apply to the General Roman Calendar: in this case you would call the `filter()` method with a value of __`OptionsFilter.ALL_CALENDARS`__.
+The `ApiOptions` instance can be filtered to output only the form controls that are useful for "tweaking" the General Roman Calendar,
+or only the form controls that are useful for any calendar.
+The default filter value is __`ApiOptionsFilter.NONE`__ (which means all possible form controls will be appended).
+If instead we want to apply a filter to the form controls,
+we can do so by calling the `filter()` method and passing in a value of either __`ApiOptionsFilter.GENERAL_ROMAN`__ or __`ApiOptionsFilter.ALL_CALENDARS`__.
 
-If instead you would like to output only the form controls that are useful for the General Roman Calendar but not for other calendars, you would call the `filter()` method with a value of __`ApiOptionsFilter.GENERAL_ROMAN`__.
+Applying a filter can be useful if for example you're only interested in dealing with National or Diocesan liturgical calendars,
+and have no need for the tweakable options that only apply to the General Roman Calendar:
+in this case you would call the `filter()` method with a value of __`OptionsFilter.ALL_CALENDARS`__.
+
+If instead you would like to output only the form controls that are useful for the General Roman Calendar but not for other calendars,
+you would call the `filter()` method with a value of __`ApiOptionsFilter.GENERAL_ROMAN`__.
 
 Example:
+
 ```javascript
 import { ApiOptions, ApiOptionsFilter } from 'liturgical-calendar-js';
 const apiOptions = new ApiOptions( 'en-US' );
 apiOptions.filter(ApiOptionsFilter.ALL_CALENDARS).appendTo( '#calendarOptions');
 ```
 
-There is however one other possible filter, which is __`ApiOptionsFilter.PATH_BUILDER`__, which will only produce the `_calendarPathInput` form control and the `_yearInput` form control. If this filter is set on the `ApiOptions` instance and the form controls are appended to the document, a successive call to the `filter()` method with a value of __`ApiOptionsFilter.ALL_CALENDARS`__ will not include a `_yearInput` since it was already included in the __`ApiOptionsFilter.PATH_BUILDER`__ filter. When the __`ApiOptionsFilter.PATH_BUILDER`__ filter is applied, and then the `ApiOptions` instance is linked to a `CalendarSelect` instance, the current selected value of the `_calendarPathInput` form control will determine the options available in the `CalendarSelect` instance.
+There is however one other possible filter, which is __`ApiOptionsFilter.PATH_BUILDER`__, which will only produce the `_calendarPathInput` form control and the `_yearInput` form control.
+If this filter is set on the `ApiOptions` instance and the form controls are appended to the document,
+a successive call to the `filter()` method with a value of __`ApiOptionsFilter.ALL_CALENDARS`__
+will not include a `_yearInput` since it was already included in the __`ApiOptionsFilter.PATH_BUILDER`__ filter.
+When the __`ApiOptionsFilter.PATH_BUILDER`__ filter is applied, and then the `ApiOptions` instance is linked to a `CalendarSelect` instance,
+the current selected value of the `_calendarPathInput` form control will determine the options available in the `CalendarSelect` instance.
 
 #### Configuring the form controls
-All of the form controls produced by the `ApiOptions` class inherit from a common `Input` class, and can be configured globally to have the same classes or wrapper elements. This can be accomplished with the following static class methods:
+
+All of the form controls produced by the `ApiOptions` class inherit from a common `Input` class, and can be configured globally to have the same classes or wrapper elements.
+This can be accomplished with the following static class methods:
+
 * `Input.setGlobalInputClass(className)`: a space separated string of class names to be assigned globally to each form control element
 * `Input.setGlobalLabelClass(className)`: a space separated string of class names to be assigned globally to each form label element
 * `Input.setGlobalWrapper(element)`: the tag name of the wrapper element that will wrap each form control element, currently only values of __'div'__ and __'td'__ are supported
 * `Input.setGlobalWrapperClass(className)`: a space separated string of class names to be assigned globally to each wrapper element
 
-For this very reason, the `Input` class is also exported by the `@liturgical-calendar/components-js` package's main `dist/index.js`. The `Input` class is not meant to be instantiated, but rather used statically to simplify the global configuration of the form controls produced by the `ApiOptions` class.
+For this very reason, the `Input` class is also exported by the `@liturgical-calendar/components-js` package's main `dist/index.js`.
+The `Input` class is not meant to be instantiated, but rather used statically to simplify the global configuration of the form controls produced by the `ApiOptions` class.
 
 Other than the global configurations, each individual form control can be configured using the following chainable configuration methods on the single form control instances:
+
 * `class( className )`: sets the class or classes to apply to the form control element
 * `id( id )`: sets the id to apply to the form control element (without an initial '#')
 * `name( name )`: sets the name to apply to the form control element (usually the same as the id, not very useful since we probably won't be submitting the form)
@@ -320,12 +413,16 @@ Other than the global configurations, each individual form control can be config
 * `wrapper( tagName )`: configures a wrapper element, which the form control element will be wrapped in. The tag name can have a value of either __'div'__ or __'td'__.
 * `wrapperClass( className )`: sets the class or classes to apply to the wrapper element
 * `disabled( disabled = true )`: sets the `disabled` attribute on the form control element based on the boolean value passed in
-* `data( data )`: the `data` parameter is a map of `key` => `value` pairs that represent the data attributes to be set on the form control element. The `key` is the data attribute name (without the initial `data-`), and the `value` is the data attribute value.
+* `data( data )`: the `data` parameter is a map of `key` => `value` pairs that represent the data attributes to be set on the form control element.
+  The `key` is the data attribute name (without the initial `data-`), and the `value` is the data attribute value.
 * `defaultValue(value)`: sets the default value to apply to the form control element.
 
-Let's say we are using `bootstrap` to theme our UI interface, and we want to style the form controls with `bootstrap` classes. All of the form controls produced by the `ApiOptions` class are <kbd>\<select\></kbd> elements except for the `_yearInput` element which is an <kbd>\<input[type="number"]\></kbd> element. We we might want to apply a class of `form-select` globally to all form controls, but apply a class of `form-control` to the `_yearInput` form control.
+Let's say we are using `bootstrap` to theme our UI interface, and we want to style the form controls with `bootstrap` classes.
+All of the form controls produced by the `ApiOptions` class are <kbd>\<select\></kbd> elements except for the `_yearInput` element which is an <kbd>\<input[type="number"]\></kbd> element.
+We we might want to apply a class of `form-select` globally to all form controls, but apply a class of `form-control` to the `_yearInput` form control.
 
 Example:
+
 ```javascript
 import { ApiOptions, Input } from "@liturgical-calendar/components-js";
 
@@ -344,12 +441,15 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 });
 ```
 
-In most cases, we will only be requesting JSON data from the API, so we will not need the `_acceptHeaderInput` form control. The `_acceptHeaderInput` provides a chainable `hide(hide = true)` method which will prevent the form control from being appended to the form.
+In most cases, we will only be requesting JSON data from the API, so we will not need the `_acceptHeaderInput` form control.
+The `_acceptHeaderInput` provides a chainable `hide(hide = true)` method which will prevent the form control from being appended to the form.
 
 #### Dynamically updating the form controls based on selected calendar
+
 We can also set our `ApiOptions` instance to "listen" to a `CalendarSelect` instance. This will allow us to dynamically update the form controls based on the selected calendar.
 
 Example:
+
 ```javascript
 const calendarSelect = new CalendarSelect( 'en-US' );
 const apiOptions = new ApiOptions( 'en-US' );
@@ -358,53 +458,79 @@ apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' )
 ```
 
 Once the `ApiOptions` instance is linked to a `CalendarSelect` instance, the form controls will be dynamically updated based on the selected calendar:
-* The selected calendar's settings will be used to populate the `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput`, and `_eternalHighPriestInput` select elements, and these will be disabled
+
+* The selected calendar's settings will be used to populate the `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput`,
+  `_eternalHighPriestInput`, and `_holydaysOfObligationInput` select elements, and these will be disabled
 * The options for the `_localeInput` select element will be filtered according to the selected calendar
 
 > [!NOTE]
 > Currently an `ApiOptions` instance can only to a single unfiltered `CalendarSelect` instance.
-> Linking to dual filtered `CalendarSelect` instances, one that is filtered with National Calendars and another filtered for Diocesan Calendars, is on the roadmap, but not yet fully tested.
+> Linking to dual filtered `CalendarSelect` instances, one that is filtered with National Calendars and another filtered for Diocesan Calendars,
+> is on the roadmap, but not yet fully tested.
 
 ### WebCalendar
 
-The WebCalendar class is a JavaScript class that generates a Liturgical Calendar in an HTML table element.
+The `WebCalendar` component generates a Liturgical Calendar as an HTML table element.
 
-The WebCalendar class instances provide a number of chainable methods to configure the Liturgical Calendar, such as:
+The `WebCalendar` class instances provide a number of chainable methods to configure the Liturgical Calendar, such as:
+
 * `id( id )`: sets the id to apply to the table element (without an initial '#')
 * `class( className )`: sets the class or classes to apply to the table element
-* `firstColumnGrouping( grouping )`: sets the grouping for the first column of the table, can be either `Grouping.BY_MONTH` or `Grouping.BY_LITURGICAL_SEASON` (the `Grouping` enum can be imported from the `@liturgical-calendar/components-js` package)
+* `firstColumnGrouping( grouping )`: sets the grouping for the first column of the table, can be either `Grouping.BY_MONTH` or `Grouping.BY_LITURGICAL_SEASON`
+  (the `Grouping` enum can be imported from the `@liturgical-calendar/components-js` package)
 * `psalterWeekColumn( boolVal=true )`: whether to show the psalter week column as the right hand most column of the table (psalter week values are grouped by default when enabled)
 * `removeHeaderRow( boolVal=true )`: if we want to hide the header row
 * `removeCaption( boolVal=true )`: if we want to hide the table caption
 * `monthHeader( boolVal=true )`: if we want to enable a month header row at the start of each month
-* `seasonColor(ColorAs.CSS_CLASS)`: sets how the color of a liturgical season is applied to the table, whether as a CSS class, an inline style, or a small colored circle (you can import the `ColorAs` enum to assist with these values: `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE`)
-* `seasonColorColumns(Column.LITURGICAL_SEASON)`: sets which columns should be affected by the `seasonColor` settings. You can import the `Column` enum to assist with these values: `Column.LITURGICAL_SEASON`, `Column.MONTH`, `Column.DATE`, `Column.EVENT_DETAILS`, `Column.GRADE`, `Column.PSALTER_WEEK`, `Column.ALL`, `Column.NONE`. Aside from `Column.ALL` and `Column.NONE`, the other column values are bitfield values, so they can be combined with a bitwise OR operator `|`.
-* `eventColor(ColorAs.INDICATOR)`: sets how the color of the liturgical event is applied to the table (import the `ColorAs` enum to assist with these values: `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE`)
-* `eventColorColumns(Column.EVENT_DETAILS)`: sets which columns should be affected by the `eventColor` settings. You can import the `Column` enum to assist with these values, see the `seasonColorColumns()` method above for usage of the `Column` enum cases
-* `dateFormat(DateFormat.DAY_ONLY)`: sets how the date should be displayed in the Date column. You can import the `DateFormat` enum to assist with these values: `DateFormat.FULL`, `DateFormat.LONG`, `DateFormat.MEDIUM`, `DateFormat.SHORT`, `DateFormat.DAY_ONLY`. Values of `FULL`, `LONG`, `MEDIUM` and `SHORT` correspond with the values that can be set on the `dateStyle` parameter of an `Intl.DateTimeFormat` instance, whereas `DAY_ONLY` will display only the day of the month and the weekday
-* `columnOrder(ColumnOrder.GRADE_FIRST)`: whether the event details column should come before the liturgical grade column. You can import the `ColumnOrder` enum to assist with these values: `ColumnOrder.GRADE_FIRST`, `ColumnOrder.EVENT_DETAILS_FIRST`.
-* `gradeDisplay(GradeDisplay.ABBREVIATED)`: whether the liturgical grade should be displayed in full or abbreviated form. You can import the `GradeDisplay` enum to assist with these values: `GradeDisplay.FULL`, `GradeDisplay.ABBREVIATED`.
+* `seasonColor(ColorAs.CSS_CLASS)`: sets how the color of a liturgical season is applied to the table, whether as a CSS class, an inline style, or a small colored circle
+  (you can import the `ColorAs` enum to assist with these values: `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE`)
+* `seasonColorColumns(Column.LITURGICAL_SEASON)`: sets which columns should be affected by the `seasonColor` settings.
+  You can import the `Column` enum to assist with these values: `Column.LITURGICAL_SEASON`, `Column.MONTH`, `Column.DATE`, `Column.EVENT_DETAILS`,
+  `Column.GRADE`, `Column.PSALTER_WEEK`, `Column.ALL`, `Column.NONE`. Aside from `Column.ALL` and `Column.NONE`, the other column values are bitfield values,
+  so they can be combined with a bitwise OR operator `|`.
+* `eventColor(ColorAs.INDICATOR)`: sets how the color of the liturgical event is applied to the table
+  (import the `ColorAs` enum to assist with these values: `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE`)
+* `eventColorColumns(Column.EVENT_DETAILS)`: sets which columns should be affected by the `eventColor` settings.
+  You can import the `Column` enum to assist with these values, see the `seasonColorColumns()` method above for usage of the `Column` enum cases
+* `dateFormat(DateFormat.DAY_ONLY)`: sets how the date should be displayed in the Date column.
+  You can import the `DateFormat` enum to assist with these values: `DateFormat.FULL`, `DateFormat.LONG`, `DateFormat.MEDIUM`, `DateFormat.SHORT`, `DateFormat.DAY_ONLY`.
+  Values of `FULL`, `LONG`, `MEDIUM` and `SHORT` correspond with the values that can be set on the `dateStyle` parameter of an `Intl.DateTimeFormat` instance,
+  whereas `DAY_ONLY` will display only the day of the month and the weekday
+* `columnOrder(ColumnOrder.GRADE_FIRST)`: whether the event details column should come before the liturgical grade column.
+  You can import the `ColumnOrder` enum to assist with these values: `ColumnOrder.GRADE_FIRST`, `ColumnOrder.EVENT_DETAILS_FIRST`.
+* `gradeDisplay(GradeDisplay.ABBREVIATED)`: whether the liturgical grade should be displayed in full or abbreviated form.
+  You can import the `GradeDisplay` enum to assist with these values: `GradeDisplay.FULL`, `GradeDisplay.ABBREVIATED`.
+* `latinInterface( latinInterface )`: whether the days of the week should be displayed in ecclesiastical Latin or classic Latin, when a Latin locale is requested.
+  You can import the `LatinInterface` enum to assist with these values: `LatinInterface.ECCLESIASTICAL`, `LatinInterface.CIVIL`.
 * `attachTo( elementSelector )`: the selector for the DOM element in which the web calendar will be rendered, every time the calendar is updated
-* `listenTo( apiClient )`: the `WebCalendar` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance, and update the calendar when the event is triggered. If the `ApiClient` instance is configured to listen to the `CalendarSelect` instance, the `WebCalendar` instance will dynamically update the calendar based on the selected calendar; if it is configured to listen to the `ApiOptions` instance, the `WebCalendar` instance will dynamically update the calendar based on the selected options.
+* `listenTo( apiClient )`: the `WebCalendar` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance,
+  and update the calendar when the event is triggered. If the `ApiClient` instance is configured to listen to the `CalendarSelect` instance,
+  the `WebCalendar` instance will dynamically update the calendar based on the selected calendar;
+  if it is configured to listen to the `ApiOptions` instance, the `WebCalendar` instance will dynamically update the calendar based on the selected options.
 
 Example:
+
 ```javascript
 const apiClient = new ApiClient( 'en-US' );
 const webCalendar = new WebCalendar();
 webCalendar.listenTo( apiClient ).attachTo( '#litcalWebcalendar' );
 ```
 
-For a full working example of a __Web Calendar component__ listening to an __API Client component__, which in turn is listening to __Calendar Select__ and __API Options__ components, see the `examples/WebCalendar` folder in the current repository.
+For a full working example of a __Web Calendar component__ listening to an __API Client component__,
+which in turn is listening to __Calendar Select__ and __API Options__ components, see the `examples/WebCalendar` folder in the current repository.
 
-This example also demonstrates how to style the calendar events based on liturgical grade. The `WebCalendar` component adds a number of CSS classes to the single table elements, and these classes also reflect the liturgical grade. This allows us to style an event or elements of the event differently based on liturgical grade.
+This example also demonstrates how to style the calendar events based on liturgical grade.
+The `WebCalendar` component adds a number of CSS classes to the single table elements, and these classes also reflect the liturgical grade.
+This allows us to style an event or elements of the event differently based on liturgical grade.
 
 ### LiturgyOfTheDay
 
-The LiturgyOfTheDay class is a JavaScript class that generates a widget for the Liturgy of the Day.
+The `LiturgyOfTheDay` component generates a widget for the Liturgy of the Day.
 
-Instances of the LiturgyOfTheDay component can be instantiated with a locale code, which will determine the localization for the UI elements (title, date string).
+Instances of the `LiturgyOfTheDay` component can be instantiated with a locale code, which will determine the localization for the UI elements (title, date string).
 
 The LiturgyOfTheDay class instances provide a few chainable methods to configure the Liturgy of the Day components, such as:
+
 * `id( id )`: sets the id to apply to the widget element (without an initial '#')
 * `class( className )`: sets the class or classes to apply to the widget DOM element
 * `titleClass( className )`: sets the class or classes to apply to the title DOM element
@@ -416,10 +542,13 @@ The LiturgyOfTheDay class instances provide a few chainable methods to configure
 * `listenTo( apiClient )`: the `LiturgyOfTheDay` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance, and update the calendar when the event is triggered
 
 The class instance also provides these two non chainable methods:
+
 * `appendTo( elementSelector )`: the selector for the DOM element in which the Liturgy of the Day widget will be rendered
-* `replace( elementSelector )`: similar to the `appendTo()` method, but instead of being appended to the specified element, it will replace the specified element with the Liturgy of the Day widget, similarly to how many jQuery plugins work.
+* `replace( elementSelector )`: similar to the `appendTo()` method, but instead of being appended to the specified element,
+  it will replace the specified element with the Liturgy of the Day widget, similarly to how many jQuery plugins work.
 
 Example:
+
 ```javascript
 import { ApiClient, LiturgyOfTheDay } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
@@ -445,25 +574,41 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 });
 ```
 
-By default a `year_type` of `LITURGICAL` is fetched from the API, though perhaps a `year_type` of `CIVIL` better suits this component so as to produce liturgical events from January 1st to December 31st, otherwise there won't be any results for the current year after _Saturday of the 34th week of Ordinary Time_. This can be achieved by calling the `setYearType( YearType.CIVIL )` method on the `ApiClient` instance before fetching the calendar, i.e.:
+By default a `year_type` of `LITURGICAL` is fetched from the API,
+though perhaps a `year_type` of `CIVIL` better suits this component so as to produce liturgical events from January 1st to December 31st,
+otherwise there won't be any results for the current year after _Saturday of the 34th week of Ordinary Time_.
+This can be achieved by calling the `setYearType( YearType.CIVIL )` method on the `ApiClient` instance before fetching the calendar, i.e.:
+
 ```javascript
 apiClient.setYearType( YearType.CIVIL );
 ```
 
 In case the calendar has already been fetched, it will need to be re-fetched:
+
 ```javascript
 apiClient.setYearType( YearType.CIVIL ).refetchCalendarData();
 ```
 
 > [!TIP]
-> There is one limitation in this simple example: whichever `year_type` is requested from the `ApiClient` instance, whether `LITURGICAL` or `CIVIL`, there will always be a day in which not all events are included:
-> * in the case of `LITURGICAL`, the _Vigil Mass for the First Sunday of Advent_ for the current solar year, which falls on _Saturday of the 34th week of Ordinary Time_, as well as all events including and following the _First Sunday of Advent_ for the current solar year will not be included
+> There is one limitation in this simple example: whichever `year_type` is requested from the `ApiClient` instance, whether `LITURGICAL` or `CIVIL`,
+> there will always be a day in which not all events are included:
+>
+> * in the case of `LITURGICAL`, the _Vigil Mass for the First Sunday of Advent_ for the current solar year, which falls on _Saturday of the 34th week of Ordinary Time_,
+>   as well as all events including and following the _First Sunday of Advent_ for the current solar year will not be included
 > * in the case of `CIVIL`, the _Vigil Mass for Mary, Mother of God_ will not be included on _December 31st_
 >
 > If you would like to see all events for the current year, there are a couple approaches to achieving this:
-> 1. initially set the `year_type` to `CIVIL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance to re-fetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year, if the current date is _December 31st_
-> 2. initially leave the default `year_type` of `LITURGICAL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance to re-fetch the calendar with `year_type` set to `CIVIL` if the current date is `greater than or equal to` _Saturday of the 34th week of Ordinary Time_ and `less than` _Monday of the First week of Advent_ of the following liturgical year (i.e. the current solar year), but refetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year if the current date is `greater than or equal to` _Monday of the First week of Advent_. For an example on achieving this while avoiding infinite fetch loops, see the [examples/LiturgyOfTheDay](examples/LiturgyOfTheDay/main.js) example in the current repository or the [LiturgyOfTheDayNationalCalendar.stories.js](src/stories/0_Components/LiturgyOfTheDayNationalCalendar.stories.js) or [LiturgyOfTheDayDiocesanCalendar.stories.js](src/stories/0_Components/LiturgyOfTheDayDiocesanCalendar.stories.js) examples in the current repository.
-
+>
+> 1. initially set the `year_type` to `CIVIL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance
+>    to re-fetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year, if the current date is _December 31st_
+> 1. initially leave the default `year_type` of `LITURGICAL`, then attach an event handler to the `calendarFetched` event emitted by the `ApiClient` instance
+>    to re-fetch the calendar with `year_type` set to `CIVIL` if the current date is `greater than or equal to` _Saturday of the 34th week of Ordinary Time_
+>    and `less than` _Monday of the First week of Advent_ of the following liturgical year (i.e. the current solar year),
+>    but refetch the calendar with `year_type` set to `LITURGICAL` and year set to the next year
+>    if the current date is `greater than or equal to` _Monday of the First week of Advent_.
+>    For an example on achieving this while avoiding infinite fetch loops, see the [examples/LiturgyOfTheDay](examples/LiturgyOfTheDay/main.js) example,
+>    or the [LiturgyOfTheDayNationalCalendar.stories.js](src/stories/0_Components/LiturgyOfTheDayNationalCalendar.stories.js) story,
+>    or the [LiturgyOfTheDayDiocesanCalendar.stories.js](src/stories/0_Components/LiturgyOfTheDayDiocesanCalendar.stories.js) story.
 
 ### PathBuilder
 
@@ -474,6 +619,7 @@ Besides a text field, a button is also provided with a link to the same API `GET
 A `PathBuilder` component is instantiated by passing in the `ApiOptions` instance and the `CalendarSelect` instance.
 
 Example:
+
 ```javascript
 const apiOptions = new ApiOptions();
 const calendarSelect = new CalendarSelect();
