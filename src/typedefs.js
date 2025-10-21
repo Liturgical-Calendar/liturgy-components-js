@@ -3,7 +3,7 @@
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
  * @prop {int} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
- * @prop {Date|string} date - The date of the liturgical event
+ * @prop {Date|string} date - The date of the liturgical event, either as a Date object or an ISO-8601 formatted string `YYYY-MM-DD`
  * @prop {int} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
@@ -43,7 +43,7 @@
  * @prop {['JSON', 'XML', 'YML', 'ICS']} return_type - The type of the response data
  * @prop {['LITURGICAL', 'CIVIL']} year_type - The type of the year whether it is liturgical or civil
  * @prop {boolean} eternal_high_priest - Whether the feast of the Eternal High Priest is celebrated
- * @prop {object} [holydays_of_obligation] - An object where the keys are the event_keys of the liturgical events and the values are booleans indicating whether the liturgical event is observed as a holy day of obligation or not
+ * @prop {{ [event_key: string]: boolean }} [holydays_of_obligation] - Map of event_key → boolean indicating which liturgical events are observed as holy days of obligation
  * @prop {string} [national_calendar] - The national calendar used for the calculation
  * @prop {string} [diocesan_calendar] - The diocesan calendar used for the calculation
  */

@@ -128,13 +128,14 @@ export default class ApiOptions {
     }
 
     /**
-     * Basic heuristic to make labels human-friendly
+     * Basic heuristic to make Holy Days of Obligation select options labels human-friendly
      *
      * TODO: It would be even better to retrieve the actual "name" of the corresponding liturgical events from the current calendar,
      *       but this would require fetching the calendar data first, which is not ideal.
      *       So for now, this private method just applies some basic transformations to make the keys more readable.
      *       We don't have access to any calendar data in ApiClient._calendarData, because it is not a static property, it is an instance property.
-     *       Had we access to that instance property, given that it were available, we could search through the calendar data to find the corresponding event names.
+     *       Had we access to that instance property, and calendar data had been fetched,
+     *       we could filter the calendar data to find the corresponding localized event names.
      *
      * @param {string} key
      * @returns {string}
@@ -147,6 +148,44 @@ export default class ApiOptions {
             .replace(/^(St(?:s?))/, '$1.')
             .replace('Mary Mother Of God', 'Mary, Mother of God')
             .replace('Peter Paul Ap', 'Peter and Paul, Apostles');
+    }
+
+    /**
+     * Applies the given settings to the corresponding input components.
+     *
+     * @param {Object} settings - An object containing key-value pairs representing the settings to apply.
+     *                            The keys should correspond to the expected settings keys defined in {@link ApiOptions.#expectedSettingsKeys}.
+     *                            Boolean values will be converted to 'true' or 'false' strings.
+     *                            For the 'holydays_of_obligation' key, the value should be an object where each key is an option key
+     *                            and the value is a boolean indicating whether the option is selected.
+     *                            Any keys not in the expected settings keys will be ignored.
+     * @see {@link ApiOptions.#expectedSettingsKeys}
+     * @private
+     */
+    #applySettingsToInputs(settings) {
+        Object.entries(settings).forEach(([key, value]) => {
+            // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
+            if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
+                return;
+            }
+            // transform the key from snake_case to camelCase
+            key = key.replaceAll('_', ' ');
+            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
+            //console.log(`national settings: transformed key: ${key}, value type: ${typeof value}`);
+            if (typeof value === 'boolean') {
+                value = (value ? 'true' : 'false');
+            }
+            if (key === 'holydaysOfObligation' && typeof value === 'object') {
+                const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
+                    label: ApiOptions.#prettifyLabel(optionKey),
+                    value: optionKey,
+                    selected: Boolean(optionSelected)
+                }));
+                this.#inputs[`${key}Input`].setOptions(optionsArray);
+            } else {
+                this.#inputs[`${key}Input`]._domElement.value = value;
+            }
+        });
     }
 
     // TODO: add support for multiple linked calendar selects
@@ -204,7 +243,7 @@ export default class ApiOptions {
      * @private
      */
     #handleSingleLinkedCalendarSelect(calendarSelect) {
-        console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
+        //console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
         if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
             calendarSelect.allowNull(false).disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
             let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
@@ -239,29 +278,7 @@ export default class ApiOptions {
                     const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId)[0];
                     const {settings, locales} = selectedNationalCalendar;
                     //console.info('handling national calendar settings while linking to calendar select:', settings);
-                    Object.entries(settings).forEach(([key, value]) => {
-                        // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                        if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                            return;
-                        }
-                        // transform the key from snake_case to camelCase
-                        key = key.replaceAll('_', ' ');
-                        key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                        //console.log(`national settings: transformed key: ${key}, value type: ${typeof value}`);
-                        if (typeof value === 'boolean') {
-                            value = (value ? 'true' : 'false');
-                        }
-                        if (key === 'holydaysOfObligation' && typeof value === 'object') {
-                            const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
-                                label: ApiOptions.#prettifyLabel(optionKey),
-                                value: optionKey,
-                                selected: Boolean(optionSelected)
-                            }));
-                            this.#inputs[`${key}Input`].setOptions(optionsArray);
-                        } else {
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        }
-                    });
+                    this.#applySettingsToInputs(settings);
                     this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
                 }
@@ -296,21 +313,8 @@ export default class ApiOptions {
                     });
                     if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
                         const {settings} = selectedDiocesanCalendar;
-                        console.info('handling diocesan calendar settings while linking to calendar select:', settings);
-                        Object.entries(settings).forEach(([key, value]) => {
-                            // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                            if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                                return;
-                            }
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            //console.log(`diocesan settings: transformed key: ${key}, value type: ${typeof value}`);
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        });
+                        //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
+                        this.#applySettingsToInputs(settings);
                     }
                     this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
@@ -347,30 +351,7 @@ export default class ApiOptions {
                         const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value)[0];
                         const {settings, locales} = selectedNationalCalendar;
                         //console.info('handling national calendar settings following change event:', settings);
-                        Object.entries(settings).forEach(([key, value]) => {
-                            // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                            if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                                return;
-                            }
-                            //console.log(`key: ${key}, value: ${value}`);
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            //console.log(`national settings: transformed key: ${key}, value type: ${typeof value}`);
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            if (key === 'holydaysOfObligation' && typeof value === 'object') {
-                                const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
-                                    label: ApiOptions.#prettifyLabel(optionKey),
-                                    value: optionKey,
-                                    selected: Boolean(optionSelected)
-                                }));
-                                this.#inputs[`${key}Input`].setOptions(optionsArray);
-                            } else {
-                                this.#inputs[`${key}Input`]._domElement.value = value;
-                            }
-                        });
+                        this.#applySettingsToInputs(settings);
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
                         break;
@@ -381,46 +362,11 @@ export default class ApiOptions {
                         const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                         const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                         //console.info('handling national calendar settings for diocesan calendar following change event:', nationalCalendarForDioceseSettings);
-                        Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
-                            // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                            if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                                return;
-                            }
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            //console.log(`national settings for diocesan calendar: transformed key: ${key}, value type: ${typeof value}`);
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            if (key === 'holydaysOfObligation' && typeof value === 'object') {
-                                const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
-                                    label: ApiOptions.#prettifyLabel(optionKey),
-                                    value: optionKey,
-                                    selected: Boolean(optionSelected)
-                                }));
-                                this.#inputs[`${key}Input`].setOptions(optionsArray);
-                            } else {
-                                this.#inputs[`${key}Input`]._domElement.value = value;
-                            }
-                        });
+                        this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
                         if (selectedDiocese.hasOwnProperty('settings')) {
                             const {settings} = selectedDiocese;
                             //console.info('handling diocesan calendar settings following change event:', settings);
-                            Object.entries(settings).forEach(([key, value]) => {
-                                // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                                if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                                    return;
-                                }
-                                // transform the key from snake_case to camelCase
-                                key = key.replaceAll('_', ' ');
-                                key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                                //console.log(`diocesan settings: transformed key: ${key}, value type: ${typeof value}`);
-                                if (typeof value === 'boolean') {
-                                    value = value ? 'true' : 'false';
-                                }
-                                this.#inputs[`${key}Input`]._domElement.value = value;
-                            });
+                            this.#applySettingsToInputs(settings);
                         }
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));

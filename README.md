@@ -353,6 +353,7 @@ such as the date of Epiphany, the date of the Ascension, the date of Corpus Chri
 * `_ascensionInput`: a select input with options for when Ascension is celebrated
 * `_corpusChristiInput`: a select input with options for when Corpus Christi is celebrated
 * `_eternalHighPriestInput`: a select input with options for whether Eternal High Priest is celebrated
+* `_holydaysOfObligationInput`: a select input with options for setting Holy Days of Obligation
 
 #### Path builder form control
 

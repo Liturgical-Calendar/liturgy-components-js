@@ -864,17 +864,17 @@ export default class CalendarSelect {
     insertAfter( element ) {
         let domNode;
         if (typeof element === 'string') {
-            console.log(`element is a CSS selector: ${element}`);
+            //console.log(`element is a CSS selector: ${element}`);
             domNode = Utils.validateElementSelector( element );
         }
         else if (element instanceof HTMLElement) {
-            console.log(`element is an HTMLElement:`, element);
+            //console.log(`element is an HTMLElement:`, element);
             domNode = element;
         }
         else if (element instanceof Input) {
-            console.log(`element is an ApiOptions Input:`, element);
+            //console.log(`element is an ApiOptions Input:`, element);
             if (element._hasWrapper) {
-                console.log(`element has a wrapper element:`, element._wrapperElement);
+                //console.log(`element has a wrapper element:`, element._wrapperElement);
                 domNode = element._wrapperElement;
             } else {
                 domNode = element._domElement;
@@ -883,7 +883,7 @@ export default class CalendarSelect {
         else {
             throw new Error('CalendarSelect.insertAfter: parameter must be a valid CSS selector or an instance of HTMLElement');
         }
-        console.log(`domNode:`, domNode);
+        //console.log(`domNode:`, domNode);
 
         if ( this.#hasWrapper ) {
             domNode.insertAdjacentElement( 'afterend', this.#wrapperElement );

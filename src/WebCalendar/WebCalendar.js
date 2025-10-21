@@ -1050,13 +1050,14 @@ export default class WebCalendar {
         // Second column is Date
         let dateStr = '';
         switch (this.#baseLocale) {
-            case 'la':
-                let dayOfTheWeek = litevent.date.getDay(); // 0-Sunday to 6-Saturday
-                let dayOfTheWeekLatin = this.#latinInterface.dayOfTheWeek(dayOfTheWeek);
-                let month = litevent.date.getMonth() + 1; // 0-January to 11-December
-                let monthLatin = this.#latinInterface.month(month);
+            case 'la': {
+                const dayOfTheWeek = litevent.date.getDay(); // 0-Sunday to 6-Saturday
+                const dayOfTheWeekLatin = this.#latinInterface.dayOfTheWeek(dayOfTheWeek);
+                const month = (litevent.date.getMonth() + 1); // 0-January to 11-December
+                const monthLatin = this.#latinInterface.month(month);
                 dateStr = `${dayOfTheWeekLatin} ${litevent.date.getDate()} ${monthLatin} ${litevent.date.getFullYear()}`;
                 break;
+            }
             default:
                 dateStr = this.#dateFmt.format(litevent.date);
         }

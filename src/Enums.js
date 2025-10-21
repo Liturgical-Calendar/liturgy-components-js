@@ -132,7 +132,7 @@ const LatinInterface = Object.freeze({
         month: function(month) {
             return monthsLatin[month] || '';
         },
-        dayOfTheWee: function(day) {
+        dayOfTheWeek: function(day) {
             return daysLatin.civil[day] || '';
         }
     }

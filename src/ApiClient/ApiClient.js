@@ -268,7 +268,7 @@ export default class ApiClient {
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
-    this.#currentCategory = 'national';
+    this.#currentCategory   = 'national';
     this.#currentCalendarId = calendar_id;
     if (
       typeof locale === 'string'
@@ -395,28 +395,28 @@ export default class ApiClient {
     }
     apiOptions._epiphanyInput._domElement.addEventListener( 'change', event => {
       this.#params.epiphany = event.target.value;
-      console.log(`updated epiphany to ${this.#params.epiphany}`);
+      //console.log(`updated epiphany to ${this.#params.epiphany}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
     apiOptions._ascensionInput._domElement.addEventListener( 'change', event => {
       this.#params.ascension = event.target.value;
-      console.log(`updated ascension to ${this.#params.ascension}`);
+      //console.log(`updated ascension to ${this.#params.ascension}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
     apiOptions._corpusChristiInput._domElement.addEventListener( 'change', event => {
       this.#params.corpus_christi = event.target.value;
-      console.log(`updated corpus_christi to ${this.#params.corpus_christi}`);
+      //console.log(`updated corpus_christi to ${this.#params.corpus_christi}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
     apiOptions._eternalHighPriestInput._domElement.addEventListener( 'change', event => {
       this.#params.eternal_high_priest = event.target.value === 'true';
-      console.log(`updated eternal_high_priest to ${this.#params.eternal_high_priest}`);
+      //console.log(`updated eternal_high_priest to ${this.#params.eternal_high_priest}`);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
@@ -426,24 +426,24 @@ export default class ApiClient {
         Array.from(event.target.options, opt => [opt.value, opt.selected])
       );
       this.#params.holydays_of_obligation = selectedStates;
-      console.log(`updated holydays_of_obligation to ${this.#params.holydays_of_obligation}`);
+      //console.log('updated holydays_of_obligation to:', this.#params.holydays_of_obligation);
       if (this.#currentCategory === '') {
         this.refetchCalendarData();
       }
     });
     apiOptions._yearInput._domElement.addEventListener( 'change', event => {
-      this.#params.year = event.target.value;
-      console.log(`updated year to ${this.#params.year}`);
+      this.#params.year = parseInt(event.target.value, 10);
+      //console.log(`updated year to ${this.#params.year}`);
       this.refetchCalendarData();
     });
     apiOptions._yearTypeInput._domElement.addEventListener( 'change', event => {
       this.#params.year_type = event.target.value;
-      console.log(`updated year_type to ${this.#params.year_type}`);
+      //console.log(`updated year_type to ${this.#params.year_type}`);
       this.refetchCalendarData();
     });
     apiOptions._localeInput._domElement.addEventListener( 'change', event => {
       this.#fetchCalendarHeaders['Accept-Language'] = event.target.value;
-      console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
+      //console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
       this.refetchCalendarData();
     });
     return this;

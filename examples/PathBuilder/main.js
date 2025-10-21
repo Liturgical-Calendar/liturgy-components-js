@@ -39,6 +39,50 @@ function buildAndInitVirtualSelectFromNativeSelect(nativeSelect, vsContainerId) 
   });
 }
 
+/**
+ * Wires up a virtual select for the holy days of obligation setting UI.
+ * @param {ApiOptions} apiOptions - instance of ApiOptions
+ * @param {CalendarSelect} calendarSelect - instance of CalendarSelect
+ * @param {string} vsContainerId - id of virtual select container element
+ * @throws {Error} if apiOptions is not an instance of ApiOptions
+ * @throws {Error} if calendarSelect is not an instance of CalendarSelect
+ * @throws {Error} if vsContainerId is not a non-empty string
+ */
+function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
+    if (false === (apiOptions instanceof ApiOptions)) {
+        throw new Error('apiOptions must be an instance of ApiOptions');
+    }
+    if (false === (calendarSelect instanceof CalendarSelect)) {
+        throw new Error('calendarSelect must be an instance of CalendarSelect');
+    }
+    if (false === (typeof vsContainerId === 'string' && vsContainerId.length > 0)) {
+        throw new Error('vsContainerId must be a non-empty string');
+    }
+    // 1. Create a new container element for the virtual select
+    const hdobVirtualSelect = document.createElement('div');
+    hdobVirtualSelect.id = vsContainerId;
+    // 2. Insert it right after the original native select
+    apiOptions._holydaysOfObligationInput._domElement.parentNode.insertBefore( hdobVirtualSelect, apiOptions._holydaysOfObligationInput._domElement.nextSibling );
+    // 3. Build and initialize the virtual select from the native select
+    buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, vsContainerId );
+    if (calendarSelect._domElement.value === '') {
+        hdobVirtualSelect.enable();
+    } else {
+        hdobVirtualSelect.disable();
+    }
+    // 4. Listen to changes on the calendar select to rebuild and enable/disable the virtual select
+    calendarSelect._domElement.addEventListener('change', (ev) => {
+        //console.log('calendar changed to:', ev.target.value);
+        hdobVirtualSelect.destroy();
+        buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, vsContainerId );
+        if (ev.target.value === '') {
+            hdobVirtualSelect.enable();
+        } else {
+            hdobVirtualSelect.disable();
+        }
+    });
+}
+
 ApiClient.init('http://localhost:8000').then(apiClient => {
     if (false === apiClient || false === apiClient instanceof ApiClient) {
         alert('Error initializing the Liturgical Calendar API Client');
@@ -68,31 +112,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         apiOptions.filter( ApiOptionsFilter.ALL_PATHS ).appendTo('#requestParametersAllPaths');
         apiOptions.filter( ApiOptionsFilter.BASE_PATH ).appendTo('#requestParametersBasePath');
 
-        // 1. Create a new container element for the virtual select
-        const hdobVirtualSelect = document.createElement('div');
-        hdobVirtualSelect.id = 'hdob-virtual-select';
-        // 2. Insert it right after the original native select
-        apiOptions._holydaysOfObligationInput._domElement.parentNode.insertBefore( hdobVirtualSelect, apiOptions._holydaysOfObligationInput._domElement.nextSibling );
-        // 3. Build and initialize the virtual select from the native select
-        buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, 'hdob-virtual-select' );
-        apiOptions.linkToCalendarSelect( calendarSelect );
-        if (calendarSelect._domElement.value === '') {
-            hdobVirtualSelect.enable();
-        } else {
-            hdobVirtualSelect.disable();
-        }
-        // 4. Listen to changes on the calendar select to update the virtual select accordingly
-        calendarSelect._domElement.addEventListener('change', (ev) => {
-            console.log('calendar changed to:', ev.target.value);
-            const vsElement = document.querySelector('#hdob-virtual-select');
-            vsElement.destroy();
-            buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, 'hdob-virtual-select' );
-            if (ev.target.value === '') {
-                vsElement.enable();
-            } else {
-                vsElement.disable();
-            }
-        });
+        wireHdobVS( apiOptions, calendarSelect, 'hdob-virtual-select' );
 
         const pathBuilder = new PathBuilder(apiOptions, calendarSelect)
             .class('row align-items-center ps-2')

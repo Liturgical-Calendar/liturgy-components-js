@@ -118,25 +118,25 @@ export default class Input {
      * @throws {Error} If the element parameter is not a string or is not one of the valid values.
      */
     constructor(element = 'select', attributes = {multiple: false}) {
-        if (false === ['select', 'input'].includes(element)) {
-            throw new Error('Invalid `element` parameter: ' + element + ', valid values are: `select` and `input`');
-        }
         if (typeof element !== 'string') {
             throw new Error('Invalid type for element parameter, must be of type string but found type: ' + typeof element);
         }
-        if (typeof attributes !== 'undefined' && typeof attributes !== 'object') {
+        if (false === ['select', 'input'].includes(element)) {
+            throw new Error('Invalid `element` parameter: ' + element + ', valid values are: `select` and `input`');
+        }
+        if (attributes !== undefined && (attributes === null || typeof attributes !== 'object')) {
             throw new Error('Invalid type for attributes parameter, when set it must be of type object but found type: ' + typeof attributes);
         }
         switch (element) {
             case 'select':
-                if (typeof attributes.multiple !== 'undefined') {
+                if (attributes && typeof attributes.multiple !== 'undefined') {
                     if (typeof attributes.multiple !== 'boolean') {
                         throw new Error('Invalid type for multiple attribute, when set it must be of type boolean but found type: ' + typeof attributes.multiple);
                     }
                 }
                 break;
             case 'input':
-                if (typeof attributes.type !== 'undefined') {
+                if (attributes && typeof attributes.type !== 'undefined') {
                     if (typeof attributes.type !== 'string') {
                         throw new Error('Invalid type for type attribute, when set it must be of type string but found type: ' + typeof attributes.type);
                     }
@@ -147,10 +147,10 @@ export default class Input {
                 break;
         }
         this.#domElement = document.createElement(element);
-        if (attributes !== undefined) {
+        if (attributes && typeof attributes === 'object') {
             switch (element) {
                 case 'select':
-                    if (attributes.multiple === true) {
+                    if (attributes.multiple !== undefined && attributes.multiple === true) {
                         this.#domElement.setAttribute('multiple', 'multiple');
                     }
                     break;
@@ -321,11 +321,19 @@ export default class Input {
      * if the method is called more than once since the content can only be set once.
      *
      * @param {string|null} contents - The content to be set after the label element.
-     *                                 If null, any existing content is cleared.
      * @throws {Error} If content is attempted to be set more than once.
-     * @returns {CalendarSelect} The current instance for method chaining.
+     * @returns {Input} The current instance for method chaining.
      */
     labelAfter( contents = '' ) {
+        if (this.#labelAfter !== null) {
+            //console.error('Label after content has already been set on Input instance.');
+            //console.error(this);
+            throw new Error('labelAfter content has already been set on Input instance.');
+        }
+        if (contents === null) {
+            this.#labelAfter = null;
+            return this;
+        }
         // remove php tags and script tags from contents
         // the regex is doing the following:
         //  - `<\?(?:php)?` matches the start of a php tag, optionally with the word "php" after the "?"
@@ -335,9 +343,10 @@ export default class Input {
         //  - `<script(.*?)>.*?<\/script>` matches the start of a script tag, any attributes, the contents of the script tag, and the end of the script tag
         //  - `g` flag makes the regex replacement global, so it will replace all occurrences of the regex, not just the first one
         contents = contents.replace(/<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g, '');
-
-        const fragment = document.createRange().createContextualFragment(contents);
-        this.#labelAfter = fragment;
+        if (contents !== '') {
+            const fragment = document.createRange().createContextualFragment(contents);
+            this.#labelAfter = fragment;
+        }
         return this;
     }
 
