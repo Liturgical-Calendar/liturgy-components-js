@@ -99,11 +99,11 @@
 }
 
 #LitCalTable td.red {
-    background-color: lightpink;
+    background-color: lightrose;
     color: black;
 }
 
-#LitCalTable td.pink {
+#LitCalTable td.rose {
     background-color: mistyrose;
     color: black;
 }

@@ -3,7 +3,7 @@
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
  * @prop {int} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
- * @prop {Date|int} date - The date of the liturgical event
+ * @prop {Date|string} date - The date of the liturgical event
  * @prop {int} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
@@ -19,15 +19,16 @@
  * @prop {string} grade_lcl - The liturgical grade of the liturgical event in the requested locale
  * @prop {string | null} grade_display - The liturgical grade of the liturgical event as it should be displayed
  * @prop {string} grade_abbr - The abbreviated form of the liturgical grade
- * @prop {string} [liturgical_year] - The liturgical cycle (festive A, B, or C; or weekday I or II) of the liturgical event
  * @prop {string} liturgical_season - The liturgical season of the liturgical event
  * @prop {string} liturgical_season_lcl - The liturgical season of the liturgical event in the requested locale
+ * @prop {string} [liturgical_year] - The liturgical cycle (festive A, B, or C; or weekday I or II) of the liturgical event
  * @prop {string} [is_vigil_for] - The liturgical event for which the current event is a Vigil Mass
  * @prop {boolean} [is_vigil_mass] - Will have a boolean value of 'true' if the event is a Vigil Mass for a Solemnity or Sunday
  * @prop {boolean} [has_vesper_i] - Will have a boolean value of 'true' if the expected First Vespers are confirmed
  * @prop {boolean} [has_vesper_ii] - Will have a boolean value of 'true' if the expected Second Vespers are confirmed
  * @prop {boolean} [has_vigil_mass] - Will have a boolean value of 'true' if the expected Vigil Mass is confirmed
  * @prop {string} [psalter_week] - The psalter week in which the liturgical event falls
+ * @prop {boolean} [holy_day_of_obligation] - Will have a boolean value of 'true' if the liturgical event is observed as a holy day of obligation
  * @prop {['mobile', 'fixed']} type - The type of the liturgical event
  */
 
@@ -42,6 +43,7 @@
  * @prop {['JSON', 'XML', 'YML', 'ICS']} return_type - The type of the response data
  * @prop {['LITURGICAL', 'CIVIL']} year_type - The type of the year whether it is liturgical or civil
  * @prop {boolean} eternal_high_priest - Whether the feast of the Eternal High Priest is celebrated
+ * @prop {object} [holydays_of_obligation] - An object where the keys are the event_keys of the liturgical events and the values are booleans indicating whether the liturgical event is observed as a holy day of obligation or not
  * @prop {string} [national_calendar] - The national calendar used for the calculation
  * @prop {string} [diocesan_calendar] - The diocesan calendar used for the calculation
  */

@@ -506,9 +506,9 @@ export default class LiturgyOfTheDay {
             if (!data.hasOwnProperty('settings') || !data.hasOwnProperty('metadata') || !data.hasOwnProperty('messages')) {
                 throw new Error('LiturgyOfTheDay: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
-            const todaysTimestamp = this.#date.getTime() / 1000;
+            const todaysTimestamp = this.#date.getTime();
             const todaysEvents = data.litcal.filter(event => {
-                return event.date === todaysTimestamp;
+                return new Date(event.date).getTime() === todaysTimestamp;
             });
             console.log('todaysEvents: ', todaysEvents);
             this.#updateEventDetails(todaysEvents);

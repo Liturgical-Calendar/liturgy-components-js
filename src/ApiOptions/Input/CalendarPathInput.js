@@ -21,6 +21,7 @@ export default class CalendarPathInput extends SelectInput {
         this._domElement.name = 'calendar_path';
         this._domElement.id = 'calendar_path';
         this._labelElement.textContent = Messages[locale.language]['SELECT_ROUTE'] ?? 'Select route';
+        this._labelElement.htmlFor = this._domElement.id;
         this._domElement.append(...CalendarPathInput.#CALENDAR_PATHS.map(path => {
             const option = document.createElement('option');
             option.textContent = path;

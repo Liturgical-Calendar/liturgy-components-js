@@ -111,18 +111,57 @@ export default class Input {
 
     /**
      * @param {string} [element='select'] - The element to create as the input element.
-     *     Valid values are: select, input\[type="number"\].
+     *     Valid values are: `select`, `input`.
+     * @param {object} [attributes={multiple: false}] - Key-value pairs of attributes to set on the element.
+     *     When the element is `input`, the only current supported attribute is `type` with a value of `number` (which will produce an `input[type="number"]` element).
+     *     When the element is `select`, the `multiple` attribute can be set to `true` to create a multi-select element.
      * @throws {Error} If the element parameter is not a string or is not one of the valid values.
      */
-    constructor(element = 'select') {
-        if (false === ['select', 'input[type="number"]'].includes(element)) {
-            throw new Error('Invalid element parameter: ' + element + ', valid values are: select, input[type="number"]');
+    constructor(element = 'select', attributes = {multiple: false}) {
+        if (false === ['select', 'input'].includes(element)) {
+            throw new Error('Invalid `element` parameter: ' + element + ', valid values are: `select` and `input`');
         }
-        const parseType = /^(.*?)(\[type="(.*?)"\])?$/.exec(element);
-        this.#domElement = document.createElement(parseType[1]);
-        if (parseType[3] !== undefined) {
-            this.#domElement.setAttribute('type', parseType[3]);
+        if (typeof element !== 'string') {
+            throw new Error('Invalid type for element parameter, must be of type string but found type: ' + typeof element);
         }
+        if (typeof attributes !== 'undefined' && typeof attributes !== 'object') {
+            throw new Error('Invalid type for attributes parameter, when set it must be of type object but found type: ' + typeof attributes);
+        }
+        switch (element) {
+            case 'select':
+                if (typeof attributes.multiple !== 'undefined') {
+                    if (typeof attributes.multiple !== 'boolean') {
+                        throw new Error('Invalid type for multiple attribute, when set it must be of type boolean but found type: ' + typeof attributes.multiple);
+                    }
+                }
+                break;
+            case 'input':
+                if (typeof attributes.type !== 'undefined') {
+                    if (typeof attributes.type !== 'string') {
+                        throw new Error('Invalid type for type attribute, when set it must be of type string but found type: ' + typeof attributes.type);
+                    }
+                    if (false === ['number'].includes(attributes.type)) {
+                        throw new Error('Invalid type attribute for input element: ' + attributes.type + ', valid values are: `number`');
+                    }
+                }
+                break;
+        }
+        this.#domElement = document.createElement(element);
+        if (attributes !== undefined) {
+            switch (element) {
+                case 'select':
+                    if (attributes.multiple === true) {
+                        this.#domElement.setAttribute('multiple', 'multiple');
+                    }
+                    break;
+                case 'input':
+                    if (attributes.type !== undefined && attributes.type === 'number') {
+                        this.#domElement.setAttribute('type', 'number');
+                    }
+                    break;
+            }
+        }
+
         if (Input.#globalInputClass !== null) {
             this.#domElement.className = Input.#globalInputClass;
         }
@@ -168,6 +207,7 @@ export default class Input {
         }
         this.#domElement.id = id;
         this.#idSet = true;
+        this.#labelElement.htmlFor = this.#domElement.id;
         return this;
     }
 

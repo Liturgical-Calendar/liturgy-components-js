@@ -21,6 +21,7 @@ export default class AscensionInput extends SelectInput {
         this._domElement.name = 'ascension';
         this._domElement.id = 'ascension';
         this._labelElement.textContent = 'ascension';
+        this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }

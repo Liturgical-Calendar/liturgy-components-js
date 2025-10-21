@@ -53,51 +53,6 @@ export default class CalendarSelect {
     #nameSet                              = false;
     #allowNull                            = false;
 
-    /**
-     * Validates if the given class name adheres to standard CSS class naming conventions.
-     *
-     * The regex pattern used to validate class names:
-     *   - `^` asserts the start of a line
-     *   - `(?!\d|--|-?\d)` is a negative lookahead that prevents the class name
-     *     from starting with a digit, or a sequence of dashes, or a number with a leading dash
-     *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-     *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore at least once
-     *   - `$` asserts the end of a line
-     *
-     * @param {string} className - The class name to validate.
-     * @returns {boolean} True if the class name is valid, false otherwise.
-     * @private
-     * @static
-     */
-    static #isValidClassName(className) {
-        const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
-        return pattern.test(className);
-    }
-
-    /**
-     * Validates if the given ID adheres to HTML and CSS ID naming conventions.
-     *
-     * The regex pattern used to validate IDs:
-     *   - `^` asserts the start of a line
-     *   - `(?!\d|--|-?\d)` is a negative lookahead that prevents the ID
-     *     from starting with a digit, a sequence of dashes, or a number with a leading dash
-     *   - `(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)` matches either a sequence starting with an underscore or dash
-     *     followed by a letter and zero or more word characters or dashes,
-     *     or it matches a letter followed by zero or more word characters or dashes
-     *   - `$` asserts the end of a line
-     *
-     * Note: While ID attribute values can contain any Unicode character,
-     *       they must be valid CSS identifiers when used in CSS selectors or with JavaScript methods like `querySelector`.
-     *
-     * @param {string} id - The ID to validate.
-     * @returns {boolean} True if the ID is valid, false otherwise.
-     * @private
-     * @static
-     */
-    static #isValidId(id) {
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
-        return pattern.test(id);
-    }
 
     /**
      * Returns true if we have already stored a national calendar with dioceses for the given nation,
@@ -164,18 +119,18 @@ export default class CalendarSelect {
      * Constructor for the CalendarSelect class.
      *
      * @param {Object|string} [options] - The options object or locale string. An options object can have the following properties:
-     *                                  - locale: The locale to use for the CalendarSelect UI elements.
-     *                                  - id: The ID of the CalendarSelect element.
-     *                                  - class: The class name for the CalendarSelect element.
-     *                                  - name: The name for the CalendarSelect element.
-     *                                  - filter: The CalendarSelectFilter to apply to the CalendarSelect element.
-     *                                  - after: an html string to append after the CalendarSelect element.
-     *                                  - allowNull: a boolean to indicate if the CalendarSelect element should allow null values.
-     *                                  - disabled: a boolean to indicate if the CalendarSelect element should be disabled.
-     *                                  - label: The label for the CalendarSelect element (an object with a `text` property, and optionally `class` and `id` properties).
-     *                                  - wrapper: The wrapper for the CalendarSelect element (an object with an `as` property, and optionally `class` and `id` properties).
-     *                                  If a string is passed, it is expected to be the locale code to use for the CalendarSelect UI elements.
-     *                                  The locale should be a valid string that can be parsed by the Intl.getCanonicalLocales function.
+     *                                  - `locale`: The locale to use for the `CalendarSelect` UI elements.
+     *                                  - `id`: The ID of the `CalendarSelect` DOM input.
+     *                                  - `class`: The class name for the `CalendarSelect` DOM input.
+     *                                  - `name`: The name for the `CalendarSelect` DOM input.
+     *                                  - `filter`: The `CalendarSelectFilter` to apply to the `CalendarSelect` component.
+     *                                  - `after`: an html string to append after the `CalendarSelect` element.
+     *                                  - `allowNull`: a boolean to indicate whether the `CalendarSelect` element should allow `null` values.
+     *                                  - `disabled`: a boolean to indicate whether the `CalendarSelect` DOM input element should be disabled.
+     *                                  - `label`: The label for the `CalendarSelect` DOM input (an object with a `text` property, and optionally `class` and `id` properties).
+     *                                  - `wrapper`: The wrapper for the `CalendarSelect` component (an object with an `as` property, and optionally `class` and `id` properties).
+     *                                  If a string is passed, it is expected to be the locale code to use for the `CalendarSelect` UI elements.
+     *                                  The locale should be a valid ISO 639-1 code that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *
      * @throws {Error} If the locale is invalid.
@@ -184,7 +139,7 @@ export default class CalendarSelect {
         if (typeof options === 'string') {
             options = { locale: options };
         }
-        else if (null === options) {
+        else if (null === options || typeof options === 'undefined') {
             options = { locale: 'en' };
         }
         else if (typeof options !== 'object' || Array.isArray(options)) {
@@ -412,11 +367,9 @@ export default class CalendarSelect {
      * and assigned to the element. If the class name is an empty string, the
      * class attribute is removed.
      *
-     * @param {string} className - A space-separated string of class names to be
-     * assigned to the DOM element.
-     * @throws {Error} If the className is not a string, or if any class name is
-     * invalid.
-     * @returns {CalendarSelect} The current CalendarSelect instance for chaining.
+     * @param {string} className - A space-separated string of class names to be assigned to the DOM element.
+     * @throws {Error} If the className is not a string, or if any class name is invalid.
+     * @returns {CalendarSelect} The current `CalendarSelect` instance for chaining.
      */
     class( className ) {
         if ( typeof className !== 'string' ) {
@@ -439,7 +392,7 @@ export default class CalendarSelect {
     }
 
     /**
-     * Sets the id attribute of the select element.
+     * Sets the `id` attribute of the select element.
      *
      * Validates the input id to ensure it is a string and conforms to
      * HTML id attribute naming conventions. If the id is valid, it is sanitized
@@ -478,7 +431,7 @@ export default class CalendarSelect {
     }
 
     /**
-     * Sets the name attribute of the select element.
+     * Sets the `name` attribute of the select element.
      *
      * Validates the input name to ensure it is a string. If the name is valid,
      * it is sanitized and assigned to the element. If the name is an empty
@@ -503,7 +456,7 @@ export default class CalendarSelect {
     }
 
     /**
-     * Configures the label element for the CalendarSelect instance.
+     * Configures the `label` element for the `CalendarSelect` DOM input.
      *
      * If label options are not provided, the label will not be created and
      * any existing label will be removed. If an object is provided, it

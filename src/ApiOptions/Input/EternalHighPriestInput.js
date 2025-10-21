@@ -22,6 +22,7 @@ export default class EternalHighPriestInput extends SelectInput {
         this._domElement.name = 'eternal_high_priest';
         this._domElement.id = 'eternal_high_priest';
         this._labelElement.textContent = 'eternal_high_priest';
+        this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
