@@ -26,6 +26,7 @@ export default class LocaleInput extends SelectInput {
         this._domElement.name = 'locale';
         this._domElement.id = 'locale';
         this._labelElement.textContent = 'locale';
+        this._labelElement.htmlFor = this._domElement.id;
         if (ApiClient._metadata === null) {
             throw new Error('ApiClient has not yet been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
         }

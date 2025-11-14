@@ -1,4 +1,4 @@
-import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay } from '../Enums.js';
+import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, LatinInterface } from '../Enums.js';
 import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
@@ -69,6 +69,12 @@ export default class WebCalendar {
      */
     #gradeDisplay = GradeDisplay.FULL;
 
+    /**
+     * @type {LatinInterface}
+     * @private
+     */
+    #latinInterface = LatinInterface.ECCLESIASTICAL;
+
     #removeHeaderRow = false;
 
     #removeCaption = false;
@@ -106,41 +112,6 @@ export default class WebCalendar {
      */
     static #HIGH_CONTRAST = Object.freeze(['purple', 'red', 'green']);
 
-    /**
-     * @type {['dies Solis', 'dies Lunæ', 'dies Martis', 'dies Mercurii', 'dies Iovis', 'dies Veneris', 'dies Saturni']}
-     * @private
-     * @readonly
-     */
-    static #DAYS_OF_THE_WEEK_LATIN = Object.freeze([
-        "dies Solis",
-        "dies Lunæ",
-        "dies Martis",
-        "dies Mercurii",
-        "dies Iovis",
-        "dies Veneris",
-        "dies Saturni"
-    ]);
-
-    /**
-     * @type {['', 'Ianuarius', 'Februarius', 'Martius', 'Aprilis', 'Maius', 'Iunius', 'Iulius', 'Augustus', 'September', 'October', 'November', 'December']}
-     * @private
-     * @readonly
-     */
-    static #MONTHS_LATIN = Object.freeze([
-        "",
-        "Ianuarius",
-        "Februarius",
-        "Martius",
-        "Aprilis",
-        "Maius",
-        "Iunius",
-        "Iulius",
-        "Augustus",
-        "September",
-        "October",
-        "November",
-        "December"
-    ]);
 
     /**
      * @type {['', 'I', 'II', 'III', 'IV']}
@@ -315,6 +286,9 @@ export default class WebCalendar {
         }
         if (options.hasOwnProperty('gradeDisplay')) {
             this.gradeDisplay(options.gradeDisplay);
+        }
+        if (options.hasOwnProperty('latinInterface')) {
+            this.latinInterface(options.latinInterface);
         }
     }
 
@@ -664,6 +638,28 @@ export default class WebCalendar {
     }
 
     /**
+     * Sets the Latin interface for the WebCalendar instance.
+     *
+     * The Latin interface determines which set of month and weekday names to use
+     * for the calendar. The following options are supported:
+     * - LatinInterface.ECCLESIASTICAL: month and weekday names are based on the ecclesiastical calendar
+     * - LatinInterface.CIVIL: month and weekday names are based on the civil calendar
+     *
+     * The default is LatinInterface.ECCLESIASTICAL.
+     *
+     * @param {LatinInterface} latinInterface The Latin interface to use.
+     * @throws {Error} If the input is not a valid LatinInterface.
+     * @returns {WebCalendar} The current instance of the class.
+     */
+    latinInterface(latinInterface) {
+        if (!Object.values(LatinInterface).includes(latinInterface)) {
+            throw new Error('Invalid Latin interface: ' + latinInterface);
+        }
+        this.#latinInterface = latinInterface;
+        return this;
+    }
+
+    /**
      * Sets the locale for the WebCalendar instance.
      *
      * The locale determines the language and regional settings for date formatting
@@ -998,7 +994,7 @@ export default class WebCalendar {
                 this.#handleSeasonColorForColumn(seasonColor, firstColCell, Column.MONTH);
                 this.#handleEventColorForColumn(litevent.color, firstColCell, Column.MONTH);
                 const textNode = this.#baseLocale === 'la'
-                    ? WebCalendar.#MONTHS_LATIN[litevent.date.getMonth() + 1].toUpperCase()
+                    ? this.#latinInterface.month(litevent.date.getMonth() + 1).toUpperCase()
                     : this.#monthFmt.format(litevent.date).toUpperCase();
                 const div = document.createElement('div');
                 div.appendChild(document.createTextNode(textNode));
@@ -1054,13 +1050,14 @@ export default class WebCalendar {
         // Second column is Date
         let dateStr = '';
         switch (this.#baseLocale) {
-            case 'la':
-                let dayOfTheWeek = litevent.date.getDay(); // 0-Sunday to 6-Saturday
-                let dayOfTheWeekLatin = WebCalendar.#DAYS_OF_THE_WEEK_LATIN[dayOfTheWeek];
-                let month = litevent.date.getMonth() + 1; // 0-January to 11-December
-                let monthLatin = WebCalendar.#MONTHS_LATIN[month];
+            case 'la': {
+                const dayOfTheWeek = litevent.date.getDay(); // 0-Sunday to 6-Saturday
+                const dayOfTheWeekLatin = this.#latinInterface.dayOfTheWeek(dayOfTheWeek);
+                const month = (litevent.date.getMonth() + 1); // 0-January to 11-December
+                const monthLatin = this.#latinInterface.month(month);
                 dateStr = `${dayOfTheWeekLatin} ${litevent.date.getDate()} ${monthLatin} ${litevent.date.getFullYear()}`;
                 break;
+            }
             default:
                 dateStr = this.#dateFmt.format(litevent.date);
         }
@@ -1404,7 +1401,7 @@ export default class WebCalendar {
                 throw new Error('WebCalendar: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
             data.litcal = data.litcal.map(event => {
-                event.date = new Date(event.date * 1000);
+                event.date = new Date(event.date);
                 return event;
             });
             this.#calendarData = data;

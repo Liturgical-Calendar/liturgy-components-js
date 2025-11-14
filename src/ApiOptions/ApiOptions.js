@@ -5,6 +5,7 @@ import {
     EpiphanyInput,
     LocaleInput,
     EternalHighPriestInput,
+    HolydaysOfObligationInput,
     YearInput,
     YearTypeInput,
     CalendarPathInput
@@ -19,14 +20,15 @@ import Utils from '../Utils.js';
  *
  * The form controls can be fully customized using the methods provided by the class.
  *
- * __ constructor()__ Initializes the ApiOptions object with default or provided settings:
- *                                             - __locale__: The locale to use for the API options form.
+ * - __constructor()__ Initializes the ApiOptions object with default or provided settings:
+ *   - __locale__: The locale to use for the API options form.
  *
  * The following properties are initialized on the object instance:
- * - ___epiphanyInput__: The seslect input with options for when the Epiphany is celebrated.
+ * - ___epiphanyInput__: The select input with options for when the Epiphany is celebrated.
  * - ___ascensionInput__: The select input with options for when the Ascension is celebrated.
  * - ___corpusChristiInput__: The select input with options for when Corpus Christi is celebrated.
  * - ___eternalHighPriestInput__: The select input with options for whether the Eternal High Priest is celebrated.
+ * - ___holydaysOfObligationInput__: The select input with options for which holy days of obligation are observed.
  * - ___yearTypeInput__: The select input with options for the type of year to produce, whether liturgical or civil.
  * - ___localeInput__: The select input with options for the locale to use for the calendar response from the API.
  * - ___acceptHeaderInput__: The select input with options for the Accept header to use for the calendar response from the API.
@@ -46,6 +48,18 @@ import Utils from '../Utils.js';
  */
 export default class ApiOptions {
 
+    /** @type {string[]} */
+    static #expectedSettingsKeys = [
+        'year',
+        'year_type',
+        'locale',
+        'epiphany',
+        'ascension',
+        'corpus_christi',
+        'eternal_high_priest',
+        'holydays_of_obligation'
+    ];
+
     /** @type {boolean} */
     #linked                = false;
 
@@ -61,6 +75,7 @@ export default class ApiOptions {
      *  ascensionInput: ?AscensionInput,
      *  corpusChristiInput: ?CorpusChristiInput,
      *  eternalHighPriestInput: ?EternalHighPriestInput,
+     *  holydaysOfObligationInput: ?HolydaysOfObligationInput,
      *  localeInput: ?LocaleInput,
      *  yearInput: ?YearInput,
      *  yearTypeInput: ?YearTypeInput,
@@ -73,6 +88,7 @@ export default class ApiOptions {
         ascensionInput: null,
         corpusChristiInput: null,
         eternalHighPriestInput: null,
+        holydaysOfObligationInput: null,
         localeInput: null,
         yearInput: null,
         yearTypeInput: null,
@@ -103,11 +119,73 @@ export default class ApiOptions {
         this.#inputs.ascensionInput = new AscensionInput(this.#locale);
         this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);
         this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
+        this.#inputs.holydaysOfObligationInput = new HolydaysOfObligationInput();
         this.#inputs.localeInput = new LocaleInput(this.#locale);
         this.#inputs.yearInput = new YearInput();
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
         this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
         this.#inputs.calendarPathInput = new CalendarPathInput(this.#locale);
+    }
+
+    /**
+     * Basic heuristic to make Holy Days of Obligation select options labels human-friendly
+     *
+     * TODO: It would be even better to retrieve the actual "name" of the corresponding liturgical events from the current calendar,
+     *       but this would require fetching the calendar data first, which is not ideal.
+     *       So for now, this private method just applies some basic transformations to make the keys more readable.
+     *       We don't have access to any calendar data in ApiClient._calendarData, because it is not a static property, it is an instance property.
+     *       Had we access to that instance property, and calendar data had been fetched,
+     *       we could filter the calendar data to find the corresponding localized event names.
+     *
+     * @param {string} key
+     * @returns {string}
+     */
+    static #prettifyLabel(key) {
+        return key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, s => s.toUpperCase())
+            .trim()
+            .replace(/^(St(?:s?))/, '$1.')
+            .replace('Mary Mother Of God', 'Mary, Mother of God')
+            .replace('Peter Paul Ap', 'Peter and Paul, Apostles');
+    }
+
+    /**
+     * Applies the given settings to the corresponding input components.
+     *
+     * @param {Object} settings - An object containing key-value pairs representing the settings to apply.
+     *                            The keys should correspond to the expected settings keys defined in {@link ApiOptions.#expectedSettingsKeys}.
+     *                            Boolean values will be converted to 'true' or 'false' strings.
+     *                            For the 'holydays_of_obligation' key, the value should be an object where each key is an option key
+     *                            and the value is a boolean indicating whether the option is selected.
+     *                            Any keys not in the expected settings keys will be ignored.
+     * @see {@link ApiOptions.#expectedSettingsKeys}
+     * @private
+     */
+    #applySettingsToInputs(settings) {
+        Object.entries(settings).forEach(([key, value]) => {
+            // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
+            if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
+                return;
+            }
+            // transform the key from snake_case to camelCase
+            key = key.replaceAll('_', ' ');
+            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
+            //console.log(`national settings: transformed key: ${key}, value type: ${typeof value}`);
+            if (typeof value === 'boolean') {
+                value = (value ? 'true' : 'false');
+            }
+            if (key === 'holydaysOfObligation' && typeof value === 'object') {
+                const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
+                    label: ApiOptions.#prettifyLabel(optionKey),
+                    value: optionKey,
+                    selected: Boolean(optionSelected)
+                }));
+                this.#inputs[`${key}Input`].setOptions(optionsArray);
+            } else {
+                this.#inputs[`${key}Input`]._domElement.value = value;
+            }
+        });
     }
 
     // TODO: add support for multiple linked calendar selects
@@ -123,12 +201,14 @@ export default class ApiOptions {
                 this.#inputs.ascensionInput.disabled(false);
                 this.#inputs.corpusChristiInput.disabled(false);
                 this.#inputs.eternalHighPriestInput.disabled(false);
+                this.#inputs.holydaysOfObligationInput.disabled(false);
             } else {
                 // all API options disabled
                 this.#inputs.epiphanyInput.disabled(true);
                 this.#inputs.ascensionInput.disabled(true);
                 this.#inputs.corpusChristiInput.disabled(true);
                 this.#inputs.eternalHighPriestInput.disabled(true);
+                this.#inputs.holydaysOfObligationInput.disabled(true);
             }
         });
         dioceseSelector._domElement.addEventListener('change', (ev) => {
@@ -140,12 +220,14 @@ export default class ApiOptions {
                 this.#inputs.ascensionInput.disabled(false);
                 this.#inputs.corpusChristiInput.disabled(false);
                 this.#inputs.eternalHighPriestInput.disabled(false);
+                this.#inputs.holydaysOfObligationInput.disabled(false);
             } else {
                 // all API options disabled
                 this.#inputs.epiphanyInput.disabled(true);
                 this.#inputs.ascensionInput.disabled(true);
                 this.#inputs.corpusChristiInput.disabled(true);
                 this.#inputs.eternalHighPriestInput.disabled(true);
+                this.#inputs.holydaysOfObligationInput.disabled(true);
             }
         });
     }
@@ -161,6 +243,7 @@ export default class ApiOptions {
      * @private
      */
     #handleSingleLinkedCalendarSelect(calendarSelect) {
+        //console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
         if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
             calendarSelect.allowNull(false).disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
             let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
@@ -170,7 +253,7 @@ export default class ApiOptions {
                     lastCalendarPathValue = ev.target.value;
                     switch (ev.target.value) {
                         case '/calendar':
-                            calendarSelect.disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
+                            calendarSelect.disabled(true)._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
                             break;
                         case '/calendar/nation/':
                             calendarSelect.disabled(false).filter(CalendarSelectFilter.NATIONAL_CALENDARS);
@@ -194,15 +277,8 @@ export default class ApiOptions {
                 case 'national': {
                     const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId)[0];
                     const {settings, locales} = selectedNationalCalendar;
-                    Object.entries(settings).forEach(([key, value]) => {
-                        // transform the key from snake_case to camelCase
-                        key = key.replaceAll('_', ' ');
-                        key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                        if (typeof value === 'boolean') {
-                            value = value ? 'true' : 'false';
-                        }
-                        this.#inputs[`${key}Input`]._domElement.value = value;
-                    });
+                    //console.info('handling national calendar settings while linking to calendar select:', settings);
+                    this.#applySettingsToInputs(settings);
                     this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
                 }
@@ -211,26 +287,12 @@ export default class ApiOptions {
                     const {nation, locales} = selectedDiocesanCalendar;
                     const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                     const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                    Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
-                        // transform the key from snake_case to camelCase
-                        key = key.replaceAll('_', ' ');
-                        key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                        if (typeof value === 'boolean') {
-                            value = value ? 'true' : 'false';
-                        }
-                        this.#inputs[`${key}Input`]._domElement.value = value;
-                    });
+                    //console.info('handling national calendar settings for diocesan calendar while linking to calendar select:', nationalCalendarForDioceseSettings);
+                    this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
                     if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
                         const {settings} = selectedDiocesanCalendar;
-                        Object.entries(settings).forEach(([key, value]) => {
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        });
+                        //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
+                        this.#applySettingsToInputs(settings);
                     }
                     this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                     break;
@@ -242,22 +304,23 @@ export default class ApiOptions {
             this.#inputs.ascensionInput.disabled(true);
             this.#inputs.corpusChristiInput.disabled(true);
             this.#inputs.eternalHighPriestInput.disabled(true);
+            this.#inputs.holydaysOfObligationInput.disabled(true);
         } else {
             this.#inputs.epiphanyInput.disabled(false);
             this.#inputs.ascensionInput.disabled(false);
             this.#inputs.corpusChristiInput.disabled(false);
             this.#inputs.eternalHighPriestInput.disabled(false);
+            this.#inputs.holydaysOfObligationInput.disabled(false);
             this.#inputs.localeInput.resetOptions();
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
-            // TODO: set selected values based on selected calendar
-            // TODO: set available options for locale select based on selected calendar
             if (ev.target.value === '') {
                 // all API options enabled
                 this.#inputs.epiphanyInput.disabled(false);
                 this.#inputs.ascensionInput.disabled(false);
                 this.#inputs.corpusChristiInput.disabled(false);
                 this.#inputs.eternalHighPriestInput.disabled(false);
+                this.#inputs.holydaysOfObligationInput.disabled(false);
                 this.#inputs.localeInput.resetOptions();
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
@@ -265,15 +328,8 @@ export default class ApiOptions {
                     case 'national': {
                         const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value)[0];
                         const {settings, locales} = selectedNationalCalendar;
-                        Object.entries(settings).forEach(([key, value]) => {
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        });
+                        //console.info('handling national calendar settings following change event:', settings);
+                        this.#applySettingsToInputs(settings);
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
                         break;
@@ -283,26 +339,12 @@ export default class ApiOptions {
                         const {nation, locales} = selectedDiocese;
                         const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                         const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                        Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
-                            // transform the key from snake_case to camelCase
-                            key = key.replaceAll('_', ' ');
-                            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                            if (typeof value === 'boolean') {
-                                value = value ? 'true' : 'false';
-                            }
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        });
+                        //console.info('handling national calendar settings for diocesan calendar following change event:', nationalCalendarForDioceseSettings);
+                        this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
                         if (selectedDiocese.hasOwnProperty('settings')) {
                             const {settings} = selectedDiocese;
-                            Object.entries(settings).forEach(([key, value]) => {
-                                // transform the key from snake_case to camelCase
-                                key = key.replaceAll('_', ' ');
-                                key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                                if (typeof value === 'boolean') {
-                                    value = value ? 'true' : 'false';
-                                }
-                                this.#inputs[`${key}Input`]._domElement.value = value;
-                            });
+                            //console.info('handling diocesan calendar settings following change event:', settings);
+                            this.#applySettingsToInputs(settings);
                         }
                         this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
                         this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
@@ -314,6 +356,7 @@ export default class ApiOptions {
                 this.#inputs.ascensionInput.disabled(true);
                 this.#inputs.corpusChristiInput.disabled(true);
                 this.#inputs.eternalHighPriestInput.disabled(true);
+                this.#inputs.holydaysOfObligationInput.disabled(true);
             }
         });
     }
@@ -375,7 +418,7 @@ export default class ApiOptions {
      * `dioceses` filtered CalendarSelect. When the selected calendar is changed in either of the two CalendarSelect
      * instances, the API options will be updated accordingly.
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The CalendarSelect instance or
-     * an array of two CalendarSelect instances to link to the ApiOptions instance.
+     * an array of two CalendarSelect instances (one for nations and one for dioceses) to link to the ApiOptions instance.
      * @returns {ApiOptions} - The ApiOptions instance.
      */
     linkToCalendarSelect(calendarSelect) {
@@ -452,6 +495,7 @@ export default class ApiOptions {
             this.#inputs.ascensionInput.appendTo(domNode);
             this.#inputs.corpusChristiInput.appendTo(domNode);
             this.#inputs.eternalHighPriestInput.appendTo(domNode);
+            this.#inputs.holydaysOfObligationInput.appendTo(domNode);
         }
         // This should only be the case when no filter has been set explicitly via the filter method,
         // and therefore this.#filter = ApiOptionsFilter.NONE
@@ -498,6 +542,16 @@ export default class ApiOptions {
      */
     get _eternalHighPriestInput() {
         return this.#inputs.eternalHighPriestInput;
+    }
+
+    /**
+     * Gets the Holydays of Obligation input element.
+     *
+     * @returns {HolydaysOfObligationInput} The Holydays of Obligation input element.
+     * @readonly
+     */
+    get _holydaysOfObligationInput() {
+        return this.#inputs.holydaysOfObligationInput;
     }
 
     /**

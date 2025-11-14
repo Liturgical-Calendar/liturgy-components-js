@@ -63,7 +63,7 @@ const meta = {
         const container = document.createElement( 'div' );
         container.id = 'apiOptionsContainer';
 
-        if ( false === apiClient || false === apiClient instanceof ApiClient ) {
+        if ( false === apiClient || false === (apiClient instanceof ApiClient) ) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('unstyled');

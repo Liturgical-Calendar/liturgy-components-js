@@ -100,7 +100,7 @@ const meta = {
                     const ChristKing = data.litcal.find(event => {
                         return event.event_key === 'ChristKing';
                     });
-                    const ChristKingDate = new Date(ChristKing.date * 1000);
+                    const ChristKingDate = new Date(ChristKing.date);
                     const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
                     Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
                     const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());

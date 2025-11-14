@@ -59,6 +59,7 @@ const meta = {
         });
         apiClient.listenTo(calendarSelect);
         webCalendar.listenTo(apiClient).attachTo(webCalendarContainer);
+        apiClient.fetchNationalCalendar('VA');
     }
     return container;
   },

@@ -1,20 +1,27 @@
 import Utils from '../../Utils.js';
 
 export default class Input {
+    /** @type {string | null} */
     static #globalInputClass   = null;
+    /** @type {string | null} */
     static #globalLabelClass   = null;
+    /** @type {string | null} */
     static #globalWrapper      = null;
+    /** @type {string | null} */
     static #globalWrapperClass = null;
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
+    /** @type {HTMLElement|null} */
+    #labelElement     = null;
+    /** @type {DocumentFragment|null} */
+    #labelAfter       = null;
+    /** @type {HTMLElement|null} */
+    #wrapperElement   = null;
     #idSet            = false;
     #nameSet          = false;
     #classSet         = false;
     #dataSet          = false;
-    #labelElement     = null;
     #labelClassSet    = false;
-    #labelAfter       = null;
-    #wrapperElement   = null;
     #hasWrapper       = false;
     #wrapperClassSet  = false;
     #defaultValue    = '';
@@ -111,18 +118,57 @@ export default class Input {
 
     /**
      * @param {string} [element='select'] - The element to create as the input element.
-     *     Valid values are: select, input\[type="number"\].
+     *     Valid values are: `select`, `input`.
+     * @param {object} [attributes={multiple: false}] - Key-value pairs of attributes to set on the element.
+     *     When the element is `input`, the only current supported attribute is `type` with a value of `number` (which will produce an `input[type="number"]` element).
+     *     When the element is `select`, the `multiple` attribute can be set to `true` to create a multi-select element.
      * @throws {Error} If the element parameter is not a string or is not one of the valid values.
      */
-    constructor(element = 'select') {
-        if (false === ['select', 'input[type="number"]'].includes(element)) {
-            throw new Error('Invalid element parameter: ' + element + ', valid values are: select, input[type="number"]');
+    constructor(element = 'select', attributes = {multiple: false}) {
+        if (typeof element !== 'string') {
+            throw new Error('Invalid type for element parameter, must be of type string but found type: ' + typeof element);
         }
-        const parseType = /^(.*?)(\[type="(.*?)"\])?$/.exec(element);
-        this.#domElement = document.createElement(parseType[1]);
-        if (parseType[3] !== undefined) {
-            this.#domElement.setAttribute('type', parseType[3]);
+        if (false === ['select', 'input'].includes(element)) {
+            throw new Error('Invalid `element` parameter: ' + element + ', valid values are: `select` and `input`');
         }
+        if (attributes !== undefined && (attributes === null || typeof attributes !== 'object')) {
+            throw new Error('Invalid type for attributes parameter, when set it must be of type object but found type: ' + typeof attributes);
+        }
+        switch (element) {
+            case 'select':
+                if (attributes && typeof attributes.multiple !== 'undefined') {
+                    if (typeof attributes.multiple !== 'boolean') {
+                        throw new Error('Invalid type for multiple attribute, when set it must be of type boolean but found type: ' + typeof attributes.multiple);
+                    }
+                }
+                break;
+            case 'input':
+                if (attributes && typeof attributes.type !== 'undefined') {
+                    if (typeof attributes.type !== 'string') {
+                        throw new Error('Invalid type for type attribute, when set it must be of type string but found type: ' + typeof attributes.type);
+                    }
+                    if (false === ['number'].includes(attributes.type)) {
+                        throw new Error('Invalid type attribute for input element: ' + attributes.type + ', valid values are: `number`');
+                    }
+                }
+                break;
+        }
+        this.#domElement = document.createElement(element);
+        if (attributes && typeof attributes === 'object') {
+            switch (element) {
+                case 'select':
+                    if (attributes.multiple !== undefined && attributes.multiple === true) {
+                        this.#domElement.setAttribute('multiple', 'multiple');
+                    }
+                    break;
+                case 'input':
+                    if (attributes.type !== undefined && attributes.type === 'number') {
+                        this.#domElement.setAttribute('type', 'number');
+                    }
+                    break;
+            }
+        }
+
         if (Input.#globalInputClass !== null) {
             this.#domElement.className = Input.#globalInputClass;
         }
@@ -168,6 +214,7 @@ export default class Input {
         }
         this.#domElement.id = id;
         this.#idSet = true;
+        this.#labelElement.htmlFor = this.#domElement.id;
         return this;
     }
 
@@ -281,11 +328,19 @@ export default class Input {
      * if the method is called more than once since the content can only be set once.
      *
      * @param {string|null} contents - The content to be set after the label element.
-     *                                 If null, any existing content is cleared.
      * @throws {Error} If content is attempted to be set more than once.
-     * @returns {CalendarSelect} The current instance for method chaining.
+     * @returns {Input} The current instance for method chaining.
      */
     labelAfter( contents = '' ) {
+        if (this.#labelAfter !== null) {
+            //console.error('Label after content has already been set on Input instance.');
+            //console.error(this);
+            throw new Error('labelAfter content has already been set on Input instance.');
+        }
+        if (contents === null) {
+            this.#labelAfter = null;
+            return this;
+        }
         // remove php tags and script tags from contents
         // the regex is doing the following:
         //  - `<\?(?:php)?` matches the start of a php tag, optionally with the word "php" after the "?"
@@ -295,9 +350,10 @@ export default class Input {
         //  - `<script(.*?)>.*?<\/script>` matches the start of a script tag, any attributes, the contents of the script tag, and the end of the script tag
         //  - `g` flag makes the regex replacement global, so it will replace all occurrences of the regex, not just the first one
         contents = contents.replace(/<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g, '');
-
-        const fragment = document.createRange().createContextualFragment(contents);
-        this.#labelAfter = fragment;
+        if (contents !== '') {
+            const fragment = document.createRange().createContextualFragment(contents);
+            this.#labelAfter = fragment;
+        }
         return this;
     }
 
@@ -481,13 +537,28 @@ export default class Input {
         else {
             throw new Error('Input.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
         }
-        if (null !== this._wrapperElement) {
-            this._wrapperElement.appendChild(this._labelElement);
-            this._wrapperElement.appendChild(this._domElement);
-            domNode.appendChild(this._wrapperElement);
-        } else {
-            domNode.appendChild(this._labelElement);
-            domNode.appendChild(this._domElement);
+        if (this._labelAfter instanceof DocumentFragment) {
+            // If wrapper, we append after input inside wrapper; otherwise after input in domNode
+            if (null !== this._wrapperElement) {
+                this._wrapperElement.appendChild(this._labelElement);
+                this._wrapperElement.appendChild(this._domElement);
+                this._wrapperElement.appendChild(this._labelAfter);
+                domNode.appendChild(this._wrapperElement);
+            } else {
+                domNode.appendChild(this._labelElement);
+                domNode.appendChild(this._domElement);
+                domNode.appendChild(this._labelAfter);
+            }
+        }
+        else {
+            if (null !== this._wrapperElement) {
+                this._wrapperElement.appendChild(this._labelElement);
+                this._wrapperElement.appendChild(this._domElement);
+                domNode.appendChild(this._wrapperElement);
+            } else {
+                domNode.appendChild(this._labelElement);
+                domNode.appendChild(this._domElement);
+            }
         }
     }
 
@@ -502,11 +573,9 @@ export default class Input {
     }
 
     /**
-     * A set of classes that are currently applied to the input element.
+     * Whether or not the class has been set.
      *
-     * This is a Set of strings, where each string is a class name.
-     *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _classSet() {
@@ -516,7 +585,7 @@ export default class Input {
     /**
      * The label element.
      *
-     * @type {HTMLLabelElement}
+     * @returns {HTMLLabelElement}
      * @readonly
      */
     get _labelElement() {
@@ -524,9 +593,9 @@ export default class Input {
     }
 
     /**
-     * A set of classes to apply to the label element.
+     * Whether or not the label class has been set.
      *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _labelClassSet() {
@@ -536,7 +605,7 @@ export default class Input {
     /**
      * The element to insert after the label element.
      *
-     * @type {DocumentFragment|null}
+     * @returns {DocumentFragment|null}
      * @readonly
      */
     get _labelAfter() {
@@ -546,7 +615,7 @@ export default class Input {
     /**
      * The wrapper element.
      *
-     * @type {HTMLElement|null}
+     * @returns {HTMLElement|null}
      * @readonly
      */
     get _wrapperElement() {
@@ -554,9 +623,9 @@ export default class Input {
     }
 
     /**
-     * The set of classes to be applied to the wrapper element.
+     * Whether or not the wrapper class has been set.
      *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _wrapperClassSet() {
@@ -566,7 +635,7 @@ export default class Input {
     /**
      * The default value of the input element, set with the defaultValue() method.
      *
-     * @type {string}
+     * @returns {string}
      * @readonly
      */
     get _defaultValue() {
@@ -576,7 +645,7 @@ export default class Input {
     /**
      * Whether a wrapper element has been set.
      *
-     * @type {boolean}
+     * @returns {boolean}
      * @readonly
      */
     get _hasWrapper() {

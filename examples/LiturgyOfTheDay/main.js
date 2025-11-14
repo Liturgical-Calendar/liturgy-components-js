@@ -1,4 +1,4 @@
-import { ApiClient, LiturgyOfTheDay, YearType} from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
+import { ApiClient, LiturgyOfTheDay, YearType} from 'liturgy-components-js';
 
 const now = new Date();
 const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -36,7 +36,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
                     const ChristKing = data.litcal.find(event => {
                         return event.event_key === 'ChristKing';
                     });
-                    const ChristKingDate = new Date(ChristKing.date * 1000);
+                    const ChristKingDate = new Date(ChristKing.date);
                     const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
                     Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
                     const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());

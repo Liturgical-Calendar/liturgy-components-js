@@ -86,4 +86,56 @@ const YearType = Object.freeze({
     CIVIL: 'CIVIL'
 });
 
-export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType };
+const monthsLatin = Object.freeze([
+    '', // Placeholder for 0 index
+    'Ianuarius', 'Februarius', 'Martius', 'Aprilis', 'Maius', 'Iunius',
+    'Iulius', 'Augustus', 'September', 'October', 'November', 'December'
+]);
+
+const daysLatin = Object.freeze({
+    'ecclesiastical': [
+        'Dominica',    // Sunday
+        'Feria II',    // Monday
+        'Feria III',   // Tuesday
+        'Feria IV',    // Wednesday
+        'Feria V',     // Thursday
+        'Feria VI',    // Friday
+        'Sabbato'      // Saturday
+    ],
+    'civil': [
+        'Dies Solis',    // Sunday
+        'Dies Lunæ',     // Monday
+        'Dies Martis',   // Tuesday
+        'Dies Mercurii', // Wednesday
+        'Dies Iovis',    // Thursday
+        'Dies Veneris',  // Friday
+        'Dies Saturni'   // Saturday
+    ]
+});
+
+/**
+ * @enum {{
+ *   ECCLESIASTICAL: {month: function(number): string, dayOfTheWeek: function(number): string},
+ *   CIVIL: {month: function(number): string, dayOfTheWeek: function(number): string}
+ * }}
+ */
+const LatinInterface = Object.freeze({
+    ECCLESIASTICAL: {
+        month: function(month) {
+            return monthsLatin[month] || '';
+        },
+        dayOfTheWeek: function(day) {
+            return daysLatin.ecclesiastical[day] || '';
+        }
+    },
+    CIVIL: {
+        month: function(month) {
+            return monthsLatin[month] || '';
+        },
+        dayOfTheWeek: function(day) {
+            return daysLatin.civil[day] || '';
+        }
+    }
+});
+
+export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType, LatinInterface };
