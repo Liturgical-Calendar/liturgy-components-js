@@ -20,8 +20,8 @@ import Utils from '../Utils.js';
  *
  * The form controls can be fully customized using the methods provided by the class.
  *
- * __ constructor()__ Initializes the ApiOptions object with default or provided settings:
- *                                             - __locale__: The locale to use for the API options form.
+ * - __constructor()__ Initializes the ApiOptions object with default or provided settings:
+ *   - __locale__: The locale to use for the API options form.
  *
  * The following properties are initialized on the object instance:
  * - ___epiphanyInput__: The select input with options for when the Epiphany is celebrated.
@@ -288,29 +288,7 @@ export default class ApiOptions {
                     const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
                     const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                     //console.info('handling national calendar settings for diocesan calendar while linking to calendar select:', nationalCalendarForDioceseSettings);
-                    Object.entries(nationalCalendarForDioceseSettings).forEach(([key, value]) => {
-                        // skip keys that are not expected, so that the script doesn't break when an unexpected key is encountered
-                        if (!ApiOptions.#expectedSettingsKeys.includes(key)) {
-                            return;
-                        }
-                        // transform the key from snake_case to camelCase
-                        key = key.replaceAll('_', ' ');
-                        key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-                        //console.log(`national settings for diocesan calendar: transformed key: ${key}, value type: ${typeof value}`);
-                        if (typeof value === 'boolean') {
-                            value = (value ? 'true' : 'false');
-                        }
-                        if (key === 'holydaysOfObligation' && typeof value === 'object') {
-                            const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
-                                label: ApiOptions.#prettifyLabel(optionKey),
-                                value: optionKey,
-                                selected: Boolean(optionSelected)
-                            }));
-                            this.#inputs[`${key}Input`].setOptions(optionsArray);
-                        } else {
-                            this.#inputs[`${key}Input`]._domElement.value = value;
-                        }
-                    });
+                    this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
                     if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
                         const {settings} = selectedDiocesanCalendar;
                         //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
