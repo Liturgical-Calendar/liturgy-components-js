@@ -101,4 +101,24 @@ export default class HolydaysOfObligationInput extends SelectInput {
         });
     }
 
+    /**
+     * Override the general Input disabled method.
+     *
+     * If set to true, the input element will be readonly and each of its options will be disabled, and the user will not be able to interact with it.
+     * If set to false, the input element and each of its options will be enabled and the user will be able to interact with it.
+     *
+     * If no parameter is provided, defaults to true.
+     *
+     * @param {boolean} [boolValue=true] - Whether the input element should be disabled.
+     * @returns {Input} The current instance for method chaining.
+     * @throws {Error} If the type of boolValue is not a boolean.
+     */
+    disabled( boolValue = true ) {
+        if (typeof boolValue !== 'boolean') {
+            throw new Error('Invalid type for disabled, must be of type boolean but found type: ' + typeof boolValue);
+        }
+        this._domElement.readonly = boolValue;
+        [...this._domElement.options].forEach(option => option.disabled = boolValue);
+        return this;
+    }
 }

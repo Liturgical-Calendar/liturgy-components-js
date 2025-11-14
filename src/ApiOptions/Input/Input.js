@@ -476,7 +476,7 @@ export default class Input {
      * If set to true, the input element will be disabled and the user will not be able to interact with it.
      * If set to false, the input element will be enabled and the user will be able to interact with it.
      *
-     * If not provided, defaults to true.
+     * If no parameter is provided, defaults to true.
      *
      * @param {boolean} [boolValue=true] - Whether the input element should be disabled.
      * @returns {Input} The current instance for method chaining.

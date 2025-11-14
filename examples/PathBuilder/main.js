@@ -111,6 +111,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 
         apiOptions.filter( ApiOptionsFilter.ALL_PATHS ).appendTo('#requestParametersAllPaths');
         apiOptions.filter( ApiOptionsFilter.BASE_PATH ).appendTo('#requestParametersBasePath');
+        apiOptions.linkToCalendarSelect( calendarSelect );
 
         wireHdobVS( apiOptions, calendarSelect, 'hdob-virtual-select' );
 
