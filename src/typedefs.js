@@ -3,7 +3,7 @@
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
  * @prop {int} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
- * @prop {Date|string} date - The date of the liturgical event, either as a Date object or an ISO-8601 formatted string `YYYY-MM-DD`
+ * @prop {Date|string} date - The date of the liturgical event, either as a Date object or an RFC 3339 (ISO-8601) formatted string `YYYY-MM-DD`
  * @prop {int} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
@@ -37,7 +37,7 @@
  * @typedef {Object} CalendarSettings
  * @prop {number} year - The year for which the calendar is calculated
  * @prop {['JAN6', 'SUNDAY_JAN2_JAN8']} epiphany - When Epiphany is celebrated
- * @prop {['THURSDAY', 'SUNDAY"]} ascension - When the Ascension is celebrated
+ * @prop {['THURSDAY', 'SUNDAY']} ascension - When the Ascension is celebrated
  * @prop {['THURSDAY', 'SUNDAY']} corpus_christi - When Corpus Christi is celebrated
  * @prop {string} locale - The locale for the calendar
  * @prop {['JSON', 'XML', 'YML', 'ICS']} return_type - The type of the response data

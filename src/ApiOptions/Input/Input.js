@@ -1,20 +1,27 @@
 import Utils from '../../Utils.js';
 
 export default class Input {
+    /** @type {string | null} */
     static #globalInputClass   = null;
+    /** @type {string | null} */
     static #globalLabelClass   = null;
+    /** @type {string | null} */
     static #globalWrapper      = null;
+    /** @type {string | null} */
     static #globalWrapperClass = null;
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
+    /** @type {HTMLElement|null} */
+    #labelElement     = null;
+    /** @type {DocumentFragment|null} */
+    #labelAfter       = null;
+    /** @type {HTMLElement|null} */
+    #wrapperElement   = null;
     #idSet            = false;
     #nameSet          = false;
     #classSet         = false;
     #dataSet          = false;
-    #labelElement     = null;
     #labelClassSet    = false;
-    #labelAfter       = null;
-    #wrapperElement   = null;
     #hasWrapper       = false;
     #wrapperClassSet  = false;
     #defaultValue    = '';
@@ -530,13 +537,28 @@ export default class Input {
         else {
             throw new Error('Input.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
         }
-        if (null !== this._wrapperElement) {
-            this._wrapperElement.appendChild(this._labelElement);
-            this._wrapperElement.appendChild(this._domElement);
-            domNode.appendChild(this._wrapperElement);
-        } else {
-            domNode.appendChild(this._labelElement);
-            domNode.appendChild(this._domElement);
+        if (this._labelAfter instanceof DocumentFragment) {
+            // If wrapper, we append after input inside wrapper; otherwise after input in domNode
+            if (null !== this._wrapperElement) {
+                this._wrapperElement.appendChild(this._labelElement);
+                this._wrapperElement.appendChild(this._domElement);
+                this._wrapperElement.appendChild(this._labelAfter);
+                domNode.appendChild(this._wrapperElement);
+            } else {
+                domNode.appendChild(this._labelElement);
+                domNode.appendChild(this._domElement);
+                domNode.appendChild(this._labelAfter);
+            }
+        }
+        else {
+            if (null !== this._wrapperElement) {
+                this._wrapperElement.appendChild(this._labelElement);
+                this._wrapperElement.appendChild(this._domElement);
+                domNode.appendChild(this._wrapperElement);
+            } else {
+                domNode.appendChild(this._labelElement);
+                domNode.appendChild(this._domElement);
+            }
         }
     }
 
@@ -551,11 +573,9 @@ export default class Input {
     }
 
     /**
-     * A set of classes that are currently applied to the input element.
+     * Whether or not the class has been set.
      *
-     * This is a Set of strings, where each string is a class name.
-     *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _classSet() {
@@ -565,7 +585,7 @@ export default class Input {
     /**
      * The label element.
      *
-     * @type {HTMLLabelElement}
+     * @returns {HTMLLabelElement}
      * @readonly
      */
     get _labelElement() {
@@ -573,9 +593,9 @@ export default class Input {
     }
 
     /**
-     * A set of classes to apply to the label element.
+     * Whether or not the label class has been set.
      *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _labelClassSet() {
@@ -585,7 +605,7 @@ export default class Input {
     /**
      * The element to insert after the label element.
      *
-     * @type {DocumentFragment|null}
+     * @returns {DocumentFragment|null}
      * @readonly
      */
     get _labelAfter() {
@@ -595,7 +615,7 @@ export default class Input {
     /**
      * The wrapper element.
      *
-     * @type {HTMLElement|null}
+     * @returns {HTMLElement|null}
      * @readonly
      */
     get _wrapperElement() {
@@ -603,9 +623,9 @@ export default class Input {
     }
 
     /**
-     * The set of classes to be applied to the wrapper element.
+     * Whether or not the wrapper class has been set.
      *
-     * @type {Set<string>}
+     * @returns {boolean}
      * @readonly
      */
     get _wrapperClassSet() {
@@ -615,7 +635,7 @@ export default class Input {
     /**
      * The default value of the input element, set with the defaultValue() method.
      *
-     * @type {string}
+     * @returns {string}
      * @readonly
      */
     get _defaultValue() {
@@ -625,7 +645,7 @@ export default class Input {
     /**
      * Whether a wrapper element has been set.
      *
-     * @type {boolean}
+     * @returns {boolean}
      * @readonly
      */
     get _hasWrapper() {

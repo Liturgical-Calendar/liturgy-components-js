@@ -24,7 +24,7 @@ import Utils from '../Utils.js';
  *                                             - __locale__: The locale to use for the API options form.
  *
  * The following properties are initialized on the object instance:
- * - ___epiphanyInput__: The seslect input with options for when the Epiphany is celebrated.
+ * - ___epiphanyInput__: The select input with options for when the Epiphany is celebrated.
  * - ___ascensionInput__: The select input with options for when the Ascension is celebrated.
  * - ___corpusChristiInput__: The select input with options for when Corpus Christi is celebrated.
  * - ___eternalHighPriestInput__: The select input with options for whether the Eternal High Priest is celebrated.

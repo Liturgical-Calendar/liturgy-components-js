@@ -55,7 +55,7 @@ The easiest way to use ES Modules in the browser is by importing directly from a
 > import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, CalendarSelectFilter } from '@liturgical-calendar/components-js'
 > ```
 >
-> The importmap let's the browser know where to look for the `@liturgical-calendar/components-js` package.
+> The importmap lets the browser know where to look for the `@liturgical-calendar/components-js` package.
 > The importmap must be defined before the script that imports the `@liturgical-calendar/components-js` package.
 > It's recommended to define the importmap in an inline `<script type="importmap">` rather than load it from a separate file,
 > to avoid unnecessary network requests and possible timing conflicts in loading the importmap before any scripts that import the `@liturgical-calendar/components-js` package.
@@ -343,11 +343,12 @@ Most applications will only find use for the first four form controls as follows
 
 #### Form controls useful only for the General Roman Calendar
 
-These four form controls are useful for fine-tuning the General Roman Calendar, when the national or diocesan data is not requested,
+These five form controls are useful for fine-tuning the General Roman Calendar, when the national or diocesan data is not requested,
 for example to see what the API results would look like for a particular calendar that has not yet been implemented in the API.
 
 They allow to tweak parameters that the national or diocesan calendar would otherwise set,
-such as the date of Epiphany, the date of the Ascension, the date of Corpus Christi, and whether Eternal High Priest is celebrated.
+such as the date of Epiphany, the date of the Ascension, the date of Corpus Christi, whether Eternal High Priest is celebrated,
+and which Holy Days of Obligation are observed.
 
 * `_epiphanyInput`: a select input with options for when Epiphany is celebrated
 * `_ascensionInput`: a select input with options for when Ascension is celebrated
@@ -379,7 +380,7 @@ you would call the `filter()` method with a value of __`ApiOptionsFilter.GENERAL
 Example:
 
 ```javascript
-import { ApiOptions, ApiOptionsFilter } from 'liturgical-calendar-js';
+import { ApiOptions, ApiOptionsFilter } from '@liturgical-calendar/components-js';
 const apiOptions = new ApiOptions( 'en-US' );
 apiOptions.filter(ApiOptionsFilter.ALL_CALENDARS).appendTo( '#calendarOptions');
 ```
@@ -629,3 +630,17 @@ pathBuilder.appendTo( '#pathBuilder' );
 ```
 
 For a full working example, see the `examples/PathBuilder` folder in the current repository.
+
+### Enums
+
+* __`Grouping`__ - `BY_MONTH`, `BY_LITURGICAL_SEASON`. Used in the `WebCalendar` component, to specify how to group the liturgical events.
+* __`ColumnOrder`__ - `GRADE_FIRST`, `EVENT_DETAILS_FIRST`. Used in the `WebCalendar` component, to specify the order of the columns.
+* __`Column`__ - `LITURGICAL_SEASON`, `MONTH`, `DATE`, `EVENT_DETAILS`, `GRADE`, `PSALTER_WEEK`, `ALL`, `NONE`.
+  Bitfield values used in the `WebCalendar` component, to specify which columns to display.
+* __`ColorAs`__ - `CSS_CLASS`, `BACKGROUND`, `INDICATOR`, `NONE`. Used in the `WebCalendar` component, to specify how to apply the liturgical color for each event.
+* __`DateFormat`__ - `FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY`. Used in the `WebCalendar` component, to specify how to display the date in the day column.
+* __`GradeDisplay`__ - `FULL`, `ABBREVIATED`. Used in the `WebCalendar` component, to specify how to display the liturgical grade.
+* __`ApiOptionsFilter`__ - `NONE`, `GENERAL_ROMAN`, `ALL_CALENDARS`, `PATH_BUILDER`, `BASE_PATH`, `ALL_PATHS`. Used in the `ApiOptions` class, to specify which form controls to display.
+* __`CalendarSelectFilter`__ - `NONE`, `NATIONAL_CALENDARS`, `DIOCESAN_CALENDARS`. Used in the `CalendarSelect` class, to specify which calendars should be included in the select element.
+* __`YearType`__ - `LITURGICAL` or `CIVIL`. Used in the `ApiClient` class, to specify the type of the year for which to retrieve the calendar.
+* __`LatinInterface`__ - `CIVIL` or `ECCLESIASTICAL`. Used in the `WebCalendar` component, to specify how to display the days of the week in Latin.
