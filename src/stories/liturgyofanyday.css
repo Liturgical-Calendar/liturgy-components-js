@@ -1,0 +1,83 @@
+.liturgy-of-any-day {
+    border: 1px solid lightgray;
+    border-radius: 12px;
+    padding: 12px;
+    max-width: 600px;
+}
+
+.liturgy-of-any-day-date-controls {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+}
+
+.liturgy-of-any-day-date-controls > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.liturgy-of-any-day-date-controls label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.liturgy-of-any-day-date-controls input,
+.liturgy-of-any-day-date-controls select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.liturgy-of-any-day-date-controls input:focus,
+.liturgy-of-any-day-date-controls select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.liturgy-of-any-day-title {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+}
+
+.liturgy-of-any-day-date {
+    font-size: 1.125rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.liturgy-of-any-day-events-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.liturgy-of-any-day-event {
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.liturgy-of-any-day-event h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.125rem;
+}
+
+.liturgy-of-any-day-event-grade {
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.liturgy-of-any-day-event-common {
+    font-size: 0.875rem;
+    margin-top: 4px;
+}
+
+.liturgy-of-any-day-year-cycle {
+    font-size: 0.875rem;
+    margin-top: 4px;
+    opacity: 0.8;
+}
