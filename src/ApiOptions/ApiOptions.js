@@ -364,10 +364,12 @@ export default class ApiOptions {
     /**
      * Sets the filter for the ApiOptions instance.
      *
-     * The filter can be either `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, or `ApiOptionsFilter.NONE`.
+     * The filter can be either `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`.
      * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, year, and conditionally acceptHeader inputs.
      * - `ApiOptionsFilter.GENERAL_ROMAN` will show only the form controls that are useful for the General Roman Calendar: epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
      * - `ApiOptionsFilter.PATH_BUILDER` will show only the form controls that are useful for the Path Builder: calendarPath and year inputs.
+     * - `ApiOptionsFilter.LOCALE_ONLY` will show only the locale input, useful when you only need language selection.
+     * - `ApiOptionsFilter.YEAR_ONLY` will show only the year input, useful when used with LiturgyOfAnyDay component.
      * - `ApiOptionsFilter.NONE` will show all possible form controls.
      *
      * If the filter is set to a value that is not a valid value for the `ApiOptionsFilter` enum,
@@ -389,18 +391,20 @@ export default class ApiOptions {
             ApiOptionsFilter.ALL_CALENDARS !== filter
             && ApiOptionsFilter.GENERAL_ROMAN !== filter
             && ApiOptionsFilter.PATH_BUILDER !== filter
+            && ApiOptionsFilter.LOCALE_ONLY !== filter
+            && ApiOptionsFilter.YEAR_ONLY !== filter
             && ApiOptionsFilter.NONE !== filter
         ) {
-            throw new Error('Invalid filter: ' + filter + ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, or `ApiOptionsFilter.NONE`');
+            throw new Error('Invalid filter: ' + filter + ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`');
         }
         if (
             filter === ApiOptionsFilter.NONE
-            && [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER].includes(this.#filter)
+            && [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER, ApiOptionsFilter.LOCALE_ONLY, ApiOptionsFilter.YEAR_ONLY].includes(this.#filter)
         ) {
             throw new Error('Cannot set filter to `ApiOptionsFilter.NONE` when filter has already been set to a value that is not `ApiOptionsFilter.NONE`');
         }
         if (
-            [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER].includes(filter)
+            [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER, ApiOptionsFilter.LOCALE_ONLY, ApiOptionsFilter.YEAR_ONLY].includes(filter)
             && this.#filtersSet.includes(ApiOptionsFilter.NONE)
         ) {
             throw new Error('Cannot set filter to a value that is not `ApiOptionsFilter.NONE` when filter has already been set explicitly to `ApiOptionsFilter.NONE`');
@@ -477,6 +481,12 @@ export default class ApiOptions {
             this.#inputs.calendarPathInput.appendTo(domNode);
             this.#inputs.yearInput.appendTo(domNode);
             this.#pathBuilderEnabled = true;
+        }
+        if (ApiOptionsFilter.LOCALE_ONLY === this.#filter) {
+            this.#inputs.localeInput.appendTo(domNode);
+        }
+        if (ApiOptionsFilter.YEAR_ONLY === this.#filter) {
+            this.#inputs.yearInput.appendTo(domNode);
         }
         if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.ALL_CALENDARS === this.#filter) {
             this.#inputs.localeInput.appendTo(domNode);
@@ -608,10 +618,12 @@ export default class ApiOptions {
      * Gets the CURRENT filter of the ApiOptions instance.
      * The filter can be set explicitly multiple times, and the last set filter will be returned.
      *
-     * The filter can be either `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.PATH_BUILDER`, or `ApiOptionsFilter.NONE`.
+     * The filter can be either `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`.
      * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, year, and conditionally acceptHeader inputs.
      * - `ApiOptionsFilter.GENERAL_ROMAN` will show only the form controls that are useful for the General Roman Calendar: epiphany, ascension, corpusChristi, and eternalHighPriest inputs.
      * - `ApiOptionsFilter.PATH_BUILDER` will show only the form controls that are useful for the Path Builder: calendarPath and year inputs.
+     * - `ApiOptionsFilter.LOCALE_ONLY` will show only the locale input, useful when you only need language selection.
+     * - `ApiOptionsFilter.YEAR_ONLY` will show only the year input, useful when used with LiturgyOfAnyDay component.
      * - `ApiOptionsFilter.NONE` will show all possible form controls.
      *
      * @returns {string} The current filter of the ApiOptions instance.
