@@ -65,9 +65,17 @@ export default class ApiClient {
   /**
    * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
    * @private
-   * @static
    */
   #calendarData = {};
+
+  /**
+   * Cache for calendar data, keyed by a combination of calendar parameters.
+   * This allows reusing previously fetched data when the same parameters are requested.
+   * @type {Map<string, {data: object, timestamp: number}>}
+   * @private
+   * @static
+   */
+  static #calendarCache = new Map();
 
   /**
    * @type {{'Content-Type': 'application/json', Accept: 'application/json', ['Accept-Language']: string}}
@@ -185,6 +193,73 @@ export default class ApiClient {
   }
 
   /**
+   * Generates a cache key based on calendar parameters.
+   * @param {string} category - The calendar category ('', 'national', or 'diocesan')
+   * @param {string} calendarId - The calendar ID
+   * @param {number} year - The year
+   * @param {string} yearType - The year type (LITURGICAL or CIVIL)
+   * @param {string} locale - The locale
+   * @param {object} params - Additional parameters (epiphany, ascension, etc.)
+   * @returns {string} A unique cache key
+   * @private
+   */
+  #generateCacheKey(category, calendarId, year, yearType, locale, params = {}) {
+    const keyParts = [
+      category || 'general',
+      calendarId || '',
+      year,
+      yearType,
+      locale || ''
+    ];
+    // For general Roman calendar, include mobile feast settings
+    if (!category) {
+      keyParts.push(
+        params.epiphany || '',
+        params.ascension || '',
+        params.corpus_christi || '',
+        params.eternal_high_priest || false
+      );
+    }
+    return keyParts.join('|');
+  }
+
+  /**
+   * Gets cached calendar data if available and valid.
+   * @param {string} cacheKey - The cache key to look up
+   * @returns {object|null} The cached data or null if not found
+   * @private
+   */
+  #getCachedData(cacheKey) {
+    if (ApiClient.#calendarCache.has(cacheKey)) {
+      const cached = ApiClient.#calendarCache.get(cacheKey);
+      return cached.data;
+    }
+    return null;
+  }
+
+  /**
+   * Stores calendar data in the cache.
+   * @param {string} cacheKey - The cache key
+   * @param {object} data - The calendar data to cache
+   * @private
+   */
+  #setCachedData(cacheKey, data) {
+    ApiClient.#calendarCache.set(cacheKey, {
+      data: data,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * Clears all cached calendar data.
+   * Useful when you want to force fresh data from the API.
+   * @static
+   */
+  static clearCache() {
+    ApiClient.#calendarCache.clear();
+  }
+
+  /**
    * Refetches calendar data based on the current category and calendar ID.
    *
    * This method determines the current category of the calendar (national, diocesan, or general)
@@ -214,10 +289,14 @@ export default class ApiClient {
    * The year parameter is extracted from the request body and placed in the URL path.
    * The remaining parameters are sent in the request body as JSON.
    *
+   * If the same calendar with identical parameters was previously fetched, the cached data
+   * is returned without making a new API request.
    */
   fetchCalendar(locale = null) {
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
+    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
     if (locale !== null) {
       if (typeof locale !== 'string') {
         throw new Error('ApiClient.fetchCalendar: locale must be a string');
@@ -230,11 +309,22 @@ export default class ApiClient {
         const testLocale = new Intl.Locale(locale);
         if (ApiClient.#metadata.locales.includes(testLocale.language)) {
           this.#fetchCalendarHeaders['Accept-Language'] = locale;
+          resolvedLocale = locale;
         };
       } catch (e) {
         console.error(e);
       }
     }
+
+    // Check cache first
+    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params);
+    const cachedData = this.#getCachedData(cacheKey);
+    if (cachedData) {
+      this.#calendarData = cachedData;
+      this.#eventBus.emit('calendarFetched', cachedData);
+      return;
+    }
+
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -245,6 +335,7 @@ export default class ApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#setCachedData(cacheKey, data);
       this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
@@ -262,6 +353,9 @@ export default class ApiClient {
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
    * as these options are built into the National calendar being requested.
+   *
+   * If the same calendar with identical parameters was previously fetched, the cached data
+   * is returned without making a new API request.
    */
   fetchNationalCalendar( calendar_id, locale = '' ) {
     // Since the year parameter will be placed in the path, we extract it from the body params.
@@ -270,6 +364,8 @@ export default class ApiClient {
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory   = 'national';
     this.#currentCalendarId = calendar_id;
+    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
     if (
       typeof locale === 'string'
       && locale !== ''
@@ -281,8 +377,19 @@ export default class ApiClient {
       )[0];
       if ( nationalCalendarMetadata.locales.includes(phpLocale) ) {
         this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
+        resolvedLocale = jsLocale;
       }
     }
+
+    // Check cache first
+    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale);
+    const cachedData = this.#getCachedData(cacheKey);
+    if (cachedData) {
+      this.#calendarData = cachedData;
+      this.#eventBus.emit('calendarFetched', cachedData);
+      return;
+    }
+
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -293,6 +400,7 @@ export default class ApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#setCachedData(cacheKey, data);
       this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
@@ -309,6 +417,9 @@ export default class ApiClient {
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
    * as these options are built into the Diocesan calendar being requested.
+   *
+   * If the same calendar with identical parameters was previously fetched, the cached data
+   * is returned without making a new API request.
    */
   fetchDiocesanCalendar( calendar_id ) {
     // Since the year parameter will be placed in the path, we extract it from the body params.
@@ -317,6 +428,17 @@ export default class ApiClient {
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory = 'diocesan';
     this.#currentCalendarId = calendar_id;
+    const resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
+    // Check cache first
+    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale);
+    const cachedData = this.#getCachedData(cacheKey);
+    if (cachedData) {
+      this.#calendarData = cachedData;
+      this.#eventBus.emit('calendarFetched', cachedData);
+      return;
+    }
+
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -327,6 +449,7 @@ export default class ApiClient {
       }
     }).then( data => {
       this.#calendarData = data;
+      this.#setCachedData(cacheKey, data);
       this.#eventBus.emit( 'calendarFetched', data );
       return this.#calendarData;
     }).catch( error => {
@@ -451,15 +574,16 @@ export default class ApiClient {
 
   /**
    * Set the year for which the calendar is to be retrieved.
-   * @param {number} year - The year for which to retrieve the calendar. Must be a number and be between 1970 and 9999.
+   * @param {number} yearValue - The year for which to retrieve the calendar. Must be a number and be between 1970 and 9999.
    * @throws {Error} If no year is given, or if the year is not a number, or if the year is not between 1970 and 9999.
+   * @returns {ApiClient} The current instance for method chaining.
    */
-  setYear( year ) {
-    if (year !== undefined) {
-      if (typeof year !== 'number' || !Number.isInteger(year) || year < 1970 || year > 9999) {
+  year( yearValue ) {
+    if (yearValue !== undefined) {
+      if (typeof yearValue !== 'number' || !Number.isInteger(yearValue) || yearValue < 1970 || yearValue > 9999) {
         throw new Error('year must be a number and be between 1970 and 9999');
       }
-      this.#params.year = year;
+      this.#params.year = yearValue;
     } else {
       throw new Error('year parameter is required');
     }
@@ -468,17 +592,38 @@ export default class ApiClient {
 
   /**
    * Set the type of the year for which the calendar is to be retrieved.
-   * @param {YearType} year_type - The type of the year for which to retrieve the calendar. Must be either LITURGICAL or CIVIL.
+   * @param {YearType} yearTypeValue - The type of the year for which to retrieve the calendar. Must be either LITURGICAL or CIVIL.
    * @throws {Error} If no year_type is given, or if the year_type is not either LITURGICAL or CIVIL.
+   * @returns {ApiClient} The current instance for method chaining.
    */
-  setYearType( year_type ) {
-    if (year_type !== undefined) {
-      if (year_type !== YearType.LITURGICAL && year_type !== YearType.CIVIL) {
+  yearType( yearTypeValue ) {
+    if (yearTypeValue !== undefined) {
+      if (yearTypeValue !== YearType.LITURGICAL && yearTypeValue !== YearType.CIVIL) {
         throw new Error('year_type must be either LITURGICAL or CIVIL');
       }
-      this.#params.year_type = year_type;
+      this.#params.year_type = yearTypeValue;
     }
     return this;
+  }
+
+  /**
+   * @deprecated Use year() instead. This method will be removed in a future version.
+   * @param {number} year - The year for which to retrieve the calendar.
+   * @returns {ApiClient} The current instance for method chaining.
+   */
+  setYear( year ) {
+    console.warn('ApiClient.setYear() is deprecated. Use ApiClient.year() instead.');
+    return this.year(year);
+  }
+
+  /**
+   * @deprecated Use yearType() instead. This method will be removed in a future version.
+   * @param {YearType} year_type - The type of the year.
+   * @returns {ApiClient} The current instance for method chaining.
+   */
+  setYearType( year_type ) {
+    console.warn('ApiClient.setYearType() is deprecated. Use ApiClient.yearType() instead.');
+    return this.yearType(year_type);
   }
 
   /**

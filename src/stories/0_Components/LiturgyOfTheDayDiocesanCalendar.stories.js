@@ -102,11 +102,11 @@ const meta = {
                     MondayFirstWeekAdventDate.setDate(ChristKingDate.getDate() + 8);
                     if (dateToday >= Saturday34OrdinaryTimeDate && dateToday < MondayFirstWeekAdventDate) {
                         refetched = true;
-                        apiClient.setYearType(YearType.CIVIL).refetchCalendarData();
+                        apiClient.yearType(YearType.CIVIL).refetchCalendarData();
                     }
                     else if (dateToday >= MondayFirstWeekAdventDate && dateToday <= dec31st) {
                         refetched = true;
-                        apiClient.setYearType(YearType.LITURGICAL).setYear(now.getFullYear() + 1).refetchCalendarData();
+                        apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1).refetchCalendarData();
                     }
                 }
             });

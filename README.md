@@ -207,8 +207,20 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 While the `ApiClient` component will generally be used in conjunction with UI components, it may however be useful to set the `year` or `year_type` parameters directly,
 without having to depend on interactions with the UI components. For this reason the following chainable instance methods are also provided:
 
-* `setYear(year)`: will set the year parameter to the given year
-* `setYearType(yearType)`: will set the yearType parameter to the given `YearType` (you can import the `YearType` enum to assist with this)
+* `year(year)`: will set the year parameter to the given year
+* `yearType(yearType)`: will set the yearType parameter to the given `YearType` (you can import the `YearType` enum to assist with this)
+
+> [!NOTE]
+> The older method names `setYear()` and `setYearType()` are deprecated but still available for backward compatibility.
+> They will emit console warnings when used. Please migrate to the new `year()` and `yearType()` methods.
+
+#### Caching
+
+The `ApiClient` implements parameter-based caching to avoid redundant API requests. Calendar data is cached based on the combination of:
+category, calendar ID, year, year type, locale, and mobile feast settings.
+
+When a fetch method is called with the same parameters as a previous request, cached data is returned immediately
+without making an HTTP request. To clear all cached data, use the static method `ApiClient.clearCache()`.
 
 The `ApiClient` class exposes the following static readonly class properties:
 
@@ -534,7 +546,11 @@ The `WebCalendar` class instances provide a number of chainable methods to confi
   You can import the `GradeDisplay` enum to assist with these values: `GradeDisplay.FULL`, `GradeDisplay.ABBREVIATED`.
 * `latinInterface( latinInterface )`: whether the days of the week should be displayed in ecclesiastical Latin or classic Latin, when a Latin locale is requested.
   You can import the `LatinInterface` enum to assist with these values: `LatinInterface.ECCLESIASTICAL`, `LatinInterface.CIVIL`.
-* `attachTo( elementSelector )`: the selector for the DOM element in which the web calendar will be rendered, every time the calendar is updated
+* `appendTo( elementSelector )`: sets the target DOM element where the calendar will be rendered.
+  **Note:** Unlike other components where `appendTo()` performs a one-time DOM insertion,
+  `WebCalendar.appendTo()` stores a reference to the target element. When calendar data is fetched (via `listenTo()`),
+  the table is rebuilt and the target element's children are *replaced*. This reactive behavior means the calendar
+  updates automatically whenever new data arrives from the ApiClient
 * `listenTo( apiClient )`: the `WebCalendar` instance will listen to the `calendarFetched` event emitted by the `ApiClient` instance,
   and update the calendar when the event is triggered. If the `ApiClient` instance is configured to listen to the `CalendarSelect` instance,
   the `WebCalendar` instance will dynamically update the calendar based on the selected calendar;
@@ -545,7 +561,7 @@ Example:
 ```javascript
 const apiClient = new ApiClient( 'en-US' );
 const webCalendar = new WebCalendar();
-webCalendar.listenTo( apiClient ).attachTo( '#litcalWebcalendar' );
+webCalendar.listenTo( apiClient ).appendTo( '#litcalWebcalendar' );
 ```
 
 For a full working example of a __Web Calendar component__ listening to an __API Client component__,
@@ -609,16 +625,16 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 By default a `year_type` of `LITURGICAL` is fetched from the API,
 though perhaps a `year_type` of `CIVIL` better suits this component so as to produce liturgical events from January 1st to December 31st,
 otherwise there won't be any results for the current year after _Saturday of the 34th week of Ordinary Time_.
-This can be achieved by calling the `setYearType( YearType.CIVIL )` method on the `ApiClient` instance before fetching the calendar, i.e.:
+This can be achieved by calling the `yearType( YearType.CIVIL )` method on the `ApiClient` instance before fetching the calendar, i.e.:
 
 ```javascript
-apiClient.setYearType( YearType.CIVIL );
+apiClient.yearType( YearType.CIVIL );
 ```
 
 In case the calendar has already been fetched, it will need to be re-fetched:
 
 ```javascript
-apiClient.setYearType( YearType.CIVIL ).refetchCalendarData();
+apiClient.yearType( YearType.CIVIL ).refetchCalendarData();
 ```
 
 > [!TIP]

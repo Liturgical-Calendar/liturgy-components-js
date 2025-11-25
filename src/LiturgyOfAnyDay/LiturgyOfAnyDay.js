@@ -187,7 +187,7 @@ export default class LiturgyOfAnyDay {
                 const month = parseInt(this.#monthInput._domElement.value, 10);
                 const isDecember31st = (month === 12 && day === 31);
                 const yearToFetch = isDecember31st ? newYear + 1 : newYear;
-                this.#apiClient.setYear(yearToFetch).refetchCalendarData();
+                this.#apiClient.year(yearToFetch).refetchCalendarData();
             }
         });
 
@@ -287,12 +287,12 @@ export default class LiturgyOfAnyDay {
             if (isDecember31st && this.#currentYearType !== YearType.LITURGICAL) {
                 // Switch to LITURGICAL year type with year+1 to get vigil masses
                 this.#currentYearType = YearType.LITURGICAL;
-                this.#apiClient.setYearType(YearType.LITURGICAL).setYear(year + 1).refetchCalendarData();
+                this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData();
                 return true; // Refetch triggered, wait for calendarFetched event to render
             } else if (!isDecember31st && this.#currentYearType !== YearType.CIVIL) {
                 // Switch back to CIVIL year type
                 this.#currentYearType = YearType.CIVIL;
-                this.#apiClient.setYearType(YearType.CIVIL).setYear(year).refetchCalendarData();
+                this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData();
                 return true; // Refetch triggered, wait for calendarFetched event to render
             }
         }
@@ -702,10 +702,10 @@ export default class LiturgyOfAnyDay {
 
         if (isDecember31st) {
             // Use LITURGICAL year type with year+1 to get vigil masses
-            apiClient.setYearType(YearType.LITURGICAL).setYear(year + 1);
+            apiClient.yearType(YearType.LITURGICAL).year(year + 1);
         } else {
             // Use CIVIL year type with the selected year
-            apiClient.setYearType(YearType.CIVIL).setYear(year);
+            apiClient.yearType(YearType.CIVIL).year(year);
         }
 
         apiClient._eventBus.on('calendarFetched', async (data) => {

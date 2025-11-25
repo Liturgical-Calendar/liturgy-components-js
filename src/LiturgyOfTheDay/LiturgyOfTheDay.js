@@ -518,12 +518,12 @@ export default class LiturgyOfTheDay {
 
     /**
      * Appends the LiturgyOfTheDay instance to the element matched by the provided element selector.
+     * This method does NOT return `this` - call it separately after configuring the component.
      *
      * @param {string|HTMLElement} elementSelector - The CSS selector for the element to which the LiturgyOfTheDay instance will be appended.
      * @throws {Error} If the type of elementSelector is not a string.
      * @throws {Error} If the element selector is invalid.
      * @throws {Error} If the element selector does not match any element.
-     * @return {LiturgyOfTheDay} - The same instance of LiturgyOfTheDay, allowing method chaining
      */
     appendTo(elementSelector) {
         if (elementSelector instanceof HTMLElement) {
@@ -539,12 +539,12 @@ export default class LiturgyOfTheDay {
 
     /**
      * Replaces the element matched by the provided element selector with the LiturgyOfTheDay instance.
+     * This method does NOT return `this` - call it separately after configuring the component.
      *
      * @param {string|HTMLElement} elementSelector - The CSS selector for the element to be replaced.
      * @throws {Error} If the type of elementSelector is not a string.
      * @throws {Error} If the element selector is invalid.
      * @throws {Error} If the element selector does not match any element.
-     * @return {LiturgyOfTheDay} - The same instance of LiturgyOfTheDay, allowing method chaining
      */
     replace(elementSelector) {
         if (elementSelector instanceof HTMLElement) {

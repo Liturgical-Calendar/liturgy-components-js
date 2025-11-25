@@ -101,9 +101,16 @@ yarn docker               # Run compile:watch and storybook:ci in parallel
 | Method Type        | Chainable | Returns     | Examples                                      |
 |--------------------|-----------|-------------|-----------------------------------------------|
 | Configuration      | Yes       | `this`      | `class()`, `id()`, `label()`, `filter()`      |
-| DOM insertion      | No        | `void`      | `appendTo()`, `attachTo()`                    |
+| DOM insertion      | No        | `void`      | `appendTo()`                                  |
 | Build/render       | No        | varies      | `buildTable()` returns Promise                |
 | Event subscription | Yes       | `this`      | `listenTo()`                                  |
+
+**Note:** `WebCalendar.attachTo()` is deprecated. Use `appendTo()` instead for consistency with other components.
+
+**WebCalendar appendTo() Behavior:** Unlike other components where `appendTo()` performs a one-time DOM insertion,
+`WebCalendar.appendTo()` stores a reference to the target element. When calendar data is fetched (via `listenTo()`),
+the table content is rebuilt and the target element's children are *replaced* (not appended). This reactive behavior
+means the calendar updates automatically whenever new data arrives from the ApiClient.
 
 **IMPORTANT:** Since `appendTo()` does not return `this`, you must NOT chain it with other methods.
 Call it separately after configuring the component:
@@ -144,6 +151,69 @@ All markdown files must conform to `.markdownlint.yml`:
 | `LiturgyOfTheDay` | Widget displaying today's liturgy                 |
 | `LiturgyOfAnyDay` | Widget displaying liturgy for any selected date   |
 | `PathBuilder`     | Builds and displays API request URLs              |
+
+## ApiClient
+
+The `ApiClient` is the central hub for API communication. It fetches calendar data and emits events that other components listen to.
+
+### Configuration Methods
+
+```javascript
+const apiClient = await ApiClient.init(BaseUrl);
+
+// Set year (chainable)
+apiClient.year(2025);
+
+// Set year type (chainable)
+apiClient.yearType(YearType.LITURGICAL);
+
+// Chain multiple configuration methods
+apiClient.year(2025).yearType(YearType.CIVIL);
+
+// Fetch methods
+apiClient.fetchCalendar(locale);
+apiClient.fetchNationalCalendar(calendarId, locale);
+apiClient.fetchDiocesanCalendar(calendarId, locale);
+apiClient.refetchCalendarData();
+```
+
+### Caching
+
+The ApiClient implements parameter-based caching to avoid redundant API requests. Calendar data is cached based on:
+
+- Category (general, national, diocesan)
+- Calendar ID
+- Year
+- Year type (LITURGICAL or CIVIL)
+- Locale
+- Mobile feast settings (epiphany, ascension, corpus_christi, eternal_high_priest)
+
+When a fetch method is called with the same parameters, cached data is returned immediately without making an HTTP request.
+
+```javascript
+// First call fetches from API
+apiClient.year(2025).yearType(YearType.LITURGICAL);
+await apiClient.fetchCalendar('en');
+
+// Second call with same parameters returns cached data (no HTTP request)
+await apiClient.fetchCalendar('en');
+
+// Different parameters trigger a new fetch
+apiClient.year(2026);
+await apiClient.fetchCalendar('en'); // Fetches from API
+
+// Clear all cached data when needed
+ApiClient.clearCache();
+```
+
+### Deprecated Methods
+
+The following methods are deprecated and will show console warnings:
+
+| Deprecated         | Use Instead  |
+|--------------------|--------------|
+| `setYear()`        | `year()`     |
+| `setYearType()`    | `yearType()` |
 
 ## Enums
 

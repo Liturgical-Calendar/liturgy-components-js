@@ -1350,24 +1350,31 @@ export default class WebCalendar {
     }
 
     /**
-     * Attaches the WebCalendar to a given element. If the element does not yet exist in the DOM, the WebCalendar will be attached when the element is inserted.
-     * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element, to attach the WebCalendar to
-     * @return {WebCalendar} - The same instance of WebCalendar
+     * Appends the WebCalendar to a given element. If the element does not yet exist in the DOM, the WebCalendar will be appended when the element is inserted.
+     * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element, to append the WebCalendar to
      */
-    attachTo( elementSelector = '' ) {
+    appendTo( elementSelector = '' ) {
         if (this.#attachedElement === null) {
            if (typeof elementSelector === 'string') {
                if (elementSelector === '') {
-                   throw new Error('WebCalendar.attachTo: Element selector cannot be empty.');
+                   throw new Error('WebCalendar.appendTo: Element selector cannot be empty.');
                }
                this.#attachedElement = WebCalendar.#validateElementSelector( elementSelector );
            } else if (elementSelector instanceof HTMLElement) {
                this.#attachedElement = elementSelector;
            } else {
-               throw new Error('WebCalendar.attachTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
+               throw new Error('WebCalendar.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
            }
         }
-        return this;
+    }
+
+    /**
+     * @deprecated Use appendTo() instead. This method will be removed in a future version.
+     * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element
+     */
+    attachTo( elementSelector = '' ) {
+        console.warn('WebCalendar.attachTo() is deprecated. Use WebCalendar.appendTo() instead.');
+        this.appendTo(elementSelector);
     }
 
     /**
