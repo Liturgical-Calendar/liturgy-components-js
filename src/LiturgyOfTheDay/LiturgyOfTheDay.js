@@ -397,6 +397,10 @@ export default class LiturgyOfTheDay {
     #renderReadings(readings, container) {
         if (!readings || typeof readings !== 'object') return;
 
+        if (!(container instanceof HTMLElement)) {
+            throw new Error('LiturgyOfTheDay.#renderReadings: container must be an HTMLElement');
+        }
+
         const readingsWrapper = document.createElement('div');
         if (this.#readingsWrapperClassName !== '') {
             readingsWrapper.classList.add(...this.#readingsWrapperClassName.split(' '));
