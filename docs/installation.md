@@ -18,7 +18,7 @@ import {
 ```
 
 > [!TIP]
-> In order to use ES6 import statements without a build step in your project,
+> To use ES6 import statements without a build step in your project,
 > your project's script tag must have the attribute `type="module"`:
 >
 > ```html
