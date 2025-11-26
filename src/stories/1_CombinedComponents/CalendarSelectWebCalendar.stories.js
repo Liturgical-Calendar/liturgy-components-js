@@ -26,7 +26,7 @@ const meta = {
     const container = document.createElement('div');
     container.id = 'calendarSelectContainer';
 
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {
         const calendarSelect = new CalendarSelect('en-US');

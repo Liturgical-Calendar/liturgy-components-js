@@ -4,7 +4,7 @@ const userLanguages = Utils.getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         alert('Error initializing the Liturgical Calendar API Client');
         return;
     }

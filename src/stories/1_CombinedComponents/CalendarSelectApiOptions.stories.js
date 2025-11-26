@@ -71,7 +71,7 @@ const meta = {
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
-        if ( false === apiClient || false === (apiClient instanceof ApiClient) ) {
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('form-select');

@@ -84,7 +84,7 @@ function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
 }
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         alert('Error initializing the Liturgical Calendar API Client');
     } else {
         const apiOptions = new ApiOptions( 'en-US' );
