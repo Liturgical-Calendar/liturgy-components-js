@@ -1,43 +1,43 @@
 /* Center content and limit max width */
-.liturgy-of-the-day {
+.liturgy-of-any-day {
     max-width: 100%;
     /* Prevent Bootstrap row negative margins from extending beyond card borders */
     overflow: hidden;
 }
 
 /* Event name styling */
-.liturgy-of-the-day-event h3 {
+.liturgy-of-any-day-event h3 {
     margin: 0 0 0.5rem 0;
     font-size: 1.25rem;
 }
 
 /* Italic styling for lower grades */
-#LiturgyOfTheDay .grade-0,
-#LiturgyOfTheDay .grade-1,
-#LiturgyOfTheDay .grade-2 {
+#LiturgyOfAnyDay .grade-0,
+#LiturgyOfAnyDay .grade-1,
+#LiturgyOfAnyDay .grade-2 {
     font-style: italic;
 }
 
 /* Readings section styling */
-.liturgy-of-the-day-readings-wrapper {
+.liturgy-of-any-day-readings-wrapper {
     border-top: 1px dashed rgba(0, 0, 0, 0.2);
 }
 
-.liturgy-of-the-day-readings-label {
+.liturgy-of-any-day-readings-label {
     font-weight: 600;
 }
 
-.liturgy-of-the-day-reading {
+.liturgy-of-any-day-reading {
     margin: 0.25rem 0;
 }
 
 /* Date display styling */
-.liturgy-of-the-day-date {
+.liturgy-of-any-day-date {
     font-size: 1.1rem;
     font-weight: 500;
 }
 
 /* Last event shouldn't have bottom margin */
-.liturgy-of-the-day-event:last-child {
+.liturgy-of-any-day-event:last-child {
     margin-bottom: 0 !important;
 }

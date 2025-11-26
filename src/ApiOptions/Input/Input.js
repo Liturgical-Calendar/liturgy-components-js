@@ -508,6 +508,45 @@ export default class Input {
     }
 
     /**
+     * Gets or sets the current value of the input element.
+     *
+     * When called without arguments, returns the current value.
+     * When called with a value argument, sets the value and returns the instance for chaining.
+     *
+     * Note: This differs from `defaultValue()` which sets the initial/default value.
+     * This method gets or sets the current live value of the input.
+     *
+     * @param {string} [val] - The value to set. If omitted, the method acts as a getter.
+     * @returns {string|Input} The current value when used as getter, or the instance when used as setter.
+     * @throws {Error} If the provided value is not a string.
+     */
+    value( val ) {
+        if (typeof val === 'undefined') {
+            return this.#domElement.value;
+        }
+        if (typeof val !== 'string') {
+            throw new Error('Invalid type for value, must be of type string but found type: ' + typeof val);
+        }
+        this.#domElement.value = val;
+        return this;
+    }
+
+    /**
+     * Returns an array of option values for select elements.
+     *
+     * This method is only applicable to select elements. For input elements,
+     * it returns an empty array.
+     *
+     * @returns {string[]} An array of option values, or empty array if not a select element.
+     */
+    options() {
+        if (this.#domElement.tagName.toLowerCase() !== 'select') {
+            return [];
+        }
+        return Array.from(this.#domElement.options).map(opt => opt.value);
+    }
+
+    /**
      * Appends the input element to the element matched by the provided element selector.
      *
      * If a wrapper element has been set, the input element is appended to the wrapper element.

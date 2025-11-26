@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -31,7 +29,7 @@ const meta = {
         onChange: {
             action: 'onChange'
         },
-        apiOptionsfilter: {
+        apiOptionsFilter: {
             control: { type: 'select' },
             options: [ ApiOptionsFilter.NONE, ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN ],
             labels: {
@@ -40,7 +38,7 @@ const meta = {
                 [ ApiOptionsFilter.GENERAL_ROMAN ]: 'General Roman Calendar only'
             },
             description: 'Filter for the ApiOptions instance, applicable via the `ApiOptions.filter(ApiOptionsFilter.ALL_CALENDARS)` instance method',
-            defaultValue: ApiOptionsFilter.NONE
+            defaultValue: ApiOptionsFilter.ALL_CALENDARS
         },
         calendarSelectClass: {
             control: 'text',
@@ -73,7 +71,7 @@ const meta = {
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
-        if ( false === apiClient || false === (apiClient instanceof ApiClient) ) {
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('form-select');
@@ -83,6 +81,7 @@ const meta = {
 
             const calendarSelect = new CalendarSelect( args.locale );
             const apiOptions = new ApiOptions( args.locale );
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             apiOptions.linkToCalendarSelect( calendarSelect );
             //apiClient.listenTo(apiOptions);
             if ( args.apiOptionsFilter ) {
@@ -117,13 +116,11 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
     args: {
         calendarSelectClass: 'form-select',
         calendarSelectLabelClass: 'form-label d-block mb-1',
         calendarSelectWrapperClass: 'form-group col col-md-3',
-        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS,
-        onChange: fn()
+        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS
     }
 }
 

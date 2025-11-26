@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -82,7 +80,7 @@ const meta = {
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
-        if ( false === apiClient || false === apiClient instanceof ApiClient ) {
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('form-select');
@@ -92,6 +90,7 @@ const meta = {
 
             const calendarSelect = new CalendarSelect( args.locale );
             const apiOptions = new ApiOptions( args.locale );
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             apiOptions.linkToCalendarSelect( calendarSelect );
             //apiClient.listenTo(apiOptions);
             if ( args.apiOptionsFilter ) {
@@ -129,13 +128,11 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
     args: {
         calendarSelectClass: 'form-select',
         calendarSelectLabelClass: 'form-label d-block mb-1',
         calendarSelectWrapperClass: 'form-group col col-md-3',
-        calendarSelectAllowNull: true,
-        onChange: fn()
+        calendarSelectAllowNull: true
     }
 }
 

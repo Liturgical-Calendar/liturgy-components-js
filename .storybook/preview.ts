@@ -1,4 +1,4 @@
-import type { Preview } from "@storybook/html"
+import type { Preview } from "@storybook/html-vite"
 import { ApiClient } from "@liturgical-calendar/components-js"
 
 const preview: Preview = {
@@ -12,7 +12,7 @@ const preview: Preview = {
   },
   loaders: [
     async () => ({
-      apiClient: await ApiClient.init('http://localhost:' + (process.env.STORYBOOK_API_PORT || 8000))
+      apiClient: await ApiClient.init('http://localhost:' + (import.meta.env.STORYBOOK_API_PORT || 8000))
     })
   ]
 };

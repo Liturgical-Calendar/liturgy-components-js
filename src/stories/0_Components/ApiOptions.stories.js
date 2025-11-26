@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 
 /**
  * ApiOptions component
@@ -63,7 +61,7 @@ const meta = {
         const container = document.createElement( 'div' );
         container.id = 'apiOptionsContainer';
 
-        if ( false === apiClient || false === (apiClient instanceof ApiClient) ) {
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('unstyled');
@@ -91,10 +89,7 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
-    args: {
-        onChange: fn()
-    }
+    args: {}
 }
 
 export default meta;

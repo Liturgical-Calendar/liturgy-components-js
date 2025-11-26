@@ -260,6 +260,47 @@ export default class ApiClient {
   }
 
   /**
+   * Resolves and validates a locale for a national or diocesan calendar.
+   * Updates the Accept-Language header if the locale is valid.
+   *
+   * @param {'national'|'diocesan'} category - The calendar category
+   * @param {string} calendar_id - The calendar identifier
+   * @param {string} locale - The locale to resolve
+   * @returns {string} The resolved locale (JS format with hyphen) or the current Accept-Language header value
+   * @private
+   */
+  #resolveCalendarLocale(category, calendar_id, locale) {
+    const resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
+    // Guard against uninitialized metadata
+    if (!ApiClient.#metadata) {
+      return resolvedLocale;
+    }
+
+    if (typeof locale === 'string' && locale !== '') {
+      const phpLocale = locale.replace(/-/g, '_');
+      const jsLocale = phpLocale.replace(/_/g, '-');
+      const metadataArray = category === 'national'
+        ? ApiClient.#metadata.national_calendars
+        : ApiClient.#metadata.diocesan_calendars;
+
+      if (!metadataArray) {
+        return resolvedLocale;
+      }
+
+      const calendarMetadata = metadataArray.find(
+        calendar => calendar.calendar_id === calendar_id
+      );
+      if (calendarMetadata?.locales?.includes(phpLocale)) {
+        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
+        return jsLocale;
+      }
+    }
+
+    return resolvedLocale;
+  }
+
+  /**
    * Refetches calendar data based on the current category and calendar ID.
    *
    * This method determines the current category of the calendar (national, diocesan, or general)
@@ -364,22 +405,7 @@ export default class ApiClient {
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory   = 'national';
     this.#currentCalendarId = calendar_id;
-    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
-
-    if (
-      typeof locale === 'string'
-      && locale !== ''
-    ) {
-      const phpLocale = locale.replace(/-/g, '_');
-      const jsLocale = phpLocale.replace(/_/g, '-');
-      const nationalCalendarMetadata = ApiClient.#metadata.national_calendars.filter(
-        calendar => calendar.calendar_id === calendar_id
-      )[0];
-      if ( nationalCalendarMetadata.locales.includes(phpLocale) ) {
-        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
-        resolvedLocale = jsLocale;
-      }
-    }
+    const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
 
     // Check cache first
     const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale);
@@ -412,8 +438,9 @@ export default class ApiClient {
   /**
    * Fetches a diocesan liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the diocesan calendar to fetch
+   * @param {string} [locale] - The locale for the diocesan calendar
    * @throws {Error} When network request fails
-   * @description This method fetches a diocesan liturgical calendar by its ID. It extracts the year from params
+   * @description This method fetches a diocesan liturgical calendar by its ID, and optionally a supported locale. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
    * as these options are built into the Diocesan calendar being requested.
@@ -421,14 +448,14 @@ export default class ApiClient {
    * If the same calendar with identical parameters was previously fetched, the cached data
    * is returned without making a new API request.
    */
-  fetchDiocesanCalendar( calendar_id ) {
+  fetchDiocesanCalendar( calendar_id, locale = '' ) {
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory = 'diocesan';
     this.#currentCalendarId = calendar_id;
-    const resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+    const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
 
     // Check cache first
     const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale);

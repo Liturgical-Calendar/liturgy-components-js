@@ -1,5 +1,7 @@
 import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import { YearType } from '../Enums.js';
+import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 
 export default class LiturgyOfTheDay {
 
@@ -53,6 +55,12 @@ export default class LiturgyOfTheDay {
 
     /** @type {string} */
     #eventYearCycleClassName = '';
+
+    /** @type {ReadingsRenderer} */
+    #readingsRenderer = new ReadingsRenderer();
+
+    /** @type {boolean} */
+    #showReadings = true;
 
     /**
      * Validates the given class name to ensure it is a valid CSS class name.
@@ -197,6 +205,18 @@ export default class LiturgyOfTheDay {
             if (options.hasOwnProperty('eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
             }
+            if (options.hasOwnProperty('readingsWrapperClass')) {
+                this.readingsWrapperClass(options.readingsWrapperClass);
+            }
+            if (options.hasOwnProperty('readingsLabelClass')) {
+                this.readingsLabelClass(options.readingsLabelClass);
+            }
+            if (options.hasOwnProperty('readingClass')) {
+                this.readingClass(options.readingClass);
+            }
+            if (options.hasOwnProperty('showReadings')) {
+                this.showReadings(options.showReadings);
+            }
         }
     }
 
@@ -264,7 +284,6 @@ export default class LiturgyOfTheDay {
                     celebrationCommonElement.classList.add(...this.#eventCommonClassName.split(' '));
                 }
                 celebrationCommonElement.textContent = celebration.common_lcl;
-                //celebrationCommonElement.style.fontStyle = 'italic';
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
@@ -275,6 +294,11 @@ export default class LiturgyOfTheDay {
                 }
                 celebrationLiturgicalYearElement.textContent = celebration.liturgical_year;
                 litEventElement.appendChild(celebrationLiturgicalYearElement);
+            }
+
+            // Render lectionary readings if enabled and available
+            if (this.#showReadings && Object.prototype.hasOwnProperty.call(celebration, 'readings')) {
+                this.#readingsRenderer.renderReadings(celebration.readings, litEventElement);
             }
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
@@ -478,6 +502,80 @@ export default class LiturgyOfTheDay {
     }
 
     /**
+     * Sets the class attribute for the readings wrapper element.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfTheDay} The current instance for chaining.
+     */
+    readingsWrapperClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.readingsWrapperClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingsWrapperClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets the class attribute for the readings label elements.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfTheDay} The current instance for chaining.
+     */
+    readingsLabelClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.readingsLabelClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingsLabelClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets the class attribute for the individual reading elements.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfTheDay} The current instance for chaining.
+     */
+    readingClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfTheDay.readingClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfTheDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets whether to show lectionary readings.
+     *
+     * @param {boolean} show - Whether to display lectionary readings.
+     * @returns {LiturgyOfTheDay} The current instance for chaining.
+     */
+    showReadings(show = true) {
+        if (typeof show !== 'boolean') {
+            throw new Error('LiturgyOfTheDay.showReadings: Invalid type for show, must be of type boolean but found type: ' + typeof show);
+        }
+        this.#showReadings = show;
+        return this;
+    }
+
+    /**
      * Sets the LiturgyOfTheDay instance to listen to the `calendarFetched` event emitted by the ApiClient.
      *
      * Upon receiving the event, it processes the liturgical calendar data and updates the liturgical events
@@ -486,6 +584,9 @@ export default class LiturgyOfTheDay {
      * the integrity of the received data, ensuring it contains the necessary properties and is of the correct type.
      * It then filters the liturgical calendar data to only include events that match the current date and updates
      * the internal state of the component.
+     *
+     * Also configures the ApiClient with the correct year_type based on the current date
+     * (LITURGICAL for December 31st to include vigil masses, CIVIL otherwise).
      *
      * @param {ApiClient} apiClient - The API client to listen to for calendar data events.
      * @throws {Error} If the provided `apiClient` is not an instance of ApiClient or if the received
@@ -496,6 +597,16 @@ export default class LiturgyOfTheDay {
         if (false === apiClient instanceof ApiClient) {
             throw new Error('LiturgyOfTheDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.');
         }
+
+        // Configure ApiClient with the correct year_type based on the current date
+        // This ensures the first fetch includes vigil masses if needed (December 31st)
+        const now = new Date();
+        const isDec31 = (now.getMonth() === 11 && now.getDate() === 31);
+        if (isDec31) {
+            // Use LITURGICAL year type with year+1 to get vigil masses for January 1st
+            apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1);
+        }
+
         apiClient._eventBus.on('calendarFetched', async (data) => {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);

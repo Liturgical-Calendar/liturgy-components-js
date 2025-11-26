@@ -2,6 +2,7 @@ import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { DayInput, MonthInput, YearInput } from '../ApiOptions/Input/index.js';
 import { YearType } from '../Enums.js';
+import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 
 export default class LiturgyOfAnyDay {
 
@@ -76,6 +77,12 @@ export default class LiturgyOfAnyDay {
 
     /** @type {string} */
     #currentYearType = YearType.CIVIL;
+
+    /** @type {ReadingsRenderer} */
+    #readingsRenderer = new ReadingsRenderer();
+
+    /** @type {boolean} */
+    #showReadings = true;
 
     /**
      * Validates the given class name to ensure it is a valid CSS class name.
@@ -224,6 +231,18 @@ export default class LiturgyOfAnyDay {
             }
             if (options.hasOwnProperty('eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
+            }
+            if (options.hasOwnProperty('readingsWrapperClass')) {
+                this.readingsWrapperClass(options.readingsWrapperClass);
+            }
+            if (options.hasOwnProperty('readingsLabelClass')) {
+                this.readingsLabelClass(options.readingsLabelClass);
+            }
+            if (options.hasOwnProperty('readingClass')) {
+                this.readingClass(options.readingClass);
+            }
+            if (options.hasOwnProperty('showReadings')) {
+                this.showReadings(options.showReadings);
             }
         }
     }
@@ -383,6 +402,11 @@ export default class LiturgyOfAnyDay {
                 }
                 celebrationLiturgicalYearElement.textContent = celebration.liturgical_year;
                 litEventElement.appendChild(celebrationLiturgicalYearElement);
+            }
+
+            // Render lectionary readings if enabled and available
+            if (this.#showReadings && Object.prototype.hasOwnProperty.call(celebration, 'readings')) {
+                this.#readingsRenderer.renderReadings(celebration.readings, litEventElement);
             }
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
@@ -585,6 +609,80 @@ export default class LiturgyOfAnyDay {
             }
         });
         this.#eventYearCycleClassName = classNames.join(' ');
+        return this;
+    }
+
+    /**
+     * Sets the class attribute for the readings wrapper element.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfAnyDay} The current instance for chaining.
+     */
+    readingsWrapperClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfAnyDay.readingsWrapperClass: Invalid type for className');
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingsWrapperClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets the class attribute for the readings label elements.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfAnyDay} The current instance for chaining.
+     */
+    readingsLabelClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfAnyDay.readingsLabelClass: Invalid type for className');
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingsLabelClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets the class attribute for the individual reading elements.
+     *
+     * @param {string} className - A space-separated string of class names.
+     * @returns {LiturgyOfAnyDay} The current instance for chaining.
+     */
+    readingClass(className) {
+        if (typeof className !== 'string') {
+            throw new Error('LiturgyOfAnyDay.readingClass: Invalid type for className');
+        }
+        const classNames = className.split(/\s+/);
+        classNames.forEach(className => {
+            if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
+                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+            }
+        });
+        this.#readingsRenderer.setReadingClassName(classNames.join(' '));
+        return this;
+    }
+
+    /**
+     * Sets whether to show lectionary readings.
+     *
+     * @param {boolean} show - Whether to display lectionary readings.
+     * @returns {LiturgyOfAnyDay} The current instance for chaining.
+     */
+    showReadings(show = true) {
+        if (typeof show !== 'boolean') {
+            throw new Error('LiturgyOfAnyDay.showReadings: Invalid type for show, must be of type boolean');
+        }
+        this.#showReadings = show;
         return this;
     }
 

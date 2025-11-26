@@ -146,11 +146,12 @@ export default class CalendarSelect {
             const optionsType = Array.isArray(options) ? 'array' : typeof options;
             throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
         }
-        const { locale, id, name, filter, after, label, wrapper, allowNull, disabled } = options;
-        if (locale) {
-            if (typeof locale !== 'string') {
-                throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof locale);
+        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled } = options;
+        if (inputLocale !== undefined && inputLocale !== null) {
+            if (typeof inputLocale !== 'string') {
+                throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
             }
+            let locale = inputLocale;
             if (locale.includes('_')) {
                 locale = locale.replaceAll('_', '-');
             }
@@ -166,7 +167,11 @@ export default class CalendarSelect {
             }
         } else {
             this.#locale = 'en';
-            this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            try {
+                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            } catch (e) {
+                throw new Error('Failed to initialize locale: ' + this.#locale);
+            }
         }
 
         if (null === CalendarSelect.#metadata) {
@@ -724,6 +729,43 @@ export default class CalendarSelect {
             throw new Error('Invalid type for disabled, must be of type boolean but found type: ' + typeof disabled);
         }
         this.#domElement.disabled = disabled;
+        return this;
+    }
+
+    /**
+     * Gets or sets the selected value of the CalendarSelect.
+     *
+     * When called without arguments, returns the current selected value.
+     * When called with a value argument, sets the selected value and returns the instance for chaining.
+     *
+     * @param {string} [val] - The value to set. If omitted, the method acts as a getter.
+     * @returns {string|CalendarSelect} The current value when used as getter, or the instance when used as setter.
+     * @throws {Error} If the provided value is not a string.
+     */
+    value( val ) {
+        if (typeof val === 'undefined') {
+            return this.#domElement.value;
+        }
+        if (typeof val !== 'string') {
+            throw new Error('Invalid type for value, must be of type string but found type: ' + typeof val);
+        }
+        this.#domElement.value = val;
+        return this;
+    }
+
+    /**
+     * Registers a callback function to be called when the selected value changes.
+     *
+     * @param {Function} callback - The callback function to execute on change.
+     *                              Receives the change event as its argument.
+     * @returns {CalendarSelect} The current instance for method chaining.
+     * @throws {Error} If the callback is not a function.
+     */
+    onChange( callback ) {
+        if (typeof callback !== 'function') {
+            throw new Error('Invalid type for onChange callback, must be of type function but found type: ' + typeof callback);
+        }
+        this.#domElement.addEventListener('change', callback);
         return this;
     }
 

@@ -1,6 +1,4 @@
 import { CalendarSelect, ApiClient } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 
 /**
  * CalendarSelect component
@@ -74,7 +72,7 @@ const meta = {
 
     const calendarSelect = new CalendarSelect(args);
 
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {
         //apiClient.listenTo(calendarSelect);
@@ -87,7 +85,6 @@ const meta = {
       handles: ['change', 'change #calendarSelectContainer select'],
     },
   },
-  decorators: [withActions],
   args: {
     label: {
       text: 'Select a calendar',
@@ -99,8 +96,7 @@ const meta = {
       class: 'wrapper-class',
       id: 'wrapper_id'
     },
-    allowNull: false,
-    onChange: fn()
+    allowNull: false
   }
 }
 

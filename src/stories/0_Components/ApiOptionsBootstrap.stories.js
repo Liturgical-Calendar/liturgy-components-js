@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -48,7 +46,7 @@ const meta = {
         container.id = 'apiOptionsContainer';
         container.classList.add('row');
 
-        if ( false === apiClient || false === apiClient instanceof ApiClient ) {
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
             container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
         } else {
             Input.setGlobalInputClass('form-select');
@@ -57,6 +55,7 @@ const meta = {
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
             const apiOptions = new ApiOptions( args.locale );
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             //apiClient.listenTo(apiOptions);
             if ( args.filter ) {
                 apiOptions.filter( args.filter );
@@ -76,17 +75,14 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
     args: {
-        onChange: fn()
+        locale: 'en-US'
     }
 }
 
 export default meta;
 
-export const Default = {
-    args: {}
-}
+export const Default = {}
 
 export const Italian = {
     args: {
@@ -146,5 +142,78 @@ export const AcceptHeaderInputAsReturnTypeParameter = {
         locale: 'en-US',
         filter: ApiOptionsFilter.ALL_CALENDARS,
         acceptHeaderAsReturnTypeParam: true
+    }
+}
+
+/**
+ * This story demonstrates using Bootstrap Multiselect for the HolydaysOfObligationInput.
+ * Bootstrap Multiselect provides a jQuery-based multi-select dropdown UI that integrates
+ * with Bootstrap styling.
+ */
+export const WithBootstrapMultiselect = {
+    args: {
+        locale: 'en-US',
+        filter: ApiOptionsFilter.GENERAL_ROMAN,
+        hideAcceptHeaderInput: true
+    },
+    render: (args, { loaded: { apiClient } }) => {
+        const container = document.createElement('div');
+        container.id = 'apiOptionsBsmsContainer';
+        container.classList.add('row');
+
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
+            container.textContent = 'Error initializing the Liturgical Calendar API Client';
+        } else {
+            Input.setGlobalInputClass('form-select');
+            Input.setGlobalLabelClass('form-label d-block mb-1');
+            Input.setGlobalWrapper('div');
+            Input.setGlobalWrapperClass('form-group col col-md-3');
+
+            const apiOptions = new ApiOptions(args.locale);
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
+            if (args.filter) {
+                apiOptions.filter(args.filter);
+            }
+            if (args.hideAcceptHeaderInput) {
+                apiOptions._acceptHeaderInput.hide();
+            }
+            apiOptions.appendTo(container);
+
+            // Initialize bootstrap-multiselect after the container is in the DOM
+            requestAnimationFrame(() => {
+                // Defensive guards: check jQuery, plugin, and DOM element exist before initializing multiselect
+                if (typeof window.jQuery === 'undefined') {
+                    console.warn('bootstrap-multiselect: jQuery is not available, skipping multiselect initialization');
+                    return;
+                }
+                if (typeof window.jQuery.fn?.multiselect !== 'function') {
+                    console.warn('bootstrap-multiselect: plugin is not loaded, skipping multiselect initialization');
+                    return;
+                }
+                if (!apiOptions._holydaysOfObligationInput || !apiOptions._holydaysOfObligationInput._domElement) {
+                    console.warn('bootstrap-multiselect: HolydaysOfObligationInput or its DOM element is not available, skipping multiselect initialization');
+                    return;
+                }
+
+                const $select = window.jQuery(apiOptions._holydaysOfObligationInput._domElement);
+                $select.multiselect({
+                    buttonWidth: '100%',
+                    buttonClass: 'form-select',
+                    templates: {
+                        button: '<button type="button" class="multiselect dropdown-toggle" data-bs-toggle="dropdown"><span class="multiselect-selected-text"></span></button>'
+                    },
+                    maxHeight: 200,
+                    includeSelectAllOption: true,
+                    enableCaseInsensitiveFiltering: true,
+                    onChange: (option, checked, select) => {
+                        select.dispatchEvent(new CustomEvent('change', {
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                    }
+                });
+            });
+        }
+        return container;
     }
 }

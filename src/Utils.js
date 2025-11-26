@@ -97,4 +97,56 @@ export default class Utils {
         let doc = new DOMParser().parseFromString(input, 'text/html');
         return doc.body.textContent || "";
     }
+
+    /**
+     * Get user's preferred languages from browser settings.
+     * Returns an array of language codes in order of preference.
+     *
+     * @returns {string[]} Array of language codes (e.g., ['en-US', 'en', 'fr'])
+     * @example
+     * const userLangs = Utils.getUserLanguages();
+     * // Returns: ['en-US', 'en'] based on browser settings
+     */
+    static getUserLanguages() {
+        if (navigator.languages && navigator.languages.length > 0) {
+            return [...navigator.languages];
+        }
+        if (navigator.language) {
+            return [navigator.language];
+        }
+        return ['en'];
+    }
+
+    /**
+     * Find the best matching locale from available options based on user's language preferences.
+     * Tries exact match first, then language prefix match, for each preferred language in order.
+     *
+     * @param {string[]} userLanguages - User's preferred languages in order of preference
+     * @param {string[]} availableLocales - Array of available locale strings to match against
+     * @returns {string} The best matching locale value, or the first available option, or 'en' as fallback
+     * @example
+     * const userLangs = Utils.getUserLanguages(); // ['en-US', 'en']
+     * const available = ['it', 'en', 'fr', 'de'];
+     * const bestLocale = Utils.findBestLocale(userLangs, available);
+     * // Returns: 'en' (matches 'en-US' prefix)
+     */
+    static findBestLocale(userLanguages, availableLocales) {
+        for (const userLang of userLanguages) {
+            // Try exact match first (e.g., "en-US" matches "en-US")
+            const exactMatch = availableLocales.find(locale => locale.toLowerCase() === userLang.toLowerCase());
+            if (exactMatch) {
+                return exactMatch;
+            }
+
+            // Try language prefix match (e.g., "en-US" matches "en" or "en_GB")
+            const userLangPrefix = userLang.split(/[-_]/)[0].toLowerCase();
+            const prefixMatch = availableLocales.find(locale => locale.split(/[-_]/)[0].toLowerCase() === userLangPrefix);
+            if (prefixMatch) {
+                return prefixMatch;
+            }
+        }
+
+        // Fall back to first available locale
+        return availableLocales[0] || 'en';
+    }
 }

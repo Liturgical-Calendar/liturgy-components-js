@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfTheDay, Utils } from 'liturgy-components-js';
+import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfAnyDay, Utils } from 'liturgy-components-js';
 
 const userLanguages = Utils.getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
@@ -47,27 +47,50 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     const selectedLocale = Utils.findBestLocale(userLanguages, localeOptions);
     apiOptions._localeInput.value(selectedLocale);
 
-    // Create LiturgyOfTheDay component
-    // listenTo() automatically handles December 31st by configuring year_type=LITURGICAL with year+1
-    const liturgyOfTheDay = new LiturgyOfTheDay(selectedLocale);
-    liturgyOfTheDay
-        .id('LiturgyOfTheDay')
-        .class('liturgy-of-the-day card shadow-sm')
+    // Create LiturgyOfAnyDay component
+    const liturgyOfAnyDay = new LiturgyOfAnyDay(selectedLocale);
+    liturgyOfAnyDay
+        .id('LiturgyOfAnyDay')
+        .class('liturgy-of-any-day card shadow-sm')
         .titleClass('d-none') // Hide title since we have a page heading
-        .dateClass('liturgy-of-the-day-date card-header py-3')
-        .eventsWrapperClass('liturgy-of-the-day-events-wrapper card-body')
-        .eventClass('liturgy-of-the-day-event p-3 mb-3 rounded')
-        .eventGradeClass('liturgy-of-the-day-event-grade small')
-        .eventCommonClass('liturgy-of-the-day-event-common small fst-italic')
-        .eventYearCycleClass('liturgy-of-the-day-event-year-cycle small')
+        .dateClass('liturgy-of-any-day-date card-header py-3')
+        .dateControlsClass('liturgy-of-any-day-date-controls row g-3 p-3 bg-light border-bottom')
+        .eventsWrapperClass('liturgy-of-any-day-events-wrapper card-body')
+        .eventClass('liturgy-of-any-day-event p-3 mb-3 rounded')
+        .eventGradeClass('liturgy-of-any-day-event-grade small')
+        .eventCommonClass('liturgy-of-any-day-event-common small fst-italic')
+        .eventYearCycleClass('liturgy-of-any-day-event-year-cycle small')
         // Configure readings display
-        .readingsWrapperClass('liturgy-of-the-day-readings-wrapper mt-3 pt-2')
-        .readingsLabelClass('liturgy-of-the-day-readings-label')
-        .readingClass('liturgy-of-the-day-reading small')
+        .readingsWrapperClass('liturgy-of-any-day-readings-wrapper mt-3 pt-2')
+        .readingsLabelClass('liturgy-of-any-day-readings-label')
+        .readingClass('liturgy-of-any-day-reading small')
         .showReadings(true)
+        // Configure date input controls with Bootstrap styling
+        .dayInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-4 col-md-3',
+            class: 'form-control',
+            labelClass: 'form-label',
+            labelText: 'Day'
+        })
+        .monthInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-8 col-md-5',
+            class: 'form-select',
+            labelClass: 'form-label',
+            labelText: 'Month'
+        })
+        .yearInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-12 col-md-4',
+            class: 'form-control',
+            labelClass: 'form-label',
+            labelText: 'Year'
+        })
+        .buildDateControls()
         .listenTo(apiClient);
 
-    liturgyOfTheDay.replace('#liturgyOfTheDay');
+    liturgyOfAnyDay.replace('#liturgyOfAnyDay');
 
     // Wire ApiClient to listen to CalendarSelect and ApiOptions
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);

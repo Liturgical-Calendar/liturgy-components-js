@@ -61,6 +61,22 @@ const meta = {
       control: 'text',
       description: 'CSS class(es) for the widget\'s Events Year Cycle HTML element(s)'
     },
+    readingsWrapperClass: {
+      control: 'text',
+      description: 'CSS class(es) for the widget\'s Readings wrapper HTML element'
+    },
+    readingsLabelClass: {
+      control: 'text',
+      description: 'CSS class(es) for the widget\'s Readings label HTML element(s)'
+    },
+    readingClass: {
+      control: 'text',
+      description: 'CSS class(es) for individual reading HTML element(s)'
+    },
+    showReadings: {
+      control: 'boolean',
+      description: 'Whether to display lectionary readings'
+    },
     onChange: {
       action: 'onChange'
     }
@@ -69,7 +85,7 @@ const meta = {
     const container = document.createElement('div');
 
     // Initialize API client
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     }
     else {
@@ -94,10 +110,13 @@ const meta = {
 
         // Fetch the diocesan calendar with the specified locale
         const diocesanCalendarMetadata = apiClient._metadata.diocesan_calendars.find(calendar => calendar.calendar_id === args.calendar_id);
-        const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
-        apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
-
-        liturgyOfAnyDay.appendTo(container);
+        if (!diocesanCalendarMetadata) {
+            container.textContent = `Diocesan calendar '${args.calendar_id}' not found in API metadata`;
+        } else {
+            const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
+            apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
+            liturgyOfAnyDay.appendTo(container);
+        }
     }
     return container;
   },
@@ -111,6 +130,10 @@ const meta = {
     eventGradeClass: "liturgy-of-any-day-event-grade",
     eventCommonClass: "liturgy-of-any-day-event-common",
     eventYearCycleClass: "liturgy-of-any-day-year-cycle",
+    readingsWrapperClass: "liturgy-of-any-day-readings-wrapper",
+    readingsLabelClass: "liturgy-of-any-day-readings-label",
+    readingClass: "liturgy-of-any-day-reading",
+    showReadings: true
   }
 }
 

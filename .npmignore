@@ -16,3 +16,6 @@ docker-compose.yml
 Dockerfile
 Dockerfile.dockerignore
 *.tgz
+CLAUDE.md
+take-screenshot.mjs
+/docs/

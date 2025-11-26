@@ -81,3 +81,20 @@
     margin-top: 4px;
     opacity: 0.8;
 }
+
+.liturgy-of-any-day-readings-wrapper {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.2);
+}
+
+.liturgy-of-any-day-readings-label {
+    font-size: 0.875rem;
+    font-weight: bold;
+    margin-top: 0.5em;
+}
+
+.liturgy-of-any-day-reading {
+    font-size: 0.875rem;
+    margin: 2px 0;
+}

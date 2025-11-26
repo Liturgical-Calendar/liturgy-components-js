@@ -1,6 +1,4 @@
 import { CalendarSelect, WebCalendar, Grouping, Column, ColumnOrder, ColorAs, DateFormat, GradeDisplay, ApiClient } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../webcalendar.css';
 
@@ -28,7 +26,7 @@ const meta = {
     const container = document.createElement('div');
     container.id = 'calendarSelectContainer';
 
-    if (false === apiClient || false === apiClient instanceof ApiClient) {
+    if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {
         const calendarSelect = new CalendarSelect('en-US');
@@ -68,10 +66,7 @@ const meta = {
       handles: ['change', 'change #calendarSelectContainer select'],
     },
   },
-  decorators: [withActions],
-  args: {
-    onChange: fn()
-  }
+  args: {}
 }
 
 export default meta;
