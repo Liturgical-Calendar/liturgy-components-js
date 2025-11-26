@@ -275,7 +275,7 @@ export default class ApiOptions {
             let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
             switch(currentSelectedCalendarType) {
                 case 'national': {
-                    const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId)[0];
+                    const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId);
                     const {settings, locales} = selectedNationalCalendar;
                     //console.info('handling national calendar settings while linking to calendar select:', settings);
                     this.#applySettingsToInputs(settings);
@@ -283,9 +283,9 @@ export default class ApiOptions {
                     break;
                 }
                 case 'diocesan': {
-                    const selectedDiocesanCalendar = ApiClient._metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId)[0];
+                    const selectedDiocesanCalendar = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId);
                     const {nation, locales} = selectedDiocesanCalendar;
-                    const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
+                    const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
                     const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                     //console.info('handling national calendar settings for diocesan calendar while linking to calendar select:', nationalCalendarForDioceseSettings);
                     this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
@@ -326,7 +326,7 @@ export default class ApiOptions {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
                 switch(selectedCalendarType) {
                     case 'national': {
-                        const selectedNationalCalendar = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value)[0];
+                        const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value);
                         const {settings, locales} = selectedNationalCalendar;
                         //console.info('handling national calendar settings following change event:', settings);
                         this.#applySettingsToInputs(settings);
@@ -335,9 +335,9 @@ export default class ApiOptions {
                         break;
                     }
                     case 'diocesan': {
-                        const selectedDiocese = ApiClient._metadata.diocesan_calendars.filter(dioceseObj => dioceseObj.calendar_id === ev.target.value)[0];
+                        const selectedDiocese = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === ev.target.value);
                         const {nation, locales} = selectedDiocese;
-                        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.filter(nationCalendarObj => nationCalendarObj.calendar_id === nation)[0];
+                        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
                         const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
                         //console.info('handling national calendar settings for diocesan calendar following change event:', nationalCalendarForDioceseSettings);
                         this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
