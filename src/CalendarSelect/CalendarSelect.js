@@ -147,7 +147,7 @@ export default class CalendarSelect {
             throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
         }
         const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled } = options;
-        if (inputLocale) {
+        if (inputLocale !== undefined && inputLocale !== null) {
             if (typeof inputLocale !== 'string') {
                 throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
             }
