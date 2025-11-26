@@ -98,7 +98,7 @@ export default class ReadingsRenderer {
      * @readonly
      */
     static #nestedSchemaKeys = Object.freeze([
-        'vigil', 'day', 'night', 'dawn', 'evening',
+        'vigil', 'night', 'dawn', 'day', 'evening',
         'schema_one', 'schema_two', 'schema_three',
         'easter_season', 'outside_easter_season'
     ]);
@@ -238,10 +238,12 @@ export default class ReadingsRenderer {
 
         if (this.hasNestedSchemas(readings)) {
             // Handle nested schemas (Christmas, Easter Vigil with day, etc.)
-            const schemaKeys = Object.keys(readings);
-            for (const schemaKey of schemaKeys) {
-                const schemaLabel = ReadingsRenderer.massLabels[schemaKey] || schemaKey;
-                this.renderSingleReadings(readings[schemaKey], readingsWrapper, schemaLabel);
+            // Iterate in predefined liturgical sequence rather than insertion order
+            for (const schemaKey of ReadingsRenderer.#nestedSchemaKeys) {
+                if (Object.prototype.hasOwnProperty.call(readings, schemaKey)) {
+                    const schemaLabel = ReadingsRenderer.massLabels[schemaKey] || schemaKey;
+                    this.renderSingleReadings(readings[schemaKey], readingsWrapper, schemaLabel);
+                }
             }
         } else {
             // Simple readings (ferial or festive)
