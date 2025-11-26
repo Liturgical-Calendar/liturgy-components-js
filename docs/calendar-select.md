@@ -77,6 +77,8 @@ calendarSelect.appendTo('#calendarOptions');
 | `allowNull(allowNull=true)` | Include empty option for General Roman Calendar |
 | `after(htmlString)` | HTML content after the select element |
 | `linkToNationsSelect(instance)` | Link to a national calendars select for filtering dioceses |
+| `value(val?)` | Get or set the selected value. Without argument returns current value; with argument sets value and returns instance |
+| `onChange(callback)` | Register a callback for change events. Returns instance for chaining |
 
 ### DOM Insertion Methods (non-chainable)
 
@@ -156,7 +158,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     calendarSelect.appendTo('#calendarOptions');
 
     // Set General Roman Calendar as default
-    calendarSelect._domElement.value = '';
+    calendarSelect.value('');
 
     const apiOptions = new ApiOptions('en-US')
         .filter(ApiOptionsFilter.LOCALE_ONLY)

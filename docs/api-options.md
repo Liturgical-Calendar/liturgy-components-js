@@ -125,7 +125,9 @@ apiOptions._acceptHeaderInput.hide();
 | `wrapperClass(className)` | CSS class(es) for wrapper |
 | `disabled(disabled=true)` | Set disabled state |
 | `data(dataMap)` | Set data attributes |
-| `defaultValue(value)` | Set default value |
+| `defaultValue(value)` | Set initial/default value |
+| `value(val?)` | Get or set current value. Without argument returns current value; with argument sets value and returns instance |
+| `options()` | Returns array of option values (for select elements only) |
 | `hide(hide=true)` | Hide the control |
 
 ## Linking to CalendarSelect

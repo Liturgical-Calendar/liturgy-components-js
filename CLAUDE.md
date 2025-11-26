@@ -312,7 +312,7 @@ const calendarSelect = new CalendarSelect(lang)
     .class('form-select')
     .allowNull(true);
 calendarSelect.appendTo('#calendarContainer');
-calendarSelect._domElement.value = ''; // Select General Roman Calendar
+calendarSelect.value(''); // Select General Roman Calendar
 
 // 3. Create ApiOptions with locale filter, linked to CalendarSelect
 const apiOptions = new ApiOptions(lang)
@@ -321,11 +321,11 @@ const apiOptions = new ApiOptions(lang)
 apiOptions.appendTo('#localeContainer');
 
 // 4. Select appropriate locale (exact match > language match > first option)
-const localeOptions = Array.from(apiOptions._localeInput._domElement.options);
-const exactMatch = localeOptions.find(opt => opt.value === lang);
-const languageMatch = localeOptions.find(opt => opt.value.split(/[-_]/)[0] === lang);
-let selectedLocale = exactMatch?.value || languageMatch?.value || localeOptions[0]?.value || lang;
-apiOptions._localeInput._domElement.value = selectedLocale;
+const localeOptions = apiOptions._localeInput.options();
+const exactMatch = localeOptions.find(val => val === lang);
+const languageMatch = localeOptions.find(val => val.split(/[-_]/)[0] === lang);
+let selectedLocale = exactMatch || languageMatch || localeOptions[0] || lang;
+apiOptions._localeInput.value(selectedLocale);
 
 // 5. Create LiturgyOfAnyDay (configures ApiClient year_type automatically)
 const liturgyOfAnyDay = new LiturgyOfAnyDay({ locale: lang })
@@ -346,7 +346,7 @@ By default, `CalendarSelect` selects Vatican as the first option. To select the 
 
 ```javascript
 calendarSelect.appendTo('#container');
-calendarSelect._domElement.value = ''; // Empty value = General Roman Calendar
+calendarSelect.value(''); // Empty value = General Roman Calendar
 ```
 
 ### LocaleInput Selection Logic
@@ -354,11 +354,11 @@ calendarSelect._domElement.value = ''; // Empty value = General Roman Calendar
 When setting up LocaleInput, match the user's locale with available options:
 
 ```javascript
-const localeOptions = Array.from(apiOptions._localeInput._domElement.options);
+const localeOptions = apiOptions._localeInput.options();
 // Try exact match first (e.g., "en" matches "en")
-const exactMatch = localeOptions.find(opt => opt.value === userLang);
+const exactMatch = localeOptions.find(val => val === userLang);
 // Then try language match (e.g., "en" matches "en_US")
-const languageMatch = localeOptions.find(opt => opt.value.split(/[-_]/)[0] === userLang);
+const languageMatch = localeOptions.find(val => val.split(/[-_]/)[0] === userLang);
 // Fallback to first available option
-const selectedLocale = exactMatch?.value || languageMatch?.value || localeOptions[0]?.value;
+const selectedLocale = exactMatch || languageMatch || localeOptions[0];
 ```
