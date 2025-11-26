@@ -45,6 +45,7 @@ ApiClient.init().then((apiClient) => {
 | [WebCalendar](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/web-calendar.md) | Full calendar table with customizable display |
 | [LiturgyOfTheDay / LiturgyOfAnyDay](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md) | Daily liturgy widgets |
 | [PathBuilder](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md) | API URL builder tool |
+| [Utils](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/utils.md) | Utility functions for locale detection and validation |
 
 ## Documentation
 
@@ -83,6 +84,7 @@ export {
     LiturgyOfAnyDay,
     PathBuilder,
     Input,
+    Utils,
 
     // Enums
     Grouping,

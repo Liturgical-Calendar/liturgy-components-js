@@ -1,56 +1,7 @@
-import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfTheDay, YearType } from 'liturgy-components-js';
+import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfTheDay, Utils } from 'liturgy-components-js';
 
-/**
- * Get user's preferred languages from browser settings.
- * Returns an array of language codes in order of preference.
- * @returns {string[]}
- */
-function getUserLanguages() {
-    if (navigator.languages && navigator.languages.length > 0) {
-        return [...navigator.languages];
-    }
-    if (navigator.language) {
-        return [navigator.language];
-    }
-    return ['en'];
-}
-
-/**
- * Find the best matching locale from available options based on user's language preferences.
- * Tries exact match first, then language prefix match, for each preferred language in order.
- * @param {string[]} userLanguages - User's preferred languages in order of preference
- * @param {HTMLOptionElement[]} localeOptions - Available locale options from the select element
- * @returns {string} The best matching locale value, or the first available option
- */
-function findBestLocale(userLanguages, localeOptions) {
-    const availableLocales = localeOptions.map(opt => opt.value);
-
-    for (const userLang of userLanguages) {
-        // Try exact match first (e.g., "en-US" matches "en-US")
-        const exactMatch = availableLocales.find(locale => locale.toLowerCase() === userLang.toLowerCase());
-        if (exactMatch) {
-            return exactMatch;
-        }
-
-        // Try language prefix match (e.g., "en-US" matches "en" or "en_GB")
-        const userLangPrefix = userLang.split(/[-_]/)[0].toLowerCase();
-        const prefixMatch = availableLocales.find(locale => locale.split(/[-_]/)[0].toLowerCase() === userLangPrefix);
-        if (prefixMatch) {
-            return prefixMatch;
-        }
-    }
-
-    // Fall back to first available locale
-    return availableLocales[0] || 'en';
-}
-
-const userLanguages = getUserLanguages();
+const userLanguages = Utils.getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
-
-const now = new Date();
-const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
-let refetched = false;
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
     if (false === apiClient || false === apiClient instanceof ApiClient) {
@@ -92,11 +43,12 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     apiOptions.appendTo('#calendarOptions');
 
     // Find best matching locale based on user's browser language preferences
-    const localeOptions = Array.from(apiOptions._localeInput._domElement.options);
-    const selectedLocale = findBestLocale(userLanguages, localeOptions);
+    const localeOptions = Array.from(apiOptions._localeInput._domElement.options).map(opt => opt.value);
+    const selectedLocale = Utils.findBestLocale(userLanguages, localeOptions);
     apiOptions._localeInput._domElement.value = selectedLocale;
 
     // Create LiturgyOfTheDay component
+    // listenTo() automatically handles December 31st by configuring year_type=LITURGICAL with year+1
     const liturgyOfTheDay = new LiturgyOfTheDay(selectedLocale);
     liturgyOfTheDay
         .id('LiturgyOfTheDay')
@@ -119,40 +71,6 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 
     // Wire ApiClient to listen to CalendarSelect and ApiOptions
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-
-    // By default, the apiClient will fetch year_type = 'liturgical'
-    // In order to see the full liturgical events between the end of the liturgical year and the next liturgical year,
-    //  we need to check if today's date is greater than or equal to Saturday of the 34th week of Ordinary Time,
-    //  and less than Monday of the First week of Advent,
-    //  and if so we will refetch the calendar with year_type = 'civil'
-    //  (this way we will get the Vigil Mass for the First Sunday of Advent on Saturday of the 34th week of Ordinary Time)
-    // If instead today's date is greater than or equal to Monday of the First Week of Advent,
-    //  and less than or equal to Dec 31st,
-    //  we will refetch the calendar with year_type = 'liturgical' but adding a year
-    if (false === refetched) {
-        apiClient._eventBus.on('calendarFetched', (data) => {
-            if (typeof data === 'object' && data.hasOwnProperty('litcal') && Array.isArray(data.litcal) && data.litcal.length > 0) {
-                const ChristKing = data.litcal.find(event => {
-                    return event.event_key === 'ChristKing';
-                });
-                if (ChristKing) {
-                    const ChristKingDate = new Date(ChristKing.date);
-                    const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
-                    Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
-                    const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());
-                    MondayFirstWeekAdventDate.setDate(ChristKingDate.getDate() + 8);
-                    if (dateToday >= Saturday34OrdinaryTimeDate && dateToday < MondayFirstWeekAdventDate) {
-                        refetched = true;
-                        apiClient.yearType(YearType.CIVIL).refetchCalendarData();
-                    }
-                    else if (dateToday >= MondayFirstWeekAdventDate && dateToday <= dec31st) {
-                        refetched = true;
-                        apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1).refetchCalendarData();
-                    }
-                }
-            }
-        });
-    }
 
     // Fetch the General Roman Calendar with the selected locale
     apiClient.fetchCalendar(selectedLocale);

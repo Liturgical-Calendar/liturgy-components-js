@@ -1,50 +1,6 @@
-import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfAnyDay } from 'liturgy-components-js';
+import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfAnyDay, Utils } from 'liturgy-components-js';
 
-/**
- * Get user's preferred languages from browser settings.
- * Returns an array of language codes in order of preference.
- * @returns {string[]}
- */
-function getUserLanguages() {
-    if (navigator.languages && navigator.languages.length > 0) {
-        return [...navigator.languages];
-    }
-    if (navigator.language) {
-        return [navigator.language];
-    }
-    return ['en'];
-}
-
-/**
- * Find the best matching locale from available options based on user's language preferences.
- * Tries exact match first, then language prefix match, for each preferred language in order.
- * @param {string[]} userLanguages - User's preferred languages in order of preference
- * @param {HTMLOptionElement[]} localeOptions - Available locale options from the select element
- * @returns {string} The best matching locale value, or the first available option
- */
-function findBestLocale(userLanguages, localeOptions) {
-    const availableLocales = localeOptions.map(opt => opt.value);
-
-    for (const userLang of userLanguages) {
-        // Try exact match first (e.g., "en-US" matches "en-US")
-        const exactMatch = availableLocales.find(locale => locale.toLowerCase() === userLang.toLowerCase());
-        if (exactMatch) {
-            return exactMatch;
-        }
-
-        // Try language prefix match (e.g., "en-US" matches "en" or "en_GB")
-        const userLangPrefix = userLang.split(/[-_]/)[0].toLowerCase();
-        const prefixMatch = availableLocales.find(locale => locale.split(/[-_]/)[0].toLowerCase() === userLangPrefix);
-        if (prefixMatch) {
-            return prefixMatch;
-        }
-    }
-
-    // Fall back to first available locale
-    return availableLocales[0] || 'en';
-}
-
-const userLanguages = getUserLanguages();
+const userLanguages = Utils.getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
@@ -87,8 +43,8 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     apiOptions.appendTo('#calendarOptions');
 
     // Find best matching locale based on user's browser language preferences
-    const localeOptions = Array.from(apiOptions._localeInput._domElement.options);
-    const selectedLocale = findBestLocale(userLanguages, localeOptions);
+    const localeOptions = Array.from(apiOptions._localeInput._domElement.options).map(opt => opt.value);
+    const selectedLocale = Utils.findBestLocale(userLanguages, localeOptions);
     apiOptions._localeInput._domElement.value = selectedLocale;
 
     // Create LiturgyOfAnyDay component
