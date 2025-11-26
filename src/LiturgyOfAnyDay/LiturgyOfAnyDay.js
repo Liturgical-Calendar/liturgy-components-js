@@ -426,8 +426,6 @@ export default class LiturgyOfAnyDay {
     #renderSingleReadings(readings, container, schemaLabel = null) {
         if (schemaLabel) {
             const schemaLabelEl = document.createElement('div');
-            schemaLabelEl.style.fontWeight = 'bold';
-            schemaLabelEl.style.marginTop = '0.5em';
             if (this.#readingsLabelClassName !== '') {
                 schemaLabelEl.classList.add(...this.#readingsLabelClassName.split(' '));
             }
@@ -466,7 +464,6 @@ export default class LiturgyOfAnyDay {
                 }
 
                 const labelEl = document.createElement('span');
-                labelEl.style.fontWeight = 'bold';
                 if (this.#readingsLabelClassName !== '') {
                     labelEl.classList.add(...this.#readingsLabelClassName.split(' '));
                 }

@@ -90,6 +90,8 @@
 
 .liturgy-of-any-day-readings-label {
     font-size: 0.875rem;
+    font-weight: bold;
+    margin-top: 0.5em;
 }
 
 .liturgy-of-any-day-reading {
