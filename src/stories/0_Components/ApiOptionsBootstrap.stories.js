@@ -181,9 +181,13 @@ export const WithBootstrapMultiselect = {
 
             // Initialize bootstrap-multiselect after the container is in the DOM
             requestAnimationFrame(() => {
-                // Defensive guards: check jQuery and DOM element exist before initializing multiselect
+                // Defensive guards: check jQuery, plugin, and DOM element exist before initializing multiselect
                 if (typeof window.jQuery === 'undefined') {
                     console.warn('bootstrap-multiselect: jQuery is not available, skipping multiselect initialization');
+                    return;
+                }
+                if (typeof window.jQuery.fn?.multiselect !== 'function') {
+                    console.warn('bootstrap-multiselect: plugin is not loaded, skipping multiselect initialization');
                     return;
                 }
                 if (!apiOptions._holydaysOfObligationInput || !apiOptions._holydaysOfObligationInput._domElement) {
