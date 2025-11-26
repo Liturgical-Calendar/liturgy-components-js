@@ -34,8 +34,11 @@ import {
 > To use the most recent release before the CDN cache expires, explicitly request the version number:
 >
 > ```javascript
-> import { ApiClient } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.4.0/+esm';
+> import { ApiClient } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@X.Y.Z/+esm';
 > ```
+>
+> Replace `X.Y.Z` with the current version number from the
+> [npm package page](https://www.npmjs.com/package/@liturgical-calendar/components-js).
 
 ## Using Import Maps
 
@@ -47,12 +50,16 @@ rather than from the full CDN path:
 <script type='importmap'>
     {
         "imports": {
-            "@liturgical-calendar/components-js": "https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@1.4.0/+esm"
+            "@liturgical-calendar/components-js": "https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@X.Y.Z/+esm"
         }
     }
 </script>
 <script type="module" src="myScript.js"></script>
 ```
+
+> [!TIP]
+> Replace `X.Y.Z` with the current version number from the
+> [npm package page](https://www.npmjs.com/package/@liturgical-calendar/components-js).
 
 ```javascript
 // myScript.js
@@ -81,6 +88,9 @@ yarn add @liturgical-calendar/components-js
 
 # Using pnpm
 pnpm add @liturgical-calendar/components-js
+
+# Using bun
+bun add @liturgical-calendar/components-js
 ```
 
 Then import in your JavaScript:
