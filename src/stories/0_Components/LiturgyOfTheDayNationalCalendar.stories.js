@@ -89,10 +89,13 @@ const meta = {
 
         // Fetch the national calendar with the specified locale
         const nationalCalendarMetadata = apiClient._metadata.national_calendars.find(calendar => calendar.calendar_id === args.calendar_id);
-        const locale = args.locale && args.locale !== '' && nationalCalendarMetadata.locales.includes(args.locale) ? args.locale : nationalCalendarMetadata.locales[0];
-        apiClient.fetchNationalCalendar(args.calendar_id, locale);
-
-        liturgyOfTheDay.appendTo(container);
+        if (!nationalCalendarMetadata) {
+            container.textContent = `National calendar '${args.calendar_id}' not found in API metadata`;
+        } else {
+            const locale = args.locale && args.locale !== '' && nationalCalendarMetadata.locales.includes(args.locale) ? args.locale : nationalCalendarMetadata.locales[0];
+            apiClient.fetchNationalCalendar(args.calendar_id, locale);
+            liturgyOfTheDay.appendTo(container);
+        }
     }
     return container;
   },

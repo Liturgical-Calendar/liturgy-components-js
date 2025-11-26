@@ -110,10 +110,13 @@ const meta = {
 
         // Fetch the diocesan calendar with the specified locale
         const diocesanCalendarMetadata = apiClient._metadata.diocesan_calendars.find(calendar => calendar.calendar_id === args.calendar_id);
-        const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
-        apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
-
-        liturgyOfAnyDay.appendTo(container);
+        if (!diocesanCalendarMetadata) {
+            container.textContent = `Diocesan calendar '${args.calendar_id}' not found in API metadata`;
+        } else {
+            const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
+            apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
+            liturgyOfAnyDay.appendTo(container);
+        }
     }
     return container;
   },
