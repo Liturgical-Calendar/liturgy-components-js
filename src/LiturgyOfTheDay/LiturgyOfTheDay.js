@@ -117,6 +117,35 @@ export default class LiturgyOfTheDay {
     });
 
     /**
+     * Standard order for displaying liturgical readings.
+     * @type {string[]}
+     * @static
+     * @private
+     * @readonly
+     */
+    static #readingOrder = Object.freeze([
+        'palm_gospel',
+        'first_reading',
+        'responsorial_psalm',
+        'second_reading',
+        'responsorial_psalm_2',
+        'third_reading',
+        'responsorial_psalm_3',
+        'fourth_reading',
+        'responsorial_psalm_4',
+        'fifth_reading',
+        'responsorial_psalm_5',
+        'sixth_reading',
+        'responsorial_psalm_6',
+        'seventh_reading',
+        'responsorial_psalm_7',
+        'epistle',
+        'responsorial_psalm_epistle',
+        'gospel_acclamation',
+        'gospel'
+    ]);
+
+    /**
      * Validates the given class name to ensure it is a valid CSS class name.
      *
      * A valid CSS class name is a string that starts with a letter, underscore or dash,
@@ -335,30 +364,7 @@ export default class LiturgyOfTheDay {
             container.appendChild(schemaLabelEl);
         }
 
-        // Define the order of readings to display
-        const readingOrder = [
-            'palm_gospel',
-            'first_reading',
-            'responsorial_psalm',
-            'second_reading',
-            'responsorial_psalm_2',
-            'third_reading',
-            'responsorial_psalm_3',
-            'fourth_reading',
-            'responsorial_psalm_4',
-            'fifth_reading',
-            'responsorial_psalm_5',
-            'sixth_reading',
-            'responsorial_psalm_6',
-            'seventh_reading',
-            'responsorial_psalm_7',
-            'epistle',
-            'responsorial_psalm_epistle',
-            'gospel_acclamation',
-            'gospel'
-        ];
-
-        for (const key of readingOrder) {
+        for (const key of LiturgyOfTheDay.#readingOrder) {
             if (readings.hasOwnProperty(key) && readings[key]) {
                 const readingEl = document.createElement('div');
                 if (this.#readingClassName !== '') {
