@@ -270,7 +270,12 @@ export default class ApiClient {
    * @private
    */
   #resolveCalendarLocale(category, calendar_id, locale) {
-    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+    const resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
+    // Guard against uninitialized metadata
+    if (!ApiClient.#metadata) {
+      return resolvedLocale;
+    }
 
     if (typeof locale === 'string' && locale !== '') {
       const phpLocale = locale.replace(/-/g, '_');
@@ -278,12 +283,17 @@ export default class ApiClient {
       const metadataArray = category === 'national'
         ? ApiClient.#metadata.national_calendars
         : ApiClient.#metadata.diocesan_calendars;
+
+      if (!metadataArray) {
+        return resolvedLocale;
+      }
+
       const calendarMetadata = metadataArray.find(
         calendar => calendar.calendar_id === calendar_id
       );
       if (calendarMetadata?.locales?.includes(phpLocale)) {
         this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
-        resolvedLocale = jsLocale;
+        return jsLocale;
       }
     }
 
