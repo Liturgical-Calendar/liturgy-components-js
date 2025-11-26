@@ -134,8 +134,12 @@ export default class ReadingsRenderer {
      *
      * @param {string} className - The CSS class name.
      * @returns {ReadingsRenderer} This instance for chaining.
+     * @throws {TypeError} If className is not a string.
      */
     setReadingsWrapperClassName(className) {
+        if (typeof className !== 'string') {
+            throw new TypeError('ReadingsRenderer.setReadingsWrapperClassName: className must be a string');
+        }
         this.#readingsWrapperClassName = className;
         return this;
     }
@@ -145,8 +149,12 @@ export default class ReadingsRenderer {
      *
      * @param {string} className - The CSS class name.
      * @returns {ReadingsRenderer} This instance for chaining.
+     * @throws {TypeError} If className is not a string.
      */
     setReadingsLabelClassName(className) {
+        if (typeof className !== 'string') {
+            throw new TypeError('ReadingsRenderer.setReadingsLabelClassName: className must be a string');
+        }
         this.#readingsLabelClassName = className;
         return this;
     }
@@ -156,8 +164,12 @@ export default class ReadingsRenderer {
      *
      * @param {string} className - The CSS class name.
      * @returns {ReadingsRenderer} This instance for chaining.
+     * @throws {TypeError} If className is not a string.
      */
     setReadingClassName(className) {
+        if (typeof className !== 'string') {
+            throw new TypeError('ReadingsRenderer.setReadingClassName: className must be a string');
+        }
         this.#readingClassName = className;
         return this;
     }
