@@ -75,14 +75,14 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    args: {}
+    args: {
+        locale: 'en-US'
+    }
 }
 
 export default meta;
 
-export const Default = {
-    args: {}
-}
+export const Default = {}
 
 export const Italian = {
     args: {
