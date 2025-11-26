@@ -201,9 +201,8 @@ export const WithBootstrapMultiselect = {
                     maxHeight: 200,
                     includeSelectAllOption: true,
                     enableCaseInsensitiveFiltering: true,
-                    onChange: (option, checked) => {
-                        const selectEl = option[0].parentElement;
-                        selectEl.dispatchEvent(new CustomEvent('change', {
+                    onChange: (option, checked, select) => {
+                        select.dispatchEvent(new CustomEvent('change', {
                             bubbles: true,
                             cancelable: true
                         }));
