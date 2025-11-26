@@ -375,7 +375,7 @@ export default class ApiClient {
       const nationalCalendarMetadata = ApiClient.#metadata.national_calendars.find(
         calendar => calendar.calendar_id === calendar_id
       );
-      if ( nationalCalendarMetadata.locales.includes(phpLocale) ) {
+      if ( nationalCalendarMetadata?.locales?.includes(phpLocale) ) {
         this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
         resolvedLocale = jsLocale;
       }
