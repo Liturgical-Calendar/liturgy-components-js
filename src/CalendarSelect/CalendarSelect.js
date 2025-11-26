@@ -729,6 +729,43 @@ export default class CalendarSelect {
     }
 
     /**
+     * Gets or sets the selected value of the CalendarSelect.
+     *
+     * When called without arguments, returns the current selected value.
+     * When called with a value argument, sets the selected value and returns the instance for chaining.
+     *
+     * @param {string} [val] - The value to set. If omitted, the method acts as a getter.
+     * @returns {string|CalendarSelect} The current value when used as getter, or the instance when used as setter.
+     * @throws {Error} If the provided value is not a string.
+     */
+    value( val ) {
+        if (typeof val === 'undefined') {
+            return this.#domElement.value;
+        }
+        if (typeof val !== 'string') {
+            throw new Error('Invalid type for value, must be of type string but found type: ' + typeof val);
+        }
+        this.#domElement.value = val;
+        return this;
+    }
+
+    /**
+     * Registers a callback function to be called when the selected value changes.
+     *
+     * @param {Function} callback - The callback function to execute on change.
+     *                              Receives the change event as its argument.
+     * @returns {CalendarSelect} The current instance for method chaining.
+     * @throws {Error} If the callback is not a function.
+     */
+    onChange( callback ) {
+        if (typeof callback !== 'function') {
+            throw new Error('Invalid type for onChange callback, must be of type function but found type: ' + typeof callback);
+        }
+        this.#domElement.addEventListener('change', callback);
+        return this;
+    }
+
+    /**
      * Replaces the element matched by the provided element selector with the select element.
      *
      * If a wrapper element has been set, the wrapper element is used to replace the element,

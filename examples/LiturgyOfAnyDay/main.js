@@ -25,7 +25,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         .appendTo('#calendarOptions');
 
     // Set General Roman Calendar as default (empty value)
-    calendarSelect._domElement.value = '';
+    calendarSelect.value('');
 
     // Create ApiOptions with locale filter only, linked to CalendarSelect
     const apiOptions = new ApiOptions(initialLang);
@@ -43,9 +43,9 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     apiOptions.appendTo('#calendarOptions');
 
     // Find best matching locale based on user's browser language preferences
-    const localeOptions = Array.from(apiOptions._localeInput._domElement.options).map(opt => opt.value);
+    const localeOptions = apiOptions._localeInput.options();
     const selectedLocale = Utils.findBestLocale(userLanguages, localeOptions);
-    apiOptions._localeInput._domElement.value = selectedLocale;
+    apiOptions._localeInput.value(selectedLocale);
 
     // Create LiturgyOfAnyDay component
     const liturgyOfAnyDay = new LiturgyOfAnyDay(selectedLocale);
