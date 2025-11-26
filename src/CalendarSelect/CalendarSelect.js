@@ -167,7 +167,11 @@ export default class CalendarSelect {
             }
         } else {
             this.#locale = 'en';
-            this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            try {
+                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            } catch (e) {
+                throw new Error('Failed to initialize locale: ' + this.#locale);
+            }
         }
 
         if (null === CalendarSelect.#metadata) {
