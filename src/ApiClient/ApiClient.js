@@ -260,6 +260,37 @@ export default class ApiClient {
   }
 
   /**
+   * Resolves and validates a locale for a national or diocesan calendar.
+   * Updates the Accept-Language header if the locale is valid.
+   *
+   * @param {'national'|'diocesan'} category - The calendar category
+   * @param {string} calendar_id - The calendar identifier
+   * @param {string} locale - The locale to resolve
+   * @returns {string} The resolved locale (JS format with hyphen) or the current Accept-Language header value
+   * @private
+   */
+  #resolveCalendarLocale(category, calendar_id, locale) {
+    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+
+    if (typeof locale === 'string' && locale !== '') {
+      const phpLocale = locale.replace(/-/g, '_');
+      const jsLocale = phpLocale.replace(/_/g, '-');
+      const metadataArray = category === 'national'
+        ? ApiClient.#metadata.national_calendars
+        : ApiClient.#metadata.diocesan_calendars;
+      const calendarMetadata = metadataArray.find(
+        calendar => calendar.calendar_id === calendar_id
+      );
+      if (calendarMetadata?.locales?.includes(phpLocale)) {
+        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
+        resolvedLocale = jsLocale;
+      }
+    }
+
+    return resolvedLocale;
+  }
+
+  /**
    * Refetches calendar data based on the current category and calendar ID.
    *
    * This method determines the current category of the calendar (national, diocesan, or general)
@@ -364,22 +395,7 @@ export default class ApiClient {
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory   = 'national';
     this.#currentCalendarId = calendar_id;
-    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
-
-    if (
-      typeof locale === 'string'
-      && locale !== ''
-    ) {
-      const phpLocale = locale.replace(/-/g, '_');
-      const jsLocale = phpLocale.replace(/_/g, '-');
-      const nationalCalendarMetadata = ApiClient.#metadata.national_calendars.find(
-        calendar => calendar.calendar_id === calendar_id
-      );
-      if ( nationalCalendarMetadata?.locales?.includes(phpLocale) ) {
-        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
-        resolvedLocale = jsLocale;
-      }
-    }
+    const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
 
     // Check cache first
     const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale);
@@ -429,22 +445,7 @@ export default class ApiClient {
     const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
     this.#currentCategory = 'diocesan';
     this.#currentCalendarId = calendar_id;
-    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
-
-    if (
-      typeof locale === 'string'
-      && locale !== ''
-    ) {
-      const phpLocale = locale.replace(/-/g, '_');
-      const jsLocale = phpLocale.replace(/_/g, '-');
-      const diocesanCalendarMetadata = ApiClient.#metadata.diocesan_calendars.find(
-        calendar => calendar.calendar_id === calendar_id
-      );
-      if ( diocesanCalendarMetadata?.locales?.includes(phpLocale) ) {
-        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
-        resolvedLocale = jsLocale;
-      }
-    }
+    const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
 
     // Check cache first
     const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale);
