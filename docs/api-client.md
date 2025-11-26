@@ -59,15 +59,26 @@ Fetch calendar data directly without UI component interactions:
 // Fetch the General Roman Calendar (Vatican defaults)
 apiClient.fetchCalendar();
 
+// Fetch the General Roman Calendar with a specific locale
+apiClient.fetchCalendar('en');
+
 // Fetch a National Calendar by ID
 apiClient.fetchNationalCalendar('IT');
 
+// Fetch a National Calendar by ID with a specific locale
+apiClient.fetchNationalCalendar('IT', 'it');
+
 // Fetch a Diocesan Calendar by ID
-apiClient.fetchDiocesanCalendar('romamo_it');
+apiClient.fetchDiocesanCalendar('roma_it');
+
+// Fetch a Diocesan Calendar by ID with a specific locale
+apiClient.fetchDiocesanCalendar('roma_it', 'it');
 
 // Re-fetch with current settings
 apiClient.refetchCalendarData();
 ```
+
+The `locale` parameter is optional for all fetch methods. When provided, it sets the `Accept-Language` header for the request. The locale is validated against the calendar's supported locales before being applied.
 
 ## Configuration Methods
 
