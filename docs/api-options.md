@@ -12,7 +12,9 @@ const apiOptions = new ApiOptions('en-US');
 
 ## Form Controls
 
-The `ApiOptions` class creates nine form controls:
+The `ApiOptions` class creates nine form controls, exposed as properties with a single underscore prefix (e.g., `_localeInput`). This naming convention indicates these are **intended for advanced configuration** rather than being strictly private. Accessing these properties is the expected pattern for customizing individual form controls.
+
+> **Note:** The single underscore prefix is a JavaScript convention indicating "internal but accessible" properties. These are part of the public API for advanced use cases like custom styling, linking to other components, or reading current values.
 
 ### Universal Form Controls
 

@@ -124,6 +124,8 @@ diocesanSelect.appendTo('#diocesanContainer');
 
 ## Instance Properties
 
+Properties with a single underscore prefix are **intended for advanced use cases** such as direct DOM access or reading internal state. This naming convention indicates "internal but accessible" - these are part of the public API for advanced configuration.
+
 ```javascript
 calendarSelect._domElement  // The underlying DOM select element
 calendarSelect._filter      // Current filter applied ('none', 'national_calendars', 'diocesan_calendars')
