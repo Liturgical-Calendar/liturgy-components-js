@@ -4,3 +4,61 @@
     padding: 12px;
     max-width: 600px;
 }
+
+.liturgy-of-the-day-title {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+}
+
+.liturgy-of-the-day-date {
+    font-size: 1.125rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.liturgy-of-the-day-events-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.liturgy-of-the-day-event {
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.liturgy-of-the-day-event h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.125rem;
+}
+
+.liturgy-of-the-day-event-grade {
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.liturgy-of-the-day-event-common {
+    font-size: 0.875rem;
+    margin-top: 4px;
+}
+
+.liturgy-of-the-day-year-cycle {
+    font-size: 0.875rem;
+    margin-top: 4px;
+    opacity: 0.8;
+}
+
+.liturgy-of-the-day-readings-wrapper {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.2);
+}
+
+.liturgy-of-the-day-readings-label {
+    font-size: 0.875rem;
+}
+
+.liturgy-of-the-day-reading {
+    font-size: 0.875rem;
+    margin: 2px 0;
+}

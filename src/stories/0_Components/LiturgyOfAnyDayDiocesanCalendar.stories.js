@@ -61,6 +61,22 @@ const meta = {
       control: 'text',
       description: 'CSS class(es) for the widget\'s Events Year Cycle HTML element(s)'
     },
+    readingsWrapperClass: {
+      control: 'text',
+      description: 'CSS class(es) for the widget\'s Readings wrapper HTML element'
+    },
+    readingsLabelClass: {
+      control: 'text',
+      description: 'CSS class(es) for the widget\'s Readings label HTML element(s)'
+    },
+    readingClass: {
+      control: 'text',
+      description: 'CSS class(es) for individual reading HTML element(s)'
+    },
+    showReadings: {
+      control: 'boolean',
+      description: 'Whether to display lectionary readings'
+    },
     onChange: {
       action: 'onChange'
     }
@@ -111,6 +127,10 @@ const meta = {
     eventGradeClass: "liturgy-of-any-day-event-grade",
     eventCommonClass: "liturgy-of-any-day-event-common",
     eventYearCycleClass: "liturgy-of-any-day-year-cycle",
+    readingsWrapperClass: "liturgy-of-any-day-readings-wrapper",
+    readingsLabelClass: "liturgy-of-any-day-readings-label",
+    readingClass: "liturgy-of-any-day-reading",
+    showReadings: true
   }
 }
 

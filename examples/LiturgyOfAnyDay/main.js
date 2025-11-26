@@ -1,4 +1,4 @@
-import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfTheDay, YearType } from 'liturgy-components-js';
+import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter, LiturgyOfAnyDay } from 'liturgy-components-js';
 
 /**
  * Get user's preferred languages from browser settings.
@@ -47,11 +47,6 @@ function findBestLocale(userLanguages, localeOptions) {
 const userLanguages = getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
 
-const now = new Date();
-const dateToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-const dec31st = new Date(now.getFullYear(), 11, 31, 0, 0, 0, 0);
-let refetched = false;
-
 ApiClient.init('http://localhost:8000').then(apiClient => {
     if (false === apiClient || false === apiClient instanceof ApiClient) {
         alert('Error initializing the Liturgical Calendar API Client');
@@ -96,63 +91,53 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     const selectedLocale = findBestLocale(userLanguages, localeOptions);
     apiOptions._localeInput._domElement.value = selectedLocale;
 
-    // Create LiturgyOfTheDay component
-    const liturgyOfTheDay = new LiturgyOfTheDay(selectedLocale);
-    liturgyOfTheDay
-        .id('LiturgyOfTheDay')
-        .class('liturgy-of-the-day card shadow-sm')
+    // Create LiturgyOfAnyDay component
+    const liturgyOfAnyDay = new LiturgyOfAnyDay(selectedLocale);
+    liturgyOfAnyDay
+        .id('LiturgyOfAnyDay')
+        .class('liturgy-of-any-day card shadow-sm')
         .titleClass('d-none') // Hide title since we have a page heading
-        .dateClass('liturgy-of-the-day-date card-header py-3')
-        .eventsWrapperClass('liturgy-of-the-day-events-wrapper card-body')
-        .eventClass('liturgy-of-the-day-event p-3 mb-3 rounded')
-        .eventGradeClass('liturgy-of-the-day-event-grade small')
-        .eventCommonClass('liturgy-of-the-day-event-common small fst-italic')
-        .eventYearCycleClass('liturgy-of-the-day-event-year-cycle small')
+        .dateClass('liturgy-of-any-day-date card-header py-3')
+        .dateControlsClass('liturgy-of-any-day-date-controls row g-3 p-3 bg-light border-bottom')
+        .eventsWrapperClass('liturgy-of-any-day-events-wrapper card-body')
+        .eventClass('liturgy-of-any-day-event p-3 mb-3 rounded')
+        .eventGradeClass('liturgy-of-any-day-event-grade small')
+        .eventCommonClass('liturgy-of-any-day-event-common small fst-italic')
+        .eventYearCycleClass('liturgy-of-any-day-event-year-cycle small')
         // Configure readings display
-        .readingsWrapperClass('liturgy-of-the-day-readings-wrapper mt-3 pt-2')
-        .readingsLabelClass('liturgy-of-the-day-readings-label')
-        .readingClass('liturgy-of-the-day-reading small')
+        .readingsWrapperClass('liturgy-of-any-day-readings-wrapper mt-3 pt-2')
+        .readingsLabelClass('liturgy-of-any-day-readings-label')
+        .readingClass('liturgy-of-any-day-reading small')
         .showReadings(true)
+        // Configure date input controls with Bootstrap styling
+        .dayInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-4 col-md-3',
+            class: 'form-control',
+            labelClass: 'form-label',
+            labelText: 'Day'
+        })
+        .monthInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-8 col-md-5',
+            class: 'form-select',
+            labelClass: 'form-label',
+            labelText: 'Month'
+        })
+        .yearInputConfig({
+            wrapper: 'div',
+            wrapperClass: 'col-12 col-md-4',
+            class: 'form-control',
+            labelClass: 'form-label',
+            labelText: 'Year'
+        })
+        .buildDateControls()
         .listenTo(apiClient);
 
-    liturgyOfTheDay.replace('#liturgyOfTheDay');
+    liturgyOfAnyDay.replace('#liturgyOfAnyDay');
 
     // Wire ApiClient to listen to CalendarSelect and ApiOptions
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-
-    // By default, the apiClient will fetch year_type = 'liturgical'
-    // In order to see the full liturgical events between the end of the liturgical year and the next liturgical year,
-    //  we need to check if today's date is greater than or equal to Saturday of the 34th week of Ordinary Time,
-    //  and less than Monday of the First week of Advent,
-    //  and if so we will refetch the calendar with year_type = 'civil'
-    //  (this way we will get the Vigil Mass for the First Sunday of Advent on Saturday of the 34th week of Ordinary Time)
-    // If instead today's date is greater than or equal to Monday of the First Week of Advent,
-    //  and less than or equal to Dec 31st,
-    //  we will refetch the calendar with year_type = 'liturgical' but adding a year
-    if (false === refetched) {
-        apiClient._eventBus.on('calendarFetched', (data) => {
-            if (typeof data === 'object' && data.hasOwnProperty('litcal') && Array.isArray(data.litcal) && data.litcal.length > 0) {
-                const ChristKing = data.litcal.find(event => {
-                    return event.event_key === 'ChristKing';
-                });
-                if (ChristKing) {
-                    const ChristKingDate = new Date(ChristKing.date);
-                    const Saturday34OrdinaryTimeDate = new Date(ChristKingDate.getTime());
-                    Saturday34OrdinaryTimeDate.setDate(ChristKingDate.getDate() + 6);
-                    const MondayFirstWeekAdventDate = new Date(ChristKingDate.getTime());
-                    MondayFirstWeekAdventDate.setDate(ChristKingDate.getDate() + 8);
-                    if (dateToday >= Saturday34OrdinaryTimeDate && dateToday < MondayFirstWeekAdventDate) {
-                        refetched = true;
-                        apiClient.yearType(YearType.CIVIL).refetchCalendarData();
-                    }
-                    else if (dateToday >= MondayFirstWeekAdventDate && dateToday <= dec31st) {
-                        refetched = true;
-                        apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1).refetchCalendarData();
-                    }
-                }
-            }
-        });
-    }
 
     // Fetch the General Roman Calendar with the selected locale
     apiClient.fetchCalendar(selectedLocale);

@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -76,10 +74,7 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
-    args: {
-        onChange: fn()
-    }
+    args: {}
 }
 
 export default meta;
@@ -146,5 +141,64 @@ export const AcceptHeaderInputAsReturnTypeParameter = {
         locale: 'en-US',
         filter: ApiOptionsFilter.ALL_CALENDARS,
         acceptHeaderAsReturnTypeParam: true
+    }
+}
+
+/**
+ * This story demonstrates using Bootstrap Multiselect for the HolydaysOfObligationInput.
+ * Bootstrap Multiselect provides a jQuery-based multi-select dropdown UI that integrates
+ * with Bootstrap styling.
+ */
+export const WithBootstrapMultiselect = {
+    args: {
+        locale: 'en-US',
+        filter: ApiOptionsFilter.GENERAL_ROMAN,
+        hideAcceptHeaderInput: true
+    },
+    render: (args, { loaded: { apiClient } }) => {
+        const container = document.createElement('div');
+        container.id = 'apiOptionsBsmsContainer';
+        container.classList.add('row');
+
+        if (false === apiClient || false === apiClient instanceof ApiClient) {
+            container.textContent = 'Error initializing the Liturgical Calendar API Client';
+        } else {
+            Input.setGlobalInputClass('form-select');
+            Input.setGlobalLabelClass('form-label d-block mb-1');
+            Input.setGlobalWrapper('div');
+            Input.setGlobalWrapperClass('form-group col col-md-3');
+
+            const apiOptions = new ApiOptions(args.locale);
+            if (args.filter) {
+                apiOptions.filter(args.filter);
+            }
+            if (args.hideAcceptHeaderInput) {
+                apiOptions._acceptHeaderInput.hide();
+            }
+            apiOptions.appendTo(container);
+
+            // Initialize bootstrap-multiselect after the container is in the DOM
+            requestAnimationFrame(() => {
+                const $select = window.jQuery(apiOptions._holydaysOfObligationInput._domElement);
+                $select.multiselect({
+                    buttonWidth: '100%',
+                    buttonClass: 'form-select',
+                    templates: {
+                        button: '<button type="button" class="multiselect dropdown-toggle" data-bs-toggle="dropdown"><span class="multiselect-selected-text"></span></button>'
+                    },
+                    maxHeight: 200,
+                    includeSelectAllOption: true,
+                    enableCaseInsensitiveFiltering: true,
+                    onChange: (option, checked) => {
+                        const selectEl = option[0].parentElement;
+                        selectEl.dispatchEvent(new CustomEvent('change', {
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                    }
+                });
+            });
+        }
+        return container;
     }
 }

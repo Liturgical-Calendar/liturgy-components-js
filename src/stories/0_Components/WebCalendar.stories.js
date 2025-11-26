@@ -1,6 +1,4 @@
 import { WebCalendar, ApiClient, Column, Grouping, DateFormat, ColumnOrder, GradeDisplay, ColorAs } from "@liturgical-calendar/components-js";
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import '../webcalendar.css';
 
 /**
@@ -155,7 +153,6 @@ const meta = {
             action: 'onChange'
         }
     },
-    decorators: [withActions],
     parameters: {
         actions: {
             handles: [ 'change', 'change #webCalendarContainer select' ],
@@ -180,8 +177,7 @@ const meta = {
     args: {
         locale: 'en-US',
         id: 'LitCalTable',
-        eventColor: ColorAs.BACKGROUND,
-        onChange: fn()
+        eventColor: ColorAs.BACKGROUND
     }
 };
 

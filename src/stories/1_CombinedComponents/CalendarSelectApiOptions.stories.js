@@ -1,6 +1,4 @@
 import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -117,13 +115,11 @@ const meta = {
             handles: [ 'change', 'change #apiOptionsContainer select' ],
         },
     },
-    decorators: [ withActions ],
     args: {
         calendarSelectClass: 'form-select',
         calendarSelectLabelClass: 'form-label d-block mb-1',
         calendarSelectWrapperClass: 'form-group col col-md-3',
-        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS,
-        onChange: fn()
+        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS
     }
 }
 

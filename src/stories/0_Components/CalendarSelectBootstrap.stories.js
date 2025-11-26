@@ -1,6 +1,4 @@
 import { CalendarSelect, ApiClient } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -76,7 +74,6 @@ const meta = {
       handles: ['change', 'change #calendarSelectContainer select'],
     },
   },
-  decorators: [withActions],
   args: {
     class: 'form-select',
     label: {
@@ -88,8 +85,7 @@ const meta = {
       as: 'div',
       class: 'form-group col col-md-4',
       id: 'wrapper_id'
-    },
-    onChange: fn()
+    }
   }
 }
 

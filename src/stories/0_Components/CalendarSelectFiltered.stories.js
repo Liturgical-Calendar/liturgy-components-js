@@ -1,6 +1,4 @@
 import { CalendarSelect, ApiClient, CalendarSelectFilter } from '@liturgical-calendar/components-js';
-import { fn } from '@storybook/test';
-import { withActions } from '@storybook/addon-actions/decorator';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -104,14 +102,12 @@ const meta = {
             handles: [ 'change', 'change #calendarSelectFilteredContainer select' ],
         },
     },
-    decorators: [ withActions ],
     args: {
         nationsLabelText: 'Select a nation',
         diocesesLabelText: 'Select a diocese',
         class: 'form-select',
         labelClass: 'form-label',
-        wrapperClass: 'form-group col col-md-4',
-        onChange: fn()
+        wrapperClass: 'form-group col col-md-4'
     }
 }
 

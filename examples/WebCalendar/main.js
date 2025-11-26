@@ -123,7 +123,8 @@ ApiClient.init('http://localhost:8000').then( (apiClient) => {
                 .dateFormat(DateFormat.DAY_ONLY)
                 .columnOrder(ColumnOrder.GRADE_FIRST)
                 .gradeDisplay(GradeDisplay.ABBREVIATED)
-                .attachTo( '#litcalWebcalendar' ) // the element in which the web calendar will be rendered, every time the calendar is updated
                 .listenTo(apiClient);
+    // appendTo() must be called separately as it doesn't return `this`
+    webCalendar.appendTo('#litcalWebcalendar');
     apiClient.fetchNationalCalendar('VA');
 });
