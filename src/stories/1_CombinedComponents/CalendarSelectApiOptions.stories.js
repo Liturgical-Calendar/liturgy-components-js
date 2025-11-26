@@ -29,7 +29,7 @@ const meta = {
         onChange: {
             action: 'onChange'
         },
-        apiOptionsfilter: {
+        apiOptionsFilter: {
             control: { type: 'select' },
             options: [ ApiOptionsFilter.NONE, ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN ],
             labels: {
@@ -38,7 +38,7 @@ const meta = {
                 [ ApiOptionsFilter.GENERAL_ROMAN ]: 'General Roman Calendar only'
             },
             description: 'Filter for the ApiOptions instance, applicable via the `ApiOptions.filter(ApiOptionsFilter.ALL_CALENDARS)` instance method',
-            defaultValue: ApiOptionsFilter.NONE
+            defaultValue: ApiOptionsFilter.ALL_CALENDARS
         },
         calendarSelectClass: {
             control: 'text',
