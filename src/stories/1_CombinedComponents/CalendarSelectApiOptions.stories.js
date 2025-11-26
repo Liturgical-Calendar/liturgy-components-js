@@ -81,6 +81,7 @@ const meta = {
 
             const calendarSelect = new CalendarSelect( args.locale );
             const apiOptions = new ApiOptions( args.locale );
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             apiOptions.linkToCalendarSelect( calendarSelect );
             //apiClient.listenTo(apiOptions);
             if ( args.apiOptionsFilter ) {

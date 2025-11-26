@@ -55,6 +55,7 @@ const meta = {
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
             const apiOptions = new ApiOptions( args.locale );
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             //apiClient.listenTo(apiOptions);
             if ( args.filter ) {
                 apiOptions.filter( args.filter );
@@ -169,6 +170,7 @@ export const WithBootstrapMultiselect = {
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
             const apiOptions = new ApiOptions(args.locale);
+            apiOptions._yearInput.class('form-control'); // override the global input class for number input
             if (args.filter) {
                 apiOptions.filter(args.filter);
             }
