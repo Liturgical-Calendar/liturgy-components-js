@@ -1,5 +1,6 @@
 import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import { YearType } from '../Enums.js';
 
 export default class LiturgyOfTheDay {
 
@@ -749,6 +750,9 @@ export default class LiturgyOfTheDay {
      * It then filters the liturgical calendar data to only include events that match the current date and updates
      * the internal state of the component.
      *
+     * Also configures the ApiClient with the correct year_type based on the current date
+     * (LITURGICAL for December 31st to include vigil masses, CIVIL otherwise).
+     *
      * @param {ApiClient} apiClient - The API client to listen to for calendar data events.
      * @throws {Error} If the provided `apiClient` is not an instance of ApiClient or if the received
      * data is invalid or malformed.
@@ -758,6 +762,16 @@ export default class LiturgyOfTheDay {
         if (false === apiClient instanceof ApiClient) {
             throw new Error('LiturgyOfTheDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.');
         }
+
+        // Configure ApiClient with the correct year_type based on the current date
+        // This ensures the first fetch includes vigil masses if needed (December 31st)
+        const now = new Date();
+        const isDec31 = (now.getMonth() === 11 && now.getDate() === 31);
+        if (isDec31) {
+            // Use LITURGICAL year type with year+1 to get vigil masses for January 1st
+            apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1);
+        }
+
         apiClient._eventBus.on('calendarFetched', async (data) => {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
