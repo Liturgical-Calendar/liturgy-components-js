@@ -1,6 +1,7 @@
 import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
+import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 
 export default class LiturgyOfTheDay {
 
@@ -55,95 +56,11 @@ export default class LiturgyOfTheDay {
     /** @type {string} */
     #eventYearCycleClassName = '';
 
-    /** @type {string} */
-    #readingsWrapperClassName = '';
-
-    /** @type {string} */
-    #readingsLabelClassName = '';
-
-    /** @type {string} */
-    #readingClassName = '';
+    /** @type {ReadingsRenderer} */
+    #readingsRenderer = new ReadingsRenderer();
 
     /** @type {boolean} */
     #showReadings = true;
-
-    /**
-     * Mapping of reading property keys to human-readable labels.
-     * @type {Object<string, string>}
-     * @static
-     * @private
-     * @readonly
-     */
-    static #readingLabels = Object.freeze({
-        'first_reading': 'First Reading',
-        'responsorial_psalm': 'Responsorial Psalm',
-        'second_reading': 'Second Reading',
-        'gospel_acclamation': 'Gospel Acclamation',
-        'gospel': 'Gospel',
-        'palm_gospel': 'Gospel at the Procession',
-        'epistle': 'Epistle',
-        'responsorial_psalm_2': 'Responsorial Psalm',
-        'third_reading': 'Third Reading',
-        'responsorial_psalm_3': 'Responsorial Psalm',
-        'fourth_reading': 'Fourth Reading',
-        'responsorial_psalm_4': 'Responsorial Psalm',
-        'fifth_reading': 'Fifth Reading',
-        'responsorial_psalm_5': 'Responsorial Psalm',
-        'sixth_reading': 'Sixth Reading',
-        'responsorial_psalm_6': 'Responsorial Psalm',
-        'seventh_reading': 'Seventh Reading',
-        'responsorial_psalm_7': 'Responsorial Psalm',
-        'responsorial_psalm_epistle': 'Responsorial Psalm'
-    });
-
-    /**
-     * Mapping of mass schema keys to human-readable labels.
-     * @type {Object<string, string>}
-     * @static
-     * @private
-     * @readonly
-     */
-    static #massLabels = Object.freeze({
-        'vigil': 'Vigil Mass',
-        'night': 'Mass during the Night',
-        'dawn': 'Mass at Dawn',
-        'day': 'Mass during the Day',
-        'evening': 'Evening Mass',
-        'schema_one': 'Schema I',
-        'schema_two': 'Schema II',
-        'schema_three': 'Schema III',
-        'easter_season': 'Easter Season',
-        'outside_easter_season': 'Outside Easter Season'
-    });
-
-    /**
-     * Standard order for displaying liturgical readings.
-     * @type {string[]}
-     * @static
-     * @private
-     * @readonly
-     */
-    static #readingOrder = Object.freeze([
-        'palm_gospel',
-        'first_reading',
-        'responsorial_psalm',
-        'second_reading',
-        'responsorial_psalm_2',
-        'third_reading',
-        'responsorial_psalm_3',
-        'fourth_reading',
-        'responsorial_psalm_4',
-        'fifth_reading',
-        'responsorial_psalm_5',
-        'sixth_reading',
-        'responsorial_psalm_6',
-        'seventh_reading',
-        'responsorial_psalm_7',
-        'epistle',
-        'responsorial_psalm_epistle',
-        'gospel_acclamation',
-        'gospel'
-    ]);
 
     /**
      * Validates the given class name to ensure it is a valid CSS class name.
@@ -332,95 +249,6 @@ export default class LiturgyOfTheDay {
      * @param {import('../typedefs').CalendarEvent[]} todaysEvents - The liturgical events for the current day.
      * @private
      */
-    /**
-     * Checks if the readings object has nested mass schemas (vigil/day, night/dawn, etc.)
-     *
-     * @param {Object} readings - The readings object to check.
-     * @returns {boolean} True if the readings have nested schemas, false otherwise.
-     * @private
-     */
-    #hasNestedSchemas(readings) {
-        if (!readings || typeof readings !== 'object') return false;
-        const keys = Object.keys(readings);
-        const nestedKeys = ['vigil', 'day', 'night', 'dawn', 'evening', 'schema_one', 'schema_two', 'schema_three', 'easter_season', 'outside_easter_season'];
-        return keys.some(key => nestedKeys.includes(key));
-    }
-
-    /**
-     * Renders a single set of readings (ferial or festive format).
-     *
-     * @param {Object} readings - The readings object.
-     * @param {HTMLElement} container - The container to append readings to.
-     * @param {string} [schemaLabel] - Optional label for the schema (e.g., "Vigil Mass").
-     * @private
-     */
-    #renderSingleReadings(readings, container, schemaLabel = null) {
-        if (schemaLabel) {
-            const schemaLabelEl = document.createElement('div');
-            if (this.#readingsLabelClassName !== '') {
-                schemaLabelEl.classList.add(...this.#readingsLabelClassName.split(' '));
-            }
-            schemaLabelEl.textContent = schemaLabel;
-            container.appendChild(schemaLabelEl);
-        }
-
-        for (const key of LiturgyOfTheDay.#readingOrder) {
-            if (readings.hasOwnProperty(key) && readings[key]) {
-                const readingEl = document.createElement('div');
-                if (this.#readingClassName !== '') {
-                    readingEl.classList.add(...this.#readingClassName.split(' '));
-                }
-
-                const labelEl = document.createElement('span');
-                if (this.#readingsLabelClassName !== '') {
-                    labelEl.classList.add(...this.#readingsLabelClassName.split(' '));
-                }
-                labelEl.textContent = LiturgyOfTheDay.#readingLabels[key] + ': ';
-
-                const valueEl = document.createElement('span');
-                valueEl.textContent = readings[key];
-
-                readingEl.appendChild(labelEl);
-                readingEl.appendChild(valueEl);
-                container.appendChild(readingEl);
-            }
-        }
-    }
-
-    /**
-     * Renders the lectionary readings for a celebration.
-     *
-     * @param {Object} readings - The readings object from the API.
-     * @param {HTMLElement} container - The container to append readings to.
-     * @private
-     */
-    #renderReadings(readings, container) {
-        if (!readings || typeof readings !== 'object') return;
-
-        if (!(container instanceof HTMLElement)) {
-            throw new Error('LiturgyOfTheDay.#renderReadings: container must be an HTMLElement');
-        }
-
-        const readingsWrapper = document.createElement('div');
-        if (this.#readingsWrapperClassName !== '') {
-            readingsWrapper.classList.add(...this.#readingsWrapperClassName.split(' '));
-        }
-
-        if (this.#hasNestedSchemas(readings)) {
-            // Handle nested schemas (Christmas, Easter Vigil with day, etc.)
-            const schemaKeys = Object.keys(readings);
-            for (const schemaKey of schemaKeys) {
-                const schemaLabel = LiturgyOfTheDay.#massLabels[schemaKey] || schemaKey;
-                this.#renderSingleReadings(readings[schemaKey], readingsWrapper, schemaLabel);
-            }
-        } else {
-            // Simple readings (ferial or festive)
-            this.#renderSingleReadings(readings, readingsWrapper);
-        }
-
-        container.appendChild(readingsWrapper);
-    }
-
     #updateEventDetails(todaysEvents) {
         todaysEvents.forEach((celebration) => {
             const lclzdGrade = celebration.grade < 7 ? celebration.grade_lcl : '';
@@ -469,8 +297,8 @@ export default class LiturgyOfTheDay {
             }
 
             // Render lectionary readings if enabled and available
-            if (this.#showReadings && celebration.hasOwnProperty('readings')) {
-                this.#renderReadings(celebration.readings, litEventElement);
+            if (this.#showReadings && Object.prototype.hasOwnProperty.call(celebration, 'readings')) {
+                this.#readingsRenderer.renderReadings(celebration.readings, litEventElement);
             }
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
@@ -689,7 +517,7 @@ export default class LiturgyOfTheDay {
                 throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
             }
         });
-        this.#readingsWrapperClassName = classNames.join(' ');
+        this.#readingsRenderer.setReadingsWrapperClassName(classNames.join(' '));
         return this;
     }
 
@@ -709,7 +537,7 @@ export default class LiturgyOfTheDay {
                 throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
             }
         });
-        this.#readingsLabelClassName = classNames.join(' ');
+        this.#readingsRenderer.setReadingsLabelClassName(classNames.join(' '));
         return this;
     }
 
@@ -729,7 +557,7 @@ export default class LiturgyOfTheDay {
                 throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
             }
         });
-        this.#readingClassName = classNames.join(' ');
+        this.#readingsRenderer.setReadingClassName(classNames.join(' '));
         return this;
     }
 
