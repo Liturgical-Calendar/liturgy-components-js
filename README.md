@@ -3,7 +3,7 @@
 A reusable ES6/JavaScript component library for the [Liturgical Calendar API](https://litcal.johnromanodorazio.com/api/dev/).
 Build liturgical calendar interfaces without a build step.
 
-![LiturgyOfAnyDay Example](docs/images/liturgyofanyday.png)
+![LiturgyOfAnyDay Example](https://raw.githubusercontent.com/Liturgical-Calendar/liturgy-components-js/main/docs/images/liturgyofanyday.png)
 
 ## Quick Start
 
@@ -39,19 +39,19 @@ ApiClient.init().then((apiClient) => {
 
 | Component | Description |
 |-----------|-------------|
-| [ApiClient](docs/api-client.md) | Manages API communication and data fetching |
-| [CalendarSelect](docs/calendar-select.md) | Dropdown for selecting liturgical calendars |
-| [ApiOptions](docs/api-options.md) | Form controls for API parameters |
-| [WebCalendar](docs/web-calendar.md) | Full calendar table with customizable display |
-| [LiturgyOfTheDay / LiturgyOfAnyDay](docs/liturgy-components.md) | Daily liturgy widgets |
-| [PathBuilder](docs/path-builder.md) | API URL builder tool |
+| [ApiClient](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-client.md) | Manages API communication and data fetching |
+| [CalendarSelect](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/calendar-select.md) | Dropdown for selecting liturgical calendars |
+| [ApiOptions](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-options.md) | Form controls for API parameters |
+| [WebCalendar](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/web-calendar.md) | Full calendar table with customizable display |
+| [LiturgyOfTheDay / LiturgyOfAnyDay](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md) | Daily liturgy widgets |
+| [PathBuilder](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md) | API URL builder tool |
 
 ## Documentation
 
-- [Installation & Usage](docs/installation.md) - CDN usage, import maps, local development
-- [Storybook & Development](docs/storybook.md) - Running Storybook, Docker setup
-- [Enums Reference](docs/enums.md) - All available enum values
-- [Examples](docs/examples.md) - Working example applications
+- [Installation & Usage](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/installation.md) - CDN usage, import maps, local development
+- [Storybook & Development](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/storybook.md) - Running Storybook, Docker setup
+- [Enums Reference](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/enums.md) - All available enum values
+- [Examples](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/examples.md) - Working example applications
 
 ## Examples
 
@@ -59,10 +59,10 @@ The `examples/` folder contains complete working examples:
 
 | Example | Description |
 |---------|-------------|
-| [LiturgyOfTheDay](examples/LiturgyOfTheDay/) | Today's liturgy with calendar/locale selection |
-| [LiturgyOfAnyDay](examples/LiturgyOfAnyDay/) | Browse any date with lectionary readings |
-| [WebCalendar](examples/WebCalendar/) | Full calendar table with display options |
-| [PathBuilder](examples/PathBuilder/) | Interactive API URL builder |
+| [LiturgyOfTheDay](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfTheDay) | Today's liturgy with calendar/locale selection |
+| [LiturgyOfAnyDay](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfAnyDay) | Browse any date with lectionary readings |
+| [WebCalendar](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/WebCalendar) | Full calendar table with display options |
+| [PathBuilder](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/PathBuilder) | Interactive API URL builder |
 
 To run examples:
 
@@ -120,7 +120,7 @@ yarn test             # Run tests
 yarn storybook        # Launch Storybook
 ```
 
-See [Storybook documentation](docs/storybook.md) for detailed setup.
+See [Storybook documentation](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/storybook.md) for detailed setup.
 
 ## License
 
