@@ -118,13 +118,13 @@ export default class ReadingsRenderer {
      * @param {ReadingsRendererOptions} [options={}] - Configuration options.
      */
     constructor(options = {}) {
-        if (options.readingsWrapperClassName) {
+        if (options.readingsWrapperClassName && typeof options.readingsWrapperClassName === 'string') {
             this.#readingsWrapperClassName = options.readingsWrapperClassName;
         }
-        if (options.readingsLabelClassName) {
+        if (options.readingsLabelClassName && typeof options.readingsLabelClassName === 'string') {
             this.#readingsLabelClassName = options.readingsLabelClassName;
         }
-        if (options.readingClassName) {
+        if (options.readingClassName && typeof options.readingClassName === 'string') {
             this.#readingClassName = options.readingClassName;
         }
     }
