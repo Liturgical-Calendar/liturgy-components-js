@@ -29,6 +29,7 @@ ApiClient.init().then((apiClient) => {
 The default API URL is `https://litcal.johnromanodorazio.com/api/dev/`.
 
 The `init()` method returns a promise that resolves to:
+
 - An `ApiClient` instance if successful
 - `false` if an error occurs
 
@@ -47,6 +48,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 ```
 
 When listening to components:
+
 - Calendar selection changes trigger automatic data fetching
 - API option changes trigger data re-fetching
 - The `calendarFetched` event is emitted for `WebCalendar` and other components to consume
@@ -69,16 +71,17 @@ apiClient.fetchNationalCalendar('IT');
 apiClient.fetchNationalCalendar('IT', 'it');
 
 // Fetch a Diocesan Calendar by ID
-apiClient.fetchDiocesanCalendar('roma_it');
+apiClient.fetchDiocesanCalendar('romamo_it');
 
 // Fetch a Diocesan Calendar by ID with a specific locale
-apiClient.fetchDiocesanCalendar('roma_it', 'it');
+apiClient.fetchDiocesanCalendar('romamo_it', 'it');
 
 // Re-fetch with current settings
 apiClient.refetchCalendarData();
 ```
 
-The `locale` parameter is optional for all fetch methods. When provided, it sets the `Accept-Language` header for the request. The locale is validated against the calendar's supported locales before being applied.
+The `locale` parameter is optional for all fetch methods. When provided, it sets the `Accept-Language` header for the request.
+The locale is validated against the calendar's supported locales before being applied.
 
 ## Configuration Methods
 

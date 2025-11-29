@@ -8,6 +8,12 @@ Input.setGlobalWrapperClass('form-group col col-md-3');
 const lang = 'it-IT';
 const baseLang = lang.split('-')[0];
 
+/**
+ * Builds an array of virtual select options from a native select element.
+ *
+ * @param {HTMLSelectElement} selectElement - the native select element to build virtual select options from
+ * @returns {Array<Object>} - an array of virtual select options, each with a label, value, and selected property
+ */
 function buildVirtualSelectOptions( selectElement ) {
     return Array.from(selectElement.options).map(opt => ({
         label: opt.textContent,
@@ -16,6 +22,13 @@ function buildVirtualSelectOptions( selectElement ) {
     }));
 }
 
+/**
+ * Builds virtual select options from a native select element and initializes VirtualSelect on the given container element.
+ *
+ * @param {HTMLSelectElement} nativeSelect - the native select element to build virtual select options from
+ * @param {string} vsContainerId - the id of the container element to initialize VirtualSelect on
+ * @throws {Error} if nativeSelect is not an instance of HTMLSelectElement
+ */
 function buildAndInitVirtualSelectFromNativeSelect(nativeSelect, vsContainerId) {
   // 1) build options and selected values
   const opts = buildVirtualSelectOptions(nativeSelect);
