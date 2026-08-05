@@ -21,6 +21,8 @@
       ".yarn/**/*",
       "**/*.ts",
       "**/*.stories.*",
-      "./src/stories/**/*"
+      "./src/stories/**/*",
+      "**/*.test.*",
+      "./src/__tests__/**/*"
     ]
 }

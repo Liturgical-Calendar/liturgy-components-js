@@ -73,12 +73,21 @@ export default class CalendarSelect {
      * This internal method is used to add a national calendar with dioceses to the list of national calendars with dioceses.
      * This will also initialize diocese select options for the given nation.
      *
+     * Not every nation that has dioceses is guaranteed to have a corresponding national calendar:
+     * the Liturgical Calendar API partitions calendars by rite, and dioceses that belong to a
+     * non-Roman rite (e.g. Ambrosian) have no national tier at all, even when their `nation`
+     * property is shared with a Roman-rite nation (e.g. `lugano_ch` has `nation: "CH"`, but
+     * `CH` does not exist as a Roman national calendar). In that case we fall back to a minimal
+     * placeholder object so the diocese remains reachable in the selector, grouped under its
+     * bare nation code, instead of being silently dropped or crashing downstream consumers that
+     * dereference `.calendar_id`.
+     *
      * @param {string} nation - The nation for which we should add the national calendar.
      * @private
      * @static
      */
     static #addNationalCalendarWithDioceses( nation ) {
-        const nationalCalendar = CalendarSelect.#nationalCalendars.find(item => item.calendar_id === nation);
+        const nationalCalendar = CalendarSelect.#nationalCalendars.find(item => item.calendar_id === nation) ?? { calendar_id: nation };
         CalendarSelect.#nationalCalendarsWithDioceses.push( nationalCalendar );
     }
 

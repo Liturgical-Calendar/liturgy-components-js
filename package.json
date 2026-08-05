@@ -22,7 +22,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "test": "jest",
+    "test": "node --experimental-vm-modules $(yarn bin jest)",
     "compile": "tsc",
     "compile:watch": "tsc --watch",
     "storybook": "storybook dev",
