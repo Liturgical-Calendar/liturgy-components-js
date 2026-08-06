@@ -55,6 +55,8 @@ export default class CalendarSelect {
     #idSet                                = false;
     #nameSet                              = false;
     #allowNull                            = false;
+    /** @type {?CalendarSelect} The `nations` filtered select this one is linked to, if any. */
+    #linkedNationsSelect                  = null;
 
 
     /**
@@ -338,8 +340,15 @@ export default class CalendarSelect {
         this.#dioceseOptionsGrouped         = [];
 
         const riteProps = RiteProperties[ this.#rite ];
+        // A diocesan entry with no `rite` field is Roman. The `rite` field is a
+        // v6 addition: the live v5 API (`/api/v5/calendars`) announces no rite
+        // on any diocesan entry, and everything it has ever served is Roman.
+        // Filtering on a strict `=== this.#rite` would therefore drop EVERY
+        // diocese for a v5-pinned consumer and empty the list with no error and
+        // no warning — and bumping the pin is exactly how this release reaches
+        // the frontend.
         const dioceses  = CalendarSelect.#diocesanCalendars.filter(
-            diocesanCalendarObj => diocesanCalendarObj.rite === this.#rite
+            diocesanCalendarObj => ( diocesanCalendarObj.rite ?? Rite.ROMAN ) === this.#rite
         );
 
         if ( false === riteProps.hasNationalTier ) {
@@ -496,6 +505,15 @@ export default class CalendarSelect {
         this.#riteAware = riteAware;
         this.#buildAllOptions();
         this.#reapplyOptionsToDom();
+        // `#reapplyOptionsToDom()` writes the FULL diocese list, which discards
+        // the per-nation narrowing `linkToNationsSelect()` applies. Re-derive it
+        // from the linked nation select's current value rather than waiting for
+        // the next nation change. Skipped for a rite with no national tier:
+        // there are no per-nation buckets to filter into, and running the filter
+        // would empty a list that is correctly flat.
+        if ( null !== this.#linkedNationsSelect && RiteProperties[ this.#rite ].hasNationalTier ) {
+            this.#filterDioceseOptionsForNation( this.#linkedNationsSelect._domElement.value );
+        }
     }
 
     /**
@@ -1184,6 +1202,10 @@ export default class CalendarSelect {
             throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
         }
         const linkedDomElement = calendarSelectInstance._domElement;
+        // Kept as a reference, not just a closure over the DOM element: a rite
+        // change rebuilds this select's options from scratch, and `_applyRite()`
+        // needs to re-derive the per-nation narrowing from this same select.
+        this.#linkedNationsSelect = calendarSelectInstance;
         this.#filterDioceseOptionsForNation( linkedDomElement.value );
         linkedDomElement.addEventListener( 'change', (ev) => {
             const newNationValue = ev.target.value;

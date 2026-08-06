@@ -102,6 +102,18 @@ export default class ApiOptions {
     #filtersSet            = [];
 
     /**
+     * Whether the currently selected rite fixes the four temporal options
+     * (Epiphany, Ascension, Corpus Christi, Eternal High Priest) itself.
+     *
+     * Only ever set by `#handleLinkedRiteSelect`, so it stays `false` for
+     * embeds that never link a `RiteSelect` — for them the enable/disable rule
+     * reduces to the calendar-selection half it has always been.
+     *
+     * @type {boolean}
+     */
+    #riteFixesTemporalOptions = false;
+
+    /**
      * Constructs an instance of the ApiOptions class, initializing various input components
      * with the given locale. Throws an error if the locale is invalid.
      *
@@ -191,6 +203,98 @@ export default class ApiOptions {
     }
 
     /**
+     * Applies, underneath a diocese's own settings, the settings of the national
+     * calendar the diocese belongs to — but ONLY for a rite that has a national
+     * tier.
+     *
+     * For a rite with `hasNationalTier === false` there is no national tier to
+     * consult, so the lookup is skipped entirely rather than guarded with a
+     * fallback or a placeholder. Both failure modes it removes are real:
+     *
+     * - `lugano_ch` is Ambrosian and its nation `CH` has no national calendar
+     *   at all, so the lookup returned `undefined` and `.settings` threw a
+     *   `TypeError` from inside a `change` listener, where it surfaced as an
+     *   unhandled exception with no labelled error;
+     * - `milano_it` / `bergam_it` / `novara_it` are Ambrosian but their nation
+     *   `IT` DOES have a (Roman) national calendar, so the lookup silently
+     *   applied Italy's Roman settings to an Ambrosian diocese.
+     *
+     * The rite is read from the CalendarSelect itself rather than from a linked
+     * `RiteSelect`, so a select built for a rite through the constructor option
+     * is handled the same way as one driven by a rite select.
+     *
+     * @param {CalendarSelect} calendarSelect - The linked calendar select the diocese was chosen from.
+     * @param {Object} diocesanCalendar - The selected diocesan calendar's metadata entry.
+     * @private
+     */
+    #applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar ) {
+        if ( false === RiteProperties[ calendarSelect._rite ].hasNationalTier ) {
+            return;
+        }
+        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find( nationCalendarObj => nationCalendarObj.calendar_id === diocesanCalendar.nation );
+        //console.info('handling national calendar settings for diocesan calendar:', nationalCalendarForDiocese.settings);
+        this.#applySettingsToInputs( nationalCalendarForDiocese.settings );
+    }
+
+    /**
+     * Applies the enable/disable rule for the temporal option inputs.
+     *
+     * The rule composes two independent halves, and BOTH must hold for an input
+     * to be enabled:
+     *
+     * - the rite must not fix the celebration itself (the Ambrosian Missal
+     *   fixes Epiphany to 6 January, Ascension to the fortieth day of Easter
+     *   and Corpus Domini to the Thursday after Trinity, and does not establish
+     *   the Eternal High Priest at all);
+     * - no nation or diocese may be selected, since a selected calendar carries
+     *   its own settings for these.
+     *
+     * Implementing only the rite half is what let a user return to the
+     * rite-level empty option under Ambrosian and re-enable the inputs, making
+     * `/calendar/ambrosian?ascension=SUNDAY` reachable — a request that moves a
+     * feast the Missal fixes.
+     *
+     * Holy days of obligation are not fixed by any rite, so they follow the
+     * calendar-selection half alone.
+     *
+     * @param {boolean} calendarSelected - Whether a nation or diocese is currently selected.
+     * @private
+     */
+    #applyTemporalInputState( calendarSelected ) {
+        const fixedTemporalDisabled = calendarSelected || this.#riteFixesTemporalOptions;
+        this.#inputs.epiphanyInput.disabled( fixedTemporalDisabled );
+        this.#inputs.ascensionInput.disabled( fixedTemporalDisabled );
+        this.#inputs.corpusChristiInput.disabled( fixedTemporalDisabled );
+        this.#inputs.eternalHighPriestInput.disabled( fixedTemporalDisabled );
+        this.#inputs.holydaysOfObligationInput.disabled( calendarSelected );
+    }
+
+    /**
+     * Enables or disables the `/calendar/nation/` route offered by the
+     * calendar path input, according to whether the rite has a national tier.
+     *
+     * There is no `/calendar/ambrosian/nation/...` route: the API rejects a
+     * non-null national calendar for a rite with no national tier outright. If
+     * that route was already selected when the rite changed, the selection
+     * falls back to the rite-level route.
+     *
+     * @param {boolean} hasNationalTier
+     * @private
+     */
+    #applyRiteToCalendarPathInput( hasNationalTier ) {
+        const calendarPathElement = this.#inputs.calendarPathInput._domElement;
+        const nationPathOption = calendarPathElement.querySelector( 'option[value="/calendar/nation/"]' );
+        if ( null === nationPathOption ) {
+            return;
+        }
+        nationPathOption.disabled = false === hasNationalTier;
+        if ( nationPathOption.disabled && calendarPathElement.value === nationPathOption.value ) {
+            calendarPathElement.value = '/calendar';
+            calendarPathElement.dispatchEvent( new Event( 'change' ) );
+        }
+    }
+
+    /**
      * Wire a `RiteSelect` to the linked calendar select(s) and to the four
      * fixed-temporal-option inputs and the year floor.
      *
@@ -211,8 +315,19 @@ export default class ApiOptions {
             const selects   = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
 
             CurrentEndpoint.rite = rite;
+            this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
 
+            // A calendar_id from one rite is never valid under another, so reset to
+            // the rite-level calendar rather than carrying a selection across.
+            // Cleared BEFORE the rebuild as well as after: a diocese select linked
+            // to a nation select via `linkToNationsSelect()` re-derives its
+            // per-nation filtering from the nation select's CURRENT value inside
+            // `_applyRite()`, and that value must already be the reset one rather
+            // than the outgoing rite's — otherwise the rebuilt diocese list is
+            // filtered for a nation that is no longer selected.
+            selects.forEach( cs => { cs._domElement.value = ''; } );
             selects.forEach( cs => cs._applyRite( rite, true ) );
+            selects.forEach( cs => { cs._domElement.value = ''; } );
 
             if ( Array.isArray( calendarSelect ) ) {
                 const nationSelector = calendarSelect.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS );
@@ -221,17 +336,14 @@ export default class ApiOptions {
                 }
             }
 
-            const fixed = riteProps.hasFixedTemporalOptions;
-            this.#inputs.epiphanyInput.disabled( fixed );
-            this.#inputs.ascensionInput.disabled( fixed );
-            this.#inputs.corpusChristiInput.disabled( fixed );
-            this.#inputs.eternalHighPriestInput.disabled( fixed );
+            // The selection has just been reset to the rite-level calendar, so the
+            // calendar-selection half of the rule is false here; the rite half is
+            // carried by `#riteFixesTemporalOptions`, set above.
+            this.#applyTemporalInputState( false );
 
             this.#inputs.yearInput.min( riteProps.minYear );
+            this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
 
-            // A calendar_id from one rite is never valid under another, so reset to
-            // the rite-level calendar rather than carrying a selection across.
-            selects.forEach( cs => { cs._domElement.value = ''; } );
             CurrentEndpoint.calendarType = null;
             CurrentEndpoint.calendarId   = null;
         };
@@ -247,40 +359,12 @@ export default class ApiOptions {
         nationSelector._domElement.addEventListener('change', (ev) => {
             // TODO: set selected values based on selected calendar
             // TODO: set available options for locale select based on selected calendar
-            if (ev.target.value === '' && dioceseSelector._domElement.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
-            } else {
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
-            }
+            this.#applyTemporalInputState( ev.target.value !== '' || dioceseSelector._domElement.value !== '' );
         });
         dioceseSelector._domElement.addEventListener('change', (ev) => {
             // TODO: set selected values based on selected calendar
             // TODO: set available options for locale select based on selected calendar
-            if (ev.target.value === '' && nationSelector._domElement.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
-            } else {
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
-            }
+            this.#applyTemporalInputState( ev.target.value !== '' || nationSelector._domElement.value !== '' );
         });
     }
 
@@ -336,11 +420,8 @@ export default class ApiOptions {
                 }
                 case 'diocesan': {
                     const selectedDiocesanCalendar = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId);
-                    const {nation, locales} = selectedDiocesanCalendar;
-                    const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
-                    const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                    //console.info('handling national calendar settings for diocesan calendar while linking to calendar select:', nationalCalendarForDioceseSettings);
-                    this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
+                    const {locales} = selectedDiocesanCalendar;
+                    this.#applyNationalSettingsForDiocese(calendarSelect, selectedDiocesanCalendar);
                     if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
                         const {settings} = selectedDiocesanCalendar;
                         //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
@@ -352,27 +433,14 @@ export default class ApiOptions {
                 default:
                     throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
             }
-            this.#inputs.epiphanyInput.disabled(true);
-            this.#inputs.ascensionInput.disabled(true);
-            this.#inputs.corpusChristiInput.disabled(true);
-            this.#inputs.eternalHighPriestInput.disabled(true);
-            this.#inputs.holydaysOfObligationInput.disabled(true);
+            this.#applyTemporalInputState( true );
         } else {
-            this.#inputs.epiphanyInput.disabled(false);
-            this.#inputs.ascensionInput.disabled(false);
-            this.#inputs.corpusChristiInput.disabled(false);
-            this.#inputs.eternalHighPriestInput.disabled(false);
-            this.#inputs.holydaysOfObligationInput.disabled(false);
+            this.#applyTemporalInputState( false );
             this.#inputs.localeInput.resetOptions();
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
             if (ev.target.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
+                this.#applyTemporalInputState( false );
                 this.#inputs.localeInput.resetOptions();
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
@@ -388,11 +456,8 @@ export default class ApiOptions {
                     }
                     case 'diocesan': {
                         const selectedDiocese = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === ev.target.value);
-                        const {nation, locales} = selectedDiocese;
-                        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
-                        const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                        //console.info('handling national calendar settings for diocesan calendar following change event:', nationalCalendarForDioceseSettings);
-                        this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
+                        const {locales} = selectedDiocese;
+                        this.#applyNationalSettingsForDiocese(calendarSelect, selectedDiocese);
                         if (selectedDiocese.hasOwnProperty('settings')) {
                             const {settings} = selectedDiocese;
                             //console.info('handling diocesan calendar settings following change event:', settings);
@@ -403,12 +468,7 @@ export default class ApiOptions {
                         break;
                     }
                 }
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
+                this.#applyTemporalInputState( true );
             }
         });
     }

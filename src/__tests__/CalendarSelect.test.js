@@ -107,7 +107,17 @@ describe( 'CalendarSelect rite isolation and rebuild hygiene', () => {
         expect( cs.nationsInnerHtml ).toBe( before );
     } );
 
-    it( 'keeps an existing Roman select unaffected by constructing an Ambrosian instance afterward', () => {
+    /**
+     * NON-DISCRIMINATING BY CONSTRUCTION, kept as documentation only.
+     *
+     * `#nationalCalendarsWithDioceses` was moved from `static` to instance
+     * state, and this test reads like the check on that move — but it cannot
+     * fail either way. The per-build reset above already prevents the leak, so
+     * reverting the field to `static` leaves this green (verified). Its name
+     * says so out loud rather than leaving a future reader to trust a test that
+     * has no failing mode.
+     */
+    it( 'keeps an existing Roman select unaffected by constructing an Ambrosian instance afterward (non-discriminating: passes with static storage too — the per-build reset, pinned above, is what protects)', () => {
         const roman  = new CalendarSelect();
         const before = roman.nationsInnerHtml;
 

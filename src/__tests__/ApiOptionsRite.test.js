@@ -4,13 +4,17 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import { CalendarSelectFilter, Rite } from '../Enums.js';
+import { ApiOptionsFilter, CalendarSelectFilter, Rite } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
 
 /**
  * Same fixture shape as CalendarSelect.test.js: a Roman diocese (roma_it),
  * and two Ambrosian dioceses, one (milano_it) whose nation also has a Roman
  * national calendar and one (lugano_ch) whose nation does not.
+ *
+ * `boston_us` is a second Roman diocese in a DIFFERENT nation, so that
+ * per-nation diocese filtering (`linkToNationsSelect`) has something to filter
+ * out and can be asserted on.
  */
 const METADATA = {
     // Read directly by LocaleInput (constructed by every `new ApiOptions()`),
@@ -18,6 +22,7 @@ const METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [
         { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} },
+        { calendar_id: 'US', locales: [ 'en-US' ], settings: {} },
         // VA has no dioceses, so #addNationOption marks it `selected` by
         // default (CalendarSelect's built-in "General Roman falls back to
         // the Vatican" heuristic) — `settings` must be present so
@@ -26,9 +31,10 @@ const METADATA = {
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ], settings: {} }
     ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',    rite: 'roman' },
-        { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',  rite: 'ambrosian' },
-        { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',  rite: 'ambrosian' }
+        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',        locales: [ 'it-IT' ], rite: 'roman' },
+        { calendar_id: 'boston_us', nation: 'US', diocese: 'Archdiocese of Boston',  locales: [ 'en-US' ], rite: 'roman' },
+        { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',      locales: [ 'it-IT' ], rite: 'ambrosian' },
+        { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',      locales: [ 'it-IT' ], rite: 'ambrosian' }
     ],
     ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
 };
@@ -51,6 +57,7 @@ function resetCurrentEndpoint() {
     CurrentEndpoint.explicitRite = false;
     CurrentEndpoint.calendarType = null;
     CurrentEndpoint.calendarId   = null;
+    CurrentEndpoint.calendarYear = null;
 }
 
 describe( 'ApiOptions rite orchestration', () => {
@@ -174,6 +181,164 @@ describe( 'ApiOptions rite orchestration', () => {
 
     it( 'sets explicitRite when a RiteSelect is linked', () => {
         expect( CurrentEndpoint.explicitRite ).toBe( true );
+    } );
+
+    it( 'emits the selected rite in the request path', () => {
+        // Pins `CurrentEndpoint.rite = rite` inside `#handleLinkedRiteSelect`.
+        // Asserting `explicitRite` alone does not: with that assignment deleted,
+        // `explicitRite` is still true and an Ambrosian selection would silently
+        // emit `/calendar/roman/...`.
+        expect( CurrentEndpoint.path ).toBe( '/calendar/roman' );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( CurrentEndpoint.path ).toBe( '/calendar/roman' );
+    } );
+
+    it( 'keeps the fixed temporal inputs disabled after a diocese is selected and then cleared under Ambrosian', () => {
+        // The rule is: those four inputs are disabled if the RITE fixes them,
+        // OR a nation/diocese is selected. Before this fix only the rite half
+        // was implemented, so returning to the rite-level empty option
+        // unconditionally re-enabled them — letting a user request
+        // `/calendar/ambrosian?ascension=SUNDAY`, which the Ambrosian Missal
+        // (praenotanda n. 22) forbids.
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+
+        dioceseSelect._domElement.value = 'lugano_ch';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+
+        dioceseSelect._domElement.value = '';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._corpusChristiInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._eternalHighPriestInput._domElement.disabled ).toBe( true );
+    } );
+
+    it( 'keeps the fixed temporal inputs disabled after a nation is selected and then cleared under Ambrosian', () => {
+        // Same rule, through the nation select's listener. The nation select is
+        // hidden under Ambrosian, but hidden is not unreachable: its value can
+        // still be set programmatically, and the listener is still attached.
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        nationSelect._domElement.value = 'IT';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+
+        nationSelect._domElement.value = '';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._corpusChristiInput._domElement.disabled ).toBe( true );
+        expect( apiOptions._eternalHighPriestInput._domElement.disabled ).toBe( true );
+    } );
+
+    it( 're-enables the fixed temporal inputs on the same round trip under Roman', () => {
+        // The control for the two tests above: the nation/diocese half of the
+        // rule must still release the inputs when the rite does not fix them.
+        dioceseSelect._domElement.value = 'roma_it';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
+
+        dioceseSelect._domElement.value = '';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( false );
+        expect( apiOptions._ascensionInput._domElement.disabled ).toBe( false );
+        expect( apiOptions._corpusChristiInput._domElement.disabled ).toBe( false );
+        expect( apiOptions._eternalHighPriestInput._domElement.disabled ).toBe( false );
+    } );
+} );
+
+describe( 'ApiOptions rite orchestration with a nation-linked diocese select', () => {
+
+    let apiOptions, nationSelect, dioceseSelect, riteSelect;
+
+    beforeEach( () => {
+        resetCurrentEndpoint();
+
+        nationSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.NATIONAL_CALENDARS ).allowNull();
+        dioceseSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS ).allowNull();
+        dioceseSelect.linkToNationsSelect( nationSelect );
+
+        riteSelect = new RiteSelect( 'en' );
+        apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ], riteSelect );
+    } );
+
+    it( 'keeps per-nation diocese filtering after a rite change', () => {
+        nationSelect._domElement.value = 'IT';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="roma_it"' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="boston_us"' );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        // A rite with no national tier has no per-nation filtering to apply:
+        // its dioceses are listed flat.
+        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="lugano_ch"' );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="milano_it"' );
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        // The rite change resets the nation selection, so the diocese select
+        // must be back to its no-nation-selected state rather than showing the
+        // full, unfiltered, every-nation list.
+        expect( nationSelect._domElement.value ).toBe( '' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="boston_us"' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="roma_it"' );
+
+        nationSelect._domElement.value = 'US';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="boston_us"' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="roma_it"' );
+    } );
+} );
+
+describe( 'ApiOptions PATH_BUILDER filter with a linked RiteSelect', () => {
+
+    let apiOptions, calendarSelect, riteSelect;
+
+    beforeEach( () => {
+        resetCurrentEndpoint();
+
+        calendarSelect = new CalendarSelect( 'en' ).allowNull();
+        riteSelect     = new RiteSelect( 'en' );
+        apiOptions     = new ApiOptions( 'en' ).filter( ApiOptionsFilter.PATH_BUILDER );
+        apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+    } );
+
+    const nationPathOption = () => apiOptions._calendarPathInput._domElement.querySelector( 'option[value="/calendar/nation/"]' );
+
+    it( 'disables the nation route for a rite with no national tier', () => {
+        expect( nationPathOption().disabled ).toBe( false );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        // There is no /calendar/ambrosian/nation/... route: the API rejects a
+        // non-null NationalCalendar for the Ambrosian rite outright.
+        expect( nationPathOption().disabled ).toBe( true );
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( nationPathOption().disabled ).toBe( false );
+    } );
+
+    it( 'falls back to the rite-level route when the nation route was already selected', () => {
+        apiOptions._calendarPathInput._domElement.value = '/calendar/nation/';
+        apiOptions._calendarPathInput._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._calendarPathInput._domElement.value ).toBe( '/calendar/nation/' );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( apiOptions._calendarPathInput._domElement.value ).toBe( '/calendar' );
     } );
 } );
 

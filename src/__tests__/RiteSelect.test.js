@@ -28,6 +28,18 @@ describe( 'RiteSelect', () => {
         expect( rs._domElement.className ).toBe( 'form-select' );
         expect( rs._domElement.id ).toBe( 'riteSelect' );
     } );
+
+    it( 'rejects an invalid locale with the same message CalendarSelect uses', () => {
+        // Without running the locale through `Intl.getCanonicalLocales`, this
+        // surfaces as a raw `RangeError: Incorrect locale information provided`
+        // from `new Intl.Locale()` instead of the library's own message.
+        expect( () => new RiteSelect( 'this is not a locale' ) ).toThrow( /Invalid locale/ );
+    } );
+
+    it( 'canonicalizes the locale, underscores included', () => {
+        expect( new RiteSelect( 'it_IT' )._locale ).toBe( 'it-IT' );
+        expect( new RiteSelect( 'EN-us' )._locale ).toBe( 'en-US' );
+    } );
 } );
 
 import YearInput from '../ApiOptions/Input/YearInput.js';

@@ -19,18 +19,6 @@ import { Rite } from '../Enums.js';
  */
 export default class RiteSelect {
 
-    /**
-     * Literal English fallback labels, used only when a `RITE_*` message key
-     * is missing from `Messages['en']` too (as it currently is, until a later
-     * task adds `RITE_ROMAN` / `RITE_AMBROSIAN` / `SELECT_A_RITE`). Keeps a
-     * freshly rendered select from showing the literal text "undefined".
-     */
-    static #DEFAULT_LABELS = Object.freeze( {
-        [ Rite.ROMAN ]:     'Roman',
-        [ Rite.AMBROSIAN ]: 'Ambrosian'
-    } );
-    static #DEFAULT_SELECT_A_RITE_LABEL = 'Select a rite';
-
     #domElement   = null;
     #labelElement = null;
     #hasLabel     = false;
@@ -46,6 +34,7 @@ export default class RiteSelect {
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
      * @throws {Error} If `options` is neither a string nor a plain object.
+     * @throws {Error} If the locale is invalid.
      */
     constructor( options = 'en' ) {
         if ( typeof options === 'string' ) {
@@ -64,7 +53,19 @@ export default class RiteSelect {
             if ( typeof inputLocale !== 'string' ) {
                 throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale );
             }
-            this.#locale = inputLocale.replaceAll( '_', '-' );
+            // Matches CalendarSelect: canonicalize through `Intl.getCanonicalLocales`
+            // so an invalid locale is reported with this library's own message
+            // rather than as a raw `RangeError` out of `new Intl.Locale()`.
+            const locale = inputLocale.replaceAll( '_', '-' );
+            try {
+                const canonicalLocales = Intl.getCanonicalLocales( locale );
+                if ( canonicalLocales.length === 0 ) {
+                    throw new Error( 'Invalid locale: ' + locale );
+                }
+                this.#locale = canonicalLocales[ 0 ];
+            } catch ( e ) {
+                throw new Error( 'Invalid locale: ' + locale );
+            }
         }
 
         const language = new Intl.Locale( this.#locale ).language;
@@ -72,7 +73,7 @@ export default class RiteSelect {
         this.#domElement = document.createElement( 'select' );
         this.#domElement.innerHTML = Object.values( Rite ).map( rite => {
             const key   = 'RITE_' + rite.toUpperCase();
-            const label = Messages[ language ]?.[ key ] ?? Messages[ 'en' ][ key ] ?? RiteSelect.#DEFAULT_LABELS[ rite ];
+            const label = Messages[ language ]?.[ key ] ?? Messages[ 'en' ][ key ];
             return `<option value="${rite}">${label}</option>`;
         } ).join( '' );
         this.#domElement.value = Rite.ROMAN;
@@ -249,7 +250,7 @@ export default class RiteSelect {
             this.#labelElement.textContent = labelOptions.text;
         } else {
             const language = new Intl.Locale( this.#locale ).language;
-            this.#labelElement.textContent = Messages[ language ]?.[ 'SELECT_A_RITE' ] ?? Messages[ 'en' ][ 'SELECT_A_RITE' ] ?? RiteSelect.#DEFAULT_SELECT_A_RITE_LABEL;
+            this.#labelElement.textContent = Messages[ language ]?.[ 'SELECT_A_RITE' ] ?? Messages[ 'en' ][ 'SELECT_A_RITE' ];
         }
 
         return this;
