@@ -115,6 +115,14 @@ not from the schema.
    is Roman, and Roman without a linked `RiteSelect` emits no rite segment, so
    every existing path is byte-identical. The consumer upgrade is a pin bump with
    no code change.
+
+   **Rendered markup is deliberately *not* identical**, and must not be claimed
+   to be: the four Ambrosian dioceses disappear from the default Roman set. That
+   is the bug fix, not a regression — `lugano_ch` stops crashing and
+   `milano_it` / `bergam_it` / `novara_it` stop appearing under Italy as though
+   they were Roman. Rite filtering always applies, in both modes. What "rite-aware
+   mode" (a linked `RiteSelect`) additionally changes is only the explicit path
+   segment and the empty-option label.
 2. **`ApiOptions` orchestrates the rite → calendar chain**, as it already chains
    nation → diocese.
 3. **The nation select is hidden entirely when Ambrosian is selected.**
@@ -161,7 +169,16 @@ diocese, and neither is a user preference:
 | `hasNationalTier` | `true` | `false` | Whether the nation pass runs at all; whether the nation select is shown |
 | `hasFixedTemporalOptions` | `false` | `true` | Whether Epiphany / Ascension / Corpus Christi / Eternal High Priest inputs are disabled |
 | `minYear` | `1970` | `1976` | `YearInput`'s `min` attribute |
-| `emptyOptionLabel` | General Roman Calendar | Ambrosian Calendar | The rite-level calendar's label |
+| `emptyOptionLabel` | General Roman Calendar | Ambrosian Calendar | The rite-level calendar's label, **in rite-aware mode only** |
+
+The empty option currently renders as the literal `---` at three sites
+(`CalendarSelect.js:234`, `236`, `362`). It is *not* labelled "General Roman
+Calendar" today; the `allowNull()` docblock says empty *means* the General Roman
+Calendar, which is a different thing. So `emptyOptionLabel` introduces a label
+where there was none, and applying it unconditionally would change the rendered
+markup of every existing embed. It is therefore applied **only when a
+`RiteSelect` is linked** — the same condition as the explicit path segment.
+Unlinked embeds keep `---`.
 
 `minYear` for Roman is the existing `YearInput` floor (`YearInput.js:21`);
 `1976` mirrors `AMBROSIAN_YEAR_LOWER_LIMIT`.
