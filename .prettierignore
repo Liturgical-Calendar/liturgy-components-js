@@ -1,0 +1,17 @@
+# Prettier is used in this project for MARKDOWN ONLY — see the `lint:md` /
+# `lint:md:fix` scripts in package.json. It is deliberately NOT wired up for
+# JavaScript or TypeScript: prettier's defaults (double quotes, 2-space indent)
+# contradict this project's code standards (single quotes, 4-space indent), and
+# there is intentionally no .prettierrc so that an editor's format-on-save does
+# not silently start reformatting source files against those standards.
+
+# Build output and dependencies
+dist/
+node_modules/
+storybook-static/
+.yarn/
+.pnp.*
+
+# Session scratch from agent-driven development — untracked working notes, not
+# project documentation. (`docs/superpowers/` IS tracked and IS formatted.)
+.superpowers/

@@ -30,7 +30,9 @@
     "storybook:build": "storybook build",
     "docker": "yarn compile:watch & yarn storybook:ci",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\"",
-    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\""
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\"",
+    "format:md": "prettier --check --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\"",
+    "format:md:fix": "prettier --write --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\""
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
@@ -47,6 +49,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "markdownlint-cli2": "^0.19.1",
     "playwright": "^1.57.0",
+    "prettier": "^3.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "storybook": "^10.0.8",
