@@ -111,11 +111,19 @@ Once linked, `ApiOptions` drives the whole rite -> calendar chain on every chang
 
 - The linked `CalendarSelect` instance(s) are rebuilt for the newly selected rite, and their calendar
   selection is reset — a `calendar_id` from one rite is never valid under another.
+- If the diocesan `CalendarSelect` was linked to a national one with `linkToNationsSelect()`, its
+  per-nation filtering is re-derived after the rebuild, from the (reset) nation selection.
 - The empty option's label switches from the generic `---` to the rite's own name (e.g. "General Roman
   Calendar" or "Ambrosian Calendar").
 - `ApiOptions._epiphanyInput`, `_ascensionInput`, `_corpusChristiInput` and `_eternalHighPriestInput`
-  are enabled or disabled based on the rite.
+  are enabled or disabled. The rule composes two halves, and **both** must hold for an input to be
+  enabled: the rite must not fix the celebration itself, **and** no nation or diocese may be selected.
+  So under a rite that fixes them, selecting a diocese and then returning to the rite-level calendar
+  leaves them disabled — they are not released by the calendar half alone.
 - `ApiOptions._yearInput`'s minimum year is adjusted to the rite's floor.
+- The `/calendar/nation/` route offered by `ApiOptions._calendarPathInput` (the `PATH_BUILDER` filter)
+  is disabled for a rite with no national tier, since no such route exists for it. If that route was
+  selected at the time of the rite change, the selection falls back to `/calendar`.
 
 ### Selecting the Ambrosian rite
 
@@ -148,6 +156,11 @@ defaults to `Rite.ROMAN`. Those dioceses only appear once a `CalendarSelect` is 
 to) `Rite.AMBROSIAN`. This is the bug this feature fixes — Ambrosian dioceses do not belong under the
 Roman rite — and integrators relying on the old, rite-unaware diocese list should be aware of it when
 upgrading.
+
+Rite filtering also tolerates metadata that predates the rite partition. The `rite` field on diocesan
+entries is announced by the API from v6 on; the live v5 `/calendars` response carries none. A diocesan
+entry with no `rite` is treated as Roman, so an integrator pinned to v5 keeps the full (Roman) diocese
+list rather than an empty one.
 
 Path-wise, linking a `RiteSelect` also changes how a Roman-rite request is spelled, though not what it
 requests: with a `RiteSelect` linked, `ApiOptions` sets `CurrentEndpoint.explicitRite = true`, so a
