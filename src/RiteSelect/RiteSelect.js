@@ -273,10 +273,15 @@ export default class RiteSelect {
         } else {
             throw new Error( 'RiteSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement' );
         }
-        if ( this.#hasLabel ) {
-            domNode.appendChild( this.#labelElement );
-        }
         domNode.appendChild( this.#domElement );
+        if ( this.#hasLabel ) {
+            // Matches CalendarSelect.appendTo(): the select is appended first,
+            // then the label is placed immediately before it via
+            // insertAdjacentElement rather than appendChild, so the label
+            // always ends up adjacent to (and before) the select regardless
+            // of what else domNode already contains.
+            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        }
     }
 
     /**
