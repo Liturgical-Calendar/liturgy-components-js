@@ -998,7 +998,10 @@ describe( 'ApiOptions rite orchestration', () => {
         // build apiOptions + [nationSelect, dioceseSelect] + riteSelect, link them
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( nationSelect._domElement.closest( '.form-group' ).hidden ).toBe( true );
+        // _setHidden targets the wrapper when one was set via wrapper(), and the
+        // select itself otherwise. This setup does not call wrapper(), so assert
+        // on the select. A separate test covers the wrapper case.
+        expect( nationSelect._domElement.hidden ).toBe( true );
     } );
 
     it( 'shows the nation select again when returning to Roman', () => {
@@ -1006,7 +1009,7 @@ describe( 'ApiOptions rite orchestration', () => {
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( nationSelect._domElement.closest( '.form-group' ).hidden ).toBe( false );
+        expect( nationSelect._domElement.hidden ).toBe( false );
     } );
 
     it( 'disables the four fixed temporal inputs under Ambrosian', () => {
@@ -1027,6 +1030,15 @@ describe( 'ApiOptions rite orchestration', () => {
         expect( apiOptions._yearInput._domElement.min ).toBe( '1976' );
         // then switch back to Roman
         expect( apiOptions._yearInput._domElement.min ).toBe( '1970' );
+    } );
+
+    it( 'hides the wrapper rather than the select when a wrapper was set', () => {
+        const wrapped = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+            .wrapper( { class: 'form-group' } );
+        wrapped._setHidden( true );
+        expect( wrapped._domElement.hidden ).toBe( false );
+        expect( wrapped._wrapperElement.hidden ).toBe( true );
     } );
 
     it( 'labels the empty option per rite in rite-aware mode', () => {
