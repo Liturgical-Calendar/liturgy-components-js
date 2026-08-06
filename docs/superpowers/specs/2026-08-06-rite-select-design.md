@@ -216,10 +216,19 @@ not just `lugano_ch`. Skipping the pass is what makes dropping the guard safe.
 `#nationalCalendarsWithDioceses` is currently `static` (`CalendarSelect.js:33`)
 while the option arrays are per-instance (lines 34-36). Today that is benign:
 every instance derives the same list from the same full diocese set, and
-`#hasNationalCalendarWithDioceses` makes the push idempotent. Under rite
-filtering it is a bug — a Roman instance and an Ambrosian instance would
-accumulate into one shared list, and whichever was constructed first would leak
-its nations into the other's grouping.
+`#hasNationalCalendarWithDioceses` makes the push idempotent. Under rite filtering it
+would be a bug — a Roman instance and an Ambrosian instance accumulating into one
+shared list — **but only in the absence of the rebuild reset.**
+
+*Corrected after implementation.* `#buildAllOptions()` resets the derived arrays
+at the top, and that reset closes the leak on its own, independently of where the
+array lives; within a single synchronous build, static and instance storage are
+behaviourally indistinguishable. Reverting the field to `static` while keeping
+everything else was verified to leave the suite fully green. So the static field
+was misleading rather than live-buggy once the reset existed, and the move to
+instance state is defence-in-depth. The property that actually protects is
+rebuild idempotency, which is what the test suite pins — a test asserting the
+cross-instance leak cannot fail and would have been decoration.
 
 `#nationalCalendarsWithDioceses` therefore moves from `static` to instance state.
 `#nationalCalendars` and `#diocesanCalendars` stay static: they are the raw
