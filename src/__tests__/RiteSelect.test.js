@@ -29,3 +29,20 @@ describe( 'RiteSelect', () => {
         expect( rs._domElement.id ).toBe( 'riteSelect' );
     } );
 } );
+
+import YearInput from '../ApiOptions/Input/YearInput.js';
+
+describe( 'YearInput minimum', () => {
+
+    it( 'defaults to 1970', () => {
+        expect( new YearInput()._domElement.min ).toBe( '1970' );
+    } );
+
+    it( 'can be raised and lowered again', () => {
+        const yi = new YearInput();
+        yi.min( 1976 );
+        expect( yi._domElement.min ).toBe( '1976' );
+        yi.min( 1970 );
+        expect( yi._domElement.min ).toBe( '1970' );
+    } );
+} );
