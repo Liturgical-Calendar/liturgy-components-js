@@ -129,6 +129,7 @@ export default class CalendarSelect {
      *                                  - `class`: The class name for the `CalendarSelect` DOM input.
      *                                  - `name`: The name for the `CalendarSelect` DOM input.
      *                                  - `filter`: The `CalendarSelectFilter` to apply to the `CalendarSelect` component.
+     *                                  - `rite`: The `Rite` this `CalendarSelect` is built for (defaults to `Rite.ROMAN`). Determines which diocesan calendars are offered and whether a national tier is shown at all.
      *                                  - `after`: an html string to append after the `CalendarSelect` element.
      *                                  - `allowNull`: a boolean to indicate whether the `CalendarSelect` element should allow `null` values.
      *                                  - `disabled`: a boolean to indicate whether the `CalendarSelect` DOM input element should be disabled.

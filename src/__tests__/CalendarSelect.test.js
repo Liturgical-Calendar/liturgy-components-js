@@ -82,16 +82,38 @@ describe( 'CalendarSelect rite filtering — Ambrosian', () => {
     } );
 } );
 
-describe( 'CalendarSelect rite isolation between instances', () => {
+describe( 'CalendarSelect rite isolation and rebuild hygiene', () => {
 
-    it( 'does not let an Ambrosian instance leak nations into a Roman one', () => {
+    /**
+     * What actually prevents cross-build leaks is that `#buildAllOptions()`
+     * resets its derived arrays (`#nationalCalendarsWithDioceses`,
+     * `#nationOptions`, `#dioceseOptions`, `#dioceseOptionsGrouped`) at the
+     * top of every rebuild. Within one synchronous build, `static` and
+     * instance storage for `#nationalCalendarsWithDioceses` are NOT
+     * separately observable here — a same-instance rebuild re-enters
+     * `#buildAllOptions()` on the same object either way, so this test
+     * cannot (and is not meant to) tell static and instance storage apart.
+     * It pins the reset instead: delete those four reset lines and calling
+     * `_applyRite()` a second time on the same rite re-derives on top of
+     * the previous build's arrays instead of starting clean, duplicating
+     * every option.
+     */
+    it( 'does not duplicate nation options when the same instance is rebuilt for the same rite', () => {
+        const cs     = new CalendarSelect();
+        const before = cs.nationsInnerHtml;
+
+        cs._applyRite( Rite.ROMAN );
+
+        expect( cs.nationsInnerHtml ).toBe( before );
+    } );
+
+    it( 'keeps an existing Roman select unaffected by constructing an Ambrosian instance afterward', () => {
         const roman  = new CalendarSelect();
         const before = roman.nationsInnerHtml;
 
         new CalendarSelect().rite( Rite.AMBROSIAN );
 
-        const after = new CalendarSelect().nationsInnerHtml;
-        expect( after ).toBe( before );
+        expect( roman.nationsInnerHtml ).toBe( before );
     } );
 } );
 
