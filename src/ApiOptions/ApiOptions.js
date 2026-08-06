@@ -114,6 +114,18 @@ export default class ApiOptions {
     #riteFixesTemporalOptions = false;
 
     /**
+     * This instance's endpoint state — path segments plus query parameters.
+     *
+     * One per `ApiOptions`, never shared: the `PathBuilder` constructed against
+     * this instance reads it via the `_currentEndpoint` getter, so two embeds on
+     * one page cannot overwrite each other's rite, calendar or year. See the doc
+     * comment on `CurrentEndpoint` for why this is instance state.
+     *
+     * @type {CurrentEndpoint}
+     */
+    #currentEndpoint = new CurrentEndpoint();
+
+    /**
      * Constructs an instance of the ApiOptions class, initializing various input components
      * with the given locale. Throws an error if the locale is invalid.
      *
@@ -314,7 +326,7 @@ export default class ApiOptions {
             const riteProps = RiteProperties[ rite ];
             const selects   = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
 
-            CurrentEndpoint.rite = rite;
+            this.#currentEndpoint.rite = rite;
             this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
 
             // A calendar_id from one rite is never valid under another, so reset to
@@ -354,8 +366,8 @@ export default class ApiOptions {
             }
             this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
 
-            CurrentEndpoint.calendarType = null;
-            CurrentEndpoint.calendarId   = null;
+            this.#currentEndpoint.calendarType = null;
+            this.#currentEndpoint.calendarId   = null;
 
             // `PathBuilder` (when constructed on this same select) renders its
             // `<code>` path from a `change` listener on the calendar select's
@@ -573,20 +585,16 @@ export default class ApiOptions {
      * drives the whole rite -> calendar chain: the linked CalendarSelect(s) are rebuilt for the selected rite,
      * the nation select (when linked as a pair) is hidden for rites with no national tier, the fixed-temporal-option
      * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
-     * selection is reset on every rite change. `CurrentEndpoint.explicitRite` is set to `true`, so the rite segment
+     * selection is reset on every rite change. This instance's `explicitRite` is set to `true`, so the rite segment
      * is always spelled out in the resulting path, even for the Roman rite.
      *
-     * **`CurrentEndpoint.explicitRite` is a STATIC, GLOBAL, ONE-WAY LATCH**, not
-     * per-instance state: `CurrentEndpoint` is a module-level singleton, so once
-     * ANY `ApiOptions` instance on the page links a `RiteSelect`, EVERY other
-     * `ApiOptions` / `PathBuilder` on that same page starts emitting the explicit
-     * `/calendar/roman/...` form too — including ones that never linked a
-     * `RiteSelect` themselves — and nothing in this method ever sets it back to
-     * `false`. Both forms are the same request (`Router::extractRiteSegment()`
-     * accepts `roman` explicitly), so this is cosmetic rather than a correctness
-     * bug, but a page mixing rite-aware and legacy embeds will see every embed's
-     * displayed path switch to the explicit form as soon as the rite-aware one
-     * links.
+     * `explicitRite` is scoped to THIS instance's `CurrentEndpoint` (see `_currentEndpoint`),
+     * so linking a `RiteSelect` here affects only the `PathBuilder` constructed against this
+     * same `ApiOptions`. A page mixing rite-aware and legacy embeds keeps the legacy embeds'
+     * displayed paths byte-identical to what they were before rite awareness existed. Note
+     * that it is still one-way WITHIN this instance — `linkToCalendarSelect` throws on a
+     * second call, so there is no supported way to un-link a `RiteSelect` and revert to the
+     * implicit form.
      * @returns {ApiOptions} - The ApiOptions instance.
      * @throws {Error} If `riteSelect` is provided but is not an instance of `RiteSelect`.
      */
@@ -638,7 +646,7 @@ export default class ApiOptions {
         // rite. A `riteSelect` rejected above never reaches this point either,
         // since the type-check threw before we got here.
         if (null !== riteSelect) {
-            CurrentEndpoint.explicitRite = true;
+            this.#currentEndpoint.explicitRite = true;
             this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
         }
         this.#linked = true;
@@ -827,5 +835,21 @@ export default class ApiOptions {
      */
     get _filtersSet() {
         return this.#filtersSet;
+    }
+
+    /**
+     * Gets this instance's endpoint state (path segments plus query parameters).
+     *
+     * Intended for the `PathBuilder` constructed against this `ApiOptions`, which
+     * mutates the returned object as the user changes inputs and serializes it to
+     * render the displayed path. Returned by reference, not copied, precisely so
+     * that both sides share one object — but only ever this instance's, never a
+     * module-level one shared with other embeds on the page.
+     *
+     * @returns {CurrentEndpoint} This instance's CurrentEndpoint.
+     * @readonly
+     */
+    get _currentEndpoint() {
+        return this.#currentEndpoint;
     }
 }

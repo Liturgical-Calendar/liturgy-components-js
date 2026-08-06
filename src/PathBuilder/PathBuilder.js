@@ -20,6 +20,18 @@ export default class PathBuilder {
     #buttonWrapper;
     #pathWrapper;
     #pathCodeElement;
+    /**
+     * The endpoint state this PathBuilder renders.
+     *
+     * Borrowed from — not created by — the `ApiOptions` passed to the constructor,
+     * so that the rite/calendar mutations `ApiOptions` performs when a `RiteSelect`
+     * is linked land on the very object serialized here. Because it belongs to that
+     * one `ApiOptions`, a second PathBuilder/ApiOptions pair on the same page keeps
+     * entirely separate state.
+     *
+     * @type {CurrentEndpoint}
+     */
+    #currentEndpoint;
 
     constructor(apiOptions, calendarSelect) {
         if (!apiOptions || false === apiOptions instanceof ApiOptions) {
@@ -28,6 +40,10 @@ export default class PathBuilder {
         if (!calendarSelect || false === calendarSelect instanceof CalendarSelect) {
             throw new Error('calendarSelect must be an instance of CalendarSelect');
         }
+
+        this.#currentEndpoint = apiOptions._currentEndpoint;
+        const currentEndpoint = this.#currentEndpoint;
+        const requestPayload  = currentEndpoint.requestPayload;
 
         this.#domElement = document.createElement('div');
         this.#buttonWrapper = document.createElement('div');
@@ -56,28 +72,28 @@ export default class PathBuilder {
         this.#updatePathValues();
 
         apiOptions._calendarPathInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.locale              = null;
-            RequestPayload.ascension           = null;
-            RequestPayload.corpus_christi      = null;
-            RequestPayload.epiphany            = null;
-            RequestPayload.year_type           = null;
-            RequestPayload.eternal_high_priest = null;
+            requestPayload.locale              = null;
+            requestPayload.ascension           = null;
+            requestPayload.corpus_christi      = null;
+            requestPayload.epiphany            = null;
+            requestPayload.year_type           = null;
+            requestPayload.eternal_high_priest = null;
             const selectEl = calendarSelect._domElement;
             switch (ev.target.value) {
                 case '/calendar':
-                    CurrentEndpoint.calendarType       = null;
-                    CurrentEndpoint.calendarId         = null;
+                    currentEndpoint.calendarType       = null;
+                    currentEndpoint.calendarId         = null;
                     break;
                 case '/calendar/nation/':
-                    if ( CurrentEndpoint.calendarType !== CalendarType.NATIONAL ) {
-                        CurrentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        CurrentEndpoint.calendarType = CalendarType.NATIONAL;
+                    if ( currentEndpoint.calendarType !== CalendarType.NATIONAL ) {
+                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
+                        currentEndpoint.calendarType = CalendarType.NATIONAL;
                     }
                     break;
                 case '/calendar/diocese/':
-                    if ( CurrentEndpoint.calendarType !== CalendarType.DIOCESAN ) {
-                        CurrentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
+                    if ( currentEndpoint.calendarType !== CalendarType.DIOCESAN ) {
+                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
+                        currentEndpoint.calendarType = CalendarType.DIOCESAN;
                     }
                     break;
             }
@@ -89,12 +105,12 @@ export default class PathBuilder {
             const calendarType = selectedOption.getAttribute("data-calendartype");
             switch (calendarType){
                 case 'national':
-                    CurrentEndpoint.calendarType = CalendarType.NATIONAL;
-                    CurrentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarType = CalendarType.NATIONAL;
+                    currentEndpoint.calendarId   = ev.target.value;
                     break;
                 case 'diocesan': {
-                    CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
-                    CurrentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarType = CalendarType.DIOCESAN;
+                    currentEndpoint.calendarId   = ev.target.value;
                     break;
                 }
             }
@@ -102,48 +118,48 @@ export default class PathBuilder {
         });
 
         apiOptions._acceptHeaderInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.return_type = ev.target.value;
+            requestPayload.return_type = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._yearTypeInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.year_type = ev.target.value;
+            requestPayload.year_type = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._yearInput._domElement.addEventListener('change', (ev) => {
-            CurrentEndpoint.calendarYear = ev.target.value;
+            currentEndpoint.calendarYear = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._epiphanyInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.epiphany = ev.target.value;
+            requestPayload.epiphany = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._ascensionInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.ascension = ev.target.value;
+            requestPayload.ascension = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._corpusChristiInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.corpus_christi = ev.target.value;
+            requestPayload.corpus_christi = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._eternalHighPriestInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.eternal_high_priest = ev.target.value;
+            requestPayload.eternal_high_priest = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._localeInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.locale = ev.target.value;
+            requestPayload.locale = ev.target.value;
             this.#updatePathValues();
         });
     }
 
     #updatePathValues() {
-        const finalPath = (ApiClient._apiUrl + CurrentEndpoint.serialize());
+        const finalPath = (ApiClient._apiUrl + this.#currentEndpoint.serialize());
         this.#pathCodeElement.textContent = finalPath;
         this.#buttonElement.setAttribute('href', finalPath);
     }

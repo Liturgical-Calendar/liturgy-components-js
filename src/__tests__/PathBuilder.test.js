@@ -2,58 +2,112 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import { CurrentEndpoint, CalendarType } from '../PathBuilder/PathBuilder.js';
 import { Rite } from '../Enums.js';
 
+/**
+ * A fresh instance per test rather than a reset of module-level statics:
+ * `CurrentEndpoint` is per-`ApiOptions` state, so construction is the reset.
+ * @type {CurrentEndpoint}
+ */
+let endpoint;
+
 beforeEach( () => {
-    CurrentEndpoint.rite         = Rite.ROMAN;
-    CurrentEndpoint.explicitRite = false;
-    CurrentEndpoint.calendarType = null;
-    CurrentEndpoint.calendarId   = null;
-    CurrentEndpoint.calendarYear = null;
+    endpoint = new CurrentEndpoint();
 } );
 
 describe( 'CurrentEndpoint path composition', () => {
 
+    it( 'defaults to Roman with no explicit rite, calendar or year', () => {
+        expect( endpoint.rite ).toBe( Rite.ROMAN );
+        expect( endpoint.explicitRite ).toBe( false );
+        expect( endpoint.calendarType ).toBeNull();
+        expect( endpoint.calendarId ).toBeNull();
+        expect( endpoint.calendarYear ).toBeNull();
+    } );
+
     it( 'omits the rite segment for Roman when not explicit', () => {
-        expect( CurrentEndpoint.path ).toBe( '/calendar' );
+        expect( endpoint.path ).toBe( '/calendar' );
 
-        CurrentEndpoint.calendarType = CalendarType.NATIONAL;
-        CurrentEndpoint.calendarId   = 'IT';
-        expect( CurrentEndpoint.path ).toBe( '/calendar/nation/IT' );
+        endpoint.calendarType = CalendarType.NATIONAL;
+        endpoint.calendarId   = 'IT';
+        expect( endpoint.path ).toBe( '/calendar/nation/IT' );
 
-        CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
-        CurrentEndpoint.calendarId   = 'roma_it';
-        expect( CurrentEndpoint.path ).toBe( '/calendar/diocese/roma_it' );
+        endpoint.calendarType = CalendarType.DIOCESAN;
+        endpoint.calendarId   = 'roma_it';
+        expect( endpoint.path ).toBe( '/calendar/diocese/roma_it' );
     } );
 
     it( 'emits the explicit roman segment when explicitRite is set', () => {
-        CurrentEndpoint.explicitRite = true;
-        expect( CurrentEndpoint.path ).toBe( '/calendar/roman' );
+        endpoint.explicitRite = true;
+        expect( endpoint.path ).toBe( '/calendar/roman' );
 
-        CurrentEndpoint.calendarType = CalendarType.NATIONAL;
-        CurrentEndpoint.calendarId   = 'IT';
-        expect( CurrentEndpoint.path ).toBe( '/calendar/roman/nation/IT' );
+        endpoint.calendarType = CalendarType.NATIONAL;
+        endpoint.calendarId   = 'IT';
+        expect( endpoint.path ).toBe( '/calendar/roman/nation/IT' );
     } );
 
     it( 'always emits the ambrosian segment', () => {
-        // Deliberately NOT setting `explicitRite = true` here: `beforeEach`
+        // Deliberately NOT setting `explicitRite = true` here: a fresh instance
         // already leaves it `false`, and setting it would let this test pass
         // even if Ambrosian stopped emitting on rite alone — it would prove
         // only that `explicitRite` forces the segment, which the earlier test
         // already covers.
-        CurrentEndpoint.rite = Rite.AMBROSIAN;
-        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
+        endpoint.rite = Rite.AMBROSIAN;
+        expect( endpoint.path ).toBe( '/calendar/ambrosian' );
 
-        CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
-        CurrentEndpoint.calendarId   = 'lugano_ch';
-        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian/diocese/lugano_ch' );
+        endpoint.calendarType = CalendarType.DIOCESAN;
+        endpoint.calendarId   = 'lugano_ch';
+        expect( endpoint.path ).toBe( '/calendar/ambrosian/diocese/lugano_ch' );
 
-        CurrentEndpoint.calendarYear = 2026;
-        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian/diocese/lugano_ch/2026' );
+        endpoint.calendarYear = 2026;
+        expect( endpoint.path ).toBe( '/calendar/ambrosian/diocese/lugano_ch/2026' );
     } );
 
     it( 'places the year after the calendar id for Roman too', () => {
-        CurrentEndpoint.calendarType = CalendarType.NATIONAL;
-        CurrentEndpoint.calendarId   = 'IT';
-        CurrentEndpoint.calendarYear = 2026;
-        expect( CurrentEndpoint.path ).toBe( '/calendar/nation/IT/2026' );
+        endpoint.calendarType = CalendarType.NATIONAL;
+        endpoint.calendarId   = 'IT';
+        endpoint.calendarYear = 2026;
+        expect( endpoint.path ).toBe( '/calendar/nation/IT/2026' );
+    } );
+
+    it( 'keeps two endpoints fully independent of one another', () => {
+        // The whole point of `CurrentEndpoint` being instance state: when these
+        // were statics, mutating one embed's rite rewrote every other embed's
+        // path on the page.
+        const other = new CurrentEndpoint();
+
+        endpoint.rite         = Rite.AMBROSIAN;
+        endpoint.explicitRite = true;
+        endpoint.calendarType = CalendarType.DIOCESAN;
+        endpoint.calendarId   = 'lugano_ch';
+        endpoint.calendarYear = 2026;
+
+        expect( endpoint.path ).toBe( '/calendar/ambrosian/diocese/lugano_ch/2026' );
+        expect( other.path ).toBe( '/calendar' );
+    } );
+} );
+
+describe( 'CurrentEndpoint query parameter serialization', () => {
+
+    it( 'returns the bare path when no parameters are set', () => {
+        expect( endpoint.serialize() ).toBe( '/calendar' );
+    } );
+
+    it( 'appends non-null, non-empty parameters and url-encodes their values', () => {
+        endpoint.requestPayload.locale      = 'it';
+        endpoint.requestPayload.return_type = 'JSON';
+        expect( endpoint.serialize() ).toBe( '/calendar?locale=it&return_type=JSON' );
+    } );
+
+    it( 'skips parameters left null or set to the empty string', () => {
+        endpoint.requestPayload.locale    = '';
+        endpoint.requestPayload.year_type = 'LITURGICAL';
+        expect( endpoint.serialize() ).toBe( '/calendar?year_type=LITURGICAL' );
+    } );
+
+    it( 'gives each endpoint its own payload', () => {
+        const other = new CurrentEndpoint();
+        endpoint.requestPayload.locale = 'it';
+
+        expect( endpoint.serialize() ).toBe( '/calendar?locale=it' );
+        expect( other.serialize() ).toBe( '/calendar' );
     } );
 } );

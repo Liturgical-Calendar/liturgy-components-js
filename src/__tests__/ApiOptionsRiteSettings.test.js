@@ -1,11 +1,10 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeAll, jest } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite } from '../Enums.js';
-import { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
 
 /**
  * The national-settings lookup for a DIOCESAN selection, one layer up from the
@@ -49,13 +48,8 @@ beforeAll( async () => {
     await ApiClient.init();
 } );
 
-beforeEach( () => {
-    CurrentEndpoint.rite         = Rite.ROMAN;
-    CurrentEndpoint.explicitRite = false;
-    CurrentEndpoint.calendarType = null;
-    CurrentEndpoint.calendarId   = null;
-    CurrentEndpoint.calendarYear = null;
-} );
+// No `CurrentEndpoint` reset is needed here: each `ApiOptions` constructs its
+// own, so endpoint state cannot leak between tests.
 
 /**
  * Runs `fn` and returns whatever errors were thrown from inside DOM event

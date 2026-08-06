@@ -163,7 +163,11 @@ entry with no `rite` is treated as Roman, so an integrator pinned to v5 keeps th
 list rather than an empty one.
 
 Path-wise, linking a `RiteSelect` also changes how a Roman-rite request is spelled, though not what it
-requests: with a `RiteSelect` linked, `ApiOptions` sets `CurrentEndpoint.explicitRite = true`, so a
-Roman-rite request emits the explicit `/calendar/roman/...` form instead of the shorter `/calendar/...`
-form. Both are the same request to the API — the API's router accepts `roman` as an explicit rite
-segment — so this only affects the URL string, not the response.
+requests: with a `RiteSelect` linked, `ApiOptions` sets `explicitRite = true` on its own endpoint state,
+so a Roman-rite request emits the explicit `/calendar/roman/...` form instead of the shorter
+`/calendar/...` form. Both are the same request to the API — the API's router accepts `roman` as an
+explicit rite segment — so this only affects the URL string, not the response.
+
+That change is scoped to the `ApiOptions` instance that linked the `RiteSelect`, and to the
+`PathBuilder` built against it. Each `ApiOptions` owns its own endpoint state, so on a page hosting
+several embeds, one embed becoming rite-aware leaves every other embed's path exactly as it was.

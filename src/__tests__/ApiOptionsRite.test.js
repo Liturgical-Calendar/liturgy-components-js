@@ -5,7 +5,7 @@ import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { ApiOptionsFilter, CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
-import PathBuilder, { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
+import PathBuilder from '../PathBuilder/PathBuilder.js';
 import Messages from '../Messages.js';
 
 /**
@@ -48,26 +48,16 @@ beforeAll( async () => {
     await ApiClient.init();
 } );
 
-/**
- * Resets the module-level `CurrentEndpoint` singleton to its defaults before
- * every test, so state set by one test (rite, explicitRite, calendarType,
- * calendarId) can never leak into the next.
- */
-function resetCurrentEndpoint() {
-    CurrentEndpoint.rite         = Rite.ROMAN;
-    CurrentEndpoint.explicitRite = false;
-    CurrentEndpoint.calendarType = null;
-    CurrentEndpoint.calendarId   = null;
-    CurrentEndpoint.calendarYear = null;
-}
+// No `CurrentEndpoint` reset helper is needed: each `ApiOptions` constructs its
+// own `CurrentEndpoint`, so the `new ApiOptions(...)` in every `beforeEach` below
+// IS the reset. Endpoint state set by one test cannot reach the next, and — the
+// point of that design — cannot reach another embed on the same page either.
 
 describe( 'ApiOptions rite orchestration', () => {
 
     let apiOptions, nationSelect, dioceseSelect, riteSelect;
 
     beforeEach( () => {
-        resetCurrentEndpoint();
-
         // Deliberately NOT linked via `linkToNationsSelect()`: that mechanism
         // filters the diocese options down to whichever nation is currently
         // selected (here, the auto-selected VA, which has no dioceses at
@@ -226,23 +216,23 @@ describe( 'ApiOptions rite orchestration', () => {
     } );
 
     it( 'sets explicitRite when a RiteSelect is linked', () => {
-        expect( CurrentEndpoint.explicitRite ).toBe( true );
+        expect( apiOptions._currentEndpoint.explicitRite ).toBe( true );
     } );
 
     it( 'emits the selected rite in the request path', () => {
-        // Pins `CurrentEndpoint.rite = rite` inside `#handleLinkedRiteSelect`.
+        // Pins `apiOptions._currentEndpoint.rite = rite` inside `#handleLinkedRiteSelect`.
         // Asserting `explicitRite` alone does not: with that assignment deleted,
         // `explicitRite` is still true and an Ambrosian selection would silently
         // emit `/calendar/roman/...`.
-        expect( CurrentEndpoint.path ).toBe( '/calendar/roman' );
+        expect( apiOptions._currentEndpoint.path ).toBe( '/calendar/roman' );
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
+        expect( apiOptions._currentEndpoint.path ).toBe( '/calendar/ambrosian' );
 
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( CurrentEndpoint.path ).toBe( '/calendar/roman' );
+        expect( apiOptions._currentEndpoint.path ).toBe( '/calendar/roman' );
     } );
 
     it( 'keeps the fixed temporal inputs disabled after a diocese is selected and then cleared under Ambrosian', () => {
@@ -308,8 +298,6 @@ describe( 'ApiOptions rite orchestration with a nation-linked diocese select', (
     let apiOptions, nationSelect, dioceseSelect, riteSelect;
 
     beforeEach( () => {
-        resetCurrentEndpoint();
-
         nationSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.NATIONAL_CALENDARS ).allowNull();
         dioceseSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS ).allowNull();
         dioceseSelect.linkToNationsSelect( nationSelect );
@@ -353,8 +341,6 @@ describe( 'ApiOptions PATH_BUILDER filter with a linked RiteSelect', () => {
     let apiOptions, calendarSelect, riteSelect;
 
     beforeEach( () => {
-        resetCurrentEndpoint();
-
         calendarSelect = new CalendarSelect( 'en' ).allowNull();
         riteSelect     = new RiteSelect( 'en' );
         apiOptions     = new ApiOptions( 'en' ).filter( ApiOptionsFilter.PATH_BUILDER );
@@ -390,10 +376,6 @@ describe( 'ApiOptions PATH_BUILDER filter with a linked RiteSelect', () => {
 
 describe( 'ApiOptions without a linked RiteSelect (back-compat)', () => {
 
-    beforeEach( () => {
-        resetCurrentEndpoint();
-    } );
-
     it( 'leaves the empty option as --- when no RiteSelect is linked', () => {
         const plainSelect = new CalendarSelect( 'en' ).allowNull();
         const plainApiOptions = new ApiOptions( 'en' );
@@ -405,7 +387,44 @@ describe( 'ApiOptions without a linked RiteSelect (back-compat)', () => {
         const plainSelect = new CalendarSelect( 'en' ).allowNull();
         const plainApiOptions = new ApiOptions( 'en' );
         plainApiOptions.linkToCalendarSelect( plainSelect );
-        expect( CurrentEndpoint.explicitRite ).toBe( false );
+        expect( plainApiOptions._currentEndpoint.explicitRite ).toBe( false );
+    } );
+
+    it( 'keeps a plain embed\'s path byte-identical when a rite-aware embed is linked alongside it', () => {
+        // The reason `CurrentEndpoint` is per-instance rather than a module-level
+        // singleton. With statics, `explicitRite` was a global one-way latch: the
+        // moment ANY ApiOptions on the page linked a RiteSelect, every other
+        // embed — including ones that never opted into rite awareness — started
+        // emitting the explicit `/calendar/roman/...` form instead of `/calendar/...`.
+        const plainSelect     = new CalendarSelect( 'en' ).allowNull();
+        const plainApiOptions = new ApiOptions( 'en' );
+        plainApiOptions.linkToCalendarSelect( plainSelect );
+
+        const riteAwareSelect     = new CalendarSelect( 'en' ).allowNull();
+        const riteAwareApiOptions = new ApiOptions( 'en' );
+        riteAwareApiOptions.linkToCalendarSelect( riteAwareSelect, new RiteSelect( 'en' ) );
+
+        expect( riteAwareApiOptions._currentEndpoint.path ).toBe( '/calendar/roman' );
+        expect( plainApiOptions._currentEndpoint.explicitRite ).toBe( false );
+        expect( plainApiOptions._currentEndpoint.path ).toBe( '/calendar' );
+    } );
+
+    it( 'keeps a plain embed\'s path unchanged when a rite-aware embed switches rite', () => {
+        const plainSelect     = new CalendarSelect( 'en' ).allowNull();
+        const plainApiOptions = new ApiOptions( 'en' );
+        plainApiOptions.linkToCalendarSelect( plainSelect );
+
+        const riteAwareSelect     = new CalendarSelect( 'en' ).allowNull();
+        const riteAwareApiOptions = new ApiOptions( 'en' );
+        const riteAwareRiteSelect = new RiteSelect( 'en' );
+        riteAwareApiOptions.linkToCalendarSelect( riteAwareSelect, riteAwareRiteSelect );
+
+        riteAwareRiteSelect._domElement.value = Rite.AMBROSIAN;
+        riteAwareRiteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( riteAwareApiOptions._currentEndpoint.path ).toBe( '/calendar/ambrosian' );
+        expect( plainApiOptions._currentEndpoint.rite ).toBe( Rite.ROMAN );
+        expect( plainApiOptions._currentEndpoint.path ).toBe( '/calendar' );
     } );
 
     it( 'hides no nation select and disables no input by rite when no RiteSelect is linked', () => {
@@ -428,10 +447,6 @@ describe( 'ApiOptions without a linked RiteSelect (back-compat)', () => {
 
 describe( 'ApiOptions.linkToCalendarSelect validation order', () => {
 
-    beforeEach( () => {
-        resetCurrentEndpoint();
-    } );
-
     it( 'throws the existing calendarSelect validation error, and leaves CurrentEndpoint untouched, when riteSelect is valid but calendarSelect is not', () => {
         const validRiteSelect = new RiteSelect( 'en' );
         const notACalendarSelect = {};
@@ -444,7 +459,7 @@ describe( 'ApiOptions.linkToCalendarSelect validation order', () => {
         // attachment, _applyRite) never fired before the throw: had they run
         // first, explicitRite would already be true by the time the
         // calendarSelect validation rejected the array.
-        expect( CurrentEndpoint.explicitRite ).toBe( false );
+        expect( apiOptionsUnderTest._currentEndpoint.explicitRite ).toBe( false );
     } );
 } );
 
@@ -461,7 +476,6 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
     let apiOptions, calendarSelect, riteSelect, pathBuilder, container;
 
     beforeEach( () => {
-        resetCurrentEndpoint();
         calendarSelect = new CalendarSelect( 'en' ).allowNull();
         riteSelect = new RiteSelect( 'en' );
         apiOptions = new ApiOptions( 'en' );
@@ -484,7 +498,7 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
 
         expect( calendarSelect._domElement.value ).toBe( '' );
-        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
+        expect( apiOptions._currentEndpoint.path ).toBe( '/calendar/ambrosian' );
         expect( displayedPath() ).toContain( '/calendar/ambrosian' );
         expect( displayedPath() ).not.toContain( 'roma_it' );
     } );
@@ -502,11 +516,11 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
     it( 'does not re-enter applyRite: a rite change settles on a stable rite rather than looping', () => {
         // Dispatching `change` on the CALENDAR select must not, in turn,
         // trigger the RITE select's `change` listener (the only trigger for
-        // `applyRite`). If it did, `CurrentEndpoint.rite` could not be trusted
+        // `applyRite`). If it did, `apiOptions._currentEndpoint.rite` could not be trusted
         // to hold the rite that was just selected.
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( CurrentEndpoint.rite ).toBe( Rite.AMBROSIAN );
+        expect( apiOptions._currentEndpoint.rite ).toBe( Rite.AMBROSIAN );
         expect( riteSelect._domElement.value ).toBe( Rite.AMBROSIAN );
     } );
 } );
