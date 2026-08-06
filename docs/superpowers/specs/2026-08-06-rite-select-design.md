@@ -120,8 +120,20 @@ not from the schema.
 3. **The nation select is hidden entirely when Ambrosian is selected.**
 4. **Ambrosian dioceses are filtered away from the Roman set and vice versa.**
    They are never shown together.
-5. **The component mirrors the API's declared surface, not its implementation
-   progress or its liturgical correctness.** No interception of error responses.
+5. **The component pre-empts API validation rather than letting requests fail.**
+   Where the component can know a request is invalid — a year below the rite's
+   floor, a temporal option the rite fixes — it constrains the control instead of
+   emitting the request and surfacing the error.
+
+   *This decision was originally recorded the other way round, and the reversal
+   is worth keeping visible.* It was first taken as "mirror the API's declared
+   surface, let failures surface," on the premise that
+   `/calendar/ambrosian/diocese/{id}` returned 501 and the component would
+   otherwise have to model the API's implementation progress. That premise came
+   from `openapi.json`, which was stale — the route works. With no failures left
+   to surface, the only argument for the surfacing posture went with it. A
+   component that knows a request is invalid should say so at the control, not
+   spend a round-trip discovering it.
 6. **The `undefined` guard from the original PR #5 is dropped**, not kept and not
    converted to a warning. See "Accepted trade-offs".
 7. **The rite list is a static enum**, not derived from metadata. Metadata is
@@ -249,28 +261,40 @@ set as `/calendar` — `YearType`, `Epiphany`, `Ascension`, `CorpusChristi`,
 **The dropped guard.** With the rite split, a Roman diocese whose nation has no
 Roman national calendar can only arise from genuinely inconsistent API data. That
 now throws `TypeError` from the unguarded `.find()`, exactly as before this work.
-This is deliberate: the component asserts the API's contract and violations stay
-loud. The cost is real and should be stated plainly — this failure mode surfaces
+This is deliberate, and it is not in tension with decision 5: pre-empting a
+request requires *knowing* it is invalid, and the component cannot know the
+metadata is self-inconsistent until it walks into it. Decision 5 governs rules
+the component holds in advance; this is a violated invariant discovered at
+runtime, which is a different category. The cost is real and should be stated
+plainly — this failure mode surfaces
 as an unhandled rejection inside `async` callers rather than a labelled error,
 which is precisely why it cost a week of red frontend CI before anyone traced it.
 The rite split makes it unreachable via Ambrosian; it remains reachable only via
 inconsistent Roman data.
 
-**Unhandled API failures.** Requests that the API rejects — an out-of-range year,
-an unsupported combination — are not intercepted. The response surfaces.
+**Client-side constraints can drift from the API's.** Per decision 5 the
+component encodes two constraints the API also enforces: the year floor
+(`YearInput.min` = 1976 under Ambrosian, mirroring `AMBROSIAN_YEAR_LOWER_LIMIT`)
+and the four fixed temporal options. Duplicating a rule means it can fall out of
+step — if the API ever lowers the Ambrosian floor, the component silently keeps
+the old one and the failure is an option the user cannot reach, which is quieter
+than a 400. Accepted because both constraints derive from things that do not
+move: the first reformed Ambrosian Missal of 1976, and the praenotanda's fixed
+temporal norms. Both are recorded above with their sources so a future
+divergence is traceable to a specific claim rather than to an unexplained
+constant.
 
-**Year floor is enforced client-side, uniquely.** Setting `YearInput.min` to 1976
-under Ambrosian is the one place the component pre-empts an API validation rather
-than letting it surface. It is justified by being a native `<input type="number">`
-attribute rather than a code path — the constraint is declarative, costs nothing,
-and gives the browser's own affordance instead of a round-trip to a 400.
+The year floor is expressed as a native `<input type="number">` `min` attribute
+rather than a validation code path, so the browser supplies the affordance and
+there is no bespoke error state to maintain.
 
 ## Error handling
 
 | Case | Behaviour |
 | --- | --- |
 | Unknown rite passed programmatically | Throw at construction, matching how `linkToCalendarSelect` already validates `_filter`. A typo'd rite is a caller bug. |
-| API rejects a request | Surface it. No interception. |
+| Request the component knows is invalid | Not emitted. The control is constrained so the state is unreachable — see decision 5. |
+| Request the component cannot know is invalid | Surfaces as the API's response. The component adds no error-handling layer of its own; this is the residue after decision 5, not a policy. |
 | Roman diocese with no national calendar | `TypeError` — see accepted trade-offs. |
 
 ## Testing
@@ -315,16 +339,20 @@ docs, and a `1.4.0 → 1.5.0` version bump.
   behaviour from the default; unblocking its E2E is a pin bump in
   `layout/footer.php:110` and `examples.php:23,76` after the release. The RBAC
   permission form deliberately does not gain a rite picker.
-- **API: reject fixed temporal params for Ambrosian.**
+- **API: reject fixed temporal params for Ambrosian** —
   `validateRiteCompatibility()` currently rejects only a non-null
-  `NationalCalendar` and pre-1976 years; it accepts all four temporal params for
-  Ambrosian, and `openapi.json` advertises them on `/calendar/ambrosian`. Given
-  the praenotanda they should be rejected. Worth checking whether the Ambrosian
-  engine currently *applies* them — if it does, a client can today request an
-  Ambrosian calendar with Ascension moved to Sunday, which the Missal forbids.
-- **API: stale 501 artifacts.** `openapi.json`'s 501 responses on the two
+  `NationalCalendar` and pre-1976 years, and `openapi.json` advertises all four
+  temporal params on `/calendar/ambrosian`. **Being handled separately, in
+  progress.** Worth that work confirming whether the Ambrosian engine currently
+  *applies* them — if it does, a client can today request an Ambrosian calendar
+  with Ascension moved to Sunday, which the Missal forbids.
+- **API: stale 501 artifacts** — `openapi.json`'s 501 responses on the two
   Ambrosian diocesan routes, and the comments at `CalendarHandler.php:1161`
-  and `:4318`.
+  and `:4318`. **Being handled separately, in progress.**
+
+Neither gates this work. The component's behaviour is the same before and after
+both land: decision 5 means it does not emit the requests those changes would
+reject.
 
 ## Open items
 
