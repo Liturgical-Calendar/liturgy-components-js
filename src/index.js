@@ -1,5 +1,6 @@
 import ApiClient from "./ApiClient/ApiClient.js";
 import CalendarSelect from "./CalendarSelect/CalendarSelect.js";
+import RiteSelect from "./RiteSelect/RiteSelect.js";
 import ApiOptions from "./ApiOptions/ApiOptions.js";
 import WebCalendar from "./WebCalendar/WebCalendar.js";
 import LiturgyOfTheDay from "./LiturgyOfTheDay/LiturgyOfTheDay.js";
@@ -12,6 +13,7 @@ import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, ApiOp
 export {
     ApiClient,
     CalendarSelect,
+    RiteSelect,
     ApiOptions,
     WebCalendar,
     LiturgyOfTheDay,
