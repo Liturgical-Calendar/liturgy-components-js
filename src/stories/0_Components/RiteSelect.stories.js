@@ -56,6 +56,10 @@ const meta = {
 
     const riteSelect = new RiteSelect(args);
 
+    if (args.label) {
+        riteSelect.label(args.label);
+    }
+
     if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {

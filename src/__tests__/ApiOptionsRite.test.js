@@ -4,8 +4,9 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import { ApiOptionsFilter, CalendarSelectFilter, Rite } from '../Enums.js';
-import { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
+import { ApiOptionsFilter, CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
+import PathBuilder, { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
+import Messages from '../Messages.js';
 
 /**
  * Same fixture shape as CalendarSelect.test.js: a Roman diocese (roma_it),
@@ -139,6 +140,44 @@ describe( 'ApiOptions rite orchestration', () => {
         expect( apiOptions._yearInput._domElement.min ).toBe( '1970' );
     } );
 
+    it( 'clamps a year below the new floor up to the floor when switching to Ambrosian', () => {
+        // Decision 5 of the design: the component must pre-empt a request the
+        // API would reject rather than let it through and surface the error.
+        // 1970 is a valid Roman year but falls below the Ambrosian floor of
+        // 1976 (`AMBROSIAN_YEAR_LOWER_LIMIT`), so simply raising `min` on the
+        // input is not enough — an already-entered 1970 would sit below its own
+        // floor, an invalid state the API would reject with a 400.
+        apiOptions._yearInput._domElement.value = '1970';
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( apiOptions._yearInput._domElement.value ).toBe( '1976' );
+    } );
+
+    it( 'dispatches a change event on the year input when clamping it', () => {
+        apiOptions._yearInput._domElement.value = '1970';
+        let changeFired = false;
+        apiOptions._yearInput._domElement.addEventListener( 'change', () => { changeFired = true; } );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( changeFired ).toBe( true );
+    } );
+
+    it( 'leaves the year value alone when it already meets the new floor', () => {
+        apiOptions._yearInput._domElement.value = '2000';
+        let changeFired = false;
+        apiOptions._yearInput._domElement.addEventListener( 'change', () => { changeFired = true; } );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( apiOptions._yearInput._domElement.value ).toBe( '2000' );
+        expect( changeFired ).toBe( false );
+    } );
+
     it( 'hides the wrapper rather than the select itself, on the real ApiOptions + RiteSelect integration path', () => {
         // Driven entirely through `linkToCalendarSelect` + a rite change —
         // not a direct `_setHidden` call — so this actually exercises
@@ -161,13 +200,20 @@ describe( 'ApiOptions rite orchestration', () => {
     } );
 
     it( 'labels the empty option per rite in rite-aware mode', () => {
+        // Derived from `Messages.en` via `RiteProperties[rite].emptyOptionLabelKey`
+        // rather than hard-coded, so a key rename in either place cannot leave
+        // this test asserting a stale string that the implementation no longer
+        // produces.
+        const ambrosianLabel = Messages.en[ RiteProperties[ Rite.AMBROSIAN ].emptyOptionLabelKey ];
+        const romanLabel     = Messages.en[ RiteProperties[ Rite.ROMAN ].emptyOptionLabelKey ];
+
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( dioceseSelect._domElement.innerHTML ).toContain( '>Ambrosian Calendar<' );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( `>${ambrosianLabel}<` );
 
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( dioceseSelect._domElement.innerHTML ).toContain( '>General Roman Calendar<' );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( `>${romanLabel}<` );
     } );
 
     it( 'resets the calendar selection to the rite-level calendar on rite change', () => {
@@ -399,5 +445,68 @@ describe( 'ApiOptions.linkToCalendarSelect validation order', () => {
         // first, explicitRite would already be true by the time the
         // calendarSelect validation rejected the array.
         expect( CurrentEndpoint.explicitRite ).toBe( false );
+    } );
+} );
+
+describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite change', () => {
+
+    /**
+     * `PathBuilder` renders its `<code>` path from a `change` listener on the
+     * calendar select it was constructed with. `#handleLinkedRiteSelect` resets
+     * the selection with `cs._domElement.value = ''`, a direct property
+     * assignment that the DOM does NOT turn into a `change` event on its own —
+     * so without dispatching one explicitly, the rendered path stays stale,
+     * still showing whatever was selected before the rite change.
+     */
+    let apiOptions, calendarSelect, riteSelect, pathBuilder, container;
+
+    beforeEach( () => {
+        resetCurrentEndpoint();
+        calendarSelect = new CalendarSelect( 'en' ).allowNull();
+        riteSelect = new RiteSelect( 'en' );
+        apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+        pathBuilder = new PathBuilder( apiOptions, calendarSelect );
+        container = document.createElement( 'div' );
+        pathBuilder.appendTo( container );
+    } );
+
+    // The second <code> element in PathBuilder's markup is the rendered path;
+    // the first is the static "GET" label.
+    const displayedPath = () => container.querySelectorAll( 'code' )[ 1 ].textContent;
+
+    it( 'refreshes the displayed path after a rite change resets the selection', () => {
+        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( displayedPath() ).toContain( '/calendar/roman/diocese/roma_it' );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( calendarSelect._domElement.value ).toBe( '' );
+        expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
+        expect( displayedPath() ).toContain( '/calendar/ambrosian' );
+        expect( displayedPath() ).not.toContain( 'roma_it' );
+    } );
+
+    it( 'does not undo the reset: the calendar selection stays empty after the refresh dispatch', () => {
+        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( calendarSelect._domElement.value ).toBe( '' );
+    } );
+
+    it( 'does not re-enter applyRite: a rite change settles on a stable rite rather than looping', () => {
+        // Dispatching `change` on the CALENDAR select must not, in turn,
+        // trigger the RITE select's `change` listener (the only trigger for
+        // `applyRite`). If it did, `CurrentEndpoint.rite` could not be trusted
+        // to hold the rite that was just selected.
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( CurrentEndpoint.rite ).toBe( Rite.AMBROSIAN );
+        expect( riteSelect._domElement.value ).toBe( Rite.AMBROSIAN );
     } );
 } );

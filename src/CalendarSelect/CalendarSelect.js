@@ -74,18 +74,33 @@ export default class CalendarSelect {
     /**
      * Adds a national calendar to this instance's list of nations that have dioceses.
      *
-     * The `.find()` is deliberately unguarded. After rite filtering, every diocese
-     * reaching this method belongs to a rite that HAS a national tier, and its
-     * nation is guaranteed to have a national calendar. A miss therefore means the
-     * API metadata is self-inconsistent, which is a defect worth failing on rather
-     * than papering over with a fabricated placeholder — an earlier fix did exactly
-     * that and thereby invented a Roman national calendar for CH.
+     * After rite filtering, every diocese reaching this method belongs to a rite
+     * that HAS a national tier, so its nation is EXPECTED to have a national
+     * calendar. A miss therefore means the API metadata is self-inconsistent —
+     * a defect worth failing loudly on, not papering over with a fabricated
+     * placeholder (an earlier fix did exactly that and thereby invented a Roman
+     * national calendar for CH) and not silently pushing `undefined`, which
+     * would only surface later as an unlabelled `TypeError` when `undefined` is
+     * dereferenced inside `#addNationOption` — precisely the failure mode that
+     * cost a week of red CI on the consuming frontend before it was traced.
+     * Throwing here, by name, is what makes the defect diagnosable at the
+     * point it is discovered.
      *
      * @param {string} nation - The nation for which we should add the national calendar.
+     * @throws {Error} If no national calendar exists for `nation` — the metadata is inconsistent.
      * @private
      */
     #addNationalCalendarWithDioceses( nation ) {
         const nationalCalendar = CalendarSelect.#nationalCalendars.find( item => item.calendar_id === nation );
+        if ( undefined === nationalCalendar ) {
+            throw new Error(
+                'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `'
+                + this.#rite + '` rite declares nation `' + nation
+                + '`, but no national calendar exists for that nation. Every diocese reaching '
+                + 'this point should belong to a rite with a national calendar for its nation; '
+                + 'this is a metadata defect, not a recoverable runtime condition.'
+            );
+        }
         this.#nationalCalendarsWithDioceses.push( nationalCalendar );
     }
 
@@ -447,11 +462,11 @@ export default class CalendarSelect {
         if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
             throw new Error('Invalid filter: ' + filter);
         }
-        this.#filter = filter;
-        this.#reapplyOptionsToDom();
         if ( filter !== this.#filter ) {
             this.#filterSet = true;
         }
+        this.#filter = filter;
+        this.#reapplyOptionsToDom();
         return this;
     }
 
@@ -527,6 +542,12 @@ export default class CalendarSelect {
         target.hidden = hidden;
     }
 
+    /**
+     * Gets the liturgical rite this CalendarSelect instance is built for.
+     *
+     * @returns {string} A value from the `Rite` enum (`Rite.ROMAN` by default).
+     * @readonly
+     */
     get _rite() {
         return this.#rite;
     }

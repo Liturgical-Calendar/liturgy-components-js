@@ -342,10 +342,44 @@ export default class ApiOptions {
             this.#applyTemporalInputState( false );
 
             this.#inputs.yearInput.min( riteProps.minYear );
+            // Decision 5: pre-empt an invalid request rather than let it through.
+            // Raising `min` alone leaves an already-entered year below the new
+            // floor untouched — e.g. 1970 (valid Roman) is below the Ambrosian
+            // floor of 1976 — which the API would reject. Clamp it up and notify
+            // listeners with a `change` event, matching how a user edit would.
+            const yearInputElement = this.#inputs.yearInput._domElement;
+            if ( Number( yearInputElement.value ) < riteProps.minYear ) {
+                yearInputElement.value = riteProps.minYear;
+                yearInputElement.dispatchEvent( new Event( 'change' ) );
+            }
             this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
 
             CurrentEndpoint.calendarType = null;
             CurrentEndpoint.calendarId   = null;
+
+            // `PathBuilder` (when constructed on this same select) renders its
+            // `<code>` path from a `change` listener on the calendar select's
+            // DOM element. `cs._domElement.value = ''` above is a direct
+            // property assignment, which the DOM does not turn into a `change`
+            // event on its own, so without this the displayed path goes stale —
+            // still showing whatever was selected before the rite change.
+            // Dispatched only on the CALENDAR select(s), never on the rite
+            // select, so this cannot re-enter `applyRite` (only the rite
+            // select's own `change` listener triggers it), and it runs last so
+            // listeners observe the fully reset state above rather than a
+            // half-updated one.
+            //
+            // The nation selector (when linked as a pair) is deliberately
+            // excluded: `linkToNationsSelect()` attaches its OWN `change`
+            // listener to it that unconditionally re-derives the diocese
+            // select's options for the (now empty) nation value, which would
+            // stomp the flat, ungrouped list `_applyRite()` just built for a
+            // rite with no national tier. Nothing needs that dispatch anyway —
+            // `PathBuilder` is only ever constructed against a single, `none`
+            // filtered `CalendarSelect`, never the nation/diocese pair.
+            selects
+                .filter( cs => cs._filter !== CalendarSelectFilter.NATIONAL_CALENDARS )
+                .forEach( cs => cs._domElement.dispatchEvent( new Event( 'change' ) ) );
         };
 
         riteSelect._domElement.addEventListener( 'change', ( ev ) => applyRite( ev.target.value ) );
@@ -541,6 +575,18 @@ export default class ApiOptions {
      * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
      * selection is reset on every rite change. `CurrentEndpoint.explicitRite` is set to `true`, so the rite segment
      * is always spelled out in the resulting path, even for the Roman rite.
+     *
+     * **`CurrentEndpoint.explicitRite` is a STATIC, GLOBAL, ONE-WAY LATCH**, not
+     * per-instance state: `CurrentEndpoint` is a module-level singleton, so once
+     * ANY `ApiOptions` instance on the page links a `RiteSelect`, EVERY other
+     * `ApiOptions` / `PathBuilder` on that same page starts emitting the explicit
+     * `/calendar/roman/...` form too — including ones that never linked a
+     * `RiteSelect` themselves — and nothing in this method ever sets it back to
+     * `false`. Both forms are the same request (`Router::extractRiteSegment()`
+     * accepts `roman` explicitly), so this is cosmetic rather than a correctness
+     * bug, but a page mixing rite-aware and legacy embeds will see every embed's
+     * displayed path switch to the explicit form as soon as the rite-aware one
+     * links.
      * @returns {ApiOptions} - The ApiOptions instance.
      * @throws {Error} If `riteSelect` is provided but is not an instance of `RiteSelect`.
      */

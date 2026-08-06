@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, jest } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
-import { Rite } from '../Enums.js';
+import { Rite, CalendarSelectFilter } from '../Enums.js';
 
 /**
  * Reproduces the real rite partition. `lugano_ch` is Ambrosian and its nation
@@ -131,5 +131,26 @@ describe( 'CalendarSelect rite validation', () => {
 
     it( 'throws on an unknown rite', () => {
         expect( () => new CalendarSelect().rite( 'byzantine' ) ).toThrow( /Invalid rite/ );
+    } );
+} );
+
+describe( 'CalendarSelect filter() duplicate guard', () => {
+
+    /**
+     * Pins the fix to the dead-code guard in `filter()`: it used to compare
+     * `filter !== this.#filter` AFTER already assigning `this.#filter = filter`,
+     * so the comparison was always false and `#filterSet` never became true.
+     * That let `.filter()` be called any number of times with any values with
+     * no error at all. Comparing BEFORE assigning is what makes a second,
+     * different call actually throw.
+     */
+    it( 'throws when filter() is called a second time with a different value', () => {
+        const cs = new CalendarSelect().filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        expect( () => cs.filter( CalendarSelectFilter.DIOCESAN_CALENDARS ) ).toThrow( /Filter has already been set/ );
+    } );
+
+    it( 'does not throw when filter() is called again with the SAME value', () => {
+        const cs = new CalendarSelect().filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        expect( () => cs.filter( CalendarSelectFilter.NATIONAL_CALENDARS ) ).not.toThrow();
     } );
 } );

@@ -169,7 +169,7 @@ diocese, and neither is a user preference:
 | `hasNationalTier` | `true` | `false` | Whether the nation pass runs at all; whether the nation select is shown |
 | `hasFixedTemporalOptions` | `false` | `true` | Whether Epiphany / Ascension / Corpus Christi / Eternal High Priest inputs are disabled |
 | `minYear` | `1970` | `1976` | `YearInput`'s `min` attribute |
-| `emptyOptionLabel` | General Roman Calendar | Ambrosian Calendar | The rite-level calendar's label, **in rite-aware mode only** |
+| `emptyOptionLabelKey` | `GENERAL_ROMAN_CALENDAR` | `AMBROSIAN_CALENDAR` | The `Messages` key for the rite-level calendar's label, **in rite-aware mode only** |
 
 The empty option currently renders as the literal `---` at three sites
 (`CalendarSelect.js:234`, `236`, `362`). It is *not* labelled "General Roman

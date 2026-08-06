@@ -34,8 +34,12 @@ describe( 'CurrentEndpoint path composition', () => {
     } );
 
     it( 'always emits the ambrosian segment', () => {
-        CurrentEndpoint.rite         = Rite.AMBROSIAN;
-        CurrentEndpoint.explicitRite = true;
+        // Deliberately NOT setting `explicitRite = true` here: `beforeEach`
+        // already leaves it `false`, and setting it would let this test pass
+        // even if Ambrosian stopped emitting on rite alone — it would prove
+        // only that `explicitRite` forces the segment, which the earlier test
+        // already covers.
+        CurrentEndpoint.rite = Rite.AMBROSIAN;
         expect( CurrentEndpoint.path ).toBe( '/calendar/ambrosian' );
 
         CurrentEndpoint.calendarType = CalendarType.DIOCESAN;

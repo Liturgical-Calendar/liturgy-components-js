@@ -57,4 +57,33 @@ describe( 'CalendarSelect against metadata with no rite field (live v5 API)', ()
         expect( cs.diocesesInnerHtml ).not.toContain( 'value="roma_it"' );
         expect( cs.diocesesInnerHtml ).not.toContain( 'value="boston_us"' );
     } );
+
+    it( 'throws an explicit, labelled error — not a TypeError — for a rite-less diocese whose nation has no national calendar', () => {
+        // `lugano_ch` has no `rite` field, matching the live v5 shape, so it is
+        // filtered into the Roman rite by the `?? Rite.ROMAN` fallback. Its
+        // nation `CH` is deliberately absent from `national_calendars`, which is
+        // exactly the self-inconsistent-metadata case the dropped `undefined`
+        // guard used to leave unguarded: `.find()` returns `undefined`, it gets
+        // pushed, and `#addNationOption` dereferences `.calendar_id` on it,
+        // throwing an unlabelled `TypeError` from deep inside `#buildAllOptions`.
+        // The fix must throw its OWN labelled error, naming the nation, before
+        // that dereference ever happens.
+        V5_METADATA.diocesan_calendars.push( {
+            calendar_id: 'lugano_ch',
+            nation: 'CH',
+            diocese: 'Diocesi di Lugano'
+        } );
+
+        let caught = null;
+        try {
+            new CalendarSelect();
+        } catch ( e ) {
+            caught = e;
+        }
+
+        expect( caught ).not.toBeNull();
+        expect( caught ).not.toBeInstanceOf( TypeError );
+        expect( caught.message ).toMatch( /CH/ );
+        expect( caught.message ).toMatch( /inconsistent/i );
+    } );
 } );

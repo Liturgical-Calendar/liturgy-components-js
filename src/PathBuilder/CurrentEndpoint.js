@@ -96,6 +96,19 @@ class CurrentEndpoint {
      */
     static explicitRite   = false;
 
+    /**
+     * Builds the current request path, WITHOUT query parameters.
+     *
+     * Composed from `/calendar`, an optional rite segment (emitted whenever
+     * `rite` is not `Rite.ROMAN`, or `explicitRite` is `true`), an optional
+     * `/{calendarType}/{calendarId}` segment, and an optional trailing
+     * `/{calendarYear}` segment — each included only when its backing static
+     * fields are non-null.
+     *
+     * @returns {string} The request path, e.g. `/calendar`, `/calendar/roman`,
+     *          `/calendar/nation/IT`, or `/calendar/ambrosian/diocese/lugano_ch/2026`.
+     * @readonly
+     */
     static get path() {
         let currentEndpoint = '/calendar';
         if ( CurrentEndpoint.rite !== Rite.ROMAN || CurrentEndpoint.explicitRite ) {
@@ -110,6 +123,17 @@ class CurrentEndpoint {
         return currentEndpoint;
     }
 
+    /**
+     * Builds the full request path, WITH query parameters serialized from the
+     * non-null fields of `RequestPayload`.
+     *
+     * Takes no parameters: it reads `CurrentEndpoint.path` and every field of
+     * `RequestPayload` directly from module state.
+     *
+     * @returns {string} `path` followed by a `?`-prefixed, `&`-joined query
+     *          string for every non-null, non-empty-string `RequestPayload`
+     *          field, or `path` unchanged when no such fields are set.
+     */
     static serialize = () => {
         let parameters = [];
         for (const key in RequestPayload) {

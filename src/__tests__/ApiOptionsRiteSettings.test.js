@@ -124,6 +124,13 @@ describe( 'ApiOptions national settings lookup for a rite with no national tier'
         // a linked RiteSelect.
         const calendarSelect = new CalendarSelect( { locale: 'en', rite: Rite.AMBROSIAN } ).allowNull();
         calendarSelect._domElement.value = 'lugano_ch';
+        // Guards the assignment above: if `lugano_ch` were not a valid option
+        // on this select (e.g. rite filtering excluded it), the assignment
+        // would silently no-op and leave the value at '', and the
+        // `not.toThrow()` below would then be exercising the EMPTY-selection
+        // branch of `linkToCalendarSelect` rather than the diocesan-settings
+        // lookup this test is actually about.
+        expect( calendarSelect._domElement.value ).toBe( 'lugano_ch' );
         const apiOptions = new ApiOptions( 'en' );
 
         expect( () => apiOptions.linkToCalendarSelect( calendarSelect ) ).not.toThrow();

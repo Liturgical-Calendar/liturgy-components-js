@@ -4,14 +4,14 @@ import Utils from '../Utils.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
 
-// `CurrentEndpoint` and `CalendarType` are defined in `./CurrentEndpoint.js` —
-// see the doc comment on the `CurrentEndpoint` class for why that split exists —
-// and re-exported here so that `PathBuilder.js` remains the one module a caller
-// needs to import to reach the whole path-building surface. Note that this is a
-// NEW export, not a compatibility shim: before this branch `PathBuilder.js`
-// exported only its default class, so there are no prior consumers of these two
-// names to keep working.
-export { CurrentEndpoint, CalendarType };
+// `CurrentEndpoint`, `CalendarType` and `RequestPayload` are defined in
+// `./CurrentEndpoint.js` — see the doc comment on the `CurrentEndpoint` class
+// for why that split exists — and re-exported here so that `PathBuilder.js`
+// remains the one module a caller needs to import to reach the whole
+// path-building surface. Note that this is a NEW export, not a compatibility
+// shim: before this branch `PathBuilder.js` exported only its default class,
+// so there are no prior consumers of these three names to keep working.
+export { CurrentEndpoint, CalendarType, RequestPayload };
 
 export default class PathBuilder {
 
