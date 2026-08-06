@@ -140,4 +140,55 @@ const LatinInterface = Object.freeze({
     }
 });
 
-export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType, LatinInterface };
+/**
+ * The liturgical rite a calendar request is computed under.
+ * Mirrors the API's `Rite` backed enum (`src/Enum/Rite.php`): ROMAN is the
+ * default and applies to every pre-existing route, AMBROSIAN is selected by an
+ * optional leading path segment.
+ *
+ * @enum {{ROMAN: 'roman', AMBROSIAN: 'ambrosian'}}
+ */
+const Rite = Object.freeze({
+    ROMAN:     'roman',
+    AMBROSIAN: 'ambrosian'
+});
+
+/**
+ * Structural facts about each rite. These are properties of the RITE, not of a
+ * diocese and not user preferences, which is why they live beside the enum
+ * rather than in component state.
+ *
+ * - `hasNationalTier`: whether the rite has national calendars at all. The
+ *   Ambrosian rite does not; `CalendarParams::validateRiteCompatibility()` in
+ *   the API throws if a national calendar is set for it, and there is no
+ *   `/calendar/ambrosian/nation/...` route.
+ * - `hasFixedTemporalOptions`: whether the rite fixes Epiphany, Ascension,
+ *   Corpus Christi and the Eternal High Priest in its own liturgical books,
+ *   making the corresponding API parameters meaningless. For the Ambrosian rite
+ *   the praenotanda of the reformed Ambrosian Missal fix Epiphany to 6 January
+ *   (n. 34) and Ascension to the fortieth day of Easter (n. 22), and the annual
+ *   table fixes Corpus Domini to the Thursday after Trinity; the Eternal High
+ *   Priest is not established there at all.
+ * - `minYear`: earliest year the rite can be computed for. 1976 is the first
+ *   reformed Ambrosian Missal, mirroring `CalendarParams::AMBROSIAN_YEAR_LOWER_LIMIT`.
+ * - `emptyOptionLabelKey`: the `Messages` key for the rite-level calendar's
+ *   label, used only in rite-aware mode.
+ *
+ * @type {Readonly<Object<string, {hasNationalTier: boolean, hasFixedTemporalOptions: boolean, minYear: number, emptyOptionLabelKey: string}>>}
+ */
+const RiteProperties = Object.freeze({
+    [ Rite.ROMAN ]: Object.freeze({
+        hasNationalTier:         true,
+        hasFixedTemporalOptions: false,
+        minYear:                 1970,
+        emptyOptionLabelKey:     'GENERAL_ROMAN_CALENDAR'
+    }),
+    [ Rite.AMBROSIAN ]: Object.freeze({
+        hasNationalTier:         false,
+        hasFixedTemporalOptions: true,
+        minYear:                 1976,
+        emptyOptionLabelKey:     'AMBROSIAN_CALENDAR'
+    })
+});
+
+export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType, LatinInterface, Rite, RiteProperties };

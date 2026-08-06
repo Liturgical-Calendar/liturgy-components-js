@@ -7,7 +7,7 @@ import LiturgyOfAnyDay from "./LiturgyOfAnyDay/LiturgyOfAnyDay.js";
 import PathBuilder from "./PathBuilder/PathBuilder.js";
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
-import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType } from './Enums.js';
+import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType, Rite, RiteProperties } from './Enums.js';
 
 export {
     ApiClient,
@@ -27,5 +27,7 @@ export {
     GradeDisplay,
     ApiOptionsFilter,
     CalendarSelectFilter,
-    YearType
+    YearType,
+    Rite,
+    RiteProperties
 };
