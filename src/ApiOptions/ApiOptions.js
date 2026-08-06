@@ -11,8 +11,10 @@ import {
     CalendarPathInput
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
-import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
+import { ApiOptionsFilter, CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
+import { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
 import Utils from '../Utils.js';
 
 /**
@@ -186,6 +188,56 @@ export default class ApiOptions {
                 this.#inputs[`${key}Input`]._domElement.value = value;
             }
         });
+    }
+
+    /**
+     * Wire a `RiteSelect` to the linked calendar select(s) and to the four
+     * fixed-temporal-option inputs and the year floor.
+     *
+     * Mirrors what `#handleMultipleLinkedCalendarSelects` already does for the
+     * nation -> diocese chain, one level up: on every rite change it rebuilds
+     * the calendar select(s) for the new rite, shows/hides the nation select
+     * when linked as a pair, applies the rite's structural constraints to the
+     * option inputs, and resets the calendar selection, since a calendar_id
+     * from one rite is never valid under another.
+     *
+     * @param {RiteSelect} riteSelect - The `RiteSelect` instance to wire up.
+     * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The linked CalendarSelect instance(s).
+     * @private
+     */
+    #handleLinkedRiteSelect( riteSelect, calendarSelect ) {
+        const applyRite = ( rite ) => {
+            const riteProps = RiteProperties[ rite ];
+            const selects   = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+
+            CurrentEndpoint.rite = rite;
+
+            selects.forEach( cs => cs._applyRite( rite, true ) );
+
+            if ( Array.isArray( calendarSelect ) ) {
+                const nationSelector = calendarSelect.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS );
+                if ( nationSelector ) {
+                    nationSelector._setHidden( false === riteProps.hasNationalTier );
+                }
+            }
+
+            const fixed = riteProps.hasFixedTemporalOptions;
+            this.#inputs.epiphanyInput.disabled( fixed );
+            this.#inputs.ascensionInput.disabled( fixed );
+            this.#inputs.corpusChristiInput.disabled( fixed );
+            this.#inputs.eternalHighPriestInput.disabled( fixed );
+
+            this.#inputs.yearInput.min( riteProps.minYear );
+
+            // A calendar_id from one rite is never valid under another, so reset to
+            // the rite-level calendar rather than carrying a selection across.
+            selects.forEach( cs => { cs._domElement.value = ''; } );
+            CurrentEndpoint.calendarType = null;
+            CurrentEndpoint.calendarId   = null;
+        };
+
+        riteSelect._domElement.addEventListener( 'change', ( ev ) => applyRite( ev.target.value ) );
+        applyRite( riteSelect._domElement.value );
     }
 
     // TODO: add support for multiple linked calendar selects
@@ -423,11 +475,25 @@ export default class ApiOptions {
      * instances, the API options will be updated accordingly.
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The CalendarSelect instance or
      * an array of two CalendarSelect instances (one for nations and one for dioceses) to link to the ApiOptions instance.
+     * @param {?RiteSelect} [riteSelect=null] - An optional `RiteSelect` instance. When provided, `ApiOptions`
+     * drives the whole rite -> calendar chain: the linked CalendarSelect(s) are rebuilt for the selected rite,
+     * the nation select (when linked as a pair) is hidden for rites with no national tier, the fixed-temporal-option
+     * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
+     * selection is reset on every rite change. `CurrentEndpoint.explicitRite` is set to `true`, so the rite segment
+     * is always spelled out in the resulting path, even for the Roman rite.
      * @returns {ApiOptions} - The ApiOptions instance.
+     * @throws {Error} If `riteSelect` is provided but is not an instance of `RiteSelect`.
      */
-    linkToCalendarSelect(calendarSelect) {
+    linkToCalendarSelect(calendarSelect, riteSelect = null) {
         if (this.#linked) {
             throw new Error('Current ApiOptions instance already linked to another CalendarSelect instance');
+        }
+        if (null !== riteSelect) {
+            if (false === riteSelect instanceof RiteSelect) {
+                throw new Error('ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' + typeof riteSelect);
+            }
+            CurrentEndpoint.explicitRite = true;
+            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
         }
         if (Array.isArray(calendarSelect)) {
             if (calendarSelect.length > 2) {
