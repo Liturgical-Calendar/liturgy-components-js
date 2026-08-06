@@ -57,30 +57,30 @@ webCalendar.appendTo('#calendar-container');
 
 ### Basic Settings
 
-| Method                       | Description                 |
-|------------------------------|-----------------------------|
-| `id(id)`                     | Set table ID                |
-| `class(className)`           | Set table CSS class(es)     |
-| `removeHeaderRow(bool=true)` | Hide the table header row   |
-| `removeCaption(bool=true)`   | Hide the table caption      |
+| Method                       | Description               |
+| ---------------------------- | ------------------------- |
+| `id(id)`                     | Set table ID              |
+| `class(className)`           | Set table CSS class(es)   |
+| `removeHeaderRow(bool=true)` | Hide the table header row |
+| `removeCaption(bool=true)`   | Hide the table caption    |
 
 ### Grouping and Layout
 
-| Method                          | Values                                             | Description                      |
-|---------------------------------|----------------------------------------------------|----------------------------------|
-| `firstColumnGrouping(grouping)` | `Grouping.BY_MONTH`, `BY_LITURGICAL_SEASON`        | Group events in first column     |
-| `psalterWeekColumn(bool=true)`  | boolean                                            | Show psalter week rightmost col  |
-| `monthHeader(bool=true)`        | boolean                                            | Show month header at month start |
-| `columnOrder(order)`            | `ColumnOrder.GRADE_FIRST`, `EVENT_DETAILS_FIRST`   | Order of details and grade cols  |
+| Method                          | Values                                           | Description                      |
+| ------------------------------- | ------------------------------------------------ | -------------------------------- |
+| `firstColumnGrouping(grouping)` | `Grouping.BY_MONTH`, `BY_LITURGICAL_SEASON`      | Group events in first column     |
+| `psalterWeekColumn(bool=true)`  | boolean                                          | Show psalter week rightmost col  |
+| `monthHeader(bool=true)`        | boolean                                          | Show month header at month start |
+| `columnOrder(order)`            | `ColumnOrder.GRADE_FIRST`, `EVENT_DETAILS_FIRST` | Order of details and grade cols  |
 
 ### Color Settings
 
-| Method                        | Values                                         | Description                    |
-|-------------------------------|------------------------------------------------|--------------------------------|
-| `seasonColor(colorAs)`        | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply season color      |
-| `seasonColorColumns(columns)` | `Column.*`                                     | Columns for season color       |
-| `eventColor(colorAs)`         | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply event color       |
-| `eventColorColumns(columns)`  | `Column.*`                                     | Columns for event color        |
+| Method                        | Values                                         | Description               |
+| ----------------------------- | ---------------------------------------------- | ------------------------- |
+| `seasonColor(colorAs)`        | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply season color |
+| `seasonColorColumns(columns)` | `Column.*`                                     | Columns for season color  |
+| `eventColor(colorAs)`         | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply event color  |
+| `eventColorColumns(columns)`  | `Column.*`                                     | Columns for event color   |
 
 ### Column Values
 
@@ -92,7 +92,7 @@ webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 ```
 
 | Value                      | Description              |
-|----------------------------|--------------------------|
+| -------------------------- | ------------------------ |
 | `Column.LITURGICAL_SEASON` | Liturgical season column |
 | `Column.MONTH`             | Month column             |
 | `Column.DATE`              | Date column              |
@@ -104,24 +104,24 @@ webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 
 ### Date and Display Format
 
-| Method                  | Values                                                   | Description              |
-|-------------------------|----------------------------------------------------------|--------------------------|
-| `dateFormat(format)`    | `DateFormat.FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY` | Date display format      |
-| `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display |
-| `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style|
+| Method                  | Values                                                   | Description               |
+| ----------------------- | -------------------------------------------------------- | ------------------------- |
+| `dateFormat(format)`    | `DateFormat.FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY` | Date display format       |
+| `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display  |
+| `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style |
 
 ### Event Handling
 
-| Method                | Description                                        |
-|-----------------------|----------------------------------------------------|
-| `listenTo(apiClient)` | Listen to `calendarFetched` events from ApiClient  |
-| `appendTo(selector)`  | Set target element and render when data arrives    |
+| Method                | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `listenTo(apiClient)` | Listen to `calendarFetched` events from ApiClient |
+| `appendTo(selector)`  | Set target element and render when data arrives   |
 
 ## Reactive Behavior
 
 Unlike other components where `appendTo()` performs a one-time DOM insertion,
 `WebCalendar.appendTo()` stores a reference to the target element.
-When calendar data is fetched, the table is rebuilt and the target element's children are *replaced*.
+When calendar data is fetched, the table is rebuilt and the target element's children are _replaced_.
 This means the calendar updates automatically whenever new data arrives from the ApiClient.
 
 ## Styling with CSS Classes

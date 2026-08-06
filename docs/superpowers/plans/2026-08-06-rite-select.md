@@ -24,31 +24,33 @@
 
 ## File Structure
 
-| File | Responsibility | Change |
-| --- | --- | --- |
-| `src/Enums.js` | `Rite` enum + `RiteProperties` map | Modify |
-| `src/RiteSelect/RiteSelect.js` | The rite `<select>` component | Create |
-| `src/CalendarSelect/CalendarSelect.js` | Rite filtering, nation-pass skip, instance state | Modify |
-| `src/ApiOptions/ApiOptions.js` | `linkToCalendarSelect(cal, riteSelect?)` orchestration | Modify |
-| `src/ApiOptions/Input/YearInput.js` | `min` becomes settable | Modify |
-| `src/PathBuilder/PathBuilder.js` | Rite segment in `CurrentEndpoint` | Modify |
-| `src/Messages.js` | `RITE_ROMAN`, `RITE_AMBROSIAN`, `GENERAL_ROMAN_CALENDAR`, `AMBROSIAN_CALENDAR` for `en` + `it` | Modify |
-| `src/index.js` | Export `RiteSelect`, `Rite` | Modify |
-| `src/__tests__/CalendarSelect.test.js` | Rite filtering + isolation tests | Modify (replaces existing assertions) |
-| `src/__tests__/RiteSelect.test.js` | RiteSelect rendering | Create |
-| `src/__tests__/PathBuilder.test.js` | Path composition | Create |
-| `package.json` | `1.4.0` → `1.5.0` | Modify |
+| File                                   | Responsibility                                                                                 | Change                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `src/Enums.js`                         | `Rite` enum + `RiteProperties` map                                                             | Modify                                |
+| `src/RiteSelect/RiteSelect.js`         | The rite `<select>` component                                                                  | Create                                |
+| `src/CalendarSelect/CalendarSelect.js` | Rite filtering, nation-pass skip, instance state                                               | Modify                                |
+| `src/ApiOptions/ApiOptions.js`         | `linkToCalendarSelect(cal, riteSelect?)` orchestration                                         | Modify                                |
+| `src/ApiOptions/Input/YearInput.js`    | `min` becomes settable                                                                         | Modify                                |
+| `src/PathBuilder/PathBuilder.js`       | Rite segment in `CurrentEndpoint`                                                              | Modify                                |
+| `src/Messages.js`                      | `RITE_ROMAN`, `RITE_AMBROSIAN`, `GENERAL_ROMAN_CALENDAR`, `AMBROSIAN_CALENDAR` for `en` + `it` | Modify                                |
+| `src/index.js`                         | Export `RiteSelect`, `Rite`                                                                    | Modify                                |
+| `src/__tests__/CalendarSelect.test.js` | Rite filtering + isolation tests                                                               | Modify (replaces existing assertions) |
+| `src/__tests__/RiteSelect.test.js`     | RiteSelect rendering                                                                           | Create                                |
+| `src/__tests__/PathBuilder.test.js`    | Path composition                                                                               | Create                                |
+| `package.json`                         | `1.4.0` → `1.5.0`                                                                              | Modify                                |
 
 ---
 
 ### Task 1: `Rite` enum and `RiteProperties` map
 
 **Files:**
+
 - Modify: `src/Enums.js`
 - Modify: `src/index.js`
 - Test: `src/__tests__/Rite.test.js` (create)
 
 **Interfaces:**
+
 - Produces: `Rite` (frozen object, `{ROMAN: 'roman', AMBROSIAN: 'ambrosian'}`) and `RiteProperties` (frozen object keyed by rite value, each entry `{hasNationalTier: boolean, hasFixedTemporalOptions: boolean, minYear: number, emptyOptionLabelKey: string}`). Every later task consumes both.
 - `emptyOptionLabelKey` is a **Messages key name**, not display text. Task 6 adds the keys.
 
@@ -180,10 +182,12 @@ git commit -m "Add the Rite enum and its structural properties map"
 ### Task 2: Filter dioceses by rite and skip the nation pass when the rite has no national tier
 
 **Files:**
+
 - Modify: `src/CalendarSelect/CalendarSelect.js:33` (static → instance), `:80-82` (drop the guard), `:266-300` (`#buildAllOptions`)
 - Modify: `src/__tests__/CalendarSelect.test.js` (replaces the existing assertions)
 
 **Interfaces:**
+
 - Consumes: `Rite`, `RiteProperties` from Task 1.
 - Produces: `CalendarSelect` constructor option `rite` (string, defaults to `Rite.ROMAN`) and chainable `.rite(riteValue)` returning `this`. `CalendarSelect._rite` getter returns the current rite. Task 4 calls `.rite()`.
 
@@ -506,10 +510,12 @@ git commit -m "Filter CalendarSelect dioceses by rite and skip the nation pass w
 ### Task 3: Rite segment in the request path
 
 **Files:**
+
 - Modify: `src/PathBuilder/PathBuilder.js:76-92` (`CurrentEndpoint`)
 - Test: `src/__tests__/PathBuilder.test.js` (create)
 
 **Interfaces:**
+
 - Consumes: `Rite` from Task 1.
 - Produces: `CurrentEndpoint.rite` (string, defaults to `Rite.ROMAN`) and `CurrentEndpoint.explicitRite` (boolean, defaults to `false`). Task 4 sets both.
 
@@ -635,11 +641,13 @@ git commit -m "Emit the rite segment in the request path"
 ### Task 4: The `RiteSelect` component
 
 **Files:**
+
 - Create: `src/RiteSelect/RiteSelect.js`
 - Modify: `src/index.js`
 - Test: `src/__tests__/RiteSelect.test.js` (create)
 
 **Interfaces:**
+
 - Consumes: `Rite`, `RiteProperties` from Task 1; `Messages` for labels.
 - Produces: `RiteSelect` class with constructor `(options)` accepting a locale string or an options object (`{locale, id, class, name}`), chainable `.class()`, `.id()`, `.label()`, `.appendTo()`, and a `_domElement` getter. Task 5 consumes `_domElement` and listens for `change`.
 
@@ -816,9 +824,11 @@ git commit -m "Add the RiteSelect component"
 ### Task 5: Make `YearInput`'s minimum settable
 
 **Files:**
+
 - Modify: `src/ApiOptions/Input/YearInput.js:21`
 
 **Interfaces:**
+
 - Produces: `YearInput.prototype.min( value )` — chainable, sets the DOM `min` attribute, returns `this`. Task 6 calls it.
 
 - [ ] **Step 1: Write the failing test**
@@ -890,9 +900,11 @@ git commit -m "Let YearInput's minimum be raised for rites with a later floor"
 ### Task 6: Message keys for `en` and `it`
 
 **Files:**
+
 - Modify: `src/Messages.js`
 
 **Interfaces:**
+
 - Produces: keys `RITE_ROMAN`, `RITE_AMBROSIAN`, `SELECT_A_RITE`, `GENERAL_ROMAN_CALENDAR`, `AMBROSIAN_CALENDAR` under the `en` and `it` locale objects. All read sites use `?? Messages['en'][key]`.
 
 `Messages.js` carries 83 locales. **Do not machine-translate into all of them.** Add `en` and `it` — `it` because the Ambrosian rite's own language is Italian — and let every other locale fall back to English through the `??` pattern already used at `CalendarPathInput.js:23` and `LiturgyOfAnyDay.js:163`. Translations for the remaining locales are a separate, human task.
@@ -978,10 +990,12 @@ git commit -m "Add rite message keys for en and it, with English fallback elsewh
 ### Task 7: `ApiOptions` orchestration
 
 **Files:**
+
 - Modify: `src/ApiOptions/ApiOptions.js:192-233` (`#handleMultipleLinkedCalendarSelects`), `:440-460` (`linkToCalendarSelect`)
 - Test: `src/__tests__/ApiOptionsRite.test.js` (create)
 
 **Interfaces:**
+
 - Consumes: `Rite`, `RiteProperties` (Task 1); `CalendarSelect.prototype.rite` and `_rite` (Task 2); `CurrentEndpoint.rite` / `.explicitRite` (Task 3); `RiteSelect._domElement` (Task 4); `YearInput.prototype.min` (Task 5); the message keys (Task 6).
 - Produces: `ApiOptions.prototype.linkToCalendarSelect( calendarSelect, riteSelect = null )`.
 
@@ -1171,12 +1185,14 @@ git commit -m "Orchestrate the rite chain from ApiOptions"
 ### Task 8: Docs, story, and release
 
 **Files:**
+
 - Create: `docs/rite-select.md`
 - Modify: `docs/calendar-select.md`, `docs/api-options.md`, `docs/enums.md`, `README.md`
 - Create: `src/stories/0_Components/RiteSelect.stories.js`
 - Modify: `package.json` (`1.4.0` → `1.5.0`)
 
 **Interfaces:**
+
 - Consumes: everything from Tasks 1-7. Adds no new API.
 
 Note `main` carries uncommitted markdownlint work (`lint:md` / `lint:md:fix` scripts, `markdownlint-cli2` dev dependency). If that has landed by the time this task runs, run `yarn lint:md` before committing.

@@ -61,17 +61,17 @@ const riteSelect = new RiteSelect('en-US')
 riteSelect.appendTo('#riteOptions');
 ```
 
-| Method | Description |
-|--------|-------------|
-| `class(className)` | CSS class(es) for the select element |
-| `id(id)` | ID for the select element (without '#') |
-| `name(name)` | Name attribute for the select element |
-| `label(options)` | Configure the label element (`text`, `class`, `id`), or `null` to remove it |
+| Method             | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `class(className)` | CSS class(es) for the select element                                        |
+| `id(id)`           | ID for the select element (without '#')                                     |
+| `name(name)`       | Name attribute for the select element                                       |
+| `label(options)`   | Configure the label element (`text`, `class`, `id`), or `null` to remove it |
 
 ### DOM Insertion Methods (non-chainable)
 
-| Method | Description |
-|--------|-------------|
+| Method               | Description                         |
+| -------------------- | ----------------------------------- |
 | `appendTo(selector)` | Append to the specified DOM element |
 
 ## Instance Properties

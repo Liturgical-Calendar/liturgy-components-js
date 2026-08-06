@@ -26,7 +26,7 @@ individual form controls.
 These are useful for any calendar (General Roman, National, or Diocesan):
 
 | Property             | Type         | Description                     |
-|----------------------|--------------|---------------------------------|
+| -------------------- | ------------ | ------------------------------- |
 | `_yearInput`         | number input | Calendar year                   |
 | `_yearTypeInput`     | select       | Year type (liturgical or civil) |
 | `_localeInput`       | select       | Locale for API response         |
@@ -36,18 +36,18 @@ These are useful for any calendar (General Roman, National, or Diocesan):
 
 These fine-tune the General Roman Calendar when national/diocesan data is not requested:
 
-| Property                      | Type   | Description                               |
-|-------------------------------|--------|-------------------------------------------|
-| `_epiphanyInput`              | select | When Epiphany is celebrated               |
-| `_ascensionInput`             | select | When Ascension is celebrated              |
-| `_corpusChristiInput`         | select | When Corpus Christi is celebrated         |
-| `_eternalHighPriestInput`     | select | Whether Eternal High Priest is celebrated |
-| `_holydaysOfObligationInput`  | select | Holy Days of Obligation settings          |
+| Property                     | Type   | Description                               |
+| ---------------------------- | ------ | ----------------------------------------- |
+| `_epiphanyInput`             | select | When Epiphany is celebrated               |
+| `_ascensionInput`            | select | When Ascension is celebrated              |
+| `_corpusChristiInput`        | select | When Corpus Christi is celebrated         |
+| `_eternalHighPriestInput`    | select | Whether Eternal High Priest is celebrated |
+| `_holydaysOfObligationInput` | select | Holy Days of Obligation settings          |
 
 ### Path Builder Control
 
 | Property             | Type   | Description      |
-|----------------------|--------|------------------|
+| -------------------- | ------ | ---------------- |
 | `_calendarPathInput` | select | API request path |
 
 ## Filtering Form Controls
@@ -121,21 +121,21 @@ apiOptions._acceptHeaderInput.hide();
 
 ### Available Control Methods
 
-| Method                   | Description                                                       |
-|--------------------------|-------------------------------------------------------------------|
-| `class(className)`       | CSS class(es) for the control                                     |
-| `id(id)`                 | ID for the control                                                |
-| `name(name)`             | Name attribute                                                    |
-| `labelClass(className)`  | CSS class(es) for the label                                       |
-| `labelAfter(htmlString)` | HTML to append after label text                                   |
-| `wrapper(tagName)`       | Wrapper element ('div' or 'td')                                   |
-| `wrapperClass(className)`| CSS class(es) for wrapper                                         |
-| `disabled(disabled=true)`| Set disabled state                                                |
-| `data(dataMap)`          | Set data attributes                                               |
-| `defaultValue(value)`    | Set initial/default value                                         |
-| `value(val?)`            | Get or set current value; with argument sets value, returns `this`|
-| `options()`              | Returns array of option values (for select elements only)         |
-| `hide(hide=true)`        | Hide the control                                                  |
+| Method                    | Description                                                        |
+| ------------------------- | ------------------------------------------------------------------ |
+| `class(className)`        | CSS class(es) for the control                                      |
+| `id(id)`                  | ID for the control                                                 |
+| `name(name)`              | Name attribute                                                     |
+| `labelClass(className)`   | CSS class(es) for the label                                        |
+| `labelAfter(htmlString)`  | HTML to append after label text                                    |
+| `wrapper(tagName)`        | Wrapper element ('div' or 'td')                                    |
+| `wrapperClass(className)` | CSS class(es) for wrapper                                          |
+| `disabled(disabled=true)` | Set disabled state                                                 |
+| `data(dataMap)`           | Set data attributes                                                |
+| `defaultValue(value)`     | Set initial/default value                                          |
+| `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
+| `options()`               | Returns array of option values (for select elements only)          |
+| `hide(hide=true)`         | Hide the control                                                   |
 
 ## Linking to CalendarSelect
 

@@ -17,7 +17,7 @@ returns `undefined`, pushes it, and `#buildAllOptions` then dereferences
 `.calendar_id`, throwing `TypeError: Cannot read properties of undefined`.
 
 The crash is the lucky case. Of the four Ambrosian dioceses, three are Italian —
-`milano_it`, `bergam_it`, `novara_it` — and `IT` *does* have a Roman national
+`milano_it`, `bergam_it`, `novara_it` — and `IT` _does_ have a Roman national
 calendar, so they do not throw. They are silently folded into the Italy
 `<optgroup>` alongside Roman Italian dioceses, as though they were Roman. Only
 `lugano_ch` throws, because `CH` is the one Ambrosian nation with no Roman
@@ -60,7 +60,7 @@ contradict plausible assumptions.
 - Four Ambrosian dioceses ship data: `milano_it`, `bergam_it`, `novara_it`,
   `lugano_ch`. Note `bergam_it`, not `bergamo_it`.
 - `ambrosian_calendars[]` holds exactly one entry (`calendar_id: 'ambrosian'`),
-  the *comune ambrosiano*, reachable at `/calendar/ambrosian`.
+  the _comune ambrosiano_, reachable at `/calendar/ambrosian`.
 - `Rite` is a real backed enum in the API (`src/Enum/Rite.php`) with cases
   `roman` and `ambrosian`. `Router::extractRiteSegment()` accepts **both**
   explicitly, so `/calendar/roman/nation/IT` ≡ `/calendar/nation/IT`.
@@ -69,19 +69,19 @@ contradict plausible assumptions.
 
 ### Ambrosian temporal norms
 
-From the *Premesse e praenotanda* of the reformed Ambrosian Missal
+From the _Premesse e praenotanda_ of the reformed Ambrosian Missal
 (`Premesse_praenotanda_portale.pdf`). These settle whether the four Roman
 temporal options mean anything under the Ambrosian rite. **They do not.**
 
-- **Epiphany** — n. 34: *"L'Epifania del Signore si celebra il 6 gennaio."* The
+- **Epiphany** — n. 34: _"L'Epifania del Signore si celebra il 6 gennaio."_ The
   same paragraph goes on to handle the case where 6 January falls on a Monday,
   which only makes sense if the date never moves. The Roman
   `JAN6` / `SUNDAY_JAN2_JAN8` choice has no analogue.
-- **Ascension** — n. 22: *"L'Ascensione del Signore si celebra il quarantesimo
-  giorno di Pasqua."* Always the 40th day, always Thursday.
-  **Do not mis-map the following sentence:** *"Dove lo si ritenga opportuno per
+- **Ascension** — n. 22: _"L'Ascensione del Signore si celebra il quarantesimo
+  giorno di Pasqua."_ Always the 40th day, always Thursday.
+  **Do not mis-map the following sentence:** _"Dove lo si ritenga opportuno per
   ragioni pastorali, i testi propri del Lezionario e del Messale di questa
-  solennità possono essere riproposti anche nella successiva domenica."* That
+  solennità possono essere riproposti anche nella successiva domenica."_ That
   permits the proper **texts** to be repeated on the following Sunday. It does
   not transfer the solemnity, and reading it as the Ambrosian equivalent of the
   Roman Sunday option would move a feast the Missal fixes.
@@ -92,7 +92,7 @@ temporal options mean anything under the Ambrosian rite. **They do not.**
   2026, 24 May → 4 June; 2027, 16 May → 27 May. Never a Sunday across 32
   tabulated years.
 - **Eternal High Priest** — not established by the praenotanda. No occurrence of
-  *sommo ed eterno sacerdote*, no *giovedì dopo Pentecoste* celebration. The one
+  _sommo ed eterno sacerdote_, no _giovedì dopo Pentecoste_ celebration. The one
   `sommo sacerdote` occurrence is theological prose about Christ as high priest
   of the new covenant, not a feast.
 - The Ambrosian rite is available from **1976** onward, the first reformed
@@ -116,13 +116,14 @@ not from the schema.
    every existing path is byte-identical. The consumer upgrade is a pin bump with
    no code change.
 
-   **Rendered markup is deliberately *not* identical**, and must not be claimed
+   **Rendered markup is deliberately _not_ identical**, and must not be claimed
    to be: the four Ambrosian dioceses disappear from the default Roman set. That
    is the bug fix, not a regression — `lugano_ch` stops crashing and
    `milano_it` / `bergam_it` / `novara_it` stop appearing under Italy as though
    they were Roman. Rite filtering always applies, in both modes. What "rite-aware
    mode" (a linked `RiteSelect`) additionally changes is only the explicit path
    segment and the empty-option label.
+
 2. **`ApiOptions` orchestrates the rite → calendar chain**, as it already chains
    nation → diocese.
 3. **The nation select is hidden entirely when Ambrosian is selected.**
@@ -133,8 +134,8 @@ not from the schema.
    floor, a temporal option the rite fixes — it constrains the control instead of
    emitting the request and surfacing the error.
 
-   *This decision was originally recorded the other way round, and the reversal
-   is worth keeping visible.* It was first taken as "mirror the API's declared
+   _This decision was originally recorded the other way round, and the reversal
+   is worth keeping visible._ It was first taken as "mirror the API's declared
    surface, let failures surface," on the premise that
    `/calendar/ambrosian/diocese/{id}` returned 501 and the component would
    otherwise have to model the API's implementation progress. That premise came
@@ -142,10 +143,11 @@ not from the schema.
    to surface, the only argument for the surfacing posture went with it. A
    component that knows a request is invalid should say so at the control, not
    spend a round-trip discovering it.
+
 6. **The `undefined` guard from the original PR #5 is dropped**, not kept and not
    converted to a warning. See "Accepted trade-offs".
 7. **The rite list is a static enum**, not derived from metadata. Metadata is
-   still read for per-diocese `rite` filtering; only the offered *list* is static.
+   still read for per-diocese `rite` filtering; only the offered _list_ is static.
 8. **The explicit `/calendar/roman` form is emitted when a `RiteSelect` is
    linked**, and omitted when one is not.
 
@@ -161,19 +163,19 @@ const Rite = Object.freeze({
 ```
 
 Beside it, one frozen map keyed by rite carrying the structural facts that drive
-UI. Both flags are statements about a *rite's* structure — neither varies by
+UI. Both flags are statements about a _rite's_ structure — neither varies by
 diocese, and neither is a user preference:
 
-| Key | `roman` | `ambrosian` | Drives |
-| --- | --- | --- | --- |
-| `hasNationalTier` | `true` | `false` | Whether the nation pass runs at all; whether the nation select is shown |
-| `hasFixedTemporalOptions` | `false` | `true` | Whether Epiphany / Ascension / Corpus Christi / Eternal High Priest inputs are disabled |
-| `minYear` | `1970` | `1976` | `YearInput`'s `min` attribute |
-| `emptyOptionLabelKey` | `GENERAL_ROMAN_CALENDAR` | `AMBROSIAN_CALENDAR` | The `Messages` key for the rite-level calendar's label, **in rite-aware mode only** |
+| Key                       | `roman`                  | `ambrosian`          | Drives                                                                                  |
+| ------------------------- | ------------------------ | -------------------- | --------------------------------------------------------------------------------------- |
+| `hasNationalTier`         | `true`                   | `false`              | Whether the nation pass runs at all; whether the nation select is shown                 |
+| `hasFixedTemporalOptions` | `false`                  | `true`               | Whether Epiphany / Ascension / Corpus Christi / Eternal High Priest inputs are disabled |
+| `minYear`                 | `1970`                   | `1976`               | `YearInput`'s `min` attribute                                                           |
+| `emptyOptionLabelKey`     | `GENERAL_ROMAN_CALENDAR` | `AMBROSIAN_CALENDAR` | The `Messages` key for the rite-level calendar's label, **in rite-aware mode only**     |
 
 The empty option currently renders as the literal `---` at three sites
-(`CalendarSelect.js:234`, `236`, `362`). It is *not* labelled "General Roman
-Calendar" today; the `allowNull()` docblock says empty *means* the General Roman
+(`CalendarSelect.js:234`, `236`, `362`). It is _not_ labelled "General Roman
+Calendar" today; the `allowNull()` docblock says empty _means_ the General Roman
 Calendar, which is a different thing. So `emptyOptionLabel` introduces a label
 where there was none, and applying it unconditionally would change the rendered
 markup of every existing embed. It is therefore applied **only when a
@@ -207,7 +209,7 @@ nation and diocese, whereas the existing `Input` classes map to query parameters
 
 **Hiding the nation select is not sufficient on its own, and this is the crux of
 the design.** Ambrosian has no national calendars, so filtering `#nationalCalendars`
-by rite yields an empty set. If the nation pass still ran, *every* Ambrosian
+by rite yields an empty set. If the nation pass still ran, _every_ Ambrosian
 diocese would be an orphan and — with the guard dropped — all four would crash,
 not just `lugano_ch`. Skipping the pass is what makes dropping the guard safe.
 
@@ -220,7 +222,7 @@ every instance derives the same list from the same full diocese set, and
 would be a bug — a Roman instance and an Ambrosian instance accumulating into one
 shared list — **but only in the absence of the rebuild reset.**
 
-*Corrected after implementation.* `#buildAllOptions()` resets the derived arrays
+_Corrected after implementation._ `#buildAllOptions()` resets the derived arrays
 at the top, and that reset closes the leak on its own, independently of where the
 array lives; within a single synchronous build, static and instance storage are
 behaviourally indistinguishable. Reverting the field to `static` while keeping
@@ -232,7 +234,7 @@ cross-instance leak cannot fail and would have been decoration.
 
 `#nationalCalendarsWithDioceses` therefore moves from `static` to instance state.
 `#nationalCalendars` and `#diocesanCalendars` stay static: they are the raw
-metadata cache and are correctly shared. Only the *derived* per-rite grouping
+metadata cache and are correctly shared. Only the _derived_ per-rite grouping
 becomes per-instance.
 
 ### Path composition
@@ -240,14 +242,14 @@ becomes per-instance.
 `CurrentEndpoint` gains a `rite` field. The segment is inserted directly after
 `/calendar`, and whether it appears for Roman depends on linkage:
 
-| Selection | No `RiteSelect` linked | `RiteSelect` linked |
-| --- | --- | --- |
-| Roman, rite-level | `/calendar` | `/calendar/roman` |
-| Roman, national | `/calendar/nation/IT` | `/calendar/roman/nation/IT` |
-| Roman, diocesan | `/calendar/diocese/roma_it` | `/calendar/roman/diocese/roma_it` |
-| Ambrosian, rite-level | — | `/calendar/ambrosian` |
-| Ambrosian, diocesan | — | `/calendar/ambrosian/diocese/lugano_ch` |
-| Ambrosian, diocesan + year | — | `/calendar/ambrosian/diocese/lugano_ch/2026` |
+| Selection                  | No `RiteSelect` linked      | `RiteSelect` linked                          |
+| -------------------------- | --------------------------- | -------------------------------------------- |
+| Roman, rite-level          | `/calendar`                 | `/calendar/roman`                            |
+| Roman, national            | `/calendar/nation/IT`       | `/calendar/roman/nation/IT`                  |
+| Roman, diocesan            | `/calendar/diocese/roma_it` | `/calendar/roman/diocese/roma_it`            |
+| Ambrosian, rite-level      | —                           | `/calendar/ambrosian`                        |
+| Ambrosian, diocesan        | —                           | `/calendar/ambrosian/diocese/lugano_ch`      |
+| Ambrosian, diocesan + year | —                           | `/calendar/ambrosian/diocese/lugano_ch/2026` |
 
 Both Roman forms are the same request — `Router::extractRiteSegment()` shifts
 `roman` off and leaves the remainder unchanged. Omitting it when no `RiteSelect`
@@ -277,8 +279,8 @@ Absent, nothing changes. Present, `ApiOptions` subscribes to the rite select's
   The rite-level calendar is the only selection valid in both directions.
 
 The existing enable/disable rule generalises rather than being replaced. It
-becomes: *those four inputs are disabled if the rite fixes them, or if a nation
-or diocese is selected.* `/calendar/ambrosian` accepts exactly the same parameter
+becomes: _those four inputs are disabled if the rite fixes them, or if a nation
+or diocese is selected._ `/calendar/ambrosian` accepts exactly the same parameter
 set as `/calendar` — `YearType`, `Epiphany`, `Ascension`, `CorpusChristi`,
 `EternalHighPriest` and the two headers — so nothing else needs a rite branch.
 
@@ -288,7 +290,7 @@ set as `/calendar` — `YearType`, `Epiphany`, `Ascension`, `CorpusChristi`,
 Roman national calendar can only arise from genuinely inconsistent API data. That
 now throws `TypeError` from the unguarded `.find()`, exactly as before this work.
 This is deliberate, and it is not in tension with decision 5: pre-empting a
-request requires *knowing* it is invalid, and the component cannot know the
+request requires _knowing_ it is invalid, and the component cannot know the
 metadata is self-inconsistent until it walks into it. Decision 5 governs rules
 the component holds in advance; this is a violated invariant discovered at
 runtime, which is a different category. The cost is real and should be stated
@@ -316,12 +318,12 @@ there is no bespoke error state to maintain.
 
 ## Error handling
 
-| Case | Behaviour |
-| --- | --- |
-| Unknown rite passed programmatically | Throw at construction, matching how `linkToCalendarSelect` already validates `_filter`. A typo'd rite is a caller bug. |
-| Request the component knows is invalid | Not emitted. The control is constrained so the state is unreachable — see decision 5. |
+| Case                                         | Behaviour                                                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unknown rite passed programmatically         | Throw at construction, matching how `linkToCalendarSelect` already validates `_filter`. A typo'd rite is a caller bug.                     |
+| Request the component knows is invalid       | Not emitted. The control is constrained so the state is unreachable — see decision 5.                                                      |
 | Request the component cannot know is invalid | Surfaces as the API's response. The component adds no error-handling layer of its own; this is the residue after decision 5, not a policy. |
-| Roman diocese with no national calendar | `TypeError` — see accepted trade-offs. |
+| Roman diocese with no national calendar      | `TypeError` — see accepted trade-offs.                                                                                                     |
 
 ## Testing
 
@@ -332,7 +334,7 @@ test setup and is worth retaining on its own merits. The metadata fixture is
 extended with `rite` fields and an `ambrosian_calendars` entry.
 
 1. **Inverted from the original PR #5** — under Roman, `lugano_ch` is absent
-   *and* no `CH` nation option exists. The current test asserts the opposite
+   _and_ no `CH` nation option exists. The current test asserts the opposite
    ("A nation option for CH must exist so the group is actually selectable"),
    pinning the fabricated `CH` that the maintainer ruling forbids. That assertion
    is replaced, not extended.
@@ -370,7 +372,7 @@ docs, and a `1.4.0 → 1.5.0` version bump.
   `NationalCalendar` and pre-1976 years, and `openapi.json` advertises all four
   temporal params on `/calendar/ambrosian`. **Being handled separately, in
   progress.** Worth that work confirming whether the Ambrosian engine currently
-  *applies* them — if it does, a client can today request an Ambrosian calendar
+  _applies_ them — if it does, a client can today request an Ambrosian calendar
   with Ascension moved to Sunday, which the Missal forbids.
 - **API: stale 501 artifacts** — `openapi.json`'s 501 responses on the two
   Ambrosian diocesan routes, and the comments at `CalendarHandler.php:1161`
