@@ -1,10 +1,14 @@
 # RiteSelect and rite-aware CalendarSelect Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `CalendarSelect` rite-aware and add a `RiteSelect` component orchestrated by `ApiOptions`, so Ambrosian and Roman calendars are never shown together and `lugano_ch` stops crashing the constructor.
+**Goal:** Make `CalendarSelect` rite-aware and add a `RiteSelect` component orchestrated by `ApiOptions`, so Ambrosian and Roman calendars are never shown together and `lugano_ch`
+stops crashing the constructor.
 
-**Architecture:** A frozen `Rite` enum plus a `RiteProperties` map carries four structural facts per rite (national tier, fixed temporal options, minimum year, empty-option label). `CalendarSelect` filters dioceses by rite and skips the nation-grouping pass entirely for a rite with no national tier. A standalone `RiteSelect` is passed as an optional second argument to `ApiOptions.linkToCalendarSelect()`, which drives the chain. Roman remains the default, so embeds that never mention rite keep emitting identical paths.
+**Architecture:** A frozen `Rite` enum plus a `RiteProperties` map carries four structural facts per rite (national tier, fixed temporal options, minimum year, empty-option label).
+`CalendarSelect` filters dioceses by rite and skips the nation-grouping pass entirely for a rite with no national tier. A standalone `RiteSelect` is passed as an optional second
+argument to `ApiOptions.linkToCalendarSelect()`, which drives the chain. Roman remains the default, so embeds that never mention rite keep emitting identical paths.
 
 **Tech Stack:** Vanilla ES modules, Jest 29 in ESM mode (`node --experimental-vm-modules`), Yarn 4 (PnP), TypeScript only for `.d.ts` emission via `tsc`.
 
@@ -15,7 +19,8 @@
 - The four Ambrosian dioceses are `milano_it`, `bergam_it`, `novara_it`, `lugano_ch`. Note `bergam_it`, **not** `bergamo_it`.
 - Ambrosian minimum year is `1976`. Roman minimum year is `1970` (the existing `YearInput.js:21` value).
 - **Never emit `/calendar/ambrosian/nation/...`** — the route does not exist.
-- Existing embeds that do not link a `RiteSelect` must emit byte-identical **paths**. Their rendered **markup** does change: the four Ambrosian dioceses disappear from the Roman set. That is the fix.
+- Existing embeds that do not link a `RiteSelect` must emit byte-identical **paths**. Their rendered **markup** does change: the four Ambrosian dioceses disappear from the Roman
+  set. That is the fix.
 - The empty option currently renders as `---`. Keep `---` unless a `RiteSelect` is linked.
 - Do not machine-translate `Messages.js`. Add new keys for `en` and `it` only; every read site uses the `?? 'English fallback'` pattern already used at `CalendarPathInput.js:23`.
 - Every task ends with a GPG-signed commit. Never pass `--no-gpg-sign`.
@@ -51,7 +56,8 @@
 
 **Interfaces:**
 
-- Produces: `Rite` (frozen object, `{ROMAN: 'roman', AMBROSIAN: 'ambrosian'}`) and `RiteProperties` (frozen object keyed by rite value, each entry `{hasNationalTier: boolean, hasFixedTemporalOptions: boolean, minYear: number, emptyOptionLabelKey: string}`). Every later task consumes both.
+- Produces: `Rite` (frozen object, `{ROMAN: 'roman', AMBROSIAN: 'ambrosian'}`) and `RiteProperties` (frozen object keyed by rite value, each entry `{hasNationalTier: boolean,
+hasFixedTemporalOptions: boolean, minYear: number, emptyOptionLabelKey: string}`). Every later task consumes both.
 - `emptyOptionLabelKey` is a **Messages key name**, not display text. Task 6 adds the keys.
 
 - [ ] **Step 1: Write the failing test**
@@ -189,13 +195,15 @@ git commit -m "Add the Rite enum and its structural properties map"
 **Interfaces:**
 
 - Consumes: `Rite`, `RiteProperties` from Task 1.
-- Produces: `CalendarSelect` constructor option `rite` (string, defaults to `Rite.ROMAN`) and chainable `.rite(riteValue)` returning `this`. `CalendarSelect._rite` getter returns the current rite. Task 4 calls `.rite()`.
+- Produces: `CalendarSelect` constructor option `rite` (string, defaults to `Rite.ROMAN`) and chainable `.rite(riteValue)` returning `this`. `CalendarSelect._rite` getter returns
+  the current rite. Task 4 calls `.rite()`.
 
 This is the core task. Read the spec's "Architecture" section before starting — in particular why skipping the nation pass is what makes dropping the guard safe.
 
 - [ ] **Step 1: Replace the test file's assertions with rite-aware ones**
 
-Replace the whole of `src/__tests__/CalendarSelect.test.js`. The existing file asserts `expect( calendarSelect.nationsInnerHtml ).toContain( 'value="CH"' )` — pinning a fabricated Roman `CH` nation that the maintainer ruling forbids. That assertion is **inverted**, not extended.
+Replace the whole of `src/__tests__/CalendarSelect.test.js`. The existing file asserts `expect( calendarSelect.nationsInnerHtml ).toContain( 'value="CH"' )` — pinning a fabricated
+Roman `CH` nation that the maintainer ruling forbids. That assertion is **inverted**, not extended.
 
 ```js
 import { describe, it, expect, beforeAll, jest } from '@jest/globals';
@@ -306,7 +314,8 @@ describe( 'CalendarSelect rite validation', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `yarn test src/__tests__/CalendarSelect.test.js`
-Expected: FAIL. `.rite()` is not a function; the Roman exclusion tests fail because Ambrosian dioceses are still present; the isolation test fails because `#nationalCalendarsWithDioceses` is static.
+Expected: FAIL. `.rite()` is not a function; the Roman exclusion tests fail because Ambrosian dioceses are still present; the isolation test fails because
+`#nationalCalendarsWithDioceses` is static.
 
 Record which assertions fail. If the isolation test passes at this point, it is not exercising the leak — fix the test before continuing.
 
@@ -352,7 +361,8 @@ Then update the two helpers to be instance methods rather than static, since the
     }
 ```
 
-Update every call site of these two from `CalendarSelect.#has...` / `CalendarSelect.#add...` to `this.#has...` / `this.#add...`, and every read of `CalendarSelect.#nationalCalendarsWithDioceses` to `this.#nationalCalendarsWithDioceses`.
+Update every call site of these two from `CalendarSelect.#has...` / `CalendarSelect.#add...` to `this.#has...` / `this.#add...`, and every read of
+`CalendarSelect.#nationalCalendarsWithDioceses` to `this.#nationalCalendarsWithDioceses`.
 
 - [ ] **Step 4: Add the `.rite()` setter**
 
@@ -415,7 +425,9 @@ Add after the existing `filter()` method:
 
 Add `#riteAware = false;` to the instance fields alongside `#rite`.
 
-`#reapplyOptionsToDom()` is a small private method extracting whatever the constructor already does to push `#nationOptions` / `#dioceseOptionsGrouped` into `#domElement`. Extract it from the constructor rather than duplicating that logic, and call it from both places. It is also where the empty option is emitted, so it is the place to branch on `#riteAware`:
+`#reapplyOptionsToDom()` is a small private method extracting whatever the constructor already does to push `#nationOptions` / `#dioceseOptionsGrouped` into `#domElement`. Extract
+it from the constructor rather than duplicating that logic, and call it from both places. It is also where the empty option is emitted, so it is the place to branch on
+`#riteAware`:
 
 ```js
         const emptyLabel = this.#riteAware
@@ -484,7 +496,8 @@ Replace the body of `#buildAllOptions()` (currently around line 266). Reset the 
     }
 ```
 
-In the no-national-tier branch, `#addDioceseOption` must append to the flat `#dioceseOptionsGrouped` rather than into a per-nation bucket. Adjust `#addDioceseOption` to take the current rite into account, or push directly to `this.#dioceseOptionsGrouped` in that branch — whichever reads better against the existing method.
+In the no-national-tier branch, `#addDioceseOption` must append to the flat `#dioceseOptionsGrouped` rather than into a per-nation bucket. Adjust `#addDioceseOption` to take the
+current rite into account, or push directly to `this.#dioceseOptionsGrouped` in that branch — whichever reads better against the existing method.
 
 Also accept `rite` in the constructor's options object alongside `filter`, `id`, `class`, `name`, calling the same validation as `.rite()`.
 
@@ -622,7 +635,8 @@ class CurrentEndpoint {
 }
 ```
 
-Keep the existing `path` getter's structure; only the rite block is new. If the current implementation builds the string in a method rather than a getter, adapt in place rather than restructuring.
+Keep the existing `path` getter's structure; only the rite block is new. If the current implementation builds the string in a method rather than a getter, adapt in place rather
+than restructuring.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -649,7 +663,8 @@ git commit -m "Emit the rite segment in the request path"
 **Interfaces:**
 
 - Consumes: `Rite`, `RiteProperties` from Task 1; `Messages` for labels.
-- Produces: `RiteSelect` class with constructor `(options)` accepting a locale string or an options object (`{locale, id, class, name}`), chainable `.class()`, `.id()`, `.label()`, `.appendTo()`, and a `_domElement` getter. Task 5 consumes `_domElement` and listens for `change`.
+- Produces: `RiteSelect` class with constructor `(options)` accepting a locale string or an options object (`{locale, id, class, name}`), chainable `.class()`, `.id()`, `.label()`,
+  `.appendTo()`, and a `_domElement` getter. Task 5 consumes `_domElement` and listens for `change`.
 
 Mirror `CalendarSelect`'s public shape (`.class()` at line 379, `.id()` at 416, `.label()` at 480, `.appendTo()` at 822) rather than inventing a new one.
 
@@ -690,7 +705,8 @@ describe( 'RiteSelect', () => {
 } );
 ```
 
-This test needs a real DOM. Add `jsdom` as a dev dependency and put `/** @jest-environment jsdom */` at the top of this file — the `global.document = { createElement: () => ({}) }` stub used by `CalendarSelect.test.js` is not enough for `.value` and `.className`.
+This test needs a real DOM. Add `jsdom` as a dev dependency and put `/** @jest-environment jsdom */` at the top of this file — the `global.document = { createElement: () => ({}) }`
+stub used by `CalendarSelect.test.js` is not enough for `.value` and `.className`.
 
 Run `yarn add --dev jest-environment-jsdom` before writing the test.
 
@@ -907,7 +923,9 @@ git commit -m "Let YearInput's minimum be raised for rites with a later floor"
 
 - Produces: keys `RITE_ROMAN`, `RITE_AMBROSIAN`, `SELECT_A_RITE`, `GENERAL_ROMAN_CALENDAR`, `AMBROSIAN_CALENDAR` under the `en` and `it` locale objects. All read sites use `?? Messages['en'][key]`.
 
-`Messages.js` carries 83 locales. **Do not machine-translate into all of them.** Add `en` and `it` — `it` because the Ambrosian rite's own language is Italian — and let every other locale fall back to English through the `??` pattern already used at `CalendarPathInput.js:23` and `LiturgyOfAnyDay.js:163`. Translations for the remaining locales are a separate, human task.
+`Messages.js` carries 83 locales. **Do not machine-translate into all of them.** Add `en` and `it` — `it` because the Ambrosian rite's own language is Italian — and let every other
+locale fall back to English through the `??` pattern already used at `CalendarPathInput.js:23` and `LiturgyOfAnyDay.js:163`. Translations for the remaining locales are a separate,
+human task.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -996,7 +1014,8 @@ git commit -m "Add rite message keys for en and it, with English fallback elsewh
 
 **Interfaces:**
 
-- Consumes: `Rite`, `RiteProperties` (Task 1); `CalendarSelect.prototype.rite` and `_rite` (Task 2); `CurrentEndpoint.rite` / `.explicitRite` (Task 3); `RiteSelect._domElement` (Task 4); `YearInput.prototype.min` (Task 5); the message keys (Task 6).
+- Consumes: `Rite`, `RiteProperties` (Task 1); `CalendarSelect.prototype.rite` and `_rite` (Task 2); `CurrentEndpoint.rite` / `.explicitRite` (Task 3); `RiteSelect._domElement`
+  (Task 4); `YearInput.prototype.min` (Task 5); the message keys (Task 6).
 - Produces: `ApiOptions.prototype.linkToCalendarSelect( calendarSelect, riteSelect = null )`.
 
 This is the task that ties everything together. Everything it needs already exists and is tested.
@@ -1083,9 +1102,11 @@ describe( 'ApiOptions rite orchestration', () => {
 } );
 ```
 
-Fill in the setup from the existing usage in `src/stories/1_CombinedComponents/CalendarSelectApiOptions.stories.js`, which shows how `ApiOptions` and `CalendarSelect` are wired together. Use the same `METADATA` fixture as `CalendarSelect.test.js` and the same `ApiClient.init()` mock.
+Fill in the setup from the existing usage in `src/stories/1_CombinedComponents/CalendarSelectApiOptions.stories.js`, which shows how `ApiOptions` and `CalendarSelect` are wired
+together. Use the same `METADATA` fixture as `CalendarSelect.test.js` and the same `ApiClient.init()` mock.
 
-The exact accessor for hiding the nation select depends on whether the instance has a wrapper element — check `CalendarSelect`'s `#wrapperElement` / `wrapper()` and hide the wrapper when present, falling back to the select itself.
+The exact accessor for hiding the nation select depends on whether the instance has a wrapper element — check `CalendarSelect`'s `#wrapperElement` / `wrapper()` and hide the
+wrapper when present, falling back to the select itself.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -1154,7 +1175,8 @@ Add the handler:
     }
 ```
 
-`_applyRite( rite, riteAware )` and `_setHidden( hidden )` are both `CalendarSelect` methods **already added in Task 2** — do not redefine them here. Call `cs._applyRite( rite, true )` (the `true` is what switches the empty option from `---` to the rite's label; only `ApiOptions` ever passes it, and only when a `RiteSelect` is linked).
+`_applyRite( rite, riteAware )` and `_setHidden( hidden )` are both `CalendarSelect` methods **already added in Task 2** — do not redefine them here. Call `cs._applyRite( rite,
+true )` (the `true` is what switches the empty option from `---` to the rite's label; only `ApiOptions` ever passes it, and only when a `RiteSelect` is linked).
 
 Import `RiteSelect`, `Rite`, `RiteProperties` and `CurrentEndpoint` at the top of `ApiOptions.js`.
 
@@ -1195,7 +1217,8 @@ git commit -m "Orchestrate the rite chain from ApiOptions"
 
 - Consumes: everything from Tasks 1-7. Adds no new API.
 
-Note `main` carries uncommitted markdownlint work (`lint:md` / `lint:md:fix` scripts, `markdownlint-cli2` dev dependency). If that has landed by the time this task runs, run `yarn lint:md` before committing.
+Note `main` carries uncommitted markdownlint work (`lint:md` / `lint:md:fix` scripts, `markdownlint-cli2` dev dependency). If that has landed by the time this task runs, run `yarn
+lint:md` before committing.
 
 - [ ] **Step 1: Write `docs/rite-select.md`**
 
@@ -1254,6 +1277,9 @@ git commit -m "Document RiteSelect and release 1.5.0"
 
 ## After the plan
 
-Once merged and published to npm, the frontend unblocks by bumping the CDN pin from `@1.4.0` to `@1.5.0` in three places — `layout/footer.php:110`, `examples.php:23`, `examples.php:76` — with no other frontend change. That should turn the red `[rbac]` E2E suite green; confirm by running it rather than assuming, since all 9 failures share one root cause and one fix either clears all of them or none.
+Once merged and published to npm, the frontend unblocks by bumping the CDN pin from `@1.4.0` to `@1.5.0` in three places — `layout/footer.php:110`, `examples.php:23`,
+`examples.php:76` — with no other frontend change. That should turn the red `[rbac]` E2E suite green; confirm by running it rather than assuming, since all 9 failures share one
+root cause and one fix either clears all of them or none.
 
-The two API follow-ups (rejecting the fixed temporal params for Ambrosian, and the stale 501 artifacts in `openapi.json` and `CalendarHandler.php`) are being handled separately and do not gate any of the above.
+The two API follow-ups (rejecting the fixed temporal params for Ambrosian, and the stale 501 artifacts in `openapi.json` and `CalendarHandler.php`) are being handled separately and
+do not gate any of the above.

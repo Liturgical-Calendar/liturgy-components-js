@@ -14,3 +14,8 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# Agent-session scratch: task briefs and reports written during
+# skill-driven development. Working notes, not project documentation.
+# (docs/superpowers/ IS tracked — the design spec and plan live there.)
+.superpowers/

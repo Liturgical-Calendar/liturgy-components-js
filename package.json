@@ -29,8 +29,8 @@
     "storybook:ci": "storybook dev -p 6006 --ci",
     "storybook:build": "storybook build",
     "docker": "yarn compile:watch & yarn storybook:ci",
-    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\"",
-    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\"",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
     "format:md": "prettier --check --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\"",
     "format:md:fix": "prettier --write --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\""
   },
