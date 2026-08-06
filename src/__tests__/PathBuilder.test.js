@@ -91,10 +91,22 @@ describe( 'CurrentEndpoint query parameter serialization', () => {
         expect( endpoint.serialize() ).toBe( '/calendar' );
     } );
 
-    it( 'appends non-null, non-empty parameters and url-encodes their values', () => {
+    it( 'appends non-null, non-empty parameters', () => {
         endpoint.requestPayload.locale      = 'it';
         endpoint.requestPayload.return_type = 'JSON';
         expect( endpoint.serialize() ).toBe( '/calendar?locale=it&return_type=JSON' );
+    } );
+
+    it( 'percent-encodes reserved characters in parameter values', () => {
+        // Not a hypothetical: `AcceptHeaderInput` in its `Accept` mode offers
+        // MIME types (`application/json`, `text/calendar`, ...), and PathBuilder
+        // writes the selected one straight into `return_type`. Left unencoded,
+        // the `/` would read as another path segment rather than as part of the
+        // value. The values in the test above are all encoding-invariant, so
+        // this is the only case here that would fail if `encodeURIComponent`
+        // were dropped from `serialize()`.
+        endpoint.requestPayload.return_type = 'application/json';
+        expect( endpoint.serialize() ).toBe( '/calendar?return_type=application%2Fjson' );
     } );
 
     it( 'skips parameters left null or set to the empty string', () => {

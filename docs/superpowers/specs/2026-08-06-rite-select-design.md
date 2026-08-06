@@ -341,8 +341,21 @@ extended with `rite` fields and an `ambrosian_calendars` entry.
 2. Under Ambrosian, all four dioceses present, flat, with no nation `<optgroup>`
    and no nation options at all.
 3. Roman grouping unchanged — `roma_it` under an `IT` optgroup.
-4. **Instance isolation** — construct a Roman select, then an Ambrosian one, then
-   assert the Roman one's markup is unchanged. Pins the `static` → instance move.
+4. **Rebuild idempotency** — call `_applyRite()` a second time for the rite a
+   select was already built for, and assert its markup is byte-identical. This
+   pins the per-build reset: remove it and the second build re-derives on top of
+   the first build's arrays, duplicating every option.
+
+   _Revised after implementation_, in line with the correction above. As
+   originally planned this item constructed a Roman select, then an Ambrosian
+   one, and asserted the Roman one was unchanged, claiming to pin the `static` →
+   instance move. It does not: `#buildAllOptions()` resets the derived arrays at
+   the top, so that assertion holds under `static` storage too — verified by
+   reverting the field and finding the suite still green. The cross-instance
+   assertion is kept in the suite as documentation, with its non-discriminating
+   nature stated in the test name, and rebuild idempotency is what actually
+   carries the weight here.
+
 5. Path composition across every row of the table above, including both Roman
    forms and the year variant.
 6. Empty-option relabelling per rite.
@@ -351,8 +364,10 @@ extended with `rite` fields and an `ambrosian_calendars` entry.
    Roman with no nation/diocese selected.
 
 **Every one of these must be shown failing before the fix, not merely passing
-after.** Test 4 especially: a leak-free result is indistinguishable from a test
-that never exercised the leak.
+after** — with the single exception of test 4, which is exempt for the reason
+given in that item: rebuild idempotency already holds before the change, so
+there is no failing state to demonstrate. It is a regression guard, not a proof
+of the fix. Do not treat its passing as evidence that the storage move works.
 
 ## Scope
 
