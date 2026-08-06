@@ -79,13 +79,19 @@ describe( 'ApiOptions rite orchestration', () => {
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
         // _setHidden targets the wrapper when one was set via wrapper(), and the
         // select itself otherwise. This setup does not call wrapper(), so assert
-        // on the select. A separate test covers the wrapper case.
+        // on the select. The wrapper case is covered separately below, driven
+        // through the same real ApiOptions + RiteSelect integration path.
         expect( nationSelect._domElement.hidden ).toBe( true );
     } );
 
     it( 'shows the nation select again when returning to Roman', () => {
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        // Intermediate assertion: without this, switching Ambrosian -> Roman
+        // and asserting only the final `false` would also pass if the
+        // Ambrosian hide never fired at all.
+        expect( nationSelect._domElement.hidden ).toBe( true );
+
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
         expect( nationSelect._domElement.hidden ).toBe( false );
@@ -103,6 +109,11 @@ describe( 'ApiOptions rite orchestration', () => {
     it( 're-enables them under Roman with no nation or diocese selected', () => {
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        // Intermediate assertion, for the same reason as the nation-select
+        // round trip above: pins the Ambrosian disabled=true state so this
+        // test can actually fail if the Roman re-enable never happens.
+        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( true );
+
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
         expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( false );
@@ -121,13 +132,25 @@ describe( 'ApiOptions rite orchestration', () => {
         expect( apiOptions._yearInput._domElement.min ).toBe( '1970' );
     } );
 
-    it( 'hides the wrapper rather than the select when a wrapper was set', () => {
-        const wrapped = new CalendarSelect( 'en' )
+    it( 'hides the wrapper rather than the select itself, on the real ApiOptions + RiteSelect integration path', () => {
+        // Driven entirely through `linkToCalendarSelect` + a rite change —
+        // not a direct `_setHidden` call — so this actually exercises
+        // `#handleLinkedRiteSelect`'s wrapper-aware hiding, not just
+        // `CalendarSelect._setHidden` in isolation.
+        const wrappedNationSelect = new CalendarSelect( 'en' )
             .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
-            .wrapper( { class: 'form-group' } );
-        wrapped._setHidden( true );
-        expect( wrapped._domElement.hidden ).toBe( false );
-        expect( wrapped._wrapperElement.hidden ).toBe( true );
+            .wrapper( { class: 'form-group' } )
+            .allowNull();
+        const localDioceseSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS ).allowNull();
+        const localRiteSelect = new RiteSelect( 'en' );
+        const localApiOptions = new ApiOptions( 'en' );
+        localApiOptions.linkToCalendarSelect( [ wrappedNationSelect, localDioceseSelect ], localRiteSelect );
+
+        localRiteSelect._domElement.value = Rite.AMBROSIAN;
+        localRiteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( wrappedNationSelect._domElement.hidden ).toBe( false );
+        expect( wrappedNationSelect._wrapperElement.hidden ).toBe( true );
     } );
 
     it( 'labels the empty option per rite in rite-aware mode', () => {
@@ -171,6 +194,45 @@ describe( 'ApiOptions without a linked RiteSelect (back-compat)', () => {
         const plainSelect = new CalendarSelect( 'en' ).allowNull();
         const plainApiOptions = new ApiOptions( 'en' );
         plainApiOptions.linkToCalendarSelect( plainSelect );
+        expect( CurrentEndpoint.explicitRite ).toBe( false );
+    } );
+
+    it( 'hides no nation select and disables no input by rite when no RiteSelect is linked', () => {
+        // Structurally guaranteed today by the `if (null !== riteSelect)` gate
+        // in `linkToCalendarSelect` — this test exists so a future refactor
+        // that moves rite side effects out from behind that gate breaks a
+        // test, not just an invariant nobody is checking.
+        const plainNationSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.NATIONAL_CALENDARS ).allowNull();
+        const plainDioceseSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS ).allowNull();
+        const plainApiOptions = new ApiOptions( 'en' );
+        plainApiOptions.linkToCalendarSelect( [ plainNationSelect, plainDioceseSelect ] );
+
+        expect( plainNationSelect._domElement.hidden ).toBe( false );
+        expect( plainApiOptions._epiphanyInput._domElement.disabled ).toBe( false );
+        expect( plainApiOptions._ascensionInput._domElement.disabled ).toBe( false );
+        expect( plainApiOptions._corpusChristiInput._domElement.disabled ).toBe( false );
+        expect( plainApiOptions._eternalHighPriestInput._domElement.disabled ).toBe( false );
+    } );
+} );
+
+describe( 'ApiOptions.linkToCalendarSelect validation order', () => {
+
+    beforeEach( () => {
+        resetCurrentEndpoint();
+    } );
+
+    it( 'throws the existing calendarSelect validation error, and leaves CurrentEndpoint untouched, when riteSelect is valid but calendarSelect is not', () => {
+        const validRiteSelect = new RiteSelect( 'en' );
+        const notACalendarSelect = {};
+        const apiOptionsUnderTest = new ApiOptions( 'en' );
+
+        expect( () => apiOptionsUnderTest.linkToCalendarSelect( [ notACalendarSelect ], validRiteSelect ) )
+            .toThrow( /Invalid type for items passed in parameter/ );
+
+        // Proves the rite side effects (CurrentEndpoint mutation, listener
+        // attachment, _applyRite) never fired before the throw: had they run
+        // first, explicitRite would already be true by the time the
+        // calendarSelect validation rejected the array.
         expect( CurrentEndpoint.explicitRite ).toBe( false );
     } );
 } );

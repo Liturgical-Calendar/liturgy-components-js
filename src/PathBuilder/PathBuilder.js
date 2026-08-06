@@ -2,120 +2,12 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
 import ApiClient from '../ApiClient/ApiClient.js';
-import { Rite } from '../Enums.js';
+import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
 
-/**
- * @typedef Epiphany
- * @type {'JAN6' | 'SUNDAY_JAN2_JAN8'}
- * @readonly
- */
-
-/**
- * @typedef Ascension
- * @type {'THURSDAY' | 'SUNDAY'}
- */
-
-/**
- * @typedef CorpusChristi
- * @type {'THURSDAY' | 'SUNDAY'}
- */
-
-/**
- * @typedef EternalHighPriest
- * @type {true | false}
- */
-
-/**
- * @typedef Locale
- * @type {string}
- */
-
-/**
- * @typedef ReturnType
- * @type {'JSON' | 'XML' | 'YML' | 'ICS'}
- */
-
-/**
- * @typedef YearType
- * @type {'CIVIL' | 'LITURGICAL'}
- */
-
-/**
- * @type {{NATIONAL: "nation", DIOCESAN: "diocese"}}
- * @readonly
- * Used in building the endpoint URL for requests to the API /calendar endpoint
- */
-const CalendarType = {
-    NATIONAL: 'nation',
-    DIOCESAN: 'diocese'
-}
-Object.freeze(CalendarType);
-
-
-/**
- * Describes the URL parameters that can be set on the API /calendar endpoint
- */
-class RequestPayload {
-    /** @type {?Locale} - The locale in which the liturgical calendar should be produced */
-    static locale               = null;
-    /** @type {?Epiphany} - Whether Epiphany is to be celebrated on January 6 or on the Sunday between January 2 and January 8 */
-    static epiphany             = null;
-    /** @type {?Ascension} - Whether Ascension is to be celebrated on Thursday or on Sunday */
-    static ascension            = null;
-    /** @type {?CorpusChristi} - Whether Corpus Christi is to be celebrated on Thursday or on Sunday */
-    static corpus_christi       = null;
-    /** @type {?EternalHighPriest} - Whether Eternal High Priest is to be celebrated */
-    static eternal_high_priest  = null;
-    /** @type {?YearType} - Whether the liturgical calendar data should be for the liturgical year or the civil year */
-    static year_type            = null;
-    /** @type {?ReturnType} - The format of the response data */
-    static return_type          = null;
-};
-
-
-/**
- * Used to build the full endpoint URL for the API /calendar endpoint
- */
-class CurrentEndpoint {
-
-    static calendarType   = null;
-    static calendarId     = null;
-    static calendarYear   = null;
-    static rite           = Rite.ROMAN;
-    /**
-     * Whether to spell out the rite segment even for Roman. `Router::extractRiteSegment()`
-     * accepts `roman` explicitly, so `/calendar/roman/nation/IT` and `/calendar/nation/IT`
-     * are the same request. Kept false unless a RiteSelect is linked, so embeds that never
-     * opt into rite awareness emit byte-identical paths.
-     */
-    static explicitRite   = false;
-
-    static get path() {
-        let currentEndpoint = '/calendar';
-        if ( CurrentEndpoint.rite !== Rite.ROMAN || CurrentEndpoint.explicitRite ) {
-            currentEndpoint += `/${CurrentEndpoint.rite}`;
-        }
-        if ( CurrentEndpoint.calendarType !== null && CurrentEndpoint.calendarId !== null ) {
-            currentEndpoint += `/${CurrentEndpoint.calendarType}/${CurrentEndpoint.calendarId}`;
-        }
-        if ( CurrentEndpoint.calendarYear !== null ) {
-            currentEndpoint += `/${CurrentEndpoint.calendarYear}`;
-        }
-        return currentEndpoint;
-    }
-
-    static serialize = () => {
-        let parameters = [];
-        for (const key in RequestPayload) {
-            if(RequestPayload[key] !== null && RequestPayload[key] !== ''){
-                parameters.push(key + "=" + encodeURIComponent(RequestPayload[key]));
-            }
-        }
-        const urlParams = parameters.length ? `?${parameters.join('&')}` : '';
-        return `${CurrentEndpoint.path}${urlParams}`;
-    }
-}
-
+// Re-exported so existing consumers importing `CurrentEndpoint` / `CalendarType`
+// from `PathBuilder.js` keep working unchanged. The canonical definitions now
+// live in `./CurrentEndpoint.js`, which `ApiOptions.js` also imports directly —
+// see the doc comment on the `CurrentEndpoint` class for why that split exists.
 export { CurrentEndpoint, CalendarType };
 
 export default class PathBuilder {

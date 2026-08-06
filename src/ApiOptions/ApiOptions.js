@@ -13,8 +13,8 @@ import {
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
-import { ApiOptionsFilter, CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
-import { CurrentEndpoint } from '../PathBuilder/PathBuilder.js';
+import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
+import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import Utils from '../Utils.js';
 
 /**
@@ -488,12 +488,14 @@ export default class ApiOptions {
         if (this.#linked) {
             throw new Error('Current ApiOptions instance already linked to another CalendarSelect instance');
         }
-        if (null !== riteSelect) {
-            if (false === riteSelect instanceof RiteSelect) {
-                throw new Error('ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' + typeof riteSelect);
-            }
-            CurrentEndpoint.explicitRite = true;
-            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
+        // Type-check only: no side effects here yet. The actual rite wiring
+        // (mutating `CurrentEndpoint`, attaching the rite-change listener,
+        // rebuilding the calendar select(s)) is deferred until AFTER the
+        // `calendarSelect` validation below has fully passed, so a rejected
+        // `calendarSelect` never leaves `CurrentEndpoint` mutated or a
+        // listener attached behind a thrown error.
+        if (null !== riteSelect && false === riteSelect instanceof RiteSelect) {
+            throw new Error('ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' + typeof riteSelect);
         }
         if (Array.isArray(calendarSelect)) {
             if (calendarSelect.length > 2) {
@@ -523,6 +525,15 @@ export default class ApiOptions {
                 throw new Error('ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
             }
             this.#handleSingleLinkedCalendarSelect(calendarSelect);
+        }
+        // Only now, with `calendarSelect` fully validated, do the rite side
+        // effects run: mutating `CurrentEndpoint`, attaching the rite-change
+        // listener, and rebuilding the calendar select(s) for the current
+        // rite. A `riteSelect` rejected above never reaches this point either,
+        // since the type-check threw before we got here.
+        if (null !== riteSelect) {
+            CurrentEndpoint.explicitRite = true;
+            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
         }
         this.#linked = true;
         return this;
