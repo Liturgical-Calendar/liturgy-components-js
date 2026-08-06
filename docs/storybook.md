@@ -69,6 +69,7 @@ STORYBOOK_API_PORT=8092
 ### Image Sizes
 
 The Docker images are approximately:
+
 - API: ~1.09 GB
 - Storybook: ~657 MB
 - Total: ~1.76 GB

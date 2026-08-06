@@ -37,15 +37,23 @@ ApiClient.init().then((apiClient) => {
 
 ## Components
 
-| Component | Description |
-|-----------|-------------|
-| [ApiClient](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-client.md) | Manages API communication and data fetching |
-| [CalendarSelect](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/calendar-select.md) | Dropdown for selecting liturgical calendars |
-| [ApiOptions](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-options.md) | Form controls for API parameters |
-| [WebCalendar](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/web-calendar.md) | Full calendar table with customizable display |
-| [LiturgyOfTheDay / LiturgyOfAnyDay](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md) | Daily liturgy widgets |
-| [PathBuilder](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md) | API URL builder tool |
-| [Utils](https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/utils.md) | Utility functions for locale detection and validation |
+| Component                                   | Description                                         |
+|---------------------------------------------|-----------------------------------------------------|
+| [ApiClient][api-client]                     | Manages API communication and data fetching         |
+| [CalendarSelect][calendar-select]           | Dropdown for selecting liturgical calendars         |
+| [ApiOptions][api-options]                   | Form controls for API parameters                    |
+| [WebCalendar][web-calendar]                 | Full calendar table with customizable display       |
+| [LiturgyOfTheDay / LiturgyOfAnyDay][liturgy]| Daily liturgy widgets                               |
+| [PathBuilder][path-builder]                 | API URL builder tool                                |
+| [Utils][utils]                              | Utility functions for locale detection              |
+
+[api-client]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-client.md
+[calendar-select]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/calendar-select.md
+[api-options]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-options.md
+[web-calendar]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/web-calendar.md
+[liturgy]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md
+[path-builder]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md
+[utils]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/utils.md
 
 ## Documentation
 
@@ -58,12 +66,17 @@ ApiClient.init().then((apiClient) => {
 
 The `examples/` folder contains complete working examples:
 
-| Example | Description |
-|---------|-------------|
-| [LiturgyOfTheDay](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfTheDay) | Today's liturgy with calendar/locale selection |
-| [LiturgyOfAnyDay](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfAnyDay) | Browse any date with lectionary readings |
-| [WebCalendar](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/WebCalendar) | Full calendar table with display options |
-| [PathBuilder](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/PathBuilder) | Interactive API URL builder |
+| Example                            | Description                                    |
+|------------------------------------|------------------------------------------------|
+| [LiturgyOfTheDay][ex-liturgy-day]  | Today's liturgy with calendar/locale selection |
+| [LiturgyOfAnyDay][ex-liturgy-any]  | Browse any date with lectionary readings       |
+| [WebCalendar][ex-webcalendar]      | Full calendar table with display options       |
+| [PathBuilder][ex-pathbuilder]      | Interactive API URL builder                    |
+
+[ex-liturgy-day]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfTheDay
+[ex-liturgy-any]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfAnyDay
+[ex-webcalendar]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/WebCalendar
+[ex-pathbuilder]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/PathBuilder
 
 To run examples:
 

@@ -28,7 +28,9 @@
     "storybook": "storybook dev",
     "storybook:ci": "storybook dev -p 6006 --ci",
     "storybook:build": "storybook build",
-    "docker": "yarn compile:watch & yarn storybook:ci"
+    "docker": "yarn compile:watch & yarn storybook:ci",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\""
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
@@ -42,6 +44,7 @@
     "@yarnpkg/pnpify": "^4.1.2",
     "bootstrap": "^5.3.3",
     "jest": "^29.7.0",
+    "markdownlint-cli2": "^0.19.1",
     "playwright": "^1.57.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

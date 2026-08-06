@@ -18,7 +18,7 @@ php -S localhost:3001
 npx serve -p 3001
 ```
 
-3. Open the example in your browser (e.g., `http://localhost:3001/examples/LiturgyOfTheDay/`)
+1. Open the example in your browser (e.g., `http://localhost:3001/examples/LiturgyOfTheDay/`)
 
 ---
 
@@ -40,11 +40,11 @@ Displays today's liturgical events with calendar and locale selection.
 
 ### Files
 
-| File | Description |
-|------|-------------|
-| `index.html` | HTML structure with Bootstrap |
-| `main.js` | Component setup and configuration |
-| `main.css` | Custom styling for readings and grades |
+| File         | Description                           |
+|--------------|---------------------------------------|
+| `index.html` | HTML structure with Bootstrap         |
+| `main.js`    | Component setup and configuration     |
+| `main.css`   | Custom styling for readings and grades|
 
 ### Key Implementation Details
 
@@ -84,11 +84,11 @@ Browse liturgical events for any date with interactive date controls.
 
 ### Files
 
-| File | Description |
-|------|-------------|
-| `index.html` | HTML structure with Bootstrap |
-| `main.js` | Component setup with date controls |
-| `main.css` | Custom styling with overflow fix |
+| File         | Description                        |
+|--------------|------------------------------------|
+| `index.html` | HTML structure with Bootstrap      |
+| `main.js`    | Component setup with date controls |
+| `main.css`   | Custom styling with overflow fix   |
 
 ### Key Implementation Details
 
@@ -146,11 +146,11 @@ Full liturgical calendar table with customizable display options.
 
 ### Files
 
-| File | Description |
-|------|-------------|
-| `index.html` | HTML structure |
-| `main.js` | WebCalendar setup with full configuration |
-| `main.css` | Styling for grades and liturgical colors |
+| File         | Description                              |
+|--------------|------------------------------------------|
+| `index.html` | HTML structure                           |
+| `main.js`    | WebCalendar setup with full configuration|
+| `main.css`   | Styling for grades and liturgical colors |
 
 ---
 
@@ -171,11 +171,11 @@ Interactive API URL builder for exploring the API.
 
 ### Files
 
-| File | Description |
-|------|-------------|
-| `index.html` | HTML structure |
-| `main.js` | PathBuilder setup |
-| `main.css` | Basic styling |
+| File         | Description       |
+|--------------|-------------------|
+| `index.html` | HTML structure    |
+| `main.js`    | PathBuilder setup |
+| `main.css`   | Basic styling     |
 
 ---
 

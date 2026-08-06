@@ -138,8 +138,23 @@ ApiClient._metadata  // Metadata about available liturgical calendars
 ## Instance Properties
 
 ```javascript
-apiClient._eventBus     // EventEmitter instance for event handling
 apiClient._calendarData // Latest fetched calendar data
-```
+apiClient._eventBus     // EventEmitter instance for event handling (EventEmitter is an internal class that is not exported)
 
-The `_eventBus._events.calendarFetched` can be inspected to see registered event handlers.
+/**
+ * Registers a new callback for an event.
+ *
+ * @param {string} event - The name of the event to register.
+ * @param {function} listener - The callback function to invoke when the event occurs.
+ */
+apiClient._eventBus.on(event, listener)
+
+/**
+ * Emits a specified event, invoking all registered listeners with the provided data.
+ *
+ * @param {string} event - The name of the event to emit.
+ * @param {*} data - The data to pass to each event listener.
+ */
+apiClient._eventBus.emit(event)
+apiClient._eventBus._events // readonly object map of registered events and event handlers
+```

@@ -12,37 +12,42 @@ const apiOptions = new ApiOptions('en-US');
 
 ## Form Controls
 
-The `ApiOptions` class creates nine form controls, exposed as properties with a single underscore prefix (e.g., `_localeInput`). This naming convention indicates these are **intended for advanced configuration** rather than being strictly private. Accessing these properties is the expected pattern for customizing individual form controls.
+The `ApiOptions` class creates nine form controls, exposed as properties with a single underscore prefix
+(e.g., `_localeInput`). This naming convention indicates these are **intended for advanced configuration**
+rather than being strictly private. Accessing these properties is the expected pattern for customizing
+individual form controls.
 
-> **Note:** The single underscore prefix is a JavaScript convention indicating "internal but accessible" properties. These are part of the public API for advanced use cases like custom styling, linking to other components, or reading current values.
+> **Note:** The single underscore prefix is a JavaScript convention indicating "internal but accessible"
+> properties. These are part of the public API for advanced use cases like custom styling, linking to other
+> components, or reading current values.
 
 ### Universal Form Controls
 
 These are useful for any calendar (General Roman, National, or Diocesan):
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `_yearInput` | number input | Calendar year |
-| `_yearTypeInput` | select | Year type (liturgical or civil) |
-| `_localeInput` | select | Locale for API response |
-| `_acceptHeaderInput` | select | Accept header format |
+| Property             | Type         | Description                     |
+|----------------------|--------------|---------------------------------|
+| `_yearInput`         | number input | Calendar year                   |
+| `_yearTypeInput`     | select       | Year type (liturgical or civil) |
+| `_localeInput`       | select       | Locale for API response         |
+| `_acceptHeaderInput` | select       | Accept header format            |
 
 ### General Roman Calendar Controls
 
 These fine-tune the General Roman Calendar when national/diocesan data is not requested:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `_epiphanyInput` | select | When Epiphany is celebrated |
-| `_ascensionInput` | select | When Ascension is celebrated |
-| `_corpusChristiInput` | select | When Corpus Christi is celebrated |
-| `_eternalHighPriestInput` | select | Whether Eternal High Priest is celebrated |
-| `_holydaysOfObligationInput` | select | Holy Days of Obligation settings |
+| Property                      | Type   | Description                               |
+|-------------------------------|--------|-------------------------------------------|
+| `_epiphanyInput`              | select | When Epiphany is celebrated               |
+| `_ascensionInput`             | select | When Ascension is celebrated              |
+| `_corpusChristiInput`         | select | When Corpus Christi is celebrated         |
+| `_eternalHighPriestInput`     | select | Whether Eternal High Priest is celebrated |
+| `_holydaysOfObligationInput`  | select | Holy Days of Obligation settings          |
 
 ### Path Builder Control
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Property             | Type   | Description      |
+|----------------------|--------|------------------|
 | `_calendarPathInput` | select | API request path |
 
 ## Filtering Form Controls
@@ -116,21 +121,21 @@ apiOptions._acceptHeaderInput.hide();
 
 ### Available Control Methods
 
-| Method | Description |
-|--------|-------------|
-| `class(className)` | CSS class(es) for the control |
-| `id(id)` | ID for the control |
-| `name(name)` | Name attribute |
-| `labelClass(className)` | CSS class(es) for the label |
-| `labelAfter(htmlString)` | HTML to append after label text |
-| `wrapper(tagName)` | Wrapper element ('div' or 'td') |
-| `wrapperClass(className)` | CSS class(es) for wrapper |
-| `disabled(disabled=true)` | Set disabled state |
-| `data(dataMap)` | Set data attributes |
-| `defaultValue(value)` | Set initial/default value |
-| `value(val?)` | Get or set current value. Without argument returns current value; with argument sets value and returns instance |
-| `options()` | Returns array of option values (for select elements only) |
-| `hide(hide=true)` | Hide the control |
+| Method                   | Description                                                       |
+|--------------------------|-------------------------------------------------------------------|
+| `class(className)`       | CSS class(es) for the control                                     |
+| `id(id)`                 | ID for the control                                                |
+| `name(name)`             | Name attribute                                                    |
+| `labelClass(className)`  | CSS class(es) for the label                                       |
+| `labelAfter(htmlString)` | HTML to append after label text                                   |
+| `wrapper(tagName)`       | Wrapper element ('div' or 'td')                                   |
+| `wrapperClass(className)`| CSS class(es) for wrapper                                         |
+| `disabled(disabled=true)`| Set disabled state                                                |
+| `data(dataMap)`          | Set data attributes                                               |
+| `defaultValue(value)`    | Set initial/default value                                         |
+| `value(val?)`            | Get or set current value; with argument sets value, returns `this`|
+| `options()`              | Returns array of option values (for select elements only)         |
+| `hide(hide=true)`        | Hide the control                                                  |
 
 ## Linking to CalendarSelect
 
@@ -146,6 +151,7 @@ apiOptions.appendTo('#calendarOptions');
 ```
 
 When linked:
+
 - General Roman controls are populated with the selected calendar's settings and disabled
 - Locale options are filtered based on the selected calendar's supported locales
 

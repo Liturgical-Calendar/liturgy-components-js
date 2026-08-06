@@ -65,27 +65,27 @@ calendarSelect.appendTo('#calendarOptions');
 
 ### Available Methods
 
-| Method | Description |
-|--------|-------------|
-| `class(className)` | CSS class(es) for the select element |
-| `id(id)` | ID for the select element (without '#') |
-| `name(name)` | Name attribute for the select element |
-| `label(options)` | Configure the label element (`text`, `class`, `id`) |
-| `wrapper(options)` | Configure wrapper element (`as`: 'div' or 'td', `class`, `id`) |
-| `disabled(disabled=true)` | Set disabled state |
-| `filter(filter)` | Filter calendar options (see Filtering section) |
-| `allowNull(allowNull=true)` | Include empty option for General Roman Calendar |
-| `after(htmlString)` | HTML content after the select element |
-| `linkToNationsSelect(instance)` | Link to a national calendars select for filtering dioceses |
-| `value(val?)` | Get or set the selected value. Without argument returns current value; with argument sets value and returns instance |
-| `onChange(callback)` | Register a callback for change events. Returns instance for chaining |
+| Method                         | Description                                               |
+|--------------------------------|-----------------------------------------------------------|
+| `class(className)`             | CSS class(es) for the select element                      |
+| `id(id)`                       | ID for the select element (without '#')                   |
+| `name(name)`                   | Name attribute for the select element                     |
+| `label(options)`               | Configure the label element (`text`, `class`, `id`)       |
+| `wrapper(options)`             | Configure wrapper element (`as`: 'div'/'td', `class`)     |
+| `disabled(disabled=true)`      | Set disabled state                                        |
+| `filter(filter)`               | Filter calendar options (see Filtering section)           |
+| `allowNull(allowNull=true)`    | Include empty option for General Roman Calendar           |
+| `after(htmlString)`            | HTML content after the select element                     |
+| `linkToNationsSelect(instance)`| Link to national calendars select for filtering dioceses  |
+| `value(val?)`                  | Get/set value; with arg sets value, returns `this`        |
+| `onChange(callback)`           | Register callback for change events; returns `this`       |
 
 ### DOM Insertion Methods (non-chainable)
 
-| Method | Description |
-|--------|-------------|
-| `appendTo(selector)` | Append to the specified DOM element |
-| `replace(selector)` | Replace the specified DOM element |
+| Method               | Description                        |
+|----------------------|------------------------------------|
+| `appendTo(selector)` | Append to the specified DOM element|
+| `replace(selector)`  | Replace the specified DOM element  |
 
 ## Filtering Calendars
 
@@ -124,7 +124,9 @@ diocesanSelect.appendTo('#diocesanContainer');
 
 ## Instance Properties
 
-Properties with a single underscore prefix are **intended for advanced use cases** such as direct DOM access or reading internal state. This naming convention indicates "internal but accessible" - these are part of the public API for advanced configuration.
+Properties with a single underscore prefix are **intended for advanced use cases** such as direct DOM access
+or reading internal state. This naming convention indicates "internal but accessible" - these are part of the
+public API for advanced configuration.
 
 ```javascript
 calendarSelect._domElement  // The underlying DOM select element

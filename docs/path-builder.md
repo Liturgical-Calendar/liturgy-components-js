@@ -25,20 +25,20 @@ pathBuilder.appendTo('#pathBuilder');
 
 ## Configuration Methods
 
-| Method | Description |
-|--------|-------------|
-| `id(id)` | Set widget element ID |
-| `class(className)` | Set widget CSS class(es) |
-| `buttonClass(className)` | Set button CSS class(es) |
-| `buttonText(text)` | Set button text |
-| `buttonWrapperClass(className)` | Set button wrapper CSS class(es) |
-| `pathWrapperClass(className)` | Set path display wrapper CSS class(es) |
+| Method                         | Description                             |
+|--------------------------------|-----------------------------------------|
+| `id(id)`                       | Set widget element ID                   |
+| `class(className)`             | Set widget CSS class(es)                |
+| `buttonClass(className)`       | Set button CSS class(es)                |
+| `buttonText(text)`             | Set button text                         |
+| `buttonWrapperClass(className)`| Set button wrapper CSS class(es)        |
+| `pathWrapperClass(className)`  | Set path display wrapper CSS class(es)  |
 
 ## DOM Insertion (non-chainable)
 
-| Method | Description |
-|--------|-------------|
-| `appendTo(selector)` | Append to specified DOM element |
+| Method               | Description                      |
+|----------------------|----------------------------------|
+| `appendTo(selector)` | Append to specified DOM element  |
 
 ## Example with Bootstrap Styling
 

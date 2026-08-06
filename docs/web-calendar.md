@@ -57,30 +57,30 @@ webCalendar.appendTo('#calendar-container');
 
 ### Basic Settings
 
-| Method | Description |
-|--------|-------------|
-| `id(id)` | Set table ID |
-| `class(className)` | Set table CSS class(es) |
-| `removeHeaderRow(bool=true)` | Hide the table header row |
-| `removeCaption(bool=true)` | Hide the table caption |
+| Method                       | Description                 |
+|------------------------------|-----------------------------|
+| `id(id)`                     | Set table ID                |
+| `class(className)`           | Set table CSS class(es)     |
+| `removeHeaderRow(bool=true)` | Hide the table header row   |
+| `removeCaption(bool=true)`   | Hide the table caption      |
 
 ### Grouping and Layout
 
-| Method | Values | Description |
-|--------|--------|-------------|
-| `firstColumnGrouping(grouping)` | `Grouping.BY_MONTH`, `Grouping.BY_LITURGICAL_SEASON` | How to group events in the first column |
-| `psalterWeekColumn(bool=true)` | boolean | Show psalter week as rightmost column |
-| `monthHeader(bool=true)` | boolean | Show month header row at start of each month |
-| `columnOrder(order)` | `ColumnOrder.GRADE_FIRST`, `ColumnOrder.EVENT_DETAILS_FIRST` | Order of event details and grade columns |
+| Method                          | Values                                             | Description                      |
+|---------------------------------|----------------------------------------------------|----------------------------------|
+| `firstColumnGrouping(grouping)` | `Grouping.BY_MONTH`, `BY_LITURGICAL_SEASON`        | Group events in first column     |
+| `psalterWeekColumn(bool=true)`  | boolean                                            | Show psalter week rightmost col  |
+| `monthHeader(bool=true)`        | boolean                                            | Show month header at month start |
+| `columnOrder(order)`            | `ColumnOrder.GRADE_FIRST`, `EVENT_DETAILS_FIRST`   | Order of details and grade cols  |
 
 ### Color Settings
 
-| Method | Values | Description |
-|--------|--------|-------------|
-| `seasonColor(colorAs)` | `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE` | How to apply liturgical season color |
-| `seasonColorColumns(columns)` | `Column.*` | Which columns to apply season color to |
-| `eventColor(colorAs)` | `ColorAs.CSS_CLASS`, `ColorAs.BACKGROUND`, `ColorAs.INDICATOR`, `ColorAs.NONE` | How to apply event color |
-| `eventColorColumns(columns)` | `Column.*` | Which columns to apply event color to |
+| Method                        | Values                                         | Description                    |
+|-------------------------------|------------------------------------------------|--------------------------------|
+| `seasonColor(colorAs)`        | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply season color      |
+| `seasonColorColumns(columns)` | `Column.*`                                     | Columns for season color       |
+| `eventColor(colorAs)`         | `ColorAs.CSS_CLASS`, `BACKGROUND`, `INDICATOR` | How to apply event color       |
+| `eventColorColumns(columns)`  | `Column.*`                                     | Columns for event color        |
 
 ### Column Values
 
@@ -91,31 +91,31 @@ Column values can be combined with bitwise OR (`|`):
 webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 ```
 
-| Value | Description |
-|-------|-------------|
+| Value                      | Description              |
+|----------------------------|--------------------------|
 | `Column.LITURGICAL_SEASON` | Liturgical season column |
-| `Column.MONTH` | Month column |
-| `Column.DATE` | Date column |
-| `Column.EVENT_DETAILS` | Event details column |
-| `Column.GRADE` | Liturgical grade column |
-| `Column.PSALTER_WEEK` | Psalter week column |
-| `Column.ALL` | All columns |
-| `Column.NONE` | No columns |
+| `Column.MONTH`             | Month column             |
+| `Column.DATE`              | Date column              |
+| `Column.EVENT_DETAILS`     | Event details column     |
+| `Column.GRADE`             | Liturgical grade column  |
+| `Column.PSALTER_WEEK`      | Psalter week column      |
+| `Column.ALL`               | All columns              |
+| `Column.NONE`              | No columns               |
 
 ### Date and Display Format
 
-| Method | Values | Description |
-|--------|--------|-------------|
-| `dateFormat(format)` | `DateFormat.FULL`, `DateFormat.LONG`, `DateFormat.MEDIUM`, `DateFormat.SHORT`, `DateFormat.DAY_ONLY` | Date display format |
-| `gradeDisplay(display)` | `GradeDisplay.FULL`, `GradeDisplay.ABBREVIATED` | Liturgical grade display |
-| `latinInterface(type)` | `LatinInterface.ECCLESIASTICAL`, `LatinInterface.CIVIL` | Latin weekday names style |
+| Method                  | Values                                                   | Description              |
+|-------------------------|----------------------------------------------------------|--------------------------|
+| `dateFormat(format)`    | `DateFormat.FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY` | Date display format      |
+| `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display |
+| `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style|
 
 ### Event Handling
 
-| Method | Description |
-|--------|-------------|
-| `listenTo(apiClient)` | Listen to `calendarFetched` events from ApiClient |
-| `appendTo(selector)` | Set target element and render when data arrives |
+| Method                | Description                                        |
+|-----------------------|----------------------------------------------------|
+| `listenTo(apiClient)` | Listen to `calendarFetched` events from ApiClient  |
+| `appendTo(selector)`  | Set target element and render when data arrives    |
 
 ## Reactive Behavior
 
@@ -142,6 +142,7 @@ The `WebCalendar` component adds CSS classes to table elements reflecting liturg
 ## Full Example
 
 See the `examples/WebCalendar` folder for a complete working example with:
+
 - CalendarSelect for calendar selection
 - ApiOptions for API parameters
 - WebCalendar listening to ApiClient
