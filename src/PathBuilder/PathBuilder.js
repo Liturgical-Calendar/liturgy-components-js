@@ -2,6 +2,7 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import { Rite } from '../Enums.js';
 
 /**
  * @typedef Epiphany
@@ -80,15 +81,30 @@ class CurrentEndpoint {
     static calendarType   = null;
     static calendarId     = null;
     static calendarYear   = null;
+    static rite           = Rite.ROMAN;
+    /**
+     * Whether to spell out the rite segment even for Roman. `Router::extractRiteSegment()`
+     * accepts `roman` explicitly, so `/calendar/roman/nation/IT` and `/calendar/nation/IT`
+     * are the same request. Kept false unless a RiteSelect is linked, so embeds that never
+     * opt into rite awareness emit byte-identical paths.
+     */
+    static explicitRite   = false;
 
-    static serialize = () => {
+    static get path() {
         let currentEndpoint = '/calendar';
+        if ( CurrentEndpoint.rite !== Rite.ROMAN || CurrentEndpoint.explicitRite ) {
+            currentEndpoint += `/${CurrentEndpoint.rite}`;
+        }
         if ( CurrentEndpoint.calendarType !== null && CurrentEndpoint.calendarId !== null ) {
             currentEndpoint += `/${CurrentEndpoint.calendarType}/${CurrentEndpoint.calendarId}`;
         }
         if ( CurrentEndpoint.calendarYear !== null ) {
             currentEndpoint += `/${CurrentEndpoint.calendarYear}`;
         }
+        return currentEndpoint;
+    }
+
+    static serialize = () => {
         let parameters = [];
         for (const key in RequestPayload) {
             if(RequestPayload[key] !== null && RequestPayload[key] !== ''){
@@ -96,9 +112,11 @@ class CurrentEndpoint {
             }
         }
         const urlParams = parameters.length ? `?${parameters.join('&')}` : '';
-        return `${currentEndpoint}${urlParams}`;
+        return `${CurrentEndpoint.path}${urlParams}`;
     }
 }
+
+export { CurrentEndpoint, CalendarType };
 
 export default class PathBuilder {
 
