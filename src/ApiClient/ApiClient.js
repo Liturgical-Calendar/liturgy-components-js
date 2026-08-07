@@ -213,11 +213,15 @@ export default class ApiClient {
    * @param {string} yearType - The year type (LITURGICAL or CIVIL)
    * @param {string} locale - The locale
    * @param {object} params - Additional parameters (epiphany, ascension, etc.)
+   * @param {'roman' | 'ambrosian'} rite - The liturgical rite. Without this in the
+   *   key, switching rite at the same year, locale and calendar id would be
+   *   answered from the previous rite's cache entry with no request at all.
    * @returns {string} A unique cache key
    * @private
    */
-  #generateCacheKey(category, calendarId, year, yearType, locale, params = {}) {
+  #generateCacheKey(category, calendarId, year, yearType, locale, params = {}, rite = Rite.ROMAN) {
     const keyParts = [
+      rite,
       category || 'general',
       calendarId || '',
       year,
@@ -387,7 +391,7 @@ export default class ApiClient {
     }
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params);
+    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params, this.#currentRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
@@ -395,7 +399,8 @@ export default class ApiClient {
       return;
     }
 
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${year ? `/${year}` : ''}`, {
+    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -437,7 +442,7 @@ export default class ApiClient {
     const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale);
+    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale, {}, this.#currentRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
@@ -445,7 +450,8 @@ export default class ApiClient {
       return;
     }
 
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
+    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -487,7 +493,7 @@ export default class ApiClient {
     const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale);
+    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale, {}, this.#currentRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
@@ -495,7 +501,8 @@ export default class ApiClient {
       return;
     }
 
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
+    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )

@@ -59,3 +59,49 @@ describe( 'ApiClient rite state', () => {
         expect( () => apiClient.rite( null ) ).toThrow( /must be a valid Rite/ );
     } );
 } );
+
+describe( 'ApiClient rite path composition', () => {
+
+    const urlOf = ( callIndex = 0 ) => global.fetch.mock.calls[ callIndex ][ 0 ];
+
+    it( 'emits the roman segment on the base calendar route', () => {
+        apiClient.rite( Rite.ROMAN );
+        apiClient.fetchCalendar();
+        expect( urlOf() ).toContain( '/calendar/roman' );
+    } );
+
+    it( 'emits the ambrosian segment on the base calendar route', () => {
+        apiClient.rite( Rite.AMBROSIAN );
+        apiClient.fetchCalendar();
+        expect( urlOf() ).toContain( '/calendar/ambrosian' );
+    } );
+
+    it( 'places the rite before the diocese segment', () => {
+        apiClient.rite( Rite.AMBROSIAN );
+        apiClient.fetchDiocesanCalendar( 'lugano_ch' );
+        expect( urlOf() ).toContain( '/calendar/ambrosian/diocese/lugano_ch' );
+    } );
+
+    it( 'places the rite before the nation segment', () => {
+        apiClient.rite( Rite.ROMAN );
+        apiClient.fetchNationalCalendar( 'IT' );
+        expect( urlOf() ).toContain( '/calendar/roman/nation/IT' );
+    } );
+} );
+
+describe( 'ApiClient rite cache isolation', () => {
+
+    it( 'does not serve an Ambrosian request from the Roman cache entry', () => {
+        // Without the rite in the cache key this is the dangerous case: same
+        // year, locale and calendar id, so the Ambrosian call would be answered
+        // from the cached Roman calendar with no request at all.
+        apiClient.rite( Rite.ROMAN );
+        apiClient.fetchCalendar();
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+
+        apiClient.rite( Rite.AMBROSIAN );
+        apiClient.fetchCalendar();
+        expect( global.fetch ).toHaveBeenCalledTimes( 2 );
+        expect( global.fetch.mock.calls[ 1 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+    } );
+} );
