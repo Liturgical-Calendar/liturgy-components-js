@@ -39,21 +39,20 @@
     "@playwright/test": "^1.57.0",
     "@popperjs/core": "^2.11.8",
     "@storybook/addon-docs": "^10",
-    "@storybook/html-vite": "^10.0.8",
+    "@storybook/html-vite": "^10.5.7",
     "@types/bootstrap": "^5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@yarnpkg/pnpify": "^4.1.2",
     "bootstrap": "^5.3.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "markdownlint-cli2": "^0.19.1",
+    "markdownlint-cli2": "^0.23.2",
     "playwright": "^1.57.0",
     "prettier": "^3.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "storybook": "^10.0.8",
+    "storybook": "^10.5.7",
     "typescript": "^5.7.2",
-    "vite": "^7.2.4"
+    "vite": "^7.3.6"
   }
 }
