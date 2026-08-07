@@ -1,0 +1,39 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+
+      # GITHUB_TOKEN cannot modify .github/workflows/* files (a hard GitHub
+      # restriction, not something the `permissions:` block above can grant).
+      # Dependabot PRs from the github-actions ecosystem do exactly that, so
+      # without a fallback they fail with "Tried to create or update workflow
+      # without `workflows` permission". WORKFLOW_AUTOMERGE_PAT is an org-level
+      # Actions secret (fine-grained, repo-scoped, Workflows: write) shared with
+      # the sibling repositories. When it is absent this still works for every
+      # non-workflow PR.
+      #
+      # --auto merges once the branch's merge requirements are satisfied. That
+      # gate is only meaningful while `main` requires the CI `verify` check: with
+      # no required check the pull request is mergeable on arrival and this
+      # merges it immediately, CI result notwithstanding.
+      - name: Auto-merge minor and patch updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.WORKFLOW_AUTOMERGE_PAT || secrets.GITHUB_TOKEN }}

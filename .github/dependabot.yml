@@ -1,0 +1,70 @@
+# Dependabot configuration. Unlike the sibling PHP repositories there is no
+# `target-branch` here: this repository's default branch is `main`, and that is
+# also what releases are cut from, so version updates belong there directly.
+
+version: 2
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # Wait 7 days before proposing updates to newly published versions, to
+    # reduce exposure to a compromised or yanked release (supply-chain).
+    cooldown:
+      default-days: 7
+    labels:
+      - 'github-actions'
+    # Batch all action bumps into a single PR. The workflows pin actions by
+    # commit SHA with the version in a trailing comment; Dependabot rewrites
+    # both together, which is the whole reason the pins stay readable.
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # npm/Yarn devDependencies (storybook, vite, typescript, jest, playwright,
+  # markdownlint-cli2, …). Yarn Berry is supported via package.json + yarn.lock.
+  # The published package has zero runtime dependencies, so everything Dependabot
+  # raises here is build- or test-time only and never reaches consumers.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    cooldown:
+      default-days: 7
+    labels:
+      - 'javascript dependencies'
+    # Groups are matched in the order they are declared — a dependency joins the
+    # FIRST group whose patterns match — so every specific group must precede the
+    # catch-all `dev-dependencies`.
+    groups:
+      # storybook core and its addons are hard-locked to one another:
+      # @storybook/html-vite@10.5.7 peer-depends on storybook@^10.5.7, so a lone
+      # addon bump cannot install cleanly. They must move in a single PR.
+      storybook:
+        patterns:
+          - 'storybook'
+          - '@storybook/*'
+      # jest and its environment package share a major line; jest-environment-jsdom
+      # is published in lockstep with jest itself.
+      jest:
+        patterns:
+          - 'jest'
+          - 'jest-environment-*'
+      # react and react-dom must match exactly, and the @types packages track the
+      # runtime major they describe.
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      # The playwright driver and its test runner are released together and
+      # refuse to run against a mismatched pair.
+      playwright:
+        patterns:
+          - 'playwright'
+          - '@playwright/*'
+      dev-dependencies:
+        patterns:
+          - '*'
