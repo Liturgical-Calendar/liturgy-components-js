@@ -11,8 +11,10 @@ import {
     CalendarPathInput
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiClient from '../ApiClient/ApiClient.js';
-import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
+import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
+import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import Utils from '../Utils.js';
 
 /**
@@ -98,6 +100,30 @@ export default class ApiOptions {
 
     #filter                = ApiOptionsFilter.NONE;
     #filtersSet            = [];
+
+    /**
+     * Whether the currently selected rite fixes the four temporal options
+     * (Epiphany, Ascension, Corpus Christi, Eternal High Priest) itself.
+     *
+     * Only ever set by `#handleLinkedRiteSelect`, so it stays `false` for
+     * embeds that never link a `RiteSelect` — for them the enable/disable rule
+     * reduces to the calendar-selection half it has always been.
+     *
+     * @type {boolean}
+     */
+    #riteFixesTemporalOptions = false;
+
+    /**
+     * This instance's endpoint state — path segments plus query parameters.
+     *
+     * One per `ApiOptions`, never shared: the `PathBuilder` constructed against
+     * this instance reads it via the `_currentEndpoint` getter, so two embeds on
+     * one page cannot overwrite each other's rite, calendar or year. See the doc
+     * comment on `CurrentEndpoint` for why this is instance state.
+     *
+     * @type {CurrentEndpoint}
+     */
+    #currentEndpoint = new CurrentEndpoint();
 
     /**
      * Constructs an instance of the ApiOptions class, initializing various input components
@@ -188,48 +214,308 @@ export default class ApiOptions {
         });
     }
 
+    /**
+     * Applies, underneath a diocese's own settings, the settings of the national
+     * calendar the diocese belongs to — but ONLY for a rite that has a national
+     * tier.
+     *
+     * For a rite with `hasNationalTier === false` there is no national tier to
+     * consult, so the lookup is skipped entirely rather than guarded with a
+     * fallback or a placeholder. Both failure modes it removes are real:
+     *
+     * - `lugano_ch` is Ambrosian and its nation `CH` has no national calendar
+     *   at all, so the lookup returned `undefined` and `.settings` threw a
+     *   `TypeError` from inside a `change` listener, where it surfaced as an
+     *   unhandled exception with no labelled error;
+     * - `milano_it` / `bergam_it` / `novara_it` are Ambrosian but their nation
+     *   `IT` DOES have a (Roman) national calendar, so the lookup silently
+     *   applied Italy's Roman settings to an Ambrosian diocese.
+     *
+     * The rite is read from the CalendarSelect itself rather than from a linked
+     * `RiteSelect`, so a select built for a rite through the constructor option
+     * is handled the same way as one driven by a rite select.
+     *
+     * @param {CalendarSelect} calendarSelect - The linked calendar select the diocese was chosen from.
+     * @param {Object} diocesanCalendar - The selected diocesan calendar's metadata entry.
+     * @private
+     */
+    #applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar ) {
+        if ( false === RiteProperties[ calendarSelect._rite ].hasNationalTier ) {
+            return;
+        }
+        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find( nationCalendarObj => nationCalendarObj.calendar_id === diocesanCalendar.nation );
+        //console.info('handling national calendar settings for diocesan calendar:', nationalCalendarForDiocese.settings);
+        this.#applySettingsToInputs( nationalCalendarForDiocese.settings );
+    }
+
+    /**
+     * Applies the enable/disable rule for the temporal option inputs.
+     *
+     * The rule composes two independent halves, and BOTH must hold for an input
+     * to be enabled:
+     *
+     * - the rite must not fix the celebration itself (the Ambrosian Missal
+     *   fixes Epiphany to 6 January, Ascension to the fortieth day of Easter
+     *   and Corpus Domini to the Thursday after Trinity, and does not establish
+     *   the Eternal High Priest at all);
+     * - no nation or diocese may be selected, since a selected calendar carries
+     *   its own settings for these.
+     *
+     * Implementing only the rite half is what let a user return to the
+     * rite-level empty option under Ambrosian and re-enable the inputs, making
+     * `/calendar/ambrosian?ascension=SUNDAY` reachable — a request that moves a
+     * feast the Missal fixes.
+     *
+     * Holy days of obligation are not fixed by any rite, so they follow the
+     * calendar-selection half alone.
+     *
+     * @param {boolean} calendarSelected - Whether a nation or diocese is currently selected.
+     * @private
+     */
+    #applyTemporalInputState( calendarSelected ) {
+        const fixedTemporalDisabled = calendarSelected || this.#riteFixesTemporalOptions;
+        this.#inputs.epiphanyInput.disabled( fixedTemporalDisabled );
+        this.#inputs.ascensionInput.disabled( fixedTemporalDisabled );
+        this.#inputs.corpusChristiInput.disabled( fixedTemporalDisabled );
+        this.#inputs.eternalHighPriestInput.disabled( fixedTemporalDisabled );
+        this.#inputs.holydaysOfObligationInput.disabled( calendarSelected );
+    }
+
+    /**
+     * Enables or disables the `/calendar/nation/` route offered by the
+     * calendar path input, according to whether the rite has a national tier.
+     *
+     * There is no `/calendar/ambrosian/nation/...` route: the API rejects a
+     * non-null national calendar for a rite with no national tier outright. If
+     * that route was already selected when the rite changed, the selection
+     * falls back to the rite-level route.
+     *
+     * @param {boolean} hasNationalTier
+     * @private
+     */
+    /**
+     * Narrows the locale input to the locales the rite-level calendar is actually
+     * published in.
+     *
+     * The Ambrosian rite has liturgical books in Italian and Latin only, and the
+     * API's metadata says so — `ambrosian_calendars[].locales` is `['it','la']`.
+     * Without this the select kept offering every locale the API supports
+     * globally, so a user could request an Ambrosian calendar in a language that
+     * has no Ambrosian books behind it.
+     *
+     * Looks the rite up by convention rather than by branching on it: metadata
+     * announces a rite's own calendars under `{rite}_calendars`. The Roman rite
+     * has no such key, because its rite-level calendar is the General Roman
+     * Calendar, served in every locale the API supports — so the absence of the
+     * key correctly falls back to the full list.
+     *
+     * Only the RITE-LEVEL calendar is handled here. Once an actual nation or
+     * diocese is selected, its own `locales` take over via
+     * `setOptionsForCalendarLocales()` on the calendar-select path.
+     *
+     * @param {string} rite - The newly selected rite.
+     * @private
+     */
+    #applyRiteToLocaleInput( rite ) {
+        const riteCalendars = ApiClient._metadata?.[ `${rite}_calendars` ];
+        const riteLevelCalendar = Array.isArray( riteCalendars )
+            ? riteCalendars.find( calendar => calendar.calendar_id === rite )
+            : null;
+
+        if ( Array.isArray( riteLevelCalendar?.locales ) && riteLevelCalendar.locales.length > 0 ) {
+            this.#inputs.localeInput.setOptionsForCalendarLocales( riteLevelCalendar.locales );
+        } else {
+            this.#inputs.localeInput.resetOptions();
+        }
+    }
+
+    #applyRiteToCalendarPathInput( hasNationalTier ) {
+        const calendarPathElement = this.#inputs.calendarPathInput._domElement;
+        const nationPathOption = calendarPathElement.querySelector( 'option[value="/calendar/nation/"]' );
+        if ( null === nationPathOption ) {
+            return;
+        }
+        nationPathOption.disabled = false === hasNationalTier;
+        if ( nationPathOption.disabled && calendarPathElement.value === nationPathOption.value ) {
+            calendarPathElement.value = '/calendar';
+            calendarPathElement.dispatchEvent( new Event( 'change' ) );
+        }
+    }
+
+    /**
+     * Wire a `RiteSelect` to the linked calendar select(s) and to the four
+     * fixed-temporal-option inputs and the year floor.
+     *
+     * Mirrors what `#handleMultipleLinkedCalendarSelects` already does for the
+     * nation -> diocese chain, one level up: on every rite change it rebuilds
+     * the calendar select(s) for the new rite, shows/hides the nation select
+     * when linked as a pair, applies the rite's structural constraints to the
+     * option inputs, and resets the calendar selection, since a calendar_id
+     * from one rite is never valid under another.
+     *
+     * @param {RiteSelect} riteSelect - The `RiteSelect` instance to wire up.
+     * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The linked CalendarSelect instance(s).
+     * @private
+     */
+    #handleLinkedRiteSelect( riteSelect, calendarSelect ) {
+        const applyRite = ( rite ) => {
+            const riteProps = RiteProperties[ rite ];
+            const selects   = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+
+            this.#currentEndpoint.rite = rite;
+            this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
+
+            // A calendar_id from one rite is never valid under another, so reset to
+            // the rite-level calendar rather than carrying a selection across.
+            // Cleared BEFORE the rebuild as well as after: a diocese select linked
+            // to a nation select via `linkToNationsSelect()` re-derives its
+            // per-nation filtering from the nation select's CURRENT value inside
+            // `_applyRite()`, and that value must already be the reset one rather
+            // than the outgoing rite's — otherwise the rebuilt diocese list is
+            // filtered for a nation that is no longer selected.
+            selects.forEach( cs => { cs._domElement.value = ''; } );
+            selects.forEach( cs => cs._applyRite( rite, true ) );
+            selects.forEach( cs => { cs._domElement.value = ''; } );
+
+            if ( Array.isArray( calendarSelect ) ) {
+                const nationSelector = calendarSelect.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS );
+                if ( nationSelector ) {
+                    nationSelector._setHidden( false === riteProps.hasNationalTier );
+                }
+            }
+
+            // The selection has just been reset to the rite-level calendar, so the
+            // calendar-selection half of the rule is false here; the rite half is
+            // carried by `#riteFixesTemporalOptions`, set above.
+            this.#applyTemporalInputState( false );
+
+            this.#inputs.yearInput.min( riteProps.minYear );
+            // Decision 5: pre-empt an invalid request rather than let it through.
+            // Raising `min` alone leaves an already-entered year below the new
+            // floor untouched — e.g. 1970 (valid Roman) is below the Ambrosian
+            // floor of 1976 — which the API would reject. Clamp it up and notify
+            // listeners with a `change` event, matching how a user edit would.
+            const yearInputElement = this.#inputs.yearInput._domElement;
+            if ( Number( yearInputElement.value ) < riteProps.minYear ) {
+                yearInputElement.value = riteProps.minYear;
+                yearInputElement.dispatchEvent( new Event( 'change' ) );
+            }
+            this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
+            this.#applyRiteToLocaleInput( rite );
+
+            this.#currentEndpoint.calendarType = null;
+            this.#currentEndpoint.calendarId   = null;
+
+            // `PathBuilder` (when constructed on this same select) renders its
+            // `<code>` path from a `change` listener on the calendar select's
+            // DOM element. `cs._domElement.value = ''` above is a direct
+            // property assignment, which the DOM does not turn into a `change`
+            // event on its own, so without this the displayed path goes stale —
+            // still showing whatever was selected before the rite change.
+            // Dispatched only on the CALENDAR select(s), never on the rite
+            // select, so this cannot re-enter `applyRite` (only the rite
+            // select's own `change` listener triggers it), and it runs last so
+            // listeners observe the fully reset state above rather than a
+            // half-updated one.
+            //
+            // The nation selector (when linked as a pair) is deliberately
+            // excluded: `linkToNationsSelect()` attaches its OWN `change`
+            // listener to it that unconditionally re-derives the diocese
+            // select's options for the (now empty) nation value, which would
+            // stomp the flat, ungrouped list `_applyRite()` just built for a
+            // rite with no national tier. Nothing needs that dispatch anyway —
+            // `PathBuilder` is only ever constructed against a single, `none`
+            // filtered `CalendarSelect`, never the nation/diocese pair.
+            selects
+                .filter( cs => cs._filter !== CalendarSelectFilter.NATIONAL_CALENDARS )
+                .forEach( cs => cs._domElement.dispatchEvent( new Event( 'change' ) ) );
+        };
+
+        riteSelect._domElement.addEventListener( 'change', ( ev ) => applyRite( ev.target.value ) );
+        applyRite( riteSelect._domElement.value );
+    }
+
+    /**
+     * Applies a selected calendar's own settings and locales to the option inputs.
+     *
+     * Extracted so both linked forms behave alike. This work used to be inlined
+     * in `#handleSingleLinkedCalendarSelect()` only — twice, once at link time and
+     * once in its change listener — while the paired nation/diocese form did none
+     * of it, so picking a calendar there left the locale select offering every
+     * locale the API supports and the inputs showing settings from a different
+     * calendar.
+     *
+     * @param {CalendarSelect} calendarSelect - The select the calendar was chosen
+     *   in. Supplies the rite, which decides whether a diocese inherits national
+     *   settings.
+     * @param {string} calendarId - The selected `calendar_id`.
+     * @param {?string} calendarType - `national` or `diocesan`, from the option's
+     *   `data-calendartype`.
+     * @param {boolean} [notify=false] - Whether to dispatch `change` on the locale
+     *   input afterwards, so a listening `ApiClient` picks the new locale up. Not
+     *   wanted at link time, when nothing has changed yet.
+     * @returns {boolean} `false` if `calendarType` is neither known value, so each
+     *   caller can keep its own handling of that case — the link-time path throws,
+     *   the change paths ignore it.
+     * @private
+     */
+    #applyCalendarToInputs( calendarSelect, calendarId, calendarType, notify = false ) {
+        switch ( calendarType ) {
+            case 'national': {
+                const nationalCalendar = ApiClient._metadata.national_calendars.find( obj => obj.calendar_id === calendarId );
+                this.#applySettingsToInputs( nationalCalendar.settings );
+                this.#inputs.localeInput.setOptionsForCalendarLocales( nationalCalendar.locales );
+                break;
+            }
+            case 'diocesan': {
+                const diocesanCalendar = ApiClient._metadata.diocesan_calendars.find( obj => obj.calendar_id === calendarId );
+                this.#applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar );
+                if ( Object.hasOwn( diocesanCalendar, 'settings' ) ) {
+                    this.#applySettingsToInputs( diocesanCalendar.settings );
+                }
+                this.#inputs.localeInput.setOptionsForCalendarLocales( diocesanCalendar.locales );
+                break;
+            }
+            default:
+                return false;
+        }
+        if ( notify ) {
+            this.#inputs.localeInput._domElement.dispatchEvent( new Event( 'change' ) );
+        }
+        return true;
+    }
+
     // TODO: add support for multiple linked calendar selects
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
         const nationSelector = calendarSelects[0]._filter === CalendarSelectFilter.NATIONAL_CALENDARS ? calendarSelects[0] : calendarSelects[1];
         const dioceseSelector = calendarSelects[0]._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ? calendarSelects[0] : calendarSelects[1];
-        nationSelector._domElement.addEventListener('change', (ev) => {
-            // TODO: set selected values based on selected calendar
-            // TODO: set available options for locale select based on selected calendar
-            if (ev.target.value === '' && dioceseSelector._domElement.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
+
+        /**
+         * Both selects describe ONE calendar between them, so both listeners run
+         * the same routine over the combined state rather than each reacting only
+         * to its own element.
+         *
+         * The more specific selection wins: a diocese carries its own locales and
+         * inherits its nation's settings, so once one is chosen the nation adds
+         * nothing. With neither chosen the calendar is the rite-level one.
+         */
+        const applySelection = () => {
+            const nationValue  = nationSelector._domElement.value;
+            const dioceseValue = dioceseSelector._domElement.value;
+
+            if ( dioceseValue !== '' ) {
+                this.#applyCalendarToInputs( dioceseSelector, dioceseValue, 'diocesan', true );
+            } else if ( nationValue !== '' ) {
+                this.#applyCalendarToInputs( nationSelector, nationValue, 'national', true );
             } else {
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
+                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
             }
-        });
-        dioceseSelector._domElement.addEventListener('change', (ev) => {
-            // TODO: set selected values based on selected calendar
-            // TODO: set available options for locale select based on selected calendar
-            if (ev.target.value === '' && nationSelector._domElement.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
-            } else {
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
-            }
-        });
+
+            this.#applyTemporalInputState( nationValue !== '' || dioceseValue !== '' );
+        };
+
+        nationSelector._domElement.addEventListener('change', applySelection);
+        dioceseSelector._domElement.addEventListener('change', applySelection);
     }
 
 
@@ -273,90 +559,29 @@ export default class ApiOptions {
         let currentSelectedCalendarId = calendarSelect._domElement.value;
         if (currentSelectedCalendarId !== '') {
             let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
-            switch(currentSelectedCalendarType) {
-                case 'national': {
-                    const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId);
-                    const {settings, locales} = selectedNationalCalendar;
-                    //console.info('handling national calendar settings while linking to calendar select:', settings);
-                    this.#applySettingsToInputs(settings);
-                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                    break;
-                }
-                case 'diocesan': {
-                    const selectedDiocesanCalendar = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId);
-                    const {nation, locales} = selectedDiocesanCalendar;
-                    const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
-                    const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                    //console.info('handling national calendar settings for diocesan calendar while linking to calendar select:', nationalCalendarForDioceseSettings);
-                    this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
-                    if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
-                        const {settings} = selectedDiocesanCalendar;
-                        //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
-                        this.#applySettingsToInputs(settings);
-                    }
-                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                    break;
-                }
-                default:
-                    throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
+            if ( false === this.#applyCalendarToInputs( calendarSelect, currentSelectedCalendarId, currentSelectedCalendarType ) ) {
+                throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
             }
-            this.#inputs.epiphanyInput.disabled(true);
-            this.#inputs.ascensionInput.disabled(true);
-            this.#inputs.corpusChristiInput.disabled(true);
-            this.#inputs.eternalHighPriestInput.disabled(true);
-            this.#inputs.holydaysOfObligationInput.disabled(true);
+            this.#applyTemporalInputState( true );
         } else {
-            this.#inputs.epiphanyInput.disabled(false);
-            this.#inputs.ascensionInput.disabled(false);
-            this.#inputs.corpusChristiInput.disabled(false);
-            this.#inputs.eternalHighPriestInput.disabled(false);
-            this.#inputs.holydaysOfObligationInput.disabled(false);
-            this.#inputs.localeInput.resetOptions();
+            this.#applyTemporalInputState( false );
+            // An empty selection IS the rite-level calendar, so offer that
+            // calendar's locales rather than every locale the API supports.
+            // Falls back to the full list for a rite that does not restrict
+            // them, which is what the Roman rite does.
+            this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
             if (ev.target.value === '') {
-                // all API options enabled
-                this.#inputs.epiphanyInput.disabled(false);
-                this.#inputs.ascensionInput.disabled(false);
-                this.#inputs.corpusChristiInput.disabled(false);
-                this.#inputs.eternalHighPriestInput.disabled(false);
-                this.#inputs.holydaysOfObligationInput.disabled(false);
-                this.#inputs.localeInput.resetOptions();
+                this.#applyTemporalInputState( false );
+                // See above: empty means the rite-level calendar.
+                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
-                switch(selectedCalendarType) {
-                    case 'national': {
-                        const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value);
-                        const {settings, locales} = selectedNationalCalendar;
-                        //console.info('handling national calendar settings following change event:', settings);
-                        this.#applySettingsToInputs(settings);
-                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
-                        break;
-                    }
-                    case 'diocesan': {
-                        const selectedDiocese = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === ev.target.value);
-                        const {nation, locales} = selectedDiocese;
-                        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === nation);
-                        const nationalCalendarForDioceseSettings = nationalCalendarForDiocese.settings;
-                        //console.info('handling national calendar settings for diocesan calendar following change event:', nationalCalendarForDioceseSettings);
-                        this.#applySettingsToInputs(nationalCalendarForDioceseSettings);
-                        if (selectedDiocese.hasOwnProperty('settings')) {
-                            const {settings} = selectedDiocese;
-                            //console.info('handling diocesan calendar settings following change event:', settings);
-                            this.#applySettingsToInputs(settings);
-                        }
-                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
-                        break;
-                    }
-                }
-                // all API options disabled
-                this.#inputs.epiphanyInput.disabled(true);
-                this.#inputs.ascensionInput.disabled(true);
-                this.#inputs.corpusChristiInput.disabled(true);
-                this.#inputs.eternalHighPriestInput.disabled(true);
-                this.#inputs.holydaysOfObligationInput.disabled(true);
+                // An unrecognised type is ignored here rather than thrown, as it
+                // always has been on this path.
+                this.#applyCalendarToInputs( calendarSelect, ev.target.value, selectedCalendarType, true );
+                this.#applyTemporalInputState( true );
             }
         });
     }
@@ -423,11 +648,35 @@ export default class ApiOptions {
      * instances, the API options will be updated accordingly.
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The CalendarSelect instance or
      * an array of two CalendarSelect instances (one for nations and one for dioceses) to link to the ApiOptions instance.
+     * @param {?RiteSelect} [riteSelect=null] - An optional `RiteSelect` instance. When provided, `ApiOptions`
+     * drives the whole rite -> calendar chain: the linked CalendarSelect(s) are rebuilt for the selected rite,
+     * the nation select (when linked as a pair) is hidden for rites with no national tier, the fixed-temporal-option
+     * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
+     * selection is reset on every rite change. This instance's `explicitRite` is set to `true`, so the rite segment
+     * is always spelled out in the resulting path, even for the Roman rite.
+     *
+     * `explicitRite` is scoped to THIS instance's `CurrentEndpoint` (see `_currentEndpoint`),
+     * so linking a `RiteSelect` here affects only the `PathBuilder` constructed against this
+     * same `ApiOptions`. A page mixing rite-aware and legacy embeds keeps the legacy embeds'
+     * displayed paths byte-identical to what they were before rite awareness existed. Note
+     * that it is still one-way WITHIN this instance — `linkToCalendarSelect` throws on a
+     * second call, so there is no supported way to un-link a `RiteSelect` and revert to the
+     * implicit form.
      * @returns {ApiOptions} - The ApiOptions instance.
+     * @throws {Error} If `riteSelect` is provided but is not an instance of `RiteSelect`.
      */
-    linkToCalendarSelect(calendarSelect) {
+    linkToCalendarSelect(calendarSelect, riteSelect = null) {
         if (this.#linked) {
             throw new Error('Current ApiOptions instance already linked to another CalendarSelect instance');
+        }
+        // Type-check only: no side effects here yet. The actual rite wiring
+        // (mutating `CurrentEndpoint`, attaching the rite-change listener,
+        // rebuilding the calendar select(s)) is deferred until AFTER the
+        // `calendarSelect` validation below has fully passed, so a rejected
+        // `calendarSelect` never leaves `CurrentEndpoint` mutated or a
+        // listener attached behind a thrown error.
+        if (null !== riteSelect && false === riteSelect instanceof RiteSelect) {
+            throw new Error('ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' + typeof riteSelect);
         }
         if (Array.isArray(calendarSelect)) {
             if (calendarSelect.length > 2) {
@@ -457,6 +706,15 @@ export default class ApiOptions {
                 throw new Error('ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
             }
             this.#handleSingleLinkedCalendarSelect(calendarSelect);
+        }
+        // Only now, with `calendarSelect` fully validated, do the rite side
+        // effects run: mutating `CurrentEndpoint`, attaching the rite-change
+        // listener, and rebuilding the calendar select(s) for the current
+        // rite. A `riteSelect` rejected above never reaches this point either,
+        // since the type-check threw before we got here.
+        if (null !== riteSelect) {
+            this.#currentEndpoint.explicitRite = true;
+            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
         }
         this.#linked = true;
         return this;
@@ -644,5 +902,21 @@ export default class ApiOptions {
      */
     get _filtersSet() {
         return this.#filtersSet;
+    }
+
+    /**
+     * Gets this instance's endpoint state (path segments plus query parameters).
+     *
+     * Intended for the `PathBuilder` constructed against this `ApiOptions`, which
+     * mutates the returned object as the user changes inputs and serializes it to
+     * render the displayed path. Returned by reference, not copied, precisely so
+     * that both sides share one object — but only ever this instance's, never a
+     * module-level one shared with other embeds on the page.
+     *
+     * @returns {CurrentEndpoint} This instance's CurrentEndpoint.
+     * @readonly
+     */
+    get _currentEndpoint() {
+        return this.#currentEndpoint;
     }
 }

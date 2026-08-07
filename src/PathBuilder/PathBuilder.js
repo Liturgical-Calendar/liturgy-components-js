@@ -2,103 +2,16 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
 
-/**
- * @typedef Epiphany
- * @type {'JAN6' | 'SUNDAY_JAN2_JAN8'}
- * @readonly
- */
-
-/**
- * @typedef Ascension
- * @type {'THURSDAY' | 'SUNDAY'}
- */
-
-/**
- * @typedef CorpusChristi
- * @type {'THURSDAY' | 'SUNDAY'}
- */
-
-/**
- * @typedef EternalHighPriest
- * @type {true | false}
- */
-
-/**
- * @typedef Locale
- * @type {string}
- */
-
-/**
- * @typedef ReturnType
- * @type {'JSON' | 'XML' | 'YML' | 'ICS'}
- */
-
-/**
- * @typedef YearType
- * @type {'CIVIL' | 'LITURGICAL'}
- */
-
-/**
- * @type {{NATIONAL: "nation", DIOCESAN: "diocese"}}
- * @readonly
- * Used in building the endpoint URL for requests to the API /calendar endpoint
- */
-const CalendarType = {
-    NATIONAL: 'nation',
-    DIOCESAN: 'diocese'
-}
-Object.freeze(CalendarType);
-
-
-/**
- * Describes the URL parameters that can be set on the API /calendar endpoint
- */
-class RequestPayload {
-    /** @type {?Locale} - The locale in which the liturgical calendar should be produced */
-    static locale               = null;
-    /** @type {?Epiphany} - Whether Epiphany is to be celebrated on January 6 or on the Sunday between January 2 and January 8 */
-    static epiphany             = null;
-    /** @type {?Ascension} - Whether Ascension is to be celebrated on Thursday or on Sunday */
-    static ascension            = null;
-    /** @type {?CorpusChristi} - Whether Corpus Christi is to be celebrated on Thursday or on Sunday */
-    static corpus_christi       = null;
-    /** @type {?EternalHighPriest} - Whether Eternal High Priest is to be celebrated */
-    static eternal_high_priest  = null;
-    /** @type {?YearType} - Whether the liturgical calendar data should be for the liturgical year or the civil year */
-    static year_type            = null;
-    /** @type {?ReturnType} - The format of the response data */
-    static return_type          = null;
-};
-
-
-/**
- * Used to build the full endpoint URL for the API /calendar endpoint
- */
-class CurrentEndpoint {
-
-    static calendarType   = null;
-    static calendarId     = null;
-    static calendarYear   = null;
-
-    static serialize = () => {
-        let currentEndpoint = '/calendar';
-        if ( CurrentEndpoint.calendarType !== null && CurrentEndpoint.calendarId !== null ) {
-            currentEndpoint += `/${CurrentEndpoint.calendarType}/${CurrentEndpoint.calendarId}`;
-        }
-        if ( CurrentEndpoint.calendarYear !== null ) {
-            currentEndpoint += `/${CurrentEndpoint.calendarYear}`;
-        }
-        let parameters = [];
-        for (const key in RequestPayload) {
-            if(RequestPayload[key] !== null && RequestPayload[key] !== ''){
-                parameters.push(key + "=" + encodeURIComponent(RequestPayload[key]));
-            }
-        }
-        const urlParams = parameters.length ? `?${parameters.join('&')}` : '';
-        return `${currentEndpoint}${urlParams}`;
-    }
-}
+// `CurrentEndpoint`, `CalendarType` and `RequestPayload` are defined in
+// `./CurrentEndpoint.js` — see the doc comment on the `CurrentEndpoint` class
+// for why that split exists — and re-exported here so that `PathBuilder.js`
+// remains the one module a caller needs to import to reach the whole
+// path-building surface. Note that this is a NEW export, not a compatibility
+// shim: before this branch `PathBuilder.js` exported only its default class,
+// so there are no prior consumers of these three names to keep working.
+export { CurrentEndpoint, CalendarType, RequestPayload };
 
 export default class PathBuilder {
 
@@ -107,6 +20,18 @@ export default class PathBuilder {
     #buttonWrapper;
     #pathWrapper;
     #pathCodeElement;
+    /**
+     * The endpoint state this PathBuilder renders.
+     *
+     * Borrowed from — not created by — the `ApiOptions` passed to the constructor,
+     * so that the rite/calendar mutations `ApiOptions` performs when a `RiteSelect`
+     * is linked land on the very object serialized here. Because it belongs to that
+     * one `ApiOptions`, a second PathBuilder/ApiOptions pair on the same page keeps
+     * entirely separate state.
+     *
+     * @type {CurrentEndpoint}
+     */
+    #currentEndpoint;
 
     constructor(apiOptions, calendarSelect) {
         if (!apiOptions || false === apiOptions instanceof ApiOptions) {
@@ -115,6 +40,10 @@ export default class PathBuilder {
         if (!calendarSelect || false === calendarSelect instanceof CalendarSelect) {
             throw new Error('calendarSelect must be an instance of CalendarSelect');
         }
+
+        this.#currentEndpoint = apiOptions._currentEndpoint;
+        const currentEndpoint = this.#currentEndpoint;
+        const requestPayload  = currentEndpoint.requestPayload;
 
         this.#domElement = document.createElement('div');
         this.#buttonWrapper = document.createElement('div');
@@ -143,28 +72,28 @@ export default class PathBuilder {
         this.#updatePathValues();
 
         apiOptions._calendarPathInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.locale              = null;
-            RequestPayload.ascension           = null;
-            RequestPayload.corpus_christi      = null;
-            RequestPayload.epiphany            = null;
-            RequestPayload.year_type           = null;
-            RequestPayload.eternal_high_priest = null;
+            requestPayload.locale              = null;
+            requestPayload.ascension           = null;
+            requestPayload.corpus_christi      = null;
+            requestPayload.epiphany            = null;
+            requestPayload.year_type           = null;
+            requestPayload.eternal_high_priest = null;
             const selectEl = calendarSelect._domElement;
             switch (ev.target.value) {
                 case '/calendar':
-                    CurrentEndpoint.calendarType       = null;
-                    CurrentEndpoint.calendarId         = null;
+                    currentEndpoint.calendarType       = null;
+                    currentEndpoint.calendarId         = null;
                     break;
                 case '/calendar/nation/':
-                    if ( CurrentEndpoint.calendarType !== CalendarType.NATIONAL ) {
-                        CurrentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        CurrentEndpoint.calendarType = CalendarType.NATIONAL;
+                    if ( currentEndpoint.calendarType !== CalendarType.NATIONAL ) {
+                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
+                        currentEndpoint.calendarType = CalendarType.NATIONAL;
                     }
                     break;
                 case '/calendar/diocese/':
-                    if ( CurrentEndpoint.calendarType !== CalendarType.DIOCESAN ) {
-                        CurrentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
+                    if ( currentEndpoint.calendarType !== CalendarType.DIOCESAN ) {
+                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
+                        currentEndpoint.calendarType = CalendarType.DIOCESAN;
                     }
                     break;
             }
@@ -172,65 +101,80 @@ export default class PathBuilder {
         });
 
         calendarSelect._domElement.addEventListener('change', (ev) => {
+            // A select can legitimately have NOTHING selected: `allowNull(false)`
+            // removes the empty option, and a rite change then resets the value
+            // to '' with no option to match it. Reading `.getAttribute` off the
+            // missing option throws inside the listener, which the DOM swallows
+            // — so the endpoint would be updated correctly while the rendered
+            // path below never repaints. Treat "nothing selected" as no calendar.
             const selectedOption = ev.target.selectedOptions[0];
-            const calendarType = selectedOption.getAttribute("data-calendartype");
+            const calendarType = selectedOption?.getAttribute('data-calendartype') ?? null;
             switch (calendarType){
                 case 'national':
-                    CurrentEndpoint.calendarType = CalendarType.NATIONAL;
-                    CurrentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarType = CalendarType.NATIONAL;
+                    currentEndpoint.calendarId   = ev.target.value;
                     break;
                 case 'diocesan': {
-                    CurrentEndpoint.calendarType = CalendarType.DIOCESAN;
-                    CurrentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarType = CalendarType.DIOCESAN;
+                    currentEndpoint.calendarId   = ev.target.value;
                     break;
                 }
+                default:
+                    // The empty option carries no `data-calendartype`. It means
+                    // the rite-level calendar, so the previous selection has to
+                    // be cleared — without this the last chosen nation or
+                    // diocese stays in the path forever and re-selecting the
+                    // empty option appears to do nothing.
+                    currentEndpoint.calendarType = null;
+                    currentEndpoint.calendarId   = null;
+                    break;
             }
             this.#updatePathValues();
         });
 
         apiOptions._acceptHeaderInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.return_type = ev.target.value;
+            requestPayload.return_type = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._yearTypeInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.year_type = ev.target.value;
+            requestPayload.year_type = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._yearInput._domElement.addEventListener('change', (ev) => {
-            CurrentEndpoint.calendarYear = ev.target.value;
+            currentEndpoint.calendarYear = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._epiphanyInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.epiphany = ev.target.value;
+            requestPayload.epiphany = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._ascensionInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.ascension = ev.target.value;
+            requestPayload.ascension = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._corpusChristiInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.corpus_christi = ev.target.value;
+            requestPayload.corpus_christi = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._eternalHighPriestInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.eternal_high_priest = ev.target.value;
+            requestPayload.eternal_high_priest = ev.target.value;
             this.#updatePathValues();
         });
 
         apiOptions._localeInput._domElement.addEventListener('change', (ev) => {
-            RequestPayload.locale = ev.target.value;
+            requestPayload.locale = ev.target.value;
             this.#updatePathValues();
         });
     }
 
     #updatePathValues() {
-        const finalPath = (ApiClient._apiUrl + CurrentEndpoint.serialize());
+        const finalPath = (ApiClient._apiUrl + this.#currentEndpoint.serialize());
         this.#pathCodeElement.textContent = finalPath;
         this.#buttonElement.setAttribute('href', finalPath);
     }

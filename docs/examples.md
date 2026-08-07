@@ -9,16 +9,21 @@ The `examples/` folder contains working examples demonstrating how to use the li
 
 ```bash
 # Using Python
-python3 -m http.server 3001
+python3 -m http.server 8090
 
 # Using PHP
-php -S localhost:3001
+php -S localhost:8090
 
 # Using Node.js (npx)
-npx serve -p 3001
+npx serve -p 8090
 ```
 
-1. Open the example in your browser (e.g., `http://localhost:3001/examples/LiturgyOfTheDay/`)
+1. Open the example in your browser (e.g., `http://localhost:8090/examples/LiturgyOfTheDay/`)
+
+Any free port will do; 8090 is suggested because it does not collide with the LiturgicalCalendarFrontend
+Docker stack, which publishes 3000, 3001, 3003, 5432, 8000 and 8080-8088 on localhost. If the port is
+already taken, the server will fail to bind rather than serve the wrong thing — check with
+`ss -ltn | grep 8090` before assuming the examples are broken.
 
 ---
 
@@ -40,11 +45,11 @@ Displays today's liturgical events with calendar and locale selection.
 
 ### Files
 
-| File         | Description                           |
-|--------------|---------------------------------------|
-| `index.html` | HTML structure with Bootstrap         |
-| `main.js`    | Component setup and configuration     |
-| `main.css`   | Custom styling for readings and grades|
+| File         | Description                            |
+| ------------ | -------------------------------------- |
+| `index.html` | HTML structure with Bootstrap          |
+| `main.js`    | Component setup and configuration      |
+| `main.css`   | Custom styling for readings and grades |
 
 ### Key Implementation Details
 
@@ -85,7 +90,7 @@ Browse liturgical events for any date with interactive date controls.
 ### Files
 
 | File         | Description                        |
-|--------------|------------------------------------|
+| ------------ | ---------------------------------- |
 | `index.html` | HTML structure with Bootstrap      |
 | `main.js`    | Component setup with date controls |
 | `main.css`   | Custom styling with overflow fix   |
@@ -146,11 +151,11 @@ Full liturgical calendar table with customizable display options.
 
 ### Files
 
-| File         | Description                              |
-|--------------|------------------------------------------|
-| `index.html` | HTML structure                           |
-| `main.js`    | WebCalendar setup with full configuration|
-| `main.css`   | Styling for grades and liturgical colors |
+| File         | Description                               |
+| ------------ | ----------------------------------------- |
+| `index.html` | HTML structure                            |
+| `main.js`    | WebCalendar setup with full configuration |
+| `main.css`   | Styling for grades and liturgical colors  |
 
 ---
 
@@ -172,12 +177,95 @@ Interactive API URL builder for exploring the API.
 ### Files
 
 | File         | Description       |
-|--------------|-------------------|
+| ------------ | ----------------- |
 | `index.html` | HTML structure    |
 | `main.js`    | PathBuilder setup |
 | `main.css`   | Basic styling     |
 
 ---
+
+## RiteSelectChain
+
+Demonstrates the rite → nation → diocese chain that `ApiOptions` orchestrates. Deliberately requests no
+calendar data: `ApiClient.init()` still fetches the metadata `CalendarSelect` needs, but no calendar is
+ever fetched, because this example is about form behaviour.
+
+### Features
+
+- `RiteSelect` linked via `apiOptions.linkToCalendarSelect([nationSelect, dioceseSelect], riteSelect)`
+- Nation select hidden for a rite with no national tier
+- Diocese list refiltered per rite; all four Ambrosian dioceses shown at once, since there is no nation
+  to filter by
+- Calendar selection cleared on every rite change
+- The four fixed temporal inputs disabled, and the year floor raised to 1976, under Ambrosian
+
+### Files
+
+- `examples/RiteSelectChain/index.html`
+- `examples/RiteSelectChain/main.css`
+- `examples/RiteSelectChain/main.js`
+
+### Key Implementation Details
+
+`ApiClient.init()` is still called even though no calendar is ever fetched: `CalendarSelect` reads the
+metadata it retrieves. Requires the API on `localhost:8000`.
+
+No CSS is needed to hide the nation select. `_setHidden()` sets the `hidden` attribute on the wrapper
+configured via `wrapper()`, and the browser stylesheet takes it from there.
+
+## RiteSelectPathBuilder
+
+Shows the rite as a path segment rather than a query parameter, with `PathBuilder` rendering the live
+request path.
+
+### Features
+
+- `/calendar/roman` → `/calendar/ambrosian` → `/calendar/ambrosian/diocese/lugano_ch`
+- The rite spelled out explicitly even for Roman once a `RiteSelect` is linked
+- The `/calendar/nation/` route option disabled for a rite with no national tier, with the route
+  selection falling back to the base `/calendar` option — which renders as `/calendar/ambrosian`
+
+### Files
+
+- `examples/RiteSelectPathBuilder/index.html`
+- `examples/RiteSelectPathBuilder/main.css`
+- `examples/RiteSelectPathBuilder/main.js`
+
+### Key Implementation Details
+
+`PathBuilder` requires a `none` filtered `CalendarSelect`. Both forms of the Roman path are the same
+request: the API router accepts `roman` as an explicit rite segment. Requires the API on
+`localhost:8000`.
+
+## RiteSelectWebCalendar
+
+The full stack through to rendered Ambrosian data: `RiteSelect` → `CalendarSelect` → `ApiOptions` →
+`ApiClient` → `WebCalendar`.
+
+### Features
+
+- `apiClient.listenTo(riteSelect)` refetching on every rite change
+- Real Ambrosian data: for liturgical year 2026, Advent begins six weeks before Christmas (16 November
+  2025, not 30 November) and
+  the liturgical colour is _morello_ rather than _viola_
+- The caption follows the rite, since `WebCalendar` reads it from the `ApiClient`
+- The 1976 year floor enforced by the year input
+
+### Files
+
+- `examples/RiteSelectWebCalendar/index.html`
+- `examples/RiteSelectWebCalendar/main.css`
+- `examples/RiteSelectWebCalendar/main.js`
+
+### Key Implementation Details
+
+Requires the API on `localhost:8000`, **and that API must be v6 or the `dev` deployment**. Rite support
+is detected from the `/calendars` metadata: against v5 the rite segment is omitted and requesting the
+Ambrosian rite throws an explicit error rather than producing a bare 400.
+
+Wiring both `ApiOptions` and `ApiClient` to the same `RiteSelect` issues two requests per rite change.
+`ApiOptions` resets the calendar selection and dispatches `change` on it before `ApiClient`'s own rite
+listener runs. The final state is correct and the cache absorbs part of the cost.
 
 ## Common Patterns
 

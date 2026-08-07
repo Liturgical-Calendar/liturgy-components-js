@@ -1,7 +1,7 @@
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
-import { CalendarSelectFilter } from '../Enums.js';
+import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
 import Utils from '../Utils.js';
 
 /**
@@ -30,7 +30,10 @@ export default class CalendarSelect {
     static #metadata                    = null;
     static #nationalCalendars             = [];
     static #diocesanCalendars             = [];
-    static #nationalCalendarsWithDioceses = [];
+    #nationalCalendarsWithDioceses        = [];
+    #rite                                 = Rite.ROMAN;
+    #riteSet                              = false;
+    #riteAware                            = false;
     #nationOptions                        = [];
     #dioceseOptions                       = {};
     #dioceseOptionsGrouped                = [];
@@ -52,6 +55,8 @@ export default class CalendarSelect {
     #idSet                                = false;
     #nameSet                              = false;
     #allowNull                            = false;
+    /** @type {?CalendarSelect} The `nations` filtered select this one is linked to, if any. */
+    #linkedNationsSelect                  = null;
 
 
     /**
@@ -61,25 +66,42 @@ export default class CalendarSelect {
      * @param {string} nation - The nation to check.
      * @returns {boolean} True if we have stored a national calendar with dioceses for the given nation, false otherwise.
      * @private
-     * @static
      */
-    static #hasNationalCalendarWithDioceses( nation ) {
-        return CalendarSelect.#nationalCalendarsWithDioceses.filter(item => item?.calendar_id === nation).length > 0;
+    #hasNationalCalendarWithDioceses( nation ) {
+        return this.#nationalCalendarsWithDioceses.some( item => item.calendar_id === nation );
     }
 
     /**
-     * Adds a national calendar with dioceses for the given nation.
+     * Adds a national calendar to this instance's list of nations that have dioceses.
      *
-     * This internal method is used to add a national calendar with dioceses to the list of national calendars with dioceses.
-     * This will also initialize diocese select options for the given nation.
+     * After rite filtering, every diocese reaching this method belongs to a rite
+     * that HAS a national tier, so its nation is EXPECTED to have a national
+     * calendar. A miss therefore means the API metadata is self-inconsistent —
+     * a defect worth failing loudly on, not papering over with a fabricated
+     * placeholder (an earlier fix did exactly that and thereby invented a Roman
+     * national calendar for CH) and not silently pushing `undefined`, which
+     * would only surface later as an unlabelled `TypeError` when `undefined` is
+     * dereferenced inside `#addNationOption` — precisely the failure mode that
+     * cost a week of red CI on the consuming frontend before it was traced.
+     * Throwing here, by name, is what makes the defect diagnosable at the
+     * point it is discovered.
      *
      * @param {string} nation - The nation for which we should add the national calendar.
+     * @throws {Error} If no national calendar exists for `nation` — the metadata is inconsistent.
      * @private
-     * @static
      */
-    static #addNationalCalendarWithDioceses( nation ) {
-        const nationalCalendar = CalendarSelect.#nationalCalendars.find(item => item.calendar_id === nation);
-        CalendarSelect.#nationalCalendarsWithDioceses.push( nationalCalendar );
+    #addNationalCalendarWithDioceses( nation ) {
+        const nationalCalendar = CalendarSelect.#nationalCalendars.find( item => item.calendar_id === nation );
+        if ( undefined === nationalCalendar ) {
+            throw new Error(
+                'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `'
+                + this.#rite + '` rite declares nation `' + nation
+                + '`, but no national calendar exists for that nation. Every diocese reaching '
+                + 'this point should belong to a rite with a national calendar for its nation; '
+                + 'this is a metadata defect, not a recoverable runtime condition.'
+            );
+        }
+        this.#nationalCalendarsWithDioceses.push( nationalCalendar );
     }
 
     /**
@@ -124,6 +146,7 @@ export default class CalendarSelect {
      *                                  - `class`: The class name for the `CalendarSelect` DOM input.
      *                                  - `name`: The name for the `CalendarSelect` DOM input.
      *                                  - `filter`: The `CalendarSelectFilter` to apply to the `CalendarSelect` component.
+     *                                  - `rite`: The `Rite` this `CalendarSelect` is built for (defaults to `Rite.ROMAN`). Determines which diocesan calendars are offered and whether a national tier is shown at all.
      *                                  - `after`: an html string to append after the `CalendarSelect` element.
      *                                  - `allowNull`: a boolean to indicate whether the `CalendarSelect` element should allow `null` values.
      *                                  - `disabled`: a boolean to indicate whether the `CalendarSelect` DOM input element should be disabled.
@@ -146,7 +169,7 @@ export default class CalendarSelect {
             const optionsType = Array.isArray(options) ? 'array' : typeof options;
             throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
         }
-        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled } = options;
+        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             if (typeof inputLocale !== 'string') {
                 throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
@@ -172,6 +195,17 @@ export default class CalendarSelect {
             } catch (e) {
                 throw new Error('Failed to initialize locale: ' + this.#locale);
             }
+        }
+
+        if (rite !== undefined && rite !== null) {
+            // Applied directly rather than through `.rite()`: `_applyRite()` also
+            // rebuilds the DOM (`#reapplyOptionsToDom()`), but `#domElement` does
+            // not exist yet at this point in construction. `#buildAllOptions()`
+            // below picks up `this.#rite` on its own, and the constructor's later
+            // call to `this.filter(...)` performs the initial DOM population.
+            this.#validateRite( rite );
+            this.#rite = rite;
+            this.#riteSet = true;
         }
 
         if (null === CalendarSelect.#metadata) {
@@ -222,10 +256,55 @@ export default class CalendarSelect {
      */
     #filterDioceseOptionsForNation(nation) {
         if (false === this.#dioceseOptions.hasOwnProperty(nation)) {
-            this.#domElement.innerHTML = '<option value="">---</option>';
+            this.#domElement.innerHTML = this.#emptyOptionHtml();
         } else {
-            const firstElement = this.#allowNull ? '<option value="">---</option>' : '';
+            const firstElement = this.#allowNull ? this.#emptyOptionHtml() : '';
             this.#domElement.innerHTML = firstElement + this.#dioceseOptions[nation].join('');
+        }
+    }
+
+    /**
+     * Builds the markup for the empty/placeholder `<option>`.
+     *
+     * Outside of rite-aware mode this is always the literal `---`, preserving
+     * behavior for every existing embed. Only `ApiOptions` (a later task) turns
+     * rite-aware mode on via `_applyRite( rite, true )`; when it does, the label
+     * switches to the rite's own name (e.g. "General Roman Calendar" /
+     * "Ambrosian Calendar") so the empty option communicates which rite-level
+     * calendar it represents instead of a bare placeholder.
+     *
+     * @returns {string} The `<option>` markup for the empty/placeholder option.
+     * @private
+     */
+    #emptyOptionHtml() {
+        if ( false === this.#riteAware ) {
+            return '<option value="">---</option>';
+        }
+        const locale = new Intl.Locale( this.#locale );
+        const key = RiteProperties[ this.#rite ].emptyOptionLabelKey;
+        const emptyLabel = Messages[ locale.language ]?.[ key ] ?? Messages[ 'en' ][ key ];
+        return `<option value="">${emptyLabel}</option>`;
+    }
+
+    /**
+     * Pushes the current `#nationOptions` / `#dioceseOptionsGrouped` (or
+     * `#dioceseOptions`, depending on `#filter`) into the select element's
+     * `innerHTML`, prefixed with the empty option when `#allowNull` is set.
+     *
+     * Extracted so both the initial `filter()` call made by the constructor
+     * and `_applyRite()` (rebuilding after `.rite()` changes the active rite)
+     * share the exact same DOM-population logic.
+     *
+     * @private
+     */
+    #reapplyOptionsToDom() {
+        const firstElement = this.#allowNull ? this.#emptyOptionHtml() : '';
+        if ( this.#filter === CalendarSelectFilter.NATIONAL_CALENDARS ) {
+            this.#domElement.innerHTML = firstElement + this.nationsInnerHtml;
+        } else if ( this.#filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) {
+            this.#domElement.innerHTML = firstElement + this.diocesesInnerHtml;
+        } else {
+            this.#domElement.innerHTML = firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
         }
     }
 
@@ -252,7 +331,13 @@ export default class CalendarSelect {
      */
     #addDioceseOption(item) {
         const option = `<option data-calendartype="diocesan" value="${item.calendar_id}">${item.diocese}</option>`;
-        this.#dioceseOptions[item.nation].push(option);
+        if ( RiteProperties[ this.#rite ].hasNationalTier ) {
+            this.#dioceseOptions[item.nation].push(option);
+        } else {
+            // Rites with no national tier (e.g. Ambrosian) have no nation to
+            // group under: the diocese option is listed flat, with no optgroup.
+            this.#dioceseOptionsGrouped.push(option);
+        }
     }
 
     /**
@@ -264,10 +349,38 @@ export default class CalendarSelect {
      * @private
      */
     #buildAllOptions() {
-        CalendarSelect.#diocesanCalendars.forEach( diocesanCalendarObj => {
-            if ( false === CalendarSelect.#hasNationalCalendarWithDioceses( diocesanCalendarObj.nation ) ) {
+        this.#nationalCalendarsWithDioceses = [];
+        this.#nationOptions                 = [];
+        this.#dioceseOptions                = {};
+        this.#dioceseOptionsGrouped         = [];
+
+        const riteProps = RiteProperties[ this.#rite ];
+        // A diocesan entry with no `rite` field is Roman. The `rite` field is a
+        // v6 addition: the live v5 API (`/api/v5/calendars`) announces no rite
+        // on any diocesan entry, and everything it has ever served is Roman.
+        // Filtering on a strict `=== this.#rite` would therefore drop EVERY
+        // diocese for a v5-pinned consumer and empty the list with no error and
+        // no warning — and bumping the pin is exactly how this release reaches
+        // the frontend.
+        const dioceses  = CalendarSelect.#diocesanCalendars.filter(
+            diocesanCalendarObj => ( diocesanCalendarObj.rite ?? Rite.ROMAN ) === this.#rite
+        );
+
+        if ( false === riteProps.hasNationalTier ) {
+            // A rite with no national tier has no national calendars to group under.
+            // Running the nation pass here would make EVERY diocese an orphan, not
+            // just the ones whose nation code happens to be absent. Dioceses stand
+            // alone, ungrouped, and no nation options are produced.
+            dioceses.forEach( diocesanCalendarObj => {
+                this.#addDioceseOption( diocesanCalendarObj );
+            } );
+            return this;
+        }
+
+        dioceses.forEach( diocesanCalendarObj => {
+            if ( false === this.#hasNationalCalendarWithDioceses( diocesanCalendarObj.nation ) ) {
                 // we add all nations with dioceses to the nations list
-                CalendarSelect.#addNationalCalendarWithDioceses( diocesanCalendarObj.nation );
+                this.#addNationalCalendarWithDioceses( diocesanCalendarObj.nation );
             }
             if ( false === this.#dioceseOptions.hasOwnProperty( diocesanCalendarObj.nation ) ) {
                 this.#dioceseOptions[ diocesanCalendarObj.nation ] = [];
@@ -277,7 +390,7 @@ export default class CalendarSelect {
 
         CalendarSelect.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
         CalendarSelect.#nationalCalendars.forEach( nationalCalendar => {
-            if ( false === CalendarSelect.#hasNationalCalendarWithDioceses( nationalCalendar.calendar_id ) ) {
+            if ( false === this.#hasNationalCalendarWithDioceses( nationalCalendar.calendar_id ) ) {
                 // This is the first time we call CalendarSelect.#addNationOption().
                 // This will ensure that the VATICAN (a nation without any diocese) will be added as the first option.
                 // In theory any other nation for whom no dioceses are defined will be added here too,
@@ -292,8 +405,8 @@ export default class CalendarSelect {
 
         // now we can add the options for the nations in the #calendarNationsWithDiocese list
         // that is to say, nations that have dioceses
-        CalendarSelect.#nationalCalendarsWithDioceses.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
-        CalendarSelect.#nationalCalendarsWithDioceses.forEach( nationalCalendar => {
+        this.#nationalCalendarsWithDioceses.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
+        this.#nationalCalendarsWithDioceses.forEach( nationalCalendar => {
             this.#addNationOption( nationalCalendar );
             let optGroup = `<optgroup label="${this.#countryNames.of( nationalCalendar.calendar_id )}">${this.#dioceseOptions[ nationalCalendar.calendar_id ].join( '' )}</optgroup>`;
             this.#dioceseOptionsGrouped.push( optGroup );
@@ -349,19 +462,94 @@ export default class CalendarSelect {
         if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
             throw new Error('Invalid filter: ' + filter);
         }
-        this.#filter = filter;
-        const firstElement = this.#allowNull ? '<option value="">---</option>' : '';
-        if ( this.#filter === CalendarSelectFilter.NATIONAL_CALENDARS ) {
-            this.#domElement.innerHTML = firstElement + this.nationsInnerHtml;
-        } else if ( this.#filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) {
-            this.#domElement.innerHTML = firstElement + this.diocesesInnerHtml;
-        } else {
-            this.#domElement.innerHTML = firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
-        }
         if ( filter !== this.#filter ) {
             this.#filterSet = true;
         }
+        this.#filter = filter;
+        this.#reapplyOptionsToDom();
         return this;
+    }
+
+    /**
+     * Validates a candidate rite value against the `Rite` enum.
+     *
+     * Shared by the constructor's `rite` option and by `.rite()` / `_applyRite()`
+     * so both entry points reject an unknown rite with the same message.
+     *
+     * @param {string} rite - The candidate rite value.
+     * @throws {Error} If the rite is not a value of the `Rite` enum.
+     * @private
+     */
+    #validateRite( rite ) {
+        if ( false === Object.values( Rite ).includes( rite ) ) {
+            throw new Error( 'Invalid rite: `' + rite + '`. Valid rites are: ' + Object.values( Rite ).join( ', ' ) + '.' );
+        }
+    }
+
+    /**
+     * Set the liturgical rite this select is built for.
+     *
+     * @param {string} rite - A value from the `Rite` enum.
+     * @returns {CalendarSelect} The current instance for method chaining.
+     * @throws {Error} If the rite is unknown or has already been set.
+     */
+    rite( rite = Rite.ROMAN ) {
+        if ( this.#riteSet ) {
+            throw new Error( 'Rite has already been set on this CalendarSelect instance.' );
+        }
+        this._applyRite( rite );
+        this.#riteSet = true;
+        return this;
+    }
+
+    /**
+     * Rebuild this select for a different rite.
+     *
+     * Package-internal rather than public: `ApiOptions` calls it on every rite
+     * change, so unlike the chainable `.rite()` it deliberately has NO
+     * "already set" guard.
+     *
+     * @param {string} rite - A value from the `Rite` enum.
+     * @param {boolean} [riteAware=false] - When true, the empty option takes the
+     *        rite's label instead of `---`. Only ApiOptions passes true, and only
+     *        when a RiteSelect is linked, so embeds that never opt in keep `---`.
+     */
+    _applyRite( rite, riteAware = false ) {
+        this.#validateRite( rite );
+        this.#rite      = rite;
+        this.#riteAware = riteAware;
+        this.#buildAllOptions();
+        this.#reapplyOptionsToDom();
+        // `#reapplyOptionsToDom()` writes the FULL diocese list, which discards
+        // the per-nation narrowing `linkToNationsSelect()` applies. Re-derive it
+        // from the linked nation select's current value rather than waiting for
+        // the next nation change. Skipped for a rite with no national tier:
+        // there are no per-nation buckets to filter into, and running the filter
+        // would empty a list that is correctly flat.
+        if ( null !== this.#linkedNationsSelect && RiteProperties[ this.#rite ].hasNationalTier ) {
+            this.#filterDioceseOptionsForNation( this.#linkedNationsSelect._domElement.value );
+        }
+    }
+
+    /**
+     * Hide or show this select, preferring its wrapper when one was set via
+     * `wrapper()` so the label goes with it.
+     *
+     * @param {boolean} hidden
+     */
+    _setHidden( hidden ) {
+        const target = this.#wrapperElement ?? this.#domElement;
+        target.hidden = hidden;
+    }
+
+    /**
+     * Gets the liturgical rite this CalendarSelect instance is built for.
+     *
+     * @returns {string} A value from the `Rite` enum (`Rite.ROMAN` by default).
+     * @readonly
+     */
+    get _rite() {
+        return this.#rite;
     }
 
     /**
@@ -1035,6 +1223,10 @@ export default class CalendarSelect {
             throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
         }
         const linkedDomElement = calendarSelectInstance._domElement;
+        // Kept as a reference, not just a closure over the DOM element: a rite
+        // change rebuilds this select's options from scratch, and `_applyRite()`
+        // needs to re-derive the per-nation narrowing from this same select.
+        this.#linkedNationsSelect = calendarSelectInstance;
         this.#filterDioceseOptionsForNation( linkedDomElement.value );
         linkedDomElement.addEventListener( 'change', (ev) => {
             const newNationValue = ev.target.value;

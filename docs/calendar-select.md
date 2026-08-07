@@ -31,12 +31,18 @@ const calendarSelect = new CalendarSelect({
     class: 'form-select',
     name: 'selected_calendar',
     filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+    rite: Rite.ROMAN,
     allowNull: true,
     disabled: false,
     label: { text: 'Select a calendar', class: 'form-label' },
     wrapper: { as: 'div', class: 'form-group' }
 });
 ```
+
+The `rite` option (a value of the `Rite` enum, see [Enums Reference](enums.md)) determines which
+diocesan calendars are offered and whether a national tier is shown at all. It defaults to
+`Rite.ROMAN` and can also be set after construction with the chainable `.rite()` method — see
+[Filtering by Rite](#filtering-by-rite) below.
 
 ## Configuration Methods
 
@@ -65,27 +71,34 @@ calendarSelect.appendTo('#calendarOptions');
 
 ### Available Methods
 
-| Method                         | Description                                               |
-|--------------------------------|-----------------------------------------------------------|
-| `class(className)`             | CSS class(es) for the select element                      |
-| `id(id)`                       | ID for the select element (without '#')                   |
-| `name(name)`                   | Name attribute for the select element                     |
-| `label(options)`               | Configure the label element (`text`, `class`, `id`)       |
-| `wrapper(options)`             | Configure wrapper element (`as`: 'div'/'td', `class`)     |
-| `disabled(disabled=true)`      | Set disabled state                                        |
-| `filter(filter)`               | Filter calendar options (see Filtering section)           |
-| `allowNull(allowNull=true)`    | Include empty option for General Roman Calendar           |
-| `after(htmlString)`            | HTML content after the select element                     |
-| `linkToNationsSelect(instance)`| Link to national calendars select for filtering dioceses  |
-| `value(val?)`                  | Get/set value; with arg sets value, returns `this`        |
-| `onChange(callback)`           | Register callback for change events; returns `this`       |
+| Method                          | Description                                              |
+| ------------------------------- | -------------------------------------------------------- |
+| `class(className)`              | CSS class(es) for the select element                     |
+| `id(id)`                        | ID for the select element (without '#')                  |
+| `name(name)`                    | Name attribute for the select element                    |
+| `label(options)`                | Configure the label element (`text`, `class`, `id`)      |
+| `wrapper(options)`              | Configure wrapper element (`as`: 'div'/'td', `class`)    |
+| `disabled(disabled=true)`       | Set disabled state                                       |
+| `filter(filter)`                | Filter calendar options (see Filtering section)          |
+| `rite(rite=Rite.ROMAN)`         | Set the rite this select is built for; settable once     |
+| `allowNull(allowNull=true)`     | Include the empty, rite-level calendar option            |
+| `after(htmlString)`             | HTML content after the select element                    |
+| `linkToNationsSelect(instance)` | Link to national calendars select for filtering dioceses |
+| `value(val?)`                   | Get/set value; with arg sets value, returns `this`       |
+| `onChange(callback)`            | Register callback for change events; returns `this`      |
+
+The empty option added by `allowNull()` selects the **rite-level** calendar, not the General Roman
+Calendar specifically. It is labelled "General Roman Calendar" only when the select's rite is
+`Rite.ROMAN`; under `Rite.AMBROSIAN` it is labelled "Ambrosian Calendar" and selects the
+_comune ambrosiano_ at `/calendar/ambrosian`. The rite-specific label is applied in rite-aware mode
+only — without a linked `RiteSelect` the empty option keeps the generic `---` text.
 
 ### DOM Insertion Methods (non-chainable)
 
-| Method               | Description                        |
-|----------------------|------------------------------------|
-| `appendTo(selector)` | Append to the specified DOM element|
-| `replace(selector)`  | Replace the specified DOM element  |
+| Method               | Description                         |
+| -------------------- | ----------------------------------- |
+| `appendTo(selector)` | Append to the specified DOM element |
+| `replace(selector)`  | Replace the specified DOM element   |
 
 ## Filtering Calendars
 
@@ -121,6 +134,35 @@ const diocesanSelect = new CalendarSelect('en-US')
     .linkToNationsSelect(nationalSelect);
 diocesanSelect.appendTo('#diocesanContainer');
 ```
+
+## Filtering by Rite
+
+Every `CalendarSelect` is built for a single `Rite` (see [Enums Reference](enums.md)), defaulting to
+`Rite.ROMAN`. Diocesan calendars are filtered to those belonging to the selected rite, and for a rite
+with no national tier (`Rite.AMBROSIAN`) the nation-grouping pass is skipped entirely: the select's
+diocesan options are flat, with no `<optgroup>` and no nation options.
+
+```javascript
+import { CalendarSelect, Rite } from '@liturgical-calendar/components-js';
+
+// Set via the constructor
+const ambrosianSelect = new CalendarSelect({ locale: 'it-IT', rite: Rite.AMBROSIAN });
+
+// Or via the chainable method
+const romanSelect = new CalendarSelect('en-US').rite(Rite.ROMAN);
+```
+
+`.rite()` can only be set once per instance; calling it again throws. To change the rite of an
+already-rendered select dynamically, use `RiteSelect` linked through
+[`ApiOptions.linkToCalendarSelect()`](api-options.md#linking-to-calendarselect) — see
+[RiteSelect](rite-select.md).
+
+> **Back-compatibility note:** as of the introduction of rite awareness, a `CalendarSelect` that never
+> sets `rite` still defaults to `Rite.ROMAN`, so its **markup does change** compared to earlier
+> versions: the four Ambrosian dioceses (`milano_it`, `bergam_it`, `novara_it`, `lugano_ch`) no longer
+> appear in the default diocese list, because they belong to `Rite.AMBROSIAN`, not `Rite.ROMAN`. This
+> is a bug fix — Ambrosian dioceses never belonged under the Roman rite — but it is a visible change in
+> rendered output for any integrator who was relying on the old, rite-unaware diocese list.
 
 ## Instance Properties
 

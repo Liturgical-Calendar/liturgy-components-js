@@ -66,6 +66,12 @@ yarn compile:watch        # Watch mode for continuous compilation
 # Testing
 yarn test                 # Run Jest unit tests
 
+# Markdown — two tools, different jobs (see the Markdown section under Code Standards)
+yarn lint:md              # markdownlint-cli2: check against .markdownlint.yml
+yarn lint:md:fix          # markdownlint-cli2 --fix (cannot fix MD060 table alignment)
+yarn format:md            # prettier: check formatting, changes nothing
+yarn format:md:fix        # prettier: reformat in place (this is what fixes MD060)
+
 # Storybook
 yarn storybook            # Launch on random free port (requires API at localhost:8000)
 yarn storybook --port 6006  # Launch on specific port
@@ -98,18 +104,18 @@ yarn docker               # Run compile:watch and storybook:ci in parallel
 
 **Method Chainability:**
 
-| Method Type        | Chainable | Returns     | Examples                                      |
-|--------------------|-----------|-------------|-----------------------------------------------|
-| Configuration      | Yes       | `this`      | `class()`, `id()`, `label()`, `filter()`      |
-| DOM insertion      | No        | `void`      | `appendTo()`                                  |
-| Build/render       | No        | varies      | `buildTable()` returns Promise                |
-| Event subscription | Yes       | `this`      | `listenTo()`                                  |
+| Method Type        | Chainable | Returns | Examples                                 |
+| ------------------ | --------- | ------- | ---------------------------------------- |
+| Configuration      | Yes       | `this`  | `class()`, `id()`, `label()`, `filter()` |
+| DOM insertion      | No        | `void`  | `appendTo()`                             |
+| Build/render       | No        | varies  | `buildTable()` returns Promise           |
+| Event subscription | Yes       | `this`  | `listenTo()`                             |
 
 **Note:** `WebCalendar.attachTo()` is deprecated. Use `appendTo()` instead for consistency with other components.
 
 **WebCalendar appendTo() Behavior:** Unlike other components where `appendTo()` performs a one-time DOM insertion,
 `WebCalendar.appendTo()` stores a reference to the target element. When calendar data is fetched (via `listenTo()`),
-the table content is rebuilt and the target element's children are *replaced* (not appended). This reactive behavior
+the table content is rebuilt and the target element's children are _replaced_ (not appended). This reactive behavior
 means the calendar updates automatically whenever new data arrives from the ApiClient.
 
 **IMPORTANT:** Since `appendTo()` does not return `this`, you must NOT chain it with other methods.
@@ -140,17 +146,42 @@ All markdown files must conform to `.markdownlint.yml`:
 - **Code blocks:** Use fenced style with language specifiers
 - **Lists:** Must be surrounded by blank lines
 
+**Two tools, deliberately kept separate — do not merge them into one script name.**
+
+| Tool                | Script                       | Fixes                                                 |
+| ------------------- | ---------------------------- | ----------------------------------------------------- |
+| `markdownlint-cli2` | `lint:md`, `lint:md:fix`     | the `.markdownlint.yml` rules — MD013, MD029, MD040 … |
+| `prettier`          | `format:md`, `format:md:fix` | formatting — table alignment (MD060), MD032           |
+
+They are complementary, not alternatives, because **`markdownlint-cli2 --fix` cannot repair MD060.**
+Run it on a misaligned table and it reports the error but changes nothing; alignment would otherwise have
+to be done by hand. `yarn format:md:fix` does it mechanically, and its output passes `lint:md` with zero
+errors — so prettier owns formatting and markdownlint owns everything else. Prettier does **not** fix
+MD013 or MD029; those still need a human edit.
+
+Both share the same names in the monorepo's other (PHP) projects, where only markdownlint exists. Here
+`lint:md` is markdownlint and `format:md` is prettier. Defining prettier as `lint:md` would silently
+shadow the markdownlint scripts — JSON takes the last duplicate key — so keep the names distinct.
+
+**Prettier is configured for markdown only, on purpose.** The `format:md` scripts pass
+`--embedded-language-formatting=off` so that fenced JavaScript samples inside the docs are left exactly
+as written: prettier's defaults are double quotes and 2-space indent, which contradict this project's
+single-quote, 4-space standard. For the same reason there is deliberately **no `.prettierrc`** — a
+config file would be picked up by editors' format-on-save and would start silently reformatting `src/`
+against those standards. Keep the options as CLI flags in the scripts, and keep source files out via
+`.prettierignore`.
+
 ## Key Components
 
-| Component         | Purpose                                           |
-|-------------------|---------------------------------------------------|
-| `ApiClient`       | Manages API communication, emits events           |
-| `CalendarSelect`  | Dropdown for selecting calendars                  |
-| `ApiOptions`      | Form controls for API parameters                  |
-| `WebCalendar`     | Renders calendar as HTML table                    |
-| `LiturgyOfTheDay` | Widget displaying today's liturgy                 |
-| `LiturgyOfAnyDay` | Widget displaying liturgy for any selected date   |
-| `PathBuilder`     | Builds and displays API request URLs              |
+| Component         | Purpose                                         |
+| ----------------- | ----------------------------------------------- |
+| `ApiClient`       | Manages API communication, emits events         |
+| `CalendarSelect`  | Dropdown for selecting calendars                |
+| `ApiOptions`      | Form controls for API parameters                |
+| `WebCalendar`     | Renders calendar as HTML table                  |
+| `LiturgyOfTheDay` | Widget displaying today's liturgy               |
+| `LiturgyOfAnyDay` | Widget displaying liturgy for any selected date |
+| `PathBuilder`     | Builds and displays API request URLs            |
 
 ## ApiClient
 
@@ -210,10 +241,10 @@ ApiClient.clearCache();
 
 The following methods are deprecated and will show console warnings:
 
-| Deprecated         | Use Instead  |
-|--------------------|--------------|
-| `setYear()`        | `year()`     |
-| `setYearType()`    | `yearType()` |
+| Deprecated      | Use Instead  |
+| --------------- | ------------ |
+| `setYear()`     | `year()`     |
+| `setYearType()` | `yearType()` |
 
 ## Enums
 

@@ -23,4 +23,20 @@ export default class YearInput extends NumberInput {
         this._domElement.step = 1;
         this._domElement.value = new Date().getFullYear();
     }
+
+    /**
+     * Set the minimum selectable year.
+     *
+     * Used to raise the floor to the Ambrosian rite's first reformed Missal (1976)
+     * when the Ambrosian rite is selected, and to restore 1970 for the Roman rite.
+     *
+     * Deliberately has no "already set" guard: this value is re-set every time the rite changes.
+     *
+     * @param {number} year
+     * @returns {YearInput} The current instance for method chaining.
+     */
+    min( year ) {
+        this._domElement.min = year;
+        return this;
+    }
 }

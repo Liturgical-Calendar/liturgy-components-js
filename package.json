@@ -2,7 +2,7 @@
   "type": "module",
   "packageManager": "yarn@4.6.0",
   "name": "@liturgical-calendar/components-js",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "author": "John R. D'Orazio <priest@johnromanodorazio.com (https://www.johnromanodorazio.com)",
   "description": "Liturgical calendar components for javascript: an html select populated with liturgical calendars supported by the Liturgical Calendar API; form controls for parameters that are supported by the Liturgical Calendar API; a webcalendar; and liturgy of the day",
   "homepage": "https://litcal.johnromanodorazio.com",
@@ -22,15 +22,17 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "test": "jest",
+    "test": "node --experimental-vm-modules $(yarn bin jest)",
     "compile": "tsc",
     "compile:watch": "tsc --watch",
     "storybook": "storybook dev",
     "storybook:ci": "storybook dev -p 6006 --ci",
     "storybook:build": "storybook build",
     "docker": "yarn compile:watch & yarn storybook:ci",
-    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\"",
-    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\""
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
+    "format:md": "prettier --check --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\"",
+    "format:md:fix": "prettier --write --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\""
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
@@ -44,8 +46,10 @@
     "@yarnpkg/pnpify": "^4.1.2",
     "bootstrap": "^5.3.3",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "markdownlint-cli2": "^0.19.1",
     "playwright": "^1.57.0",
+    "prettier": "^3.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "storybook": "^10.0.8",

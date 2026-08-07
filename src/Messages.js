@@ -437,7 +437,13 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Liturgy of the Day",
         "SELECT_A_CALENDAR": "Select a calendar",
-        "SELECT_ROUTE": "Select route"
+        "SELECT_ROUTE": "Select route",
+        "RITE_ROMAN": "Roman Rite",
+        "RITE_AMBROSIAN": "Ambrosian Rite",
+        "SELECT_A_RITE": "Select a rite",
+        "GENERAL_ROMAN_CALENDAR": "General Roman Calendar",
+        "AMBROSIAN_CALENDAR": "Ambrosian Calendar",
+        "AMBROSIAN_CALENDAR_CAPTION": "Ambrosian Calendar - {year}"
     },
     "eo": {
         "SUNDAY_JAN2_JAN8": "Dimanĉo de 2 al 8 de januo",
@@ -917,7 +923,13 @@ const Messages = {
         "PSALTER": "Salterio",
         "LITURGY_OF_THE_DAY": "Liturgia del giorno",
         "SELECT_A_CALENDAR": "Seleziona un calendario",
-        "SELECT_ROUTE": "Seleziona percorso"
+        "SELECT_ROUTE": "Seleziona percorso",
+        "RITE_ROMAN": "Rito Romano",
+        "RITE_AMBROSIAN": "Rito Ambrosiano",
+        "SELECT_A_RITE": "Seleziona un rito",
+        "GENERAL_ROMAN_CALENDAR": "Calendario Romano Generale",
+        "AMBROSIAN_CALENDAR": "Calendario Ambrosiano",
+        "AMBROSIAN_CALENDAR_CAPTION": "Calendario Ambrosiano - {year}"
     },
     "ja": {
         "SUNDAY_JAN2_JAN8": "1月2日から1月8日までの日曜日",

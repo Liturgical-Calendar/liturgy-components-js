@@ -1,0 +1,14 @@
+h1 {
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+/* No rule is needed to hide the nation select for a rite with no national tier.
+   `_setHidden()` sets the `hidden` attribute on the wrapper configured via
+   `wrapper()` — falling back to the select itself when there is none — and the
+   browser's own stylesheet takes `[hidden]` to `display: none`. Bootstrap's
+   `.col` classes do not set `display`, so nothing overrides it. */

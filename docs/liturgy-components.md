@@ -28,27 +28,27 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 
 ### Configuration Methods
 
-| Method                            | Description                            |
-|-----------------------------------|----------------------------------------|
-| `id(id)`                          | Set widget element ID                  |
-| `class(className)`                | Set widget CSS class(es)               |
-| `titleClass(className)`           | Set title element CSS class(es)        |
-| `dateClass(className)`            | Set date string CSS class(es)          |
-| `eventsWrapperClass(className)`   | Set events wrapper CSS class(es)       |
-| `eventClass(className)`           | Set event elements CSS class(es)       |
-| `eventGradeClass(className)`      | Set liturgical grade CSS class(es)     |
-| `eventCommonClass(className)`     | Set common (saint type) CSS class(es)  |
-| `eventYearCycleClass(className)`  | Set year cycle CSS class(es)           |
-| `readingsWrapperClass(className)` | Set readings wrapper CSS class(es)     |
-| `readingsLabelClass(className)`   | Set readings label CSS class(es)       |
-| `readingClass(className)`         | Set individual reading CSS class(es)   |
-| `showReadings(bool=true)`         | Show/hide lectionary readings          |
-| `listenTo(apiClient)`             | Listen to calendarFetched events       |
+| Method                            | Description                           |
+| --------------------------------- | ------------------------------------- |
+| `id(id)`                          | Set widget element ID                 |
+| `class(className)`                | Set widget CSS class(es)              |
+| `titleClass(className)`           | Set title element CSS class(es)       |
+| `dateClass(className)`            | Set date string CSS class(es)         |
+| `eventsWrapperClass(className)`   | Set events wrapper CSS class(es)      |
+| `eventClass(className)`           | Set event elements CSS class(es)      |
+| `eventGradeClass(className)`      | Set liturgical grade CSS class(es)    |
+| `eventCommonClass(className)`     | Set common (saint type) CSS class(es) |
+| `eventYearCycleClass(className)`  | Set year cycle CSS class(es)          |
+| `readingsWrapperClass(className)` | Set readings wrapper CSS class(es)    |
+| `readingsLabelClass(className)`   | Set readings label CSS class(es)      |
+| `readingClass(className)`         | Set individual reading CSS class(es)  |
+| `showReadings(bool=true)`         | Show/hide lectionary readings         |
+| `listenTo(apiClient)`             | Listen to calendarFetched events      |
 
 ### DOM Insertion (non-chainable)
 
 | Method               | Description                     |
-|----------------------|---------------------------------|
+| -------------------- | ------------------------------- |
 | `appendTo(selector)` | Append to specified DOM element |
 | `replace(selector)`  | Replace specified DOM element   |
 
@@ -101,13 +101,13 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 
 Includes all `LiturgyOfTheDay` methods plus:
 
-| Method                         | Description                                            |
-|--------------------------------|--------------------------------------------------------|
-| `dateControlsClass(className)` | Set date controls wrapper CSS class(es)                |
-| `dayInputConfig(options)`      | Configure day input                                    |
-| `monthInputConfig(options)`    | Configure month input                                  |
-| `yearInputConfig(options)`     | Configure year input                                   |
-| `buildDateControls()`          | Build and append date controls (must call after config)|
+| Method                         | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `dateControlsClass(className)` | Set date controls wrapper CSS class(es)                 |
+| `dayInputConfig(options)`      | Configure day input                                     |
+| `monthInputConfig(options)`    | Configure month input                                   |
+| `yearInputConfig(options)`     | Configure year input                                    |
+| `buildDateControls()`          | Build and append date controls (must call after config) |
 
 ### Input Configuration Options
 
@@ -148,11 +148,11 @@ liturgyOfAnyDay
 
 ### Date Change Behavior
 
-| Change                   | Action                                           |
-|--------------------------|--------------------------------------------------|
-| Day/Month                | Re-renders from cached data (no API call)        |
-| Year                     | Triggers API refetch                             |
-| December 31st transition | Triggers API refetch with appropriate year_type  |
+| Change                   | Action                                          |
+| ------------------------ | ----------------------------------------------- |
+| Day/Month                | Re-renders from cached data (no API call)       |
+| Year                     | Triggers API refetch                            |
+| December 31st transition | Triggers API refetch with appropriate year_type |
 
 ### Visual Features
 

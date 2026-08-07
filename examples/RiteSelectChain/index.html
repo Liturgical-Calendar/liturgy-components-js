@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Liturgical Calendar Components JS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+        integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer" />
+    <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
+</head>
+<body class="p-4">
+    <h1>Liturgical Calendar Components JS: rite &rarr; calendar chain</h1>
+    <p class="lead">
+        Switch the rite below and watch the rest of the form react. No calendar data is requested here &mdash;
+        <code>ApiClient.init()</code> still fetches the calendar metadata that <code>CalendarSelect</code>
+        needs &mdash; because this example is only about how <code>ApiOptions</code> orchestrates the chain.
+    </p>
+    <div class="alert alert-info">
+        <b>What to look for when you select Ambrosian:</b>
+        <ul class="mb-0">
+            <li>The nation select disappears &mdash; the Ambrosian rite has no national tier.</li>
+            <li>
+                All four Ambrosian dioceses appear at once. Under the Roman rite you have to pick a nation
+                first, because the diocese select is linked to the nation select; the Ambrosian rite has no
+                nation to filter by, so the whole list is shown.
+            </li>
+            <li>Any calendar selection is cleared &mdash; a calendar id from one rite is never valid under another.</li>
+            <li>Epiphany, Ascension, Corpus Christi and Eternal High Priest are disabled &mdash; the Ambrosian Missal fixes them itself.</li>
+            <li>The year field will not accept anything before 1976, the first reformed Ambrosian Missal.</li>
+        </ul>
+    </div>
+    <form id="litcalForm">
+        <div class="row mb-4" id="riteSelectWrapper">
+            <h2>Rite</h2>
+        </div>
+        <div class="row mb-4" id="calendarSelects">
+            <h2>Calendar</h2>
+        </div>
+        <div class="row mb-4" id="calendarOptions">
+            <h2>Options</h2>
+        </div>
+    </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "liturgy-components-js": "../../src/index.js"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

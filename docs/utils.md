@@ -37,7 +37,7 @@ const bestLocale = Utils.findBestLocale(userLanguages, availableLocales);
 **Parameters:**
 
 | Parameter          | Type       | Description                                        |
-|--------------------|------------|----------------------------------------------------|
+| ------------------ | ---------- | -------------------------------------------------- |
 | `userLanguages`    | `string[]` | User's preferred languages in order of preference  |
 | `availableLocales` | `string[]` | Array of available locale strings to match against |
 
@@ -91,9 +91,9 @@ const element = Utils.validateElementSelector('#my-container');
 
 **Parameters:**
 
-| Parameter | Type     | Description                    |
-|-----------|----------|--------------------------------|
-| `element` | `string` | The CSS selector to validate   |
+| Parameter | Type     | Description                  |
+| --------- | -------- | ---------------------------- |
+| `element` | `string` | The CSS selector to validate |
 
 **Returns:** `Element` - The DOM element corresponding to the selector
 
@@ -111,9 +111,9 @@ Utils.validateClassName('--invalid');   // false (starts with dashes)
 
 **Parameters:**
 
-| Parameter   | Type     | Description              |
-|-------------|----------|--------------------------|
-| `className` | `string` | The class name to check  |
+| Parameter   | Type     | Description             |
+| ----------- | -------- | ----------------------- |
+| `className` | `string` | The class name to check |
 
 **Returns:** `boolean` - `true` if valid, `false` otherwise
 
@@ -130,7 +130,7 @@ Utils.validateId('123invalid'); // false
 **Parameters:**
 
 | Parameter | Type     | Description        |
-|-----------|----------|--------------------|
+| --------- | -------- | ------------------ |
 | `id`      | `string` | The ID to validate |
 
 **Returns:** `boolean` - `true` if valid, `false` otherwise
@@ -147,7 +147,7 @@ Utils.sanitizeInput('<script>alert("xss")</script>Hello');
 **Parameters:**
 
 | Parameter | Type     | Description            |
-|-----------|----------|------------------------|
+| --------- | -------- | ---------------------- |
 | `input`   | `string` | The string to sanitize |
 
 **Returns:** `string` - The sanitized string with HTML tags removed

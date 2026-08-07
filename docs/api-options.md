@@ -26,7 +26,7 @@ individual form controls.
 These are useful for any calendar (General Roman, National, or Diocesan):
 
 | Property             | Type         | Description                     |
-|----------------------|--------------|---------------------------------|
+| -------------------- | ------------ | ------------------------------- |
 | `_yearInput`         | number input | Calendar year                   |
 | `_yearTypeInput`     | select       | Year type (liturgical or civil) |
 | `_localeInput`       | select       | Locale for API response         |
@@ -36,18 +36,18 @@ These are useful for any calendar (General Roman, National, or Diocesan):
 
 These fine-tune the General Roman Calendar when national/diocesan data is not requested:
 
-| Property                      | Type   | Description                               |
-|-------------------------------|--------|-------------------------------------------|
-| `_epiphanyInput`              | select | When Epiphany is celebrated               |
-| `_ascensionInput`             | select | When Ascension is celebrated              |
-| `_corpusChristiInput`         | select | When Corpus Christi is celebrated         |
-| `_eternalHighPriestInput`     | select | Whether Eternal High Priest is celebrated |
-| `_holydaysOfObligationInput`  | select | Holy Days of Obligation settings          |
+| Property                     | Type   | Description                               |
+| ---------------------------- | ------ | ----------------------------------------- |
+| `_epiphanyInput`             | select | When Epiphany is celebrated               |
+| `_ascensionInput`            | select | When Ascension is celebrated              |
+| `_corpusChristiInput`        | select | When Corpus Christi is celebrated         |
+| `_eternalHighPriestInput`    | select | Whether Eternal High Priest is celebrated |
+| `_holydaysOfObligationInput` | select | Holy Days of Obligation settings          |
 
 ### Path Builder Control
 
 | Property             | Type   | Description      |
-|----------------------|--------|------------------|
+| -------------------- | ------ | ---------------- |
 | `_calendarPathInput` | select | API request path |
 
 ## Filtering Form Controls
@@ -121,21 +121,21 @@ apiOptions._acceptHeaderInput.hide();
 
 ### Available Control Methods
 
-| Method                   | Description                                                       |
-|--------------------------|-------------------------------------------------------------------|
-| `class(className)`       | CSS class(es) for the control                                     |
-| `id(id)`                 | ID for the control                                                |
-| `name(name)`             | Name attribute                                                    |
-| `labelClass(className)`  | CSS class(es) for the label                                       |
-| `labelAfter(htmlString)` | HTML to append after label text                                   |
-| `wrapper(tagName)`       | Wrapper element ('div' or 'td')                                   |
-| `wrapperClass(className)`| CSS class(es) for wrapper                                         |
-| `disabled(disabled=true)`| Set disabled state                                                |
-| `data(dataMap)`          | Set data attributes                                               |
-| `defaultValue(value)`    | Set initial/default value                                         |
-| `value(val?)`            | Get or set current value; with argument sets value, returns `this`|
-| `options()`              | Returns array of option values (for select elements only)         |
-| `hide(hide=true)`        | Hide the control                                                  |
+| Method                    | Description                                                        |
+| ------------------------- | ------------------------------------------------------------------ |
+| `class(className)`        | CSS class(es) for the control                                      |
+| `id(id)`                  | ID for the control                                                 |
+| `name(name)`              | Name attribute                                                     |
+| `labelClass(className)`   | CSS class(es) for the label                                        |
+| `labelAfter(htmlString)`  | HTML to append after label text                                    |
+| `wrapper(tagName)`        | Wrapper element ('div' or 'td')                                    |
+| `wrapperClass(className)` | CSS class(es) for wrapper                                          |
+| `disabled(disabled=true)` | Set disabled state                                                 |
+| `data(dataMap)`           | Set data attributes                                                |
+| `defaultValue(value)`     | Set initial/default value                                          |
+| `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
+| `options()`               | Returns array of option values (for select elements only)          |
+| `hide(hide=true)`         | Hide the control                                                   |
 
 ## Linking to CalendarSelect
 
@@ -154,6 +154,38 @@ When linked:
 
 - General Roman controls are populated with the selected calendar's settings and disabled
 - Locale options are filtered based on the selected calendar's supported locales
+
+### Linking a RiteSelect
+
+`linkToCalendarSelect()` accepts an optional second parameter, a `RiteSelect` instance (see
+[RiteSelect](rite-select.md)), to drive the rite -> calendar chain alongside the calendar link:
+
+```javascript
+import { ApiOptions, CalendarSelect, RiteSelect, CalendarSelectFilter } from '@liturgical-calendar/components-js';
+
+const riteSelect    = new RiteSelect('en-US');
+const nationSelect  = new CalendarSelect('en-US').filter(CalendarSelectFilter.NATIONAL_CALENDARS);
+const dioceseSelect = new CalendarSelect('en-US').filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
+
+const apiOptions = new ApiOptions('en-US')
+    .linkToCalendarSelect([nationSelect, dioceseSelect], riteSelect);
+```
+
+The first parameter accepts either a single `CalendarSelect` or a `[nationSelect, dioceseSelect]` pair,
+exactly as without a `RiteSelect`. When a `RiteSelect` is passed as the second parameter, `ApiOptions`
+takes over the whole rite -> calendar chain on every rite change:
+
+- The linked `CalendarSelect`(s) are rebuilt for the selected rite, and the calendar selection is reset
+- A linked nation select is hidden for rites with no national tier (e.g. Ambrosian)
+- `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput` and `_eternalHighPriestInput` are disabled
+  for rites that fix their own temporal cycle
+- `_yearInput`'s minimum year is adjusted to the rite's floor
+
+When a `RiteSelect` is linked, the resulting request path also spells out the rite explicitly, even for
+the Roman rite (`/calendar/roman/...` instead of `/calendar/...`) — both forms request the same thing.
+Without a `RiteSelect`, paths are unaffected and stay in the shorter form.
+
+`riteSelect` must be `null` (the default) or an instance of `RiteSelect`; passing anything else throws.
 
 ## Example: Bootstrap Styling
 
