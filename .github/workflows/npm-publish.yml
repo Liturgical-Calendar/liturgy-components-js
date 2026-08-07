@@ -9,8 +9,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Publishing is gated on this environment, and its name forms part of the
+    # OIDC subject claim npm authorises against. A workflow running outside it
+    # cannot publish, even from this same repository. Restrict the environment to
+    # `v*` tags in its deployment rules so a change landing on main cannot reach
+    # the registry on its own.
+    environment: release
     permissions:
       contents: read
+      # Required for BOTH provenance attestation and the OIDC exchange that
+      # trusted publishing uses in place of a long-lived token.
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -21,9 +29,15 @@ jobs:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
+      # Trusted publishing needs a recent npm CLI. setup-node installs whichever
+      # npm the chosen Node line bundles, which for 22.x can still be npm 10.x,
+      # so upgrade explicitly rather than depending on that.
+      - name: Ensure an npm that supports trusted publishing
+        run: npm install -g npm@latest
       - name: Install dependencies
         run: yarn install --immutable && yarn compile
+      # No NODE_AUTH_TOKEN: authentication is the OIDC exchange with npm, using
+      # the id-token permission above. There is no long-lived credential to
+      # expire, which is what broke the v1.5.0 publish.
       - name: Publish package
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
