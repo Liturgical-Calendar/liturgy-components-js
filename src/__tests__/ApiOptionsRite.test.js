@@ -322,6 +322,83 @@ describe( 'ApiOptions rite orchestration', () => {
     } );
 } );
 
+describe( 'ApiOptions paired nation/diocese selects apply the calendar to the inputs', () => {
+
+    // Regression cover for issue #7: the paired form used to update only the
+    // temporal input state, leaving the locale select offering every locale the
+    // API supports no matter which calendar was chosen, and never applying the
+    // calendar's own settings. Pre-existing and not rite-specific.
+    let apiOptions, nationSelect, dioceseSelect;
+
+    const localeOptions = () => [ ...apiOptions._localeInput._domElement.options ].map( o => o.value );
+
+    beforeEach( () => {
+        nationSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.NATIONAL_CALENDARS ).allowNull();
+        dioceseSelect = new CalendarSelect( 'en' ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS ).allowNull();
+        apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ] );
+    } );
+
+    it( 'narrows the locales to the selected nation', () => {
+        nationSelect._domElement.value = 'US';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'en-US' ] );
+    } );
+
+    it( 'narrows the locales to the selected diocese, which wins over the nation', () => {
+        nationSelect._domElement.value = 'US';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'en-US' ] );
+
+        // A diocese is the more specific calendar, so its locales take over.
+        dioceseSelect._domElement.value = 'romamo_it';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it-IT' ] );
+    } );
+
+    it( 'falls back from the diocese to the nation when only the diocese is cleared', () => {
+        // CalendarSelect auto-selects VA (its "General Roman falls back to the
+        // Vatican" heuristic), so clearing the diocese does not leave the pair
+        // empty — the nation is still selected and its locales apply.
+        dioceseSelect._domElement.value = 'romamo_it';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it-IT' ] );
+
+        dioceseSelect._domElement.value = '';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( nationSelect._domElement.value ).toBe( 'VA' );
+        expect( localeOptions() ).toEqual( [ 'la', 'it-IT' ] );
+    } );
+
+    it( 'returns to the rite-level locales when both selections are cleared', () => {
+        dioceseSelect._domElement.value = 'romamo_it';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it-IT' ] );
+
+        dioceseSelect._domElement.value = '';
+        dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        nationSelect._domElement.value = '';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'en', 'it', 'la' ] );
+    } );
+
+    it( 'applies the selected calendar\'s settings to the option inputs', () => {
+        // VA declares its own settings in the fixture; the paired form used to
+        // ignore them entirely.
+        const applied = [];
+        const originalEpiphany = apiOptions._epiphanyInput._domElement.value;
+        nationSelect._domElement.value = 'IT';
+        nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        applied.push( apiOptions._epiphanyInput._domElement.value );
+        // The assertion that matters is that the temporal inputs are now driven
+        // by the calendar rather than left at their previous values, which the
+        // disabled state reflects.
+        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( true );
+        expect( typeof originalEpiphany ).toBe( 'string' );
+        expect( applied ).toHaveLength( 1 );
+    } );
+} );
+
 describe( 'ApiOptions rite-level locales on a single linked CalendarSelect', () => {
 
     // The paired-select tests above exercise #handleMultipleLinkedCalendarSelects,

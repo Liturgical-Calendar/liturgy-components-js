@@ -435,20 +435,87 @@ export default class ApiOptions {
         applyRite( riteSelect._domElement.value );
     }
 
+    /**
+     * Applies a selected calendar's own settings and locales to the option inputs.
+     *
+     * Extracted so both linked forms behave alike. This work used to be inlined
+     * in `#handleSingleLinkedCalendarSelect()` only — twice, once at link time and
+     * once in its change listener — while the paired nation/diocese form did none
+     * of it, so picking a calendar there left the locale select offering every
+     * locale the API supports and the inputs showing settings from a different
+     * calendar.
+     *
+     * @param {CalendarSelect} calendarSelect - The select the calendar was chosen
+     *   in. Supplies the rite, which decides whether a diocese inherits national
+     *   settings.
+     * @param {string} calendarId - The selected `calendar_id`.
+     * @param {?string} calendarType - `national` or `diocesan`, from the option's
+     *   `data-calendartype`.
+     * @param {boolean} [notify=false] - Whether to dispatch `change` on the locale
+     *   input afterwards, so a listening `ApiClient` picks the new locale up. Not
+     *   wanted at link time, when nothing has changed yet.
+     * @returns {boolean} `false` if `calendarType` is neither known value, so each
+     *   caller can keep its own handling of that case — the link-time path throws,
+     *   the change paths ignore it.
+     * @private
+     */
+    #applyCalendarToInputs( calendarSelect, calendarId, calendarType, notify = false ) {
+        switch ( calendarType ) {
+            case 'national': {
+                const nationalCalendar = ApiClient._metadata.national_calendars.find( obj => obj.calendar_id === calendarId );
+                this.#applySettingsToInputs( nationalCalendar.settings );
+                this.#inputs.localeInput.setOptionsForCalendarLocales( nationalCalendar.locales );
+                break;
+            }
+            case 'diocesan': {
+                const diocesanCalendar = ApiClient._metadata.diocesan_calendars.find( obj => obj.calendar_id === calendarId );
+                this.#applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar );
+                if ( Object.hasOwn( diocesanCalendar, 'settings' ) ) {
+                    this.#applySettingsToInputs( diocesanCalendar.settings );
+                }
+                this.#inputs.localeInput.setOptionsForCalendarLocales( diocesanCalendar.locales );
+                break;
+            }
+            default:
+                return false;
+        }
+        if ( notify ) {
+            this.#inputs.localeInput._domElement.dispatchEvent( new Event( 'change' ) );
+        }
+        return true;
+    }
+
     // TODO: add support for multiple linked calendar selects
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
         const nationSelector = calendarSelects[0]._filter === CalendarSelectFilter.NATIONAL_CALENDARS ? calendarSelects[0] : calendarSelects[1];
         const dioceseSelector = calendarSelects[0]._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ? calendarSelects[0] : calendarSelects[1];
-        nationSelector._domElement.addEventListener('change', (ev) => {
-            // TODO: set selected values based on selected calendar
-            // TODO: set available options for locale select based on selected calendar
-            this.#applyTemporalInputState( ev.target.value !== '' || dioceseSelector._domElement.value !== '' );
-        });
-        dioceseSelector._domElement.addEventListener('change', (ev) => {
-            // TODO: set selected values based on selected calendar
-            // TODO: set available options for locale select based on selected calendar
-            this.#applyTemporalInputState( ev.target.value !== '' || nationSelector._domElement.value !== '' );
-        });
+
+        /**
+         * Both selects describe ONE calendar between them, so both listeners run
+         * the same routine over the combined state rather than each reacting only
+         * to its own element.
+         *
+         * The more specific selection wins: a diocese carries its own locales and
+         * inherits its nation's settings, so once one is chosen the nation adds
+         * nothing. With neither chosen the calendar is the rite-level one.
+         */
+        const applySelection = () => {
+            const nationValue  = nationSelector._domElement.value;
+            const dioceseValue = dioceseSelector._domElement.value;
+
+            if ( dioceseValue !== '' ) {
+                this.#applyCalendarToInputs( dioceseSelector, dioceseValue, 'diocesan', true );
+            } else if ( nationValue !== '' ) {
+                this.#applyCalendarToInputs( nationSelector, nationValue, 'national', true );
+            } else {
+                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
+            }
+
+            this.#applyTemporalInputState( nationValue !== '' || dioceseValue !== '' );
+        };
+
+        nationSelector._domElement.addEventListener('change', applySelection);
+        dioceseSelector._domElement.addEventListener('change', applySelection);
     }
 
 
@@ -492,29 +559,8 @@ export default class ApiOptions {
         let currentSelectedCalendarId = calendarSelect._domElement.value;
         if (currentSelectedCalendarId !== '') {
             let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
-            switch(currentSelectedCalendarType) {
-                case 'national': {
-                    const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === currentSelectedCalendarId);
-                    const {settings, locales} = selectedNationalCalendar;
-                    //console.info('handling national calendar settings while linking to calendar select:', settings);
-                    this.#applySettingsToInputs(settings);
-                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                    break;
-                }
-                case 'diocesan': {
-                    const selectedDiocesanCalendar = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === currentSelectedCalendarId);
-                    const {locales} = selectedDiocesanCalendar;
-                    this.#applyNationalSettingsForDiocese(calendarSelect, selectedDiocesanCalendar);
-                    if (selectedDiocesanCalendar.hasOwnProperty('settings')) {
-                        const {settings} = selectedDiocesanCalendar;
-                        //console.info('handling diocesan calendar settings while linking to calendar select:', settings);
-                        this.#applySettingsToInputs(settings);
-                    }
-                    this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                    break;
-                }
-                default:
-                    throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
+            if ( false === this.#applyCalendarToInputs( calendarSelect, currentSelectedCalendarId, currentSelectedCalendarType ) ) {
+                throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
             }
             this.#applyTemporalInputState( true );
         } else {
@@ -532,30 +578,9 @@ export default class ApiOptions {
                 this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
-                switch(selectedCalendarType) {
-                    case 'national': {
-                        const selectedNationalCalendar = ApiClient._metadata.national_calendars.find(nationCalendarObj => nationCalendarObj.calendar_id === ev.target.value);
-                        const {settings, locales} = selectedNationalCalendar;
-                        //console.info('handling national calendar settings following change event:', settings);
-                        this.#applySettingsToInputs(settings);
-                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
-                        break;
-                    }
-                    case 'diocesan': {
-                        const selectedDiocese = ApiClient._metadata.diocesan_calendars.find(dioceseObj => dioceseObj.calendar_id === ev.target.value);
-                        const {locales} = selectedDiocese;
-                        this.#applyNationalSettingsForDiocese(calendarSelect, selectedDiocese);
-                        if (selectedDiocese.hasOwnProperty('settings')) {
-                            const {settings} = selectedDiocese;
-                            //console.info('handling diocesan calendar settings following change event:', settings);
-                            this.#applySettingsToInputs(settings);
-                        }
-                        this.#inputs.localeInput.setOptionsForCalendarLocales(locales);
-                        this.#inputs.localeInput._domElement.dispatchEvent(new Event('change'));
-                        break;
-                    }
-                }
+                // An unrecognised type is ignored here rather than thrown, as it
+                // always has been on this path.
+                this.#applyCalendarToInputs( calendarSelect, ev.target.value, selectedCalendarType, true );
                 this.#applyTemporalInputState( true );
             }
         });
