@@ -257,6 +257,23 @@ export default class ApiClient {
   }
 
   /**
+   * Refuses a request for a non-Roman rite against an API that cannot serve one.
+   *
+   * Pre-empts the API's rejection rather than surfacing it: v5 answers any path
+   * carrying a rite segment with a bare 400, which tells the integrator nothing
+   * about why. The Roman rite is always allowed, since it is served by every API
+   * version — on v5 simply without the segment.
+   *
+   * @throws {Error} If a non-Roman rite is selected and the API is not rite-aware.
+   * @private
+   */
+  #assertRiteSupported() {
+    if ( this.#currentRite !== Rite.ROMAN && false === ApiClient.#supportsRite ) {
+      throw new Error( `ApiClient: the API at ${ApiClient.#apiUrl} does not support the ${this.#currentRite} rite. Rite support was added in API v6; this API announces no ambrosian_calendars in its metadata.` );
+    }
+  }
+
+  /**
    * Gets cached calendar data if available and valid.
    * @param {string} cacheKey - The cache key to look up
    * @returns {object|null} The cached data or null if not found
@@ -367,6 +384,7 @@ export default class ApiClient {
    * is returned without making a new API request.
    */
   fetchCalendar(locale = null) {
+    this.#assertRiteSupported();
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
     let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
@@ -433,6 +451,7 @@ export default class ApiClient {
    * is returned without making a new API request.
    */
   fetchNationalCalendar( calendar_id, locale = '' ) {
+    this.#assertRiteSupported();
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
@@ -484,6 +503,7 @@ export default class ApiClient {
    * is returned without making a new API request.
    */
   fetchDiocesanCalendar( calendar_id, locale = '' ) {
+    this.#assertRiteSupported();
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
