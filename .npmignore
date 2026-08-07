@@ -10,8 +10,7 @@
 tsconfig.json
 tsconfig.tsbuildinfo
 yarn.lock
-.env
-.env.example
+.env*
 docker-compose.yml
 Dockerfile
 Dockerfile.dockerignore
