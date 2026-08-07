@@ -8,6 +8,7 @@
 dist/
 tsconfig.tsbuildinfo
 liturgy-components-js-*.tgz
+storybook-static/
 
 *storybook.log
 node_modules
