@@ -459,12 +459,47 @@ export default class CalendarSelect {
         if ( this.#filterSet && this.#filter !== filter ) {
             throw new Error('Filter has already been set to `' + this.#filter + '` on CalendarSelect instance with locale ' + this.#locale + '.');
         }
-        if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
-            throw new Error('Invalid filter: ' + filter);
-        }
+        this.#validateFilter( filter );
         if ( filter !== this.#filter ) {
             this.#filterSet = true;
         }
+        return this._applyFilter( filter );
+    }
+
+    /**
+     * Validates a candidate filter value against the `CalendarSelectFilter` enum.
+     *
+     * Shared by `.filter()` and `._applyFilter()` so both entry points reject an
+     * unknown filter with the same message.
+     *
+     * @param {string} filter - The candidate filter value.
+     * @throws {Error} If the filter is not a value of the `CalendarSelectFilter` enum.
+     * @private
+     */
+    #validateFilter( filter ) {
+        if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
+            throw new Error('Invalid filter: ' + filter);
+        }
+    }
+
+    /**
+     * Applies a filter and rebuilds the options, WITHOUT the one-shot guard that
+     * `.filter()` enforces.
+     *
+     * `.filter()` refuses a second, different value so that a configuration chain
+     * cannot quietly contradict itself. That is the right rule for configuration,
+     * but re-filtering is not always a mistake: ApiOptions' path builder drives a
+     * single CalendarSelect between the national and diocesan lists every time
+     * the user switches `/calendar/nation/` and `/calendar/diocese/`, which is
+     * the component working as designed rather than being misconfigured.
+     *
+     * Mirrors the `rite()` / `_applyRite()` split for the same reason.
+     *
+     * @param {string} filter - A value from the `CalendarSelectFilter` enum.
+     * @returns {CalendarSelect} This instance, for chaining.
+     */
+    _applyFilter( filter ) {
+        this.#validateFilter( filter );
         this.#filter = filter;
         this.#reapplyOptionsToDom();
         return this;
