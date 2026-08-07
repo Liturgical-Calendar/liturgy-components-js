@@ -8,13 +8,23 @@ on:
   push:
     branches: [main]
 
-# A new push to the same branch makes the in-flight run obsolete. Cancel it
-# rather than paying for a result nobody will read. Cancelling is limited to
-# pull requests: pushes to main share one group and are left to run to
-# completion, so every commit on the release branch keeps its own result.
+# A new push to the same pull request makes the in-flight run obsolete, so
+# cancel it rather than paying for a result nobody will read.
+#
+# The event is encoded in the group key rather than in cancel-in-progress. An
+# earlier version of this file used
+#     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+# which does not do what it reads as: the expression yields the *string*
+# "false" on a push, and a non-empty string is truthy, so pushes to main
+# cancelled one another. Merging two pull requests seconds apart duly killed
+# the run for the first merge commit.
+#
+# Keying pushes by SHA instead gives every commit on main its own group, so a
+# main run can never be cancelled by the commit that follows it, while pull
+# request runs still collapse onto the newest push.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   verify:
