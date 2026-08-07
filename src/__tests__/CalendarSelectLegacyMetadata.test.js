@@ -24,7 +24,7 @@ const V5_METADATA = {
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ] }
     ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma' },
         { calendar_id: 'boston_us', nation: 'US', diocese: 'Archdiocese of Boston' }
     ]
 };
@@ -41,7 +41,7 @@ describe( 'CalendarSelect against metadata with no rite field (live v5 API)', ()
 
     it( 'offers every diocese under the Roman rite', () => {
         const cs = new CalendarSelect();
-        expect( cs.diocesesInnerHtml ).toContain( 'value="roma_it"' );
+        expect( cs.diocesesInnerHtml ).toContain( 'value="romamo_it"' );
         expect( cs.diocesesInnerHtml ).toContain( 'value="boston_us"' );
     } );
 
@@ -49,12 +49,12 @@ describe( 'CalendarSelect against metadata with no rite field (live v5 API)', ()
         const cs = new CalendarSelect();
         expect( cs.nationsInnerHtml ).toContain( 'value="IT"' );
         expect( cs.nationsInnerHtml ).toContain( 'value="US"' );
-        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="roma_it"/ );
+        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/ );
     } );
 
     it( 'offers none of them under the Ambrosian rite', () => {
         const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="roma_it"' );
+        expect( cs.diocesesInnerHtml ).not.toContain( 'value="romamo_it"' );
         expect( cs.diocesesInnerHtml ).not.toContain( 'value="boston_us"' );
     } );
 

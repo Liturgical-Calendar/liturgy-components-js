@@ -31,8 +31,8 @@ describe( 'CurrentEndpoint path composition', () => {
         expect( endpoint.path ).toBe( '/calendar/nation/IT' );
 
         endpoint.calendarType = CalendarType.DIOCESAN;
-        endpoint.calendarId   = 'roma_it';
-        expect( endpoint.path ).toBe( '/calendar/diocese/roma_it' );
+        endpoint.calendarId   = 'romamo_it';
+        expect( endpoint.path ).toBe( '/calendar/diocese/romamo_it' );
     } );
 
     it( 'emits the explicit roman segment when explicitRite is set', () => {

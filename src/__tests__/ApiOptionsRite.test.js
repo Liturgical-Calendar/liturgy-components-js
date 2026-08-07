@@ -9,7 +9,7 @@ import PathBuilder from '../PathBuilder/PathBuilder.js';
 import Messages from '../Messages.js';
 
 /**
- * Same fixture shape as CalendarSelect.test.js: a Roman diocese (roma_it),
+ * Same fixture shape as CalendarSelect.test.js: a Roman diocese (romamo_it),
  * and two Ambrosian dioceses, one (milano_it) whose nation also has a Roman
  * national calendar and one (lugano_ch) whose nation does not.
  *
@@ -32,7 +32,7 @@ const METADATA = {
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ], settings: {} }
     ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',        locales: [ 'it-IT' ], rite: 'roman' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',        locales: [ 'it-IT' ], rite: 'roman' },
         { calendar_id: 'boston_us', nation: 'US', diocese: 'Archdiocese of Boston',  locales: [ 'en-US' ], rite: 'roman' },
         { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',      locales: [ 'it-IT' ], rite: 'ambrosian' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',      locales: [ 'it-IT' ], rite: 'ambrosian' }
@@ -207,8 +207,8 @@ describe( 'ApiOptions rite orchestration', () => {
     } );
 
     it( 'resets the calendar selection to the rite-level calendar on rite change', () => {
-        dioceseSelect._domElement.value = 'roma_it';
-        expect( dioceseSelect._domElement.value ).toBe( 'roma_it' );
+        dioceseSelect._domElement.value = 'romamo_it';
+        expect( dioceseSelect._domElement.value ).toBe( 'romamo_it' );
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
@@ -280,7 +280,7 @@ describe( 'ApiOptions rite orchestration', () => {
     it( 're-enables the fixed temporal inputs on the same round trip under Roman', () => {
         // The control for the two tests above: the nation/diocese half of the
         // rule must still release the inputs when the rite does not fix them.
-        dioceseSelect._domElement.value = 'roma_it';
+        dioceseSelect._domElement.value = 'romamo_it';
         dioceseSelect._domElement.dispatchEvent( new Event( 'change' ) );
         expect( apiOptions._ascensionInput._domElement.disabled ).toBe( true );
 
@@ -310,7 +310,7 @@ describe( 'ApiOptions rite orchestration with a nation-linked diocese select', (
     it( 'keeps per-nation diocese filtering after a rite change', () => {
         nationSelect._domElement.value = 'IT';
         nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="roma_it"' );
+        expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="romamo_it"' );
         expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="boston_us"' );
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
@@ -327,12 +327,12 @@ describe( 'ApiOptions rite orchestration with a nation-linked diocese select', (
         // full, unfiltered, every-nation list.
         expect( nationSelect._domElement.value ).toBe( '' );
         expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="boston_us"' );
-        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="roma_it"' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="romamo_it"' );
 
         nationSelect._domElement.value = 'US';
         nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
         expect( dioceseSelect._domElement.innerHTML ).toContain( 'value="boston_us"' );
-        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="roma_it"' );
+        expect( dioceseSelect._domElement.innerHTML ).not.toContain( 'value="romamo_it"' );
     } );
 } );
 
@@ -496,9 +496,9 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
         // stayed in the endpoint forever. Independent of rite: reproduced on
         // main by picking a diocese in examples/PathBuilder and then
         // re-selecting the empty option, which left the diocese in the path.
-        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.value = 'romamo_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( displayedPath() ).toContain( '/diocese/roma_it' );
+        expect( displayedPath() ).toContain( '/diocese/romamo_it' );
 
         calendarSelect._domElement.value = '';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
@@ -507,9 +507,9 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
     } );
 
     it( 'refreshes the displayed path after a rite change resets the selection', () => {
-        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.value = 'romamo_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        expect( displayedPath() ).toContain( '/calendar/roman/diocese/roma_it' );
+        expect( displayedPath() ).toContain( '/calendar/roman/diocese/romamo_it' );
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
@@ -517,11 +517,11 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
         expect( calendarSelect._domElement.value ).toBe( '' );
         expect( apiOptions._currentEndpoint.path ).toBe( '/calendar/ambrosian' );
         expect( displayedPath() ).toContain( '/calendar/ambrosian' );
-        expect( displayedPath() ).not.toContain( 'roma_it' );
+        expect( displayedPath() ).not.toContain( 'romamo_it' );
     } );
 
     it( 'does not undo the reset: the calendar selection stays empty after the refresh dispatch', () => {
-        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.value = 'romamo_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
 
         riteSelect._domElement.value = Rite.AMBROSIAN;

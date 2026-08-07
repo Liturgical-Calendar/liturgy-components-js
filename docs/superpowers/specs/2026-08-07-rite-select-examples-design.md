@@ -133,7 +133,7 @@ dioceses in **both** directions, not only for the national tier. Measured agains
 
 | Route                                   | Status  |
 | --------------------------------------- | ------- |
-| `/calendar/ambrosian/diocese/roma_it`   | **400** |
+| `/calendar/ambrosian/diocese/romamo_it` | **400** |
 | `/calendar/roman/diocese/lugano_ch`     | **400** |
 | `/calendar/ambrosian/diocese/lugano_ch` | 200     |
 

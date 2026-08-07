@@ -596,7 +596,7 @@ export default class ApiClient {
    * incoming rite-level calendar. A calendar_id from one rite is never valid
    * under another — the same rule ApiOptions applies when it resets the
    * calendar selection — and that holds for dioceses in BOTH directions, not
-   * only for the national tier: `/calendar/ambrosian/diocese/roma_it` and
+   * only for the national tier: `/calendar/ambrosian/diocese/romamo_it` and
    * `/calendar/roman/diocese/lugano_ch` are both 400.
    *
    * This falls back rather than throwing: a user switching rites is not a

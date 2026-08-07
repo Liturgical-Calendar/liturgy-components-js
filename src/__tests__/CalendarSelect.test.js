@@ -8,7 +8,7 @@ import { Rite, CalendarSelectFilter } from '../Enums.js';
  * `CH` has NO Roman national calendar — the crash case. `milano_it` is also
  * Ambrosian but its nation `IT` DOES have a Roman national calendar, so before
  * rite filtering it was silently grouped under Italy as though it were Roman.
- * `roma_it` is the Roman control.
+ * `romamo_it` is the Roman control.
  */
 const METADATA = {
     national_calendars: [
@@ -16,7 +16,7 @@ const METADATA = {
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ] }
     ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',    rite: 'roman' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',    rite: 'roman' },
         { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',  rite: 'ambrosian' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',  rite: 'ambrosian' }
     ],
@@ -54,9 +54,9 @@ describe( 'CalendarSelect rite filtering — Roman (default)', () => {
 
     it( 'keeps Roman dioceses grouped under their nation', () => {
         const cs = new CalendarSelect();
-        expect( cs.diocesesInnerHtml ).toContain( 'value="roma_it"' );
+        expect( cs.diocesesInnerHtml ).toContain( 'value="romamo_it"' );
         expect( cs.nationsInnerHtml ).toContain( 'value="IT"' );
-        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="roma_it"/ );
+        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/ );
     } );
 } );
 
@@ -66,7 +66,7 @@ describe( 'CalendarSelect rite filtering — Ambrosian', () => {
         const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
         expect( cs.diocesesInnerHtml ).toContain( 'value="lugano_ch"' );
         expect( cs.diocesesInnerHtml ).toContain( 'value="milano_it"' );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="roma_it"' );
+        expect( cs.diocesesInnerHtml ).not.toContain( 'value="romamo_it"' );
     } );
 
     it( 'produces no nation options at all', () => {

@@ -242,14 +242,14 @@ becomes per-instance.
 `CurrentEndpoint` gains a `rite` field. The segment is inserted directly after
 `/calendar`, and whether it appears for Roman depends on linkage:
 
-| Selection                  | No `RiteSelect` linked      | `RiteSelect` linked                          |
-| -------------------------- | --------------------------- | -------------------------------------------- |
-| Roman, rite-level          | `/calendar`                 | `/calendar/roman`                            |
-| Roman, national            | `/calendar/nation/IT`       | `/calendar/roman/nation/IT`                  |
-| Roman, diocesan            | `/calendar/diocese/roma_it` | `/calendar/roman/diocese/roma_it`            |
-| Ambrosian, rite-level      | —                           | `/calendar/ambrosian`                        |
-| Ambrosian, diocesan        | —                           | `/calendar/ambrosian/diocese/lugano_ch`      |
-| Ambrosian, diocesan + year | —                           | `/calendar/ambrosian/diocese/lugano_ch/2026` |
+| Selection                  | No `RiteSelect` linked        | `RiteSelect` linked                          |
+| -------------------------- | ----------------------------- | -------------------------------------------- |
+| Roman, rite-level          | `/calendar`                   | `/calendar/roman`                            |
+| Roman, national            | `/calendar/nation/IT`         | `/calendar/roman/nation/IT`                  |
+| Roman, diocesan            | `/calendar/diocese/romamo_it` | `/calendar/roman/diocese/romamo_it`          |
+| Ambrosian, rite-level      | —                             | `/calendar/ambrosian`                        |
+| Ambrosian, diocesan        | —                             | `/calendar/ambrosian/diocese/lugano_ch`      |
+| Ambrosian, diocesan + year | —                             | `/calendar/ambrosian/diocese/lugano_ch/2026` |
 
 Both Roman forms are the same request — `Router::extractRiteSegment()` shifts
 `roman` off and leaves the remainder unchanged. Omitting it when no `RiteSelect`
@@ -340,7 +340,7 @@ extended with `rite` fields and an `ambrosian_calendars` entry.
    is replaced, not extended.
 2. Under Ambrosian, all four dioceses present, flat, with no nation `<optgroup>`
    and no nation options at all.
-3. Roman grouping unchanged — `roma_it` under an `IT` optgroup.
+3. Roman grouping unchanged — `romamo_it` under an `IT` optgroup.
 4. **Rebuild idempotency** — call `_applyRite()` a second time for the rite a
    select was already built for, and assert its markup is byte-identical. This
    pins the per-build reset: remove it and the second build re-derives on top of

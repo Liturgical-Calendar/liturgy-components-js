@@ -16,7 +16,7 @@ import { Rite } from '../Enums.js';
 const V5_METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [ { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} } ],
-    diocesan_calendars: [ { calendar_id: 'roma_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ] } ]
+    diocesan_calendars: [ { calendar_id: 'romamo_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ] } ]
 };
 
 let apiClient;

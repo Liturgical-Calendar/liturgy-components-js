@@ -33,7 +33,7 @@ const METADATA = {
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ], settings: {} }
     ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
         { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano', locales: [ 'it-IT' ], rite: 'ambrosian' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano', locales: [ 'it-IT' ], rite: 'ambrosian' }
     ],
@@ -157,7 +157,7 @@ describe( 'ApiOptions national settings lookup for a rite with no national tier'
         // conditional on the rite having no national tier, not unconditional.
         const { calendarSelect, apiOptions } = buildRiteAwareSetup();
 
-        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.value = 'romamo_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
 
         expect( apiOptions._epiphanyInput._domElement.value ).toBe( 'SUNDAY_JAN2_JAN8' );

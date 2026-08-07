@@ -14,7 +14,7 @@ const METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [ { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} } ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano', locales: [ 'it-IT' ], rite: 'ambrosian' }
     ],
     ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
@@ -163,11 +163,11 @@ describe( 'ApiClient listening to a RiteSelect', () => {
         // A calendar_id from one rite is never valid under another. Carrying a
         // diocese across a rite change is a 400 in BOTH directions, verified
         // against the API:
-        //   /calendar/ambrosian/diocese/roma_it   -> 400
+        //   /calendar/ambrosian/diocese/romamo_it   -> 400
         //   /calendar/roman/diocese/lugano_ch     -> 400
         const riteSelect = new RiteSelect( 'en' );
         apiClient.rite( Rite.ROMAN ).listenTo( riteSelect );
-        apiClient.fetchDiocesanCalendar( 'roma_it' );
+        apiClient.fetchDiocesanCalendar( 'romamo_it' );
         global.fetch.mockClear();
 
         riteSelect._domElement.value = Rite.AMBROSIAN;

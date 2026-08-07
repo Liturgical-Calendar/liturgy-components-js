@@ -60,7 +60,7 @@ const METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [ { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} } ],
     diocesan_calendars: [
-        { calendar_id: 'roma_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
+        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',   locales: [ 'it-IT' ], rite: 'roman' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano', locales: [ 'it-IT' ], rite: 'ambrosian' }
     ],
     ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
@@ -405,7 +405,7 @@ import { Rite } from '../Enums.js';
 const V5_METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [ { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} } ],
-    diocesan_calendars: [ { calendar_id: 'roma_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ] } ]
+    diocesan_calendars: [ { calendar_id: 'romamo_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ] } ]
 };
 
 let apiClient;
@@ -613,11 +613,11 @@ describe( 'ApiClient listening to a RiteSelect', () => {
         // A calendar_id from one rite is never valid under another. Carrying a
         // diocese across a rite change is a 400 in BOTH directions, verified
         // against the API:
-        //   /calendar/ambrosian/diocese/roma_it   -> 400
+        //   /calendar/ambrosian/diocese/romamo_it   -> 400
         //   /calendar/roman/diocese/lugano_ch     -> 400
         const riteSelect = new RiteSelect( 'en' );
         apiClient.rite( Rite.ROMAN ).listenTo( riteSelect );
-        apiClient.fetchDiocesanCalendar( 'roma_it' );
+        apiClient.fetchDiocesanCalendar( 'romamo_it' );
         global.fetch.mockClear();
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
@@ -684,7 +684,7 @@ After `#listenToCalendarSelect` (ends line 524), add:
    * incoming rite-level calendar. A calendar_id from one rite is never valid
    * under another — the same rule ApiOptions applies when it resets the
    * calendar selection — and that holds for dioceses in BOTH directions, not
-   * only for the national tier: `/calendar/ambrosian/diocese/roma_it` and
+   * only for the national tier: `/calendar/ambrosian/diocese/romamo_it` and
    * `/calendar/roman/diocese/lugano_ch` are both 400.
    *
    * This falls back rather than throwing: a user switching rites is not a
