@@ -68,17 +68,23 @@ ApiClient.init().then((apiClient) => {
 
 The `examples/` folder contains complete working examples:
 
-| Example                           | Description                                    |
-| --------------------------------- | ---------------------------------------------- |
-| [LiturgyOfTheDay][ex-liturgy-day] | Today's liturgy with calendar/locale selection |
-| [LiturgyOfAnyDay][ex-liturgy-any] | Browse any date with lectionary readings       |
-| [WebCalendar][ex-webcalendar]     | Full calendar table with display options       |
-| [PathBuilder][ex-pathbuilder]     | Interactive API URL builder                    |
+| Example                                 | Description                                    |
+| --------------------------------------- | ---------------------------------------------- |
+| [LiturgyOfTheDay][ex-liturgy-day]       | Today's liturgy with calendar/locale selection |
+| [LiturgyOfAnyDay][ex-liturgy-any]       | Browse any date with lectionary readings       |
+| [WebCalendar][ex-webcalendar]           | Full calendar table with display options       |
+| [PathBuilder][ex-pathbuilder]           | Interactive API URL builder                    |
+| [RiteSelectChain][ex-rite-chain]        | Rite to nation to diocese chain                |
+| [RiteSelectPathBuilder][ex-rite-path]   | The rite as an API path segment                |
+| [RiteSelectWebCalendar][ex-rite-webcal] | A rendered Ambrosian calendar                  |
 
 [ex-liturgy-day]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfTheDay
 [ex-liturgy-any]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfAnyDay
 [ex-webcalendar]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/WebCalendar
 [ex-pathbuilder]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/PathBuilder
+[ex-rite-chain]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectChain
+[ex-rite-path]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectPathBuilder
+[ex-rite-webcal]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectWebCalendar
 
 To run examples:
 

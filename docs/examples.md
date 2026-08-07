@@ -179,6 +179,87 @@ Interactive API URL builder for exploring the API.
 
 ---
 
+## RiteSelectChain
+
+Demonstrates the rite → nation → diocese chain that `ApiOptions` orchestrates. Deliberately wires no
+`ApiClient` request: this example is about form behaviour.
+
+### Features
+
+- `RiteSelect` linked via `apiOptions.linkToCalendarSelect([nationSelect, dioceseSelect], riteSelect)`
+- Nation select hidden for a rite with no national tier
+- Diocese list refiltered per rite; all four Ambrosian dioceses shown at once, since there is no nation
+  to filter by
+- Calendar selection cleared on every rite change
+- The four fixed temporal inputs disabled, and the year floor raised to 1976, under Ambrosian
+
+### Files
+
+- `examples/RiteSelectChain/index.html`
+- `examples/RiteSelectChain/main.css`
+- `examples/RiteSelectChain/main.js`
+
+### Key Implementation Details
+
+`ApiClient.init()` is still called even though no calendar is ever fetched: `CalendarSelect` reads the
+metadata it retrieves. Requires the API on `localhost:8000`.
+
+No CSS is needed to hide the nation select. `_setHidden()` sets the `hidden` attribute on the wrapper
+configured via `wrapper()`, and the browser stylesheet takes it from there.
+
+## RiteSelectPathBuilder
+
+Shows the rite as a path segment rather than a query parameter, with `PathBuilder` rendering the live
+request path.
+
+### Features
+
+- `/calendar/roman` → `/calendar/ambrosian` → `/calendar/ambrosian/diocese/lugano_ch`
+- The rite spelled out explicitly even for Roman once a `RiteSelect` is linked
+- The `/calendar/nation/` route option disabled for a rite with no national tier, with the route
+  selection falling back to the base `/calendar` option — which renders as `/calendar/ambrosian`
+
+### Files
+
+- `examples/RiteSelectPathBuilder/index.html`
+- `examples/RiteSelectPathBuilder/main.css`
+- `examples/RiteSelectPathBuilder/main.js`
+
+### Key Implementation Details
+
+`PathBuilder` requires a `none` filtered `CalendarSelect`. Both forms of the Roman path are the same
+request: the API router accepts `roman` as an explicit rite segment. Requires the API on
+`localhost:8000`.
+
+## RiteSelectWebCalendar
+
+The full stack through to rendered Ambrosian data: `RiteSelect` → `CalendarSelect` → `ApiOptions` →
+`ApiClient` → `WebCalendar`.
+
+### Features
+
+- `apiClient.listenTo(riteSelect)` refetching on every rite change
+- Real Ambrosian data: Advent begins six weeks before Christmas (16 November 2026, not 30 November) and
+  the liturgical colour is _morello_ rather than _viola_
+- The caption follows the rite, since `WebCalendar` reads it from the `ApiClient`
+- The 1976 year floor enforced by the year input
+
+### Files
+
+- `examples/RiteSelectWebCalendar/index.html`
+- `examples/RiteSelectWebCalendar/main.css`
+- `examples/RiteSelectWebCalendar/main.js`
+
+### Key Implementation Details
+
+Requires the API on `localhost:8000`, **and that API must be v6 or the `dev` deployment**. Rite support
+is detected from the `/calendars` metadata: against v5 the rite segment is omitted and requesting the
+Ambrosian rite throws an explicit error rather than producing a bare 400.
+
+Wiring both `ApiOptions` and `ApiClient` to the same `RiteSelect` issues two requests per rite change.
+`ApiOptions` resets the calendar selection and dispatches `change` on it before `ApiClient`'s own rite
+listener runs. The final state is correct and the cache absorbs part of the cost.
+
 ## Common Patterns
 
 ### Locale Detection

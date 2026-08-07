@@ -104,11 +104,20 @@ webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 
 ### Date and Display Format
 
-| Method                  | Values                                                   | Description               |
-| ----------------------- | -------------------------------------------------------- | ------------------------- |
-| `dateFormat(format)`    | `DateFormat.FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY` | Date display format       |
-| `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display  |
-| `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style |
+| Method                  | Values                                                   | Description                                        |
+| ----------------------- | -------------------------------------------------------- | -------------------------------------------------- |
+| `dateFormat(format)`    | `DateFormat.FULL`, `LONG`, `MEDIUM`, `SHORT`, `DAY_ONLY` | Date display format                                |
+| `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display                           |
+| `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style                          |
+| `rite(rite)`            | `Rite.ROMAN`, `Rite.AMBROSIAN`                           | Rite the calendar belongs to, used for the caption |
+
+`rite()` affects only the caption of a **rite-level** calendar, which is otherwise indistinguishable from
+the General Roman calendar: the payload carries no rite field and has neither a `national_calendar` nor a
+`diocesan_calendar` setting. Without it an Ambrosian calendar is captioned "General Roman Calendar".
+National and diocesan captions are named after the calendar itself and need no rite.
+
+Calling it is unnecessary when the instance uses `listenTo(apiClient)`: the rite is taken from the client
+on every fetch, so it follows a linked `RiteSelect` automatically.
 
 ### Event Handling
 

@@ -144,10 +144,14 @@ Switching back to Roman reverses all of the above.
 
 ## Back-Compatibility
 
-An embed that never instantiates `RiteSelect` and never passes one to `linkToCalendarSelect()` is
-unaffected in the requests it makes: the resulting API **paths** are byte-identical to before rite
-awareness was added, and `CalendarSelect`'s empty option still reads `---` rather than a rite-specific
-label.
+An embed that never instantiates `RiteSelect` and never passes one to `linkToCalendarSelect()` keeps
+making equivalent requests, and `CalendarSelect`'s empty option still reads `---` rather than a
+rite-specific label.
+
+The request **paths** are no longer byte-identical, however. `ApiClient` emits the rite segment for every
+rite, so what was `/calendar/nation/IT` is now `/calendar/roman/nation/IT`. Both are the same request —
+the API router accepts `roman` as an explicit rite segment — so responses are unchanged; only the URL
+string differs.
 
 The **rendered markup of `CalendarSelect` does change**, however: the four Ambrosian dioceses
 (`milano_it`, `bergam_it`, `novara_it`, `lugano_ch`) no longer appear in the default (Roman) diocese
@@ -170,4 +174,53 @@ explicit rite segment — so this only affects the URL string, not the response.
 
 That change is scoped to the `ApiOptions` instance that linked the `RiteSelect`, and to the
 `PathBuilder` built against it. Each `ApiOptions` owns its own endpoint state, so on a page hosting
-several embeds, one embed becoming rite-aware leaves every other embed's path exactly as it was.
+several embeds, one embed becoming rite-aware leaves every other embed's displayed path exactly as it
+was. `ApiClient`'s own requests are separate from this and always carry the segment, as described under
+Back-Compatibility above.
+
+## API version compatibility
+
+Rite support is detected from the `/calendars` metadata rather than configured: a rite-aware API
+announces `ambrosian_calendars`, and API v5 does not. There is no version field in the response to read,
+and no `apiVersion` option to set.
+
+- Against **v5**, `ApiClient` omits the rite segment entirely, so this release keeps working for
+  everything v5 supports. v5 rejects the segment on _every_ route, not only Ambrosian ones, so emitting
+  it unconditionally would break even a plain Roman national calendar. Requesting the Ambrosian rite
+  there throws an explicit error naming the version requirement, rather than emitting a request the API
+  answers with a bare 400.
+- Against **v6 or `dev`**, the segment is always emitted and the Ambrosian rite is available.
+
+## ApiClient
+
+`ApiClient` is rite-aware in its own right. It accepts a `RiteSelect` in `listenTo()`, exactly as it
+accepts a `CalendarSelect`, and exposes a chainable `rite()` setter:
+
+```javascript
+import { ApiClient, RiteSelect, Rite } from '@liturgical-calendar/components-js';
+
+const apiClient = await ApiClient.init();
+const riteSelect = new RiteSelect( 'en-US' );
+riteSelect.appendTo( '#rite' );
+
+apiClient.listenTo( riteSelect ); // changing the rite refetches
+apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
+apiClient.fetchCalendar();        // GET /calendar/ambrosian
+```
+
+Two behaviours are worth knowing:
+
+- **A rite change drops the current calendar selection** and re-targets the request at the rite-level
+  calendar. A `calendar_id` from one rite is never valid under another, in either direction —
+  `/calendar/ambrosian/diocese/romamo_it` and `/calendar/roman/diocese/lugano_ch` are both rejected.
+- **`fetchNationalCalendar()` throws under a rite with no national tier.** There is no
+  `/calendar/ambrosian/nation/...` route, so the client refuses rather than emitting a request that
+  cannot succeed. Use `fetchCalendar()` for the rite-level calendar, or `fetchDiocesanCalendar()` for one
+  of its dioceses.
+
+The rite also participates in `ApiClient`'s cache key, so switching rite at the same year, locale and
+calendar id issues a fresh request instead of returning the previous rite's calendar.
+
+`WebCalendar` takes the rite from the `ApiClient` it listens to, so a rite-level calendar is captioned by
+its own name — "Ambrosian Calendar - 2026" rather than "General Roman Calendar - 2026". Set it explicitly
+with `WebCalendar.rite()` when not listening to a client.

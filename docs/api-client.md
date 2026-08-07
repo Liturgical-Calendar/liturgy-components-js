@@ -101,6 +101,48 @@ apiClient.year(2025).yearType(YearType.CIVIL).fetchCalendar('en');
 > The older methods `setYear()` and `setYearType()` are deprecated but still available.
 > They emit console warnings. Please migrate to `year()` and `yearType()`.
 
+## Rite
+
+The rite is a **path segment**, not a query parameter, so it is composed into the URL rather than sent in
+the request body.
+
+```javascript
+import { ApiClient, RiteSelect, Rite } from '@liturgical-calendar/components-js';
+
+const apiClient = await ApiClient.init();
+const riteSelect = new RiteSelect('en-US');
+riteSelect.appendTo('#rite');
+
+apiClient.listenTo(riteSelect);   // changing the rite refetches
+apiClient.rite(Rite.AMBROSIAN);   // or set it directly; chainable
+apiClient.fetchCalendar();        // GET /calendar/ambrosian
+```
+
+The segment is emitted for **every** rite, including Roman, so requests read `/calendar/roman/nation/IT`.
+Both forms are the same request: the API router accepts `roman` as an explicit rite segment.
+
+`listenTo()` accepts a `RiteSelect` alongside `CalendarSelect` and `ApiOptions`. A rite change drops the
+current calendar selection and re-targets the request at the rite-level calendar, because a `calendar_id`
+from one rite is never valid under another — in either direction.
+
+`fetchNationalCalendar()` throws under a rite with no national tier: there is no
+`/calendar/ambrosian/nation/...` route, so the client refuses rather than emitting a request that cannot
+succeed.
+
+The rite participates in the cache key, so switching rite at the same year, locale and calendar id
+issues a fresh request rather than returning the previous rite's calendar.
+
+### API version support
+
+Rite support is feature-detected from the `/calendars` metadata that `init()` already fetches: a
+rite-aware API announces `ambrosian_calendars`, and v5 does not. There is no version field to read and no
+option to configure.
+
+Against a v5-era API the segment is omitted entirely, so this release keeps working for everything v5
+supports — v5 rejects the segment on every route, not only Ambrosian ones. Requesting a non-Roman rite
+there throws an error naming the version requirement, rather than emitting a request the API answers with
+a bare 400.
+
 ## Caching
 
 The `ApiClient` implements parameter-based caching to avoid redundant API requests.
