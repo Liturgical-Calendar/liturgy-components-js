@@ -142,6 +142,21 @@ export default class ApiClient {
   #currentRite = Rite.ROMAN;
 
   /**
+   * Monotonic counter identifying the most recently STARTED calendar request.
+   *
+   * Requests are fire-and-forget, so several can be in flight at once — a rite
+   * change alone starts two, one through the calendar select and one through the
+   * rite listener. Responses are not guaranteed to arrive in the order they were
+   * issued, and without this an older one landing last would overwrite the newer
+   * calendar and emit it, leaving the UI showing data the user has already moved
+   * on from.
+   *
+   * @type {number}
+   * @private
+   */
+  #requestRevision = 0;
+
+  /**
    * The event bus that can be used to subscribe to events emitted by the ApiClient.
    * @type {EventEmitter}
    * @private
@@ -392,6 +407,7 @@ export default class ApiClient {
     // client's current rite when the response lands could pair one rite's data
     // with the other rite's name.
     const requestRite = this.#currentRite;
+    const requestRevision = ++this.#requestRevision;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
     let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
@@ -434,8 +450,13 @@ export default class ApiClient {
         return response.json();
       }
     }).then( data => {
-      this.#calendarData = data;
+      // Cache regardless: the response is valid for its own key even if a newer
+      // request has superseded it, and caching it saves refetching later.
       this.#setCachedData(cacheKey, data);
+      if ( requestRevision !== this.#requestRevision ) {
+        return this.#calendarData;
+      }
+      this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
@@ -464,6 +485,7 @@ export default class ApiClient {
     }
     // Pin the rite for THIS request — see fetchCalendar() for why.
     const requestRite = this.#currentRite;
+    const requestRevision = ++this.#requestRevision;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
@@ -491,8 +513,13 @@ export default class ApiClient {
         return response.json();
       }
     }).then( data => {
-      this.#calendarData = data;
+      // Cache regardless: the response is valid for its own key even if a newer
+      // request has superseded it, and caching it saves refetching later.
       this.#setCachedData(cacheKey, data);
+      if ( requestRevision !== this.#requestRevision ) {
+        return this.#calendarData;
+      }
+      this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
@@ -522,6 +549,7 @@ export default class ApiClient {
     // client's current rite when the response lands could pair one rite's data
     // with the other rite's name.
     const requestRite = this.#currentRite;
+    const requestRevision = ++this.#requestRevision;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
@@ -549,8 +577,13 @@ export default class ApiClient {
         return response.json();
       }
     }).then( data => {
-      this.#calendarData = data;
+      // Cache regardless: the response is valid for its own key even if a newer
+      // request has superseded it, and caching it saves refetching later.
       this.#setCachedData(cacheKey, data);
+      if ( requestRevision !== this.#requestRevision ) {
+        return this.#calendarData;
+      }
+      this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {

@@ -23,7 +23,9 @@ const METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [
         { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} },
-        { calendar_id: 'US', locales: [ 'en-US' ], settings: {} },
+        // Real settings, so a test can assert they reach the inputs. The others
+        // stay empty so existing expectations are untouched.
+        { calendar_id: 'US', locales: [ 'en-US' ], settings: { epiphany: 'JAN6' } },
         // VA has no dioceses, so #addNationOption marks it `selected` by
         // default (CalendarSelect's built-in "General Roman falls back to
         // the Vatican" heuristic) — `settings` must be present so
@@ -383,19 +385,15 @@ describe( 'ApiOptions paired nation/diocese selects apply the calendar to the in
     } );
 
     it( 'applies the selected calendar\'s settings to the option inputs', () => {
-        // VA declares its own settings in the fixture; the paired form used to
-        // ignore them entirely.
-        const applied = [];
-        const originalEpiphany = apiOptions._epiphanyInput._domElement.value;
-        nationSelect._domElement.value = 'IT';
+        // US declares epiphany JAN6 in the fixture. The paired form used to
+        // ignore a calendar's settings entirely, so the input kept whatever it
+        // held before.
+        expect( apiOptions._epiphanyInput._domElement.value ).not.toBe( 'JAN6' );
+
+        nationSelect._domElement.value = 'US';
         nationSelect._domElement.dispatchEvent( new Event( 'change' ) );
-        applied.push( apiOptions._epiphanyInput._domElement.value );
-        // The assertion that matters is that the temporal inputs are now driven
-        // by the calendar rather than left at their previous values, which the
-        // disabled state reflects.
-        expect( apiOptions._epiphanyInput._domElement.disabled ).toBe( true );
-        expect( typeof originalEpiphany ).toBe( 'string' );
-        expect( applied ).toHaveLength( 1 );
+
+        expect( apiOptions._epiphanyInput._domElement.value ).toBe( 'JAN6' );
     } );
 } );
 

@@ -125,6 +125,45 @@ describe( 'ApiClient rite cache isolation', () => {
     } );
 } );
 
+describe( 'ApiClient response freshness', () => {
+
+    const payload = ( year ) => ( {
+        ok: true,
+        json: () => Promise.resolve( { litcal: [], settings: { year }, metadata: {}, messages: [] } )
+    } );
+
+    it( 'ignores a response that a newer request has superseded', async () => {
+        // Requests are fire-and-forget and several can be in flight at once — a
+        // rite change alone starts two. Responses are not guaranteed to arrive in
+        // the order they were issued, so an older one landing last must not
+        // overwrite the newer calendar.
+        let landFirstRequest;
+        global.fetch
+            .mockImplementationOnce( () => new Promise( resolve => {
+                landFirstRequest = () => resolve( payload( 2001 ) );
+            } ) )
+            .mockImplementationOnce( () => Promise.resolve( payload( 2002 ) ) );
+
+        const emitted = [];
+        apiClient._eventBus.on( 'calendarFetched', data => emitted.push( data.settings.year ) );
+
+        apiClient.year( 2001 );
+        apiClient.fetchCalendar();   // stays pending
+        apiClient.year( 2002 );
+        apiClient.fetchCalendar();   // resolves immediately
+        await new Promise( resolve => setTimeout( resolve, 0 ) );
+        expect( emitted ).toEqual( [ 2002 ] );
+
+        // The older request lands last. Without the revision guard it would
+        // overwrite 2002 and emit 2001.
+        landFirstRequest();
+        await new Promise( resolve => setTimeout( resolve, 0 ) );
+
+        expect( emitted ).toEqual( [ 2002 ] );
+        expect( apiClient._calendarData.settings.year ).toBe( 2002 );
+    } );
+} );
+
 describe( 'ApiClient listening to a RiteSelect', () => {
 
     it( 'rejects something that is not a RiteSelect, CalendarSelect or ApiOptions', () => {

@@ -33,6 +33,7 @@ export default class EventEmitter {
      * @param {*} [meta] - Optional second argument describing the emission itself
      *   rather than its payload, such as the parameters the request was made
      *   with. Listeners that declare only `data` are unaffected.
+     * @returns {void}
      */
     emit(event, data, meta) {
         if (this.#events[event]) {
