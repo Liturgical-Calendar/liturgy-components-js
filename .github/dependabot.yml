@@ -32,6 +32,12 @@ updates:
       interval: 'weekly'
     cooldown:
       default-days: 7
+    # There are six npm groups below, and Dependabot's default limit on open
+    # version-update PRs is five. Once that ceiling is reached it stops opening
+    # new ones, so a group can be starved indefinitely by unrelated PRs sitting
+    # in review — silently, with nothing to indicate an update was withheld.
+    # Ten leaves headroom for every group plus a security update or two.
+    open-pull-requests-limit: 10
     labels:
       - 'javascript dependencies'
     # Groups are matched in the order they are declared — a dependency joins the
