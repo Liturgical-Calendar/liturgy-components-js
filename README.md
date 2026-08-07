@@ -89,8 +89,8 @@ The `examples/` folder contains complete working examples:
 To run examples:
 
 1. Start the Liturgical Calendar API on `localhost:8000`
-2. Serve the project: `python3 -m http.server 3001`
-3. Open `http://localhost:3001/examples/LiturgyOfTheDay/`
+2. Serve the project: `python3 -m http.server 8090`
+3. Open `http://localhost:8090/examples/LiturgyOfTheDay/`
 
 ## Exports
 

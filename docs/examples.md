@@ -9,16 +9,21 @@ The `examples/` folder contains working examples demonstrating how to use the li
 
 ```bash
 # Using Python
-python3 -m http.server 3001
+python3 -m http.server 8090
 
 # Using PHP
-php -S localhost:3001
+php -S localhost:8090
 
 # Using Node.js (npx)
-npx serve -p 3001
+npx serve -p 8090
 ```
 
-1. Open the example in your browser (e.g., `http://localhost:3001/examples/LiturgyOfTheDay/`)
+1. Open the example in your browser (e.g., `http://localhost:8090/examples/LiturgyOfTheDay/`)
+
+Any free port will do; 8090 is suggested because it does not collide with the LiturgicalCalendarFrontend
+Docker stack, which publishes 3000, 3001, 3003, 5432, 8000 and 8080-8088 on localhost. If the port is
+already taken, the server will fail to bind rather than serve the wrong thing — check with
+`ss -ltn | grep 8090` before assuming the examples are broken.
 
 ---
 
