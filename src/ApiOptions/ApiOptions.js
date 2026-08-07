@@ -358,31 +358,19 @@ export default class ApiOptions {
      * @private
      */
     #handleLinkedRiteSelect( riteSelect, calendarSelect ) {
+        const selects = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+
+        // The calendar-side rebuild lives on CalendarSelect, so there is one
+        // implementation of it. Linked FIRST so that each select's listener is
+        // registered before the one below: listeners fire in registration order, and
+        // the option state applied here assumes the selection has already been reset.
+        selects.forEach( cs => cs.linkToRiteSelect( riteSelect ) );
+
         const applyRite = ( rite ) => {
             const riteProps = RiteProperties[ rite ];
-            const selects   = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
 
             this.#currentEndpoint.rite = rite;
             this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
-
-            // A calendar_id from one rite is never valid under another, so reset to
-            // the rite-level calendar rather than carrying a selection across.
-            // Cleared BEFORE the rebuild as well as after: a diocese select linked
-            // to a nation select via `linkToNationsSelect()` re-derives its
-            // per-nation filtering from the nation select's CURRENT value inside
-            // `_applyRite()`, and that value must already be the reset one rather
-            // than the outgoing rite's — otherwise the rebuilt diocese list is
-            // filtered for a nation that is no longer selected.
-            selects.forEach( cs => { cs._domElement.value = ''; } );
-            selects.forEach( cs => cs._applyRite( rite, true ) );
-            selects.forEach( cs => { cs._domElement.value = ''; } );
-
-            if ( Array.isArray( calendarSelect ) ) {
-                const nationSelector = calendarSelect.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS );
-                if ( nationSelector ) {
-                    nationSelector._setHidden( false === riteProps.hasNationalTier );
-                }
-            }
 
             // The selection has just been reset to the rite-level calendar, so the
             // calendar-selection half of the rule is false here; the rite half is
@@ -391,10 +379,10 @@ export default class ApiOptions {
 
             this.#inputs.yearInput.min( riteProps.minYear );
             // Decision 5: pre-empt an invalid request rather than let it through.
-            // Raising `min` alone leaves an already-entered year below the new
-            // floor untouched — e.g. 1970 (valid Roman) is below the Ambrosian
-            // floor of 1976 — which the API would reject. Clamp it up and notify
-            // listeners with a `change` event, matching how a user edit would.
+            // Raising `min` alone leaves an already-entered year below the new floor
+            // untouched — e.g. 1970 (valid Roman) is below the Ambrosian floor of
+            // 1976 — which the API would reject. Clamp it up and notify listeners
+            // with a `change` event, matching how a user edit would.
             const yearInputElement = this.#inputs.yearInput._domElement;
             if ( Number( yearInputElement.value ) < riteProps.minYear ) {
                 yearInputElement.value = riteProps.minYear;
@@ -406,28 +394,23 @@ export default class ApiOptions {
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId   = null;
 
-            // `PathBuilder` (when constructed on this same select) renders its
-            // `<code>` path from a `change` listener on the calendar select's
-            // DOM element. `cs._domElement.value = ''` above is a direct
-            // property assignment, which the DOM does not turn into a `change`
-            // event on its own, so without this the displayed path goes stale —
-            // still showing whatever was selected before the rite change.
-            // Dispatched only on the CALENDAR select(s), never on the rite
-            // select, so this cannot re-enter `applyRite` (only the rite
-            // select's own `change` listener triggers it), and it runs last so
-            // listeners observe the fully reset state above rather than a
-            // half-updated one.
+            // `linkToRiteSelect()` already dispatched its own `change` on each
+            // eligible select as part of the rebuild above (registered first, so it
+            // ran before this listener). `PathBuilder` (when constructed on this
+            // same select) is one of the listeners on the receiving end of that
+            // dispatch, and it renders from `#currentEndpoint` — which at that
+            // point still held the PREVIOUS rite, because this listener (the one
+            // that updates `#currentEndpoint`) had not run yet. Re-dispatching here,
+            // now that `#currentEndpoint` is current, is what makes the displayed
+            // path catch up.
             //
-            // The nation selector (when linked as a pair) is deliberately
-            // excluded: `linkToNationsSelect()` attaches its OWN `change`
-            // listener to it that unconditionally re-derives the diocese
-            // select's options for the (now empty) nation value, which would
-            // stomp the flat, ungrouped list `_applyRite()` just built for a
-            // rite with no national tier. Nothing needs that dispatch anyway —
-            // `PathBuilder` is only ever constructed against a single, `none`
-            // filtered `CalendarSelect`, never the nation/diocese pair.
+            // Filtered the same way `linkToRiteSelect()` filters its own dispatch:
+            // a select with dependent diocese selects (the nation half of a linked
+            // pair) carries its own `change` listener that would re-derive the
+            // diocese options for the now-empty nation value and stomp the flat
+            // list `_applyRite()` just built for a tierless rite.
             selects
-                .filter( cs => cs._filter !== CalendarSelectFilter.NATIONAL_CALENDARS )
+                .filter( cs => false === cs._hasDependentDioceseSelects )
                 .forEach( cs => cs._domElement.dispatchEvent( new Event( 'change' ) ) );
         };
 

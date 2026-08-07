@@ -153,3 +153,21 @@ describe( 'CalendarSelect.linkToRiteSelect', () => {
         expect( pairedChanges ).toBe( 0 );
     } );
 } );
+
+describe( 'linkToRiteSelect and ApiOptions together', () => {
+
+    it( 'throws when a select linked by ApiOptions is also linked directly', async () => {
+        const { default: ApiOptions } = await import( '../ApiOptions/ApiOptions.js' );
+
+        const riteSelect = buildRiteSelect();
+        const calendarSelect = new CalendarSelect( 'en' ).allowNull( true );
+        calendarSelect.appendTo( '#single' );
+
+        const apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+
+        // ApiOptions has already linked it; a second, direct link would put two rite
+        // listeners on one select and apply the rite twice per change.
+        expect( () => calendarSelect.linkToRiteSelect( riteSelect ) ).toThrow( /already linked to a RiteSelect/ );
+    } );
+} );
