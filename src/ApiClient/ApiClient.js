@@ -1,5 +1,6 @@
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import EventEmitter from './EventEmitter.js';
 import { YearType, Rite, RiteProperties } from '../Enums.js';
 
@@ -545,11 +546,15 @@ export default class ApiClient {
   }
 
   listenTo( uiComponent = null ) {
-    if ( false === uiComponent instanceof CalendarSelect && false === uiComponent instanceof ApiOptions ) {
-      throw new Error( 'ApiClient.listenTo(): Expected an instance of CalendarSelect or ApiOptions' );
+    if ( false === uiComponent instanceof CalendarSelect
+      && false === uiComponent instanceof ApiOptions
+      && false === uiComponent instanceof RiteSelect ) {
+      throw new Error( 'ApiClient.listenTo(): Expected an instance of CalendarSelect, RiteSelect or ApiOptions' );
     }
     if (uiComponent instanceof CalendarSelect) {
       return this.#listenToCalendarSelect( uiComponent );
+    } else if (uiComponent instanceof RiteSelect) {
+      return this.#listenToRiteSelect( uiComponent );
     } else if (uiComponent instanceof ApiOptions) {
       return this.#listenToApiOptions( uiComponent );
     }
@@ -579,6 +584,45 @@ export default class ApiClient {
       } else {
         this.fetchCalendar();
       }
+    });
+    return this;
+  }
+
+  /**
+   * Attaches a change listener to a RiteSelect, so that changing the rite
+   * re-issues the request under the new rite.
+   *
+   * Any current selection is dropped and the request re-targeted at the
+   * incoming rite-level calendar. A calendar_id from one rite is never valid
+   * under another — the same rule ApiOptions applies when it resets the
+   * calendar selection — and that holds for dioceses in BOTH directions, not
+   * only for the national tier: `/calendar/ambrosian/diocese/roma_it` and
+   * `/calendar/roman/diocese/lugano_ch` are both 400.
+   *
+   * This falls back rather than throwing: a user switching rites is not a
+   * programming error. The throw in `fetchNationalCalendar()` still covers the
+   * programmatic case.
+   *
+   * Note that wiring both an ApiOptions and an ApiClient to the same RiteSelect
+   * produces two requests per rite change. `ApiOptions#handleLinkedRiteSelect`
+   * resets the calendar selection and dispatches `change` on it synchronously,
+   * which fetches under the outgoing rite before this listener runs. The final
+   * state is correct and the cache absorbs part of the cost.
+   *
+   * @param {RiteSelect} riteSelect - The RiteSelect instance to listen to.
+   * @returns {ApiClient} This instance, for chaining.
+   * @throws {Error} If the argument is not a RiteSelect.
+   * @private
+   */
+  #listenToRiteSelect( riteSelect = null ) {
+    if ( false === riteSelect instanceof RiteSelect ) {
+      throw new Error( 'Expected an instance of RiteSelect' );
+    }
+    riteSelect._domElement.addEventListener( 'change', ( ev ) => {
+      this.rite( ev.target.value );
+      this.#currentCategory   = '';
+      this.#currentCalendarId = '';
+      this.refetchCalendarData();
     });
     return this;
   }

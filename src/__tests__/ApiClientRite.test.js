@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite } from '../Enums.js';
 
 /**
@@ -121,5 +122,68 @@ describe( 'ApiClient rite cache isolation', () => {
         apiClient.fetchCalendar();
         expect( global.fetch ).toHaveBeenCalledTimes( 2 );
         expect( global.fetch.mock.calls[ 1 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+    } );
+} );
+
+describe( 'ApiClient listening to a RiteSelect', () => {
+
+    it( 'rejects something that is not a RiteSelect, CalendarSelect or ApiOptions', () => {
+        expect( () => apiClient.listenTo( {} ) ).toThrow( /Expected an instance of/ );
+    } );
+
+    it( 'sets the rite and re-issues the request when the rite changes', () => {
+        const riteSelect = new RiteSelect( 'en' );
+        expect( apiClient.listenTo( riteSelect ) ).toBe( apiClient );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( apiClient._currentRite ).toBe( Rite.AMBROSIAN );
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+    } );
+
+    it( 'falls back to the rite-level calendar from a national selection', () => {
+        // A user switching rites is not a programming error, so this must not
+        // hit the throw in fetchNationalCalendar. It re-targets instead.
+        const riteSelect = new RiteSelect( 'en' );
+        apiClient.rite( Rite.ROMAN ).listenTo( riteSelect );
+        apiClient.fetchNationalCalendar( 'IT' );
+        global.fetch.mockClear();
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/nation/' );
+    } );
+
+    it( 'falls back to the rite-level calendar from a diocesan selection, in both directions', () => {
+        // A calendar_id from one rite is never valid under another. Carrying a
+        // diocese across a rite change is a 400 in BOTH directions, verified
+        // against the API:
+        //   /calendar/ambrosian/diocese/roma_it   -> 400
+        //   /calendar/roman/diocese/lugano_ch     -> 400
+        const riteSelect = new RiteSelect( 'en' );
+        apiClient.rite( Rite.ROMAN ).listenTo( riteSelect );
+        apiClient.fetchDiocesanCalendar( 'roma_it' );
+        global.fetch.mockClear();
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/diocese/' );
+
+        // ...and back the other way, from an Ambrosian diocese to Roman.
+        apiClient.fetchDiocesanCalendar( 'lugano_ch' );
+        global.fetch.mockClear();
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/roman' );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/diocese/' );
     } );
 } );
