@@ -1,0 +1,54 @@
+# Runs the full local check suite on every pull request and on pushes to main.
+# Until this existed the only workflow in the repository was npm-publish.yml,
+# which fires on `release: published` — so nothing verified a change before it
+# reached main, and `yarn test` had never run in CI at all.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same branch makes the in-flight run obsolete. Cancel it
+# rather than paying for a result nobody will read. Cancelling is limited to
+# pull requests: pushes to main share one group and are left to run to
+# completion, so every commit on the release branch keeps its own result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # Yarn 4.6.0 is pinned by the `packageManager` field; corepack is what
+      # honours it. Without this, setup-node would use whatever yarn ships.
+      - name: Enable Corepack
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Node line used by npm-publish.yml, so a green CI run
+          # reflects the environment the package is actually built in.
+          node-version: '22.x'
+          cache: 'yarn'
+      # --immutable fails if package.json and yarn.lock have drifted apart,
+      # which is the same gate the publish workflow relies on.
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Compile
+        run: yarn compile
+      - name: Run tests
+        run: yarn test
+      # Two complementary tools: markdownlint owns the .markdownlint.yml rules,
+      # prettier owns formatting (including MD060 table alignment, which
+      # markdownlint can report but not fix). See CLAUDE.md.
+      - name: Lint markdown
+        run: yarn lint:md
+      - name: Check markdown formatting
+        run: yarn format:md
+      # The storybook build exercises the vite/rollup toolchain that nothing
+      # else in this job touches, and catches story-level breakage early.
+      - name: Build Storybook
+        run: yarn storybook:build
