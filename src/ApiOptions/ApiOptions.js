@@ -541,11 +541,14 @@ export default class ApiOptions {
                         case '/calendar':
                             calendarSelect.disabled(true)._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
                             break;
+                        // _applyFilter, not filter(): the user can switch back and
+                        // forth between these two paths, and filter() refuses a
+                        // second, different value. See CalendarSelect._applyFilter.
                         case '/calendar/nation/':
-                            calendarSelect.disabled(false).filter(CalendarSelectFilter.NATIONAL_CALENDARS);
+                            calendarSelect.disabled(false)._applyFilter(CalendarSelectFilter.NATIONAL_CALENDARS);
                             break;
                         case '/calendar/diocese/':
-                            calendarSelect.disabled(false).filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
+                            calendarSelect.disabled(false)._applyFilter(CalendarSelectFilter.DIOCESAN_CALENDARS);
                             break;
                     }
                     if (calendarSelect._domElement.firstChild.getAttribute('value') !== lastCalendarSelectValue) {
