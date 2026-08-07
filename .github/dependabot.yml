@@ -65,6 +65,18 @@ updates:
         patterns:
           - 'playwright'
           - '@playwright/*'
+      # vite gets a group of its own so its major line does not hold anything
+      # else hostage. It was initially left to the catch-all, and #19 showed why
+      # that is wrong: vite 8.2.0 arrived bundled with two bootstrap patches, and
+      # because Dependabot reports a group's update-type as the highest it
+      # contains, the whole PR counted as major and auto-merge correctly refused
+      # it — patches included. Isolated, the patches flow and the major waits.
+      #
+      # Nothing forces vite to move with storybook: @storybook/html-vite accepts
+      # vite ^5 || ^6 || ^7 || ^8, so the two majors are genuinely independent.
+      vite:
+        patterns:
+          - 'vite'
       dev-dependencies:
         patterns:
           - '*'
