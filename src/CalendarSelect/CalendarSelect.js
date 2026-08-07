@@ -57,6 +57,8 @@ export default class CalendarSelect {
     #allowNull                            = false;
     /** @type {?CalendarSelect} The `nations` filtered select this one is linked to, if any. */
     #linkedNationsSelect                  = null;
+    /** @type {CalendarSelect[]} Diocese selects that derive their per-nation narrowing from this one. */
+    #dependentDioceseSelects              = [];
 
 
     /**
@@ -575,6 +577,32 @@ export default class CalendarSelect {
     _setHidden( hidden ) {
         const target = this.#wrapperElement ?? this.#domElement;
         target.hidden = hidden;
+    }
+
+    /**
+     * Records that `dioceseSelect` derives its options from this select.
+     *
+     * Called by `linkToNationsSelect()` on the nations instance. The link is
+     * otherwise one-directional — the diocese holds `#linkedNationsSelect` and the
+     * nation knows nothing — which leaves a nation select unable to tell whether
+     * dispatching `change` would disturb a dependent. See `linkToRiteSelect()`.
+     *
+     * @param {CalendarSelect} dioceseSelect - The dependent, `dioceses` filtered select.
+     * @returns {void}
+     */
+    _registerDependentDioceseSelect( dioceseSelect ) {
+        if ( false === this.#dependentDioceseSelects.includes( dioceseSelect ) ) {
+            this.#dependentDioceseSelects.push( dioceseSelect );
+        }
+    }
+
+    /**
+     * Whether any diocese select derives its options from this one.
+     *
+     * @returns {boolean}
+     */
+    get _hasDependentDioceseSelects() {
+        return this.#dependentDioceseSelects.length > 0;
     }
 
     /**
@@ -1262,6 +1290,9 @@ export default class CalendarSelect {
         // change rebuilds this select's options from scratch, and `_applyRite()`
         // needs to re-derive the per-nation narrowing from this same select.
         this.#linkedNationsSelect = calendarSelectInstance;
+        // Tell the nations select it now has a dependent, so it can decide
+        // whether dispatching `change` would disturb one. See `linkToRiteSelect()`.
+        calendarSelectInstance._registerDependentDioceseSelect( this );
         this.#filterDioceseOptionsForNation( linkedDomElement.value );
         linkedDomElement.addEventListener( 'change', (ev) => {
             const newNationValue = ev.target.value;
