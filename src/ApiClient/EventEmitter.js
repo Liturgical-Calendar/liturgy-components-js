@@ -30,10 +30,13 @@ export default class EventEmitter {
      *
      * @param {string} event - The name of the event to emit.
      * @param {*} data - The data to pass to each event listener.
+     * @param {*} [meta] - Optional second argument describing the emission itself
+     *   rather than its payload, such as the parameters the request was made
+     *   with. Listeners that declare only `data` are unaffected.
      */
-    emit(event, data) {
+    emit(event, data, meta) {
         if (this.#events[event]) {
-            this.#events[event].forEach((listener) => listener(data));
+            this.#events[event].forEach((listener) => listener(data, meta));
         }
     }
 

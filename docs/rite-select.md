@@ -148,8 +148,9 @@ An embed that never instantiates `RiteSelect` and never passes one to `linkToCal
 making equivalent requests, and `CalendarSelect`'s empty option still reads `---` rather than a
 rite-specific label.
 
-The request **paths** are no longer byte-identical, however. `ApiClient` emits the rite segment for every
-rite, so what was `/calendar/nation/IT` is now `/calendar/roman/nation/IT`. Both are the same request —
+The request **paths** are no longer byte-identical against a rite-aware API, however. There `ApiClient`
+emits the rite segment for every rite, so what was `/calendar/nation/IT` is now
+`/calendar/roman/nation/IT`. Against v5 the segment is omitted and the old paths are unchanged. Both are the same request —
 the API router accepts `roman` as an explicit rite segment — so responses are unchanged; only the URL
 string differs.
 
@@ -175,8 +176,8 @@ explicit rite segment — so this only affects the URL string, not the response.
 That change is scoped to the `ApiOptions` instance that linked the `RiteSelect`, and to the
 `PathBuilder` built against it. Each `ApiOptions` owns its own endpoint state, so on a page hosting
 several embeds, one embed becoming rite-aware leaves every other embed's displayed path exactly as it
-was. `ApiClient`'s own requests are separate from this and always carry the segment, as described under
-Back-Compatibility above.
+was. `ApiClient`'s own requests are separate from this and carry the segment whenever the API supports
+one, as described under Back-Compatibility above and in API version compatibility below.
 
 ## API version compatibility
 

@@ -125,6 +125,25 @@ describe( 'WebCalendar caption for a rite-level calendar', () => {
         expect( caption ).toContain( 'Diocesi di Lugano' );
     } );
 
+    it( 'captions data by the rite its request was made under, not the current rite', async () => {
+        // A rite change can leave two requests in flight — one fired through the
+        // calendar select by ApiOptions, one through ApiClient's rite listener.
+        // If the earlier, Roman one lands LAST, reading apiClient._currentRite
+        // at render time would caption Roman data as Ambrosian.
+        const webCalendar = new WebCalendar();
+        const container = document.createElement( 'div' );
+        webCalendar.appendTo( container );
+        webCalendar.listenTo( apiClient );
+
+        // The client has already moved on to Ambrosian...
+        apiClient.rite( Rite.AMBROSIAN );
+        // ...but this response belongs to the earlier Roman request.
+        apiClient._eventBus.emit( 'calendarFetched', calendarData(), { rite: Rite.ROMAN } );
+        await new Promise( resolve => setTimeout( resolve, 0 ) );
+
+        expect( container.querySelector( 'caption' ).textContent ).toBe( 'General Roman Calendar - 2026' );
+    } );
+
     it( 'can be set directly, without an ApiClient', () => {
         const webCalendar = new WebCalendar();
         expect( webCalendar.rite( Rite.AMBROSIAN ) ).toBe( webCalendar );

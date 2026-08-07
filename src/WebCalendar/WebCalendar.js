@@ -1452,11 +1452,14 @@ export default class WebCalendar {
         if ( false === apiClient instanceof ApiClient ) {
             throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.' );
         }
-        apiClient._eventBus.on('calendarFetched', async (data) => {
-            // Read on every fetch rather than once at subscribe time: the client
-            // may be listening to a RiteSelect, so its rite can change between
-            // fetches.
-            this.#rite = apiClient._currentRite;
+        apiClient._eventBus.on('calendarFetched', async (data, meta) => {
+            // Take the rite the REQUEST was made under, not the client's current
+            // rite. A rite change can leave two requests in flight — one through
+            // the calendar select, one through the rite listener — and if the
+            // earlier one lands last, reading the current rite would caption one
+            // rite's data with the other rite's name. Falls back to the client's
+            // rite for an emitter that supplies no meta.
+            this.#rite = meta?.rite ?? apiClient._currentRite;
             if (typeof data !== 'object') {
                 throw new Error('WebCalendar: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }

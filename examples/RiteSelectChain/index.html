@@ -17,8 +17,9 @@
 <body class="p-4">
     <h1>Liturgical Calendar Components JS: rite &rarr; calendar chain</h1>
     <p class="lead">
-        Switch the rite below and watch the rest of the form react. No <code>ApiClient</code> request is
-        made here: this example is only about how <code>ApiOptions</code> orchestrates the chain.
+        Switch the rite below and watch the rest of the form react. No calendar data is requested here &mdash;
+        <code>ApiClient.init()</code> still fetches the calendar metadata that <code>CalendarSelect</code>
+        needs &mdash; because this example is only about how <code>ApiOptions</code> orchestrates the chain.
     </p>
     <div class="alert alert-info">
         <b>What to look for when you select Ambrosian:</b>

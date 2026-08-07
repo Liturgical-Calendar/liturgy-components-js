@@ -186,8 +186,9 @@ Interactive API URL builder for exploring the API.
 
 ## RiteSelectChain
 
-Demonstrates the rite → nation → diocese chain that `ApiOptions` orchestrates. Deliberately wires no
-`ApiClient` request: this example is about form behaviour.
+Demonstrates the rite → nation → diocese chain that `ApiOptions` orchestrates. Deliberately requests no
+calendar data: `ApiClient.init()` still fetches the metadata `CalendarSelect` needs, but no calendar is
+ever fetched, because this example is about form behaviour.
 
 ### Features
 
@@ -244,7 +245,8 @@ The full stack through to rendered Ambrosian data: `RiteSelect` → `CalendarSel
 ### Features
 
 - `apiClient.listenTo(riteSelect)` refetching on every rite change
-- Real Ambrosian data: Advent begins six weeks before Christmas (16 November 2026, not 30 November) and
+- Real Ambrosian data: for liturgical year 2026, Advent begins six weeks before Christmas (16 November
+  2025, not 30 November) and
   the liturgical colour is _morello_ rather than _viola_
 - The caption follows the rite, since `WebCalendar` reads it from the `ApiClient`
 - The 1976 year floor enforced by the year input

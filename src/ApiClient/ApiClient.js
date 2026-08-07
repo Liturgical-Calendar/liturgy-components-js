@@ -386,6 +386,12 @@ export default class ApiClient {
    */
   fetchCalendar(locale = null) {
     this.#assertRiteSupported();
+    // Pin the rite for THIS request. `#currentRite` can change while the
+    // request is in flight — a rite change fires one fetch through the calendar
+    // select and another through the rite listener — so a listener reading the
+    // client's current rite when the response lands could pair one rite's data
+    // with the other rite's name.
+    const requestRite = this.#currentRite;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     const { year, ...params } = this.#params;
     let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
@@ -410,15 +416,15 @@ export default class ApiClient {
     }
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params, this.#currentRite);
+    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params, requestRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData);
+      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -430,7 +436,7 @@ export default class ApiClient {
     }).then( data => {
       this.#calendarData = data;
       this.#setCachedData(cacheKey, data);
-      this.#eventBus.emit( 'calendarFetched', data );
+      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -456,6 +462,8 @@ export default class ApiClient {
     if ( false === RiteProperties[ this.#currentRite ].hasNationalTier ) {
       throw new Error( `ApiClient.fetchNationalCalendar: the ${this.#currentRite} rite has no national calendars, so there is no route to request. Use fetchCalendar() for the rite-level calendar, or fetchDiocesanCalendar() for one of its dioceses.` );
     }
+    // Pin the rite for THIS request — see fetchCalendar() for why.
+    const requestRite = this.#currentRite;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
@@ -465,15 +473,15 @@ export default class ApiClient {
     const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale, {}, this.#currentRite);
+    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData);
+      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -485,7 +493,7 @@ export default class ApiClient {
     }).then( data => {
       this.#calendarData = data;
       this.#setCachedData(cacheKey, data);
-      this.#eventBus.emit( 'calendarFetched', data );
+      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -508,6 +516,12 @@ export default class ApiClient {
    */
   fetchDiocesanCalendar( calendar_id, locale = '' ) {
     this.#assertRiteSupported();
+    // Pin the rite for THIS request. `#currentRite` can change while the
+    // request is in flight — a rite change fires one fetch through the calendar
+    // select and another through the rite listener — so a listener reading the
+    // client's current rite when the response lands could pair one rite's data
+    // with the other rite's name.
+    const requestRite = this.#currentRite;
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.
@@ -517,15 +531,15 @@ export default class ApiClient {
     const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
 
     // Check cache first
-    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale, {}, this.#currentRite);
+    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData);
+      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${this.#currentRite}` : '';
+    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
     fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
@@ -537,7 +551,7 @@ export default class ApiClient {
     }).then( data => {
       this.#calendarData = data;
       this.#setCachedData(cacheKey, data);
-      this.#eventBus.emit( 'calendarFetched', data );
+      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
       console.error( error );
@@ -545,6 +559,25 @@ export default class ApiClient {
     });
   }
 
+  /**
+   * Subscribes this client to changes in a UI component, so that the calendar is
+   * refetched when the user changes the selection.
+   *
+   * Dispatches on the component's type:
+   * - `CalendarSelect` — refetches for the selected nation or diocese, or for the
+   *   rite-level calendar when the empty option is chosen.
+   * - `RiteSelect` — sets the rite and re-issues the request. Any current calendar
+   *   selection is dropped first, since a `calendar_id` from one rite is never
+   *   valid under another.
+   * - `ApiOptions` — refetches when any of the request parameter inputs change.
+   *
+   * Chainable, so several components can be wired in one expression:
+   * `apiClient.listenTo( calendarSelect ).listenTo( riteSelect )`.
+   *
+   * @param {CalendarSelect|RiteSelect|ApiOptions} uiComponent - The component to listen to.
+   * @returns {ApiClient} This instance, for chaining.
+   * @throws {Error} If the argument is not one of the three supported types.
+   */
   listenTo( uiComponent = null ) {
     if ( false === uiComponent instanceof CalendarSelect
       && false === uiComponent instanceof ApiOptions

@@ -118,8 +118,10 @@ apiClient.rite(Rite.AMBROSIAN);   // or set it directly; chainable
 apiClient.fetchCalendar();        // GET /calendar/ambrosian
 ```
 
-The segment is emitted for **every** rite, including Roman, so requests read `/calendar/roman/nation/IT`.
-Both forms are the same request: the API router accepts `roman` as an explicit rite segment.
+Against a rite-aware API (v6 or `dev`) the segment is emitted for **every** rite, including Roman, so
+requests read `/calendar/roman/nation/IT`. Both forms are the same request: the API router accepts
+`roman` as an explicit rite segment. Against v5 the segment is omitted entirely and a non-Roman rite is
+refused — see [API version support](#api-version-support) below.
 
 `listenTo()` accepts a `RiteSelect` alongside `CalendarSelect` and `ApiOptions`. A rite change drops the
 current calendar selection and re-targets the request at the rite-level calendar, because a `calendar_id`
@@ -153,6 +155,7 @@ Calendar data is cached based on:
 - Year
 - Year type (LITURGICAL or CIVIL)
 - Locale
+- Rite (roman or ambrosian)
 - Mobile feast settings (epiphany, ascension, corpus_christi, eternal_high_priest)
 
 ```javascript

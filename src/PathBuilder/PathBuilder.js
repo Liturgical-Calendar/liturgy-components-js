@@ -108,7 +108,7 @@ export default class PathBuilder {
             // — so the endpoint would be updated correctly while the rendered
             // path below never repaints. Treat "nothing selected" as no calendar.
             const selectedOption = ev.target.selectedOptions[0];
-            const calendarType = selectedOption?.getAttribute("data-calendartype") ?? null;
+            const calendarType = selectedOption?.getAttribute('data-calendartype') ?? null;
             switch (calendarType){
                 case 'national':
                     currentEndpoint.calendarType = CalendarType.NATIONAL;

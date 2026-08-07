@@ -719,7 +719,7 @@ After `#listenToCalendarSelect` (ends line 524), add:
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `yarn test src/__tests__/ApiClientRite.test.js`
-Expected: PASS, 13 tests.
+Expected: PASS, 14 tests.
 
 - [ ] **Step 6: Run the whole suite**
 
@@ -1411,7 +1411,9 @@ git commit -m "Document the rite examples and ApiClient rite support"
 
 ## Final verification
 
-- [ ] `yarn test` — all suites pass, 91 tests (75 existing, plus 13 in `ApiClientRite.test.js` and 3 in `ApiClientRiteLegacyMetadata.test.js`)
+- [ ] `yarn test` — all suites pass, 92 tests: 75 existing, plus 14 in `ApiClientRite.test.js`
+      (3 from Task 1, 5 from Task 2, 2 from Task 4, 4 from Task 5) and 3 in
+      `ApiClientRiteLegacyMetadata.test.js`
 - [ ] `yarn compile` — exits 0
 - [ ] `yarn lint:md` — 0 errors
 - [ ] `yarn format:md` — clean
