@@ -43,7 +43,7 @@
     "@types/bootstrap": "^5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "bootstrap": "^5.3.3",
+    "bootstrap": "^5.3.8",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "markdownlint-cli2": "^0.23.2",
