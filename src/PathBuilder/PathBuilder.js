@@ -101,8 +101,14 @@ export default class PathBuilder {
         });
 
         calendarSelect._domElement.addEventListener('change', (ev) => {
+            // A select can legitimately have NOTHING selected: `allowNull(false)`
+            // removes the empty option, and a rite change then resets the value
+            // to '' with no option to match it. Reading `.getAttribute` off the
+            // missing option throws inside the listener, which the DOM swallows
+            // — so the endpoint would be updated correctly while the rendered
+            // path below never repaints. Treat "nothing selected" as no calendar.
             const selectedOption = ev.target.selectedOptions[0];
-            const calendarType = selectedOption.getAttribute("data-calendartype");
+            const calendarType = selectedOption?.getAttribute("data-calendartype") ?? null;
             switch (calendarType){
                 case 'national':
                     currentEndpoint.calendarType = CalendarType.NATIONAL;

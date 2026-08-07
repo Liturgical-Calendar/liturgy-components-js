@@ -506,6 +506,25 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
         expect( displayedPath() ).toContain( '/calendar/roman' );
     } );
 
+    it( 'still repaints the path when the select has no option matching its value', () => {
+        // `allowNull(false)` (which the PATH_BUILDER filter applies) removes the
+        // empty option, so after a rite change the select's value is '' with no
+        // option to match — `selectedOptions[0]` is undefined. Reading
+        // `.getAttribute` off it threw inside the listener, and because the DOM
+        // swallows listener exceptions the endpoint updated while the rendered
+        // path silently kept its previous value.
+        calendarSelect._domElement.value = 'romamo_it';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( displayedPath() ).toContain( '/diocese/romamo_it' );
+
+        // Drop every option, so nothing can be selected.
+        calendarSelect._domElement.innerHTML = '';
+        expect( calendarSelect._domElement.selectedOptions.length ).toBe( 0 );
+
+        expect( () => calendarSelect._domElement.dispatchEvent( new Event( 'change' ) ) ).not.toThrow();
+        expect( displayedPath() ).not.toContain( '/diocese/' );
+    } );
+
     it( 'refreshes the displayed path after a rite change resets the selection', () => {
         calendarSelect._domElement.value = 'romamo_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
