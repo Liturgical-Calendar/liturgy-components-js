@@ -34,12 +34,6 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
 
     const webCalendar = new WebCalendar();
     webCalendar.id('LitCalTable')
-        // The caption is suppressed on purpose. WebCalendar picks it from the
-        // response, which branches diocesan / national / General Roman and has no
-        // rite awareness — and the API response carries no rite field for it to
-        // read. Left on, an Ambrosian calendar is captioned "General Roman
-        // Calendar", which is worse than no caption at all.
-        .removeCaption(true)
         .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
         .psalterWeekColumn()
         .removeHeaderRow()

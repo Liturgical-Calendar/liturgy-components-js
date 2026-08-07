@@ -1,4 +1,4 @@
-import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, LatinInterface } from '../Enums.js';
+import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, LatinInterface, Rite, RiteProperties } from '../Enums.js';
 import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
@@ -88,6 +88,21 @@ export default class WebCalendar {
      * @private
      */
     #attachedElement = null;
+
+    /**
+     * The liturgical rite the rendered calendar belongs to.
+     *
+     * Cannot be derived from the calendar data: the API response carries no rite
+     * field, and the rite-level Ambrosian calendar has neither a
+     * `national_calendar` nor a `diocesan_calendar` setting, so it is
+     * indistinguishable from the General Roman calendar by its payload alone.
+     * It is therefore taken from the linked `ApiClient` on each fetch, or set
+     * explicitly with `rite()`.
+     *
+     * @type {'roman' | 'ambrosian'}
+     * @private
+     */
+    #rite = Rite.ROMAN;
 
     /**
      * @type {HTMLElement}
@@ -660,6 +675,29 @@ export default class WebCalendar {
     }
 
     /**
+     * Sets the liturgical rite the rendered calendar belongs to.
+     *
+     * Only affects the caption of a rite-level calendar, which is otherwise
+     * indistinguishable from the General Roman calendar: the payload has no
+     * rite field and no national or diocesan setting. National and diocesan
+     * captions are named after the calendar itself and need no rite.
+     *
+     * Calling this is unnecessary when the instance listens to an `ApiClient`,
+     * which supplies the rite on every fetch.
+     *
+     * @param {'roman' | 'ambrosian'} rite - A value of the `Rite` enum.
+     * @throws {Error} If the value is not a member of the `Rite` enum.
+     * @returns {WebCalendar} The current instance of the class for method chaining.
+     */
+    rite(rite) {
+        if (!Object.values(Rite).includes(rite)) {
+            throw new Error('Invalid rite: ' + rite);
+        }
+        this.#rite = rite;
+        return this;
+    }
+
+    /**
      * Sets the locale for the WebCalendar instance.
      *
      * The locale determines the language and regional settings for date formatting
@@ -1188,10 +1226,27 @@ export default class WebCalendar {
                     return replacements[p1];
                 });
             } else {
+                // The rite-level calendar. Which rite it is cannot be read from
+                // the payload — it has neither a national nor a diocesan
+                // setting, and the response carries no rite field — so it comes
+                // from `#rite`, set by `listenTo()` or `rite()`.
+                //
+                // The caption key is derived from the rite's own
+                // `emptyOptionLabelKey`, so `GENERAL_ROMAN_CALENDAR` gives
+                // `GENERAL_ROMAN_CALENDAR_CAPTION` and `AMBROSIAN_CALENDAR`
+                // gives `AMBROSIAN_CALENDAR_CAPTION`. Adding a rite then needs
+                // only the matching message, no branch here.
+                const captionKey = `${RiteProperties[this.#rite].emptyOptionLabelKey}_CAPTION`;
                 const replacements = {
                     'year': this.#calendarData.settings.year
                 };
-                captionText = Messages[this.#baseLocale]['GENERAL_ROMAN_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
+                // Rite-specific captions exist only for `en` and `it`, following
+                // the same policy as the other rite messages, so fall back to
+                // English before falling back to the General Roman caption.
+                const captionTemplate = Messages[this.#baseLocale]?.[captionKey]
+                    ?? Messages['en'][captionKey]
+                    ?? Messages[this.#baseLocale]['GENERAL_ROMAN_CALENDAR_CAPTION'];
+                captionText = captionTemplate.replace(/{(.*?)}/g, (match, p1) => {
                     return replacements[p1];
                 });
             }
@@ -1398,6 +1453,10 @@ export default class WebCalendar {
             throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.' );
         }
         apiClient._eventBus.on('calendarFetched', async (data) => {
+            // Read on every fetch rather than once at subscribe time: the client
+            // may be listening to a RiteSelect, so its rite can change between
+            // fetches.
+            this.#rite = apiClient._currentRite;
             if (typeof data !== 'object') {
                 throw new Error('WebCalendar: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }
