@@ -85,6 +85,25 @@ describe( 'PathBuilder switching between the nation and diocese paths', () => {
         expect( calendarSelect._filter ).toBe( CalendarSelectFilter.DIOCESAN_CALENDARS );
     } );
 
+    /**
+     * The escape hatch this fix introduces. The public `filter()` guard is
+     * already pinned in CalendarSelect.test.js ('filter() duplicate guard'); what
+     * is untested is `_applyFilter` itself, so both halves of the split are
+     * covered: it must skip the one-shot guard WITHOUT also becoming a hole in
+     * validation.
+     */
+    it( '_applyFilter bypasses the one-shot guard but still validates', () => {
+        const cs = new CalendarSelect( 'it' ).filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+
+        // The asymmetry with filter() is deliberate, and is the whole fix.
+        expect( () => cs._applyFilter( CalendarSelectFilter.DIOCESAN_CALENDARS ) ).not.toThrow();
+        expect( cs._filter ).toBe( CalendarSelectFilter.DIOCESAN_CALENDARS );
+
+        // Skipping the guard must not mean skipping the enum check too.
+        expect( () => cs._applyFilter( 'byzantine' ) ).toThrow( /Invalid filter/ );
+        expect( cs._filter ).toBe( CalendarSelectFilter.DIOCESAN_CALENDARS );
+    } );
+
     it( 'actually re-renders the options for the newly chosen path', () => {
         selectPath( '/calendar/nation/' );
         const nationValues = [ ...calendarSelect._domElement.options ].map( o => o.value );
