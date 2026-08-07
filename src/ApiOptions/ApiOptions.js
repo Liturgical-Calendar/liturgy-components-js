@@ -358,14 +358,32 @@ export default class ApiOptions {
      * @private
      */
     #handleLinkedRiteSelect( riteSelect, calendarSelect ) {
-        const selects = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+        const unordered = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+
+        // Normalize a linked pair to nation-first, the same way
+        // `#handleMultipleLinkedCalendarSelects` identifies each select by its
+        // `_filter` rather than trusting the caller's array order — see the
+        // validation in `linkToCalendarSelect` above, which accepts the pair
+        // either way. This matters here because `CalendarSelect#applyLinkedRite`
+        // clears, applies, and clears each select in turn, and a diocese select's
+        // apply step re-derives its per-nation narrowing from the nation select's
+        // CURRENT value. Processing the diocese select first would narrow it to a
+        // nation value that is about to be cleared, leaving it out of sync with
+        // the nation select once both have settled. A single, non-array
+        // `calendarSelect` has nothing to reorder.
+        const selects = unordered.length === 2
+            ? [
+                unordered.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS ) ?? unordered[0],
+                unordered.find( cs => cs._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) ?? unordered[1]
+            ]
+            : unordered;
 
         // The calendar-side rebuild lives on CalendarSelect, so there is one
         // implementation of it. Linked FIRST so that each select's listener is
         // registered before the one below: listeners fire in registration order, and
         // the option state applied here assumes the selection has already been reset.
         //
-        // `dispatchChange: false` (the second argument) keeps `linkToRiteSelect()`
+        // Passing `false` as the second, positional argument keeps `linkToRiteSelect()`
         // from dispatching `change` itself: this listener runs second and dispatches
         // once, below, after `#currentEndpoint` is current. Without suppressing the
         // earlier dispatch, a select with no dependent diocese selects would receive
@@ -404,7 +422,7 @@ export default class ApiOptions {
             this.#currentEndpoint.calendarId   = null;
 
             // `linkToRiteSelect()` above was told NOT to dispatch its own `change`
-            // (`dispatchChange: false`), so this is the only dispatch each eligible
+            // (passed `false` as its second, positional argument), so this is the only dispatch each eligible
             // select receives per rite change — exactly one, and it happens here,
             // now that `#currentEndpoint` is current. `PathBuilder` (when
             // constructed on this same select) renders from `#currentEndpoint` on

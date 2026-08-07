@@ -171,6 +171,8 @@ already-rendered select dynamically, use `RiteSelect` linked through
 A select used on its own — to scope a permission or a test, say — links to the rite directly:
 
 ```javascript
+import { CalendarSelect, CalendarSelectFilter, RiteSelect } from '@liturgical-calendar/components-js';
+
 const riteSelect = new RiteSelect( 'it' );
 riteSelect.appendTo( '#riteWrapper' );
 
@@ -183,6 +185,33 @@ calSelect.appendTo( '#calendarWrapper' );
 
 A `nations` filtered select is hidden while a rite with no national tier is selected — the
 Ambrosian rite has no national calendars — and shown again when the rite has one.
+
+**Linking both halves of a pair:** when both a `nations` filtered select and a `dioceses` filtered
+select are linked directly to the same `RiteSelect` — without an `ApiOptions` in between to normalize
+the order — link the nation select first:
+
+```javascript
+const nationSelect = new CalendarSelect( 'it' )
+    .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+    .linkToRiteSelect( riteSelect );
+nationSelect.appendTo( '#nationWrapper' );
+
+const dioceseSelect = new CalendarSelect( 'it' )
+    .filter( CalendarSelectFilter.DIOCESAN_CALENDARS )
+    .linkToNationsSelect( nationSelect )
+    .linkToRiteSelect( riteSelect );
+dioceseSelect.appendTo( '#dioceseWrapper' );
+```
+
+Each `linkToRiteSelect()` call registers its own listener on the rite select independently, and
+listeners run in registration order. On every rite change, the diocese select's rebuild re-derives its
+per-nation narrowing from the nation select's _current_ value, so the nation select must already have
+been reset to that rite's calendar by the time the diocese select rebuilds. Linking the nation select
+first guarantees that ordering; linking the diocese select first narrows it to the nation that was
+selected under the _previous_ rite, which is stale by the time the change settles.
+[`ApiOptions.linkToCalendarSelect()`](api-options.md#linking-to-calendarselect) accepts the pair in
+either order and normalizes it for you, so this ordering rule applies only to the standalone case shown
+here.
 
 ## Instance Properties
 

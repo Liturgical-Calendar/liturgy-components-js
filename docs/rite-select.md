@@ -154,7 +154,8 @@ const calSelect = new CalendarSelect( 'it' )
     .linkToRiteSelect( riteSelect );
 ```
 
-See [`linkToRiteSelect()`](calendar-select.md) for the full behaviour.
+See [`linkToRiteSelect()`](calendar-select.md#following-a-rite-without-an-apioptions) for the full
+behaviour.
 
 ## Back-Compatibility
 

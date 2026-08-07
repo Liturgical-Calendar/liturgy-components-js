@@ -224,4 +224,63 @@ describe( 'linkToRiteSelect and ApiOptions together', () => {
         expect( dioceseChanges ).toBe( 1 );
         expect( nationChanges ).toBe( 0 );
     } );
+
+    it( 'normalizes a [diocese, nation] pair to nation-first, matching the [nation, diocese] order', async () => {
+        // Regression pin: `linkToCalendarSelect` accepts a nation/diocese pair in
+        // either array order (see its own validation), but `#handleLinkedRiteSelect`
+        // used to link them in the caller's order. `CalendarSelect#applyLinkedRite`
+        // clears, applies, and clears each select in turn, and a diocese select's
+        // apply step re-derives its per-nation narrowing from the nation select's
+        // CURRENT value. With a nation select preset to 'IT', linking `[diocese,
+        // nation]` used to process the diocese select first, while the nation select
+        // still held 'IT', narrowing the diocese options to `["", "romamo_it"]` —
+        // out of sync with the nation select, which ends up cleared to ''. Linking
+        // `[nation, diocese]` processed the nation select first, so by the time the
+        // diocese select rebuilt, the nation value was already '', giving `[""]`.
+        // Both orders must now produce the same, nation-first result.
+        const { default: ApiOptions } = await import( '../ApiOptions/ApiOptions.js' );
+
+        // Build the [nation, diocese] order first, to know what "correct" looks like.
+        const riteSelectA = buildRiteSelect();
+        const nationA = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+            .allowNull( true );
+        nationA.appendTo( '#nation' );
+        const dioceseA = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS )
+            .linkToNationsSelect( nationA )
+            .allowNull( true );
+        dioceseA.appendTo( '#diocese' );
+        nationA.value( 'IT' );
+
+        const apiOptionsA = new ApiOptions( 'en' );
+        apiOptionsA.linkToCalendarSelect( [ nationA, dioceseA ], riteSelectA );
+
+        const expectedDioceseValues = [ ...dioceseA._domElement.options ].map( o => o.value );
+        const expectedNationValue = nationA._domElement.value;
+
+        // Reset the DOM and build the [diocese, nation] order with the same preset.
+        document.body.innerHTML =
+            '<div id="rite"></div><div id="nation"></div><div id="diocese"></div><div id="single"></div>';
+
+        const riteSelectB = buildRiteSelect();
+        const nationB = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+            .allowNull( true );
+        nationB.appendTo( '#nation' );
+        const dioceseB = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS )
+            .linkToNationsSelect( nationB )
+            .allowNull( true );
+        dioceseB.appendTo( '#diocese' );
+        nationB.value( 'IT' );
+
+        const apiOptionsB = new ApiOptions( 'en' );
+        apiOptionsB.linkToCalendarSelect( [ dioceseB, nationB ], riteSelectB );
+
+        const actualDioceseValues = [ ...dioceseB._domElement.options ].map( o => o.value );
+
+        expect( nationB._domElement.value ).toBe( expectedNationValue );
+        expect( actualDioceseValues ).toEqual( expectedDioceseValues );
+    } );
 } );

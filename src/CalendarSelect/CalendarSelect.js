@@ -1278,20 +1278,22 @@ export default class CalendarSelect {
      * for a change event.
      *
      * @param {RiteSelect} riteSelect - The rite select to follow.
-     * @param {boolean} [dispatchChange=true] - Whether the rebuild dispatches its own
-     *        `change` on this select's DOM element (subject to the same
-     *        has-dependent-diocese-selects exclusion `#applyLinkedRite` always applies).
+     * @param {boolean} [dispatchChange=true] - Second, positional argument (not an
+     *        options object): whether the rebuild dispatches its own `change` on
+     *        this select's DOM element (subject to the same has-dependent-diocese-selects
+     *        exclusion `#applyLinkedRite` always applies).
      *        Defaults to `true`, which is what a standalone select needs so its own
      *        listeners (e.g. a `PathBuilder`) hear about the rebuild. `ApiOptions`
-     *        passes `false` here and dispatches its own `change` once its endpoint
-     *        state has caught up, so a select it manages is not notified twice with
-     *        one stale in between. See `ApiOptions#handleLinkedRiteSelect`.
+     *        calls `linkToRiteSelect( riteSelect, false )` and dispatches its own
+     *        `change` once its endpoint state has caught up, so a select it manages
+     *        is not notified twice with one stale in between. See
+     *        `ApiOptions#handleLinkedRiteSelect`.
      * @returns {CalendarSelect} This instance, for chaining.
      * @throws {Error} If already linked to a rite select, or if `riteSelect` is not one.
      */
     linkToRiteSelect( riteSelect, dispatchChange = true ) {
         if ( this.#riteLinked ) {
-            throw new Error( 'Current CalendarSelect instance is already linked to a RiteSelect instance.' );
+            throw new Error( 'Current CalendarSelect instance is already linked to a RiteSelect instance. Note that `ApiOptions.linkToCalendarSelect()` links a RiteSelect internally, so this can happen without ever calling `linkToRiteSelect()` yourself.' );
         }
         if ( false === riteSelect instanceof RiteSelect ) {
             throw new Error( 'Invalid type for parameter passed to linkToRiteSelect, must be of type `RiteSelect` but found type: ' + typeof riteSelect );
