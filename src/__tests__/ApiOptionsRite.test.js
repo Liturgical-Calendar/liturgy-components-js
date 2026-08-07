@@ -37,7 +37,7 @@ const METADATA = {
         { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',      locales: [ 'it-IT' ], rite: 'ambrosian' },
         { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',      locales: [ 'it-IT' ], rite: 'ambrosian' }
     ],
-    ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
+    ambrosian_calendars: [ { calendar_id: 'ambrosian', rite: 'ambrosian', locales: [ 'it', 'la' ] } ]
 };
 
 beforeAll( async () => {
@@ -215,6 +215,35 @@ describe( 'ApiOptions rite orchestration', () => {
         expect( dioceseSelect._domElement.value ).toBe( '' );
     } );
 
+    it( 'offers only the rite-level calendar\'s locales for a rite that restricts them', () => {
+        // The Ambrosian rite has liturgical books in Italian and Latin only, and
+        // the API's metadata says so. Before this, selecting Ambrosian left the
+        // locale select offering every locale the API supports globally, so a
+        // user could ask for an Ambrosian calendar in a language that has no
+        // Ambrosian books behind it.
+        const localeOptions = () => [ ...apiOptions._localeInput._domElement.options ].map( o => o.value );
+        expect( localeOptions() ).toEqual( [ 'en', 'it', 'la' ] );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it', 'la' ] );
+    } );
+
+    it( 'restores the full locale list for a rite that does not restrict them', () => {
+        // The General Roman calendar is served in every locale the API supports,
+        // and has no `roman_calendars` entry to narrow from, so the rite-level
+        // Roman calendar falls back to the global list.
+        const localeOptions = () => [ ...apiOptions._localeInput._domElement.options ].map( o => o.value );
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it', 'la' ] );
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'en', 'it', 'la' ] );
+    } );
+
     it( 'sets explicitRite when a RiteSelect is linked', () => {
         expect( apiOptions._currentEndpoint.explicitRite ).toBe( true );
     } );
@@ -290,6 +319,54 @@ describe( 'ApiOptions rite orchestration', () => {
         expect( apiOptions._ascensionInput._domElement.disabled ).toBe( false );
         expect( apiOptions._corpusChristiInput._domElement.disabled ).toBe( false );
         expect( apiOptions._eternalHighPriestInput._domElement.disabled ).toBe( false );
+    } );
+} );
+
+describe( 'ApiOptions rite-level locales on a single linked CalendarSelect', () => {
+
+    // The paired-select tests above exercise #handleMultipleLinkedCalendarSelects,
+    // which never touches the locale input. This describe uses the SINGLE select
+    // path, whose change listener resets the locale options whenever the
+    // selection is empty — and `applyRite` dispatches exactly that `change` after
+    // resetting the selection. Narrowing the locales without making that reset
+    // rite-aware is silently undone a moment later, which the paired-select tests
+    // cannot see.
+    let apiOptions, calendarSelect, riteSelect;
+
+    const localeOptions = () => [ ...apiOptions._localeInput._domElement.options ].map( o => o.value );
+
+    beforeEach( () => {
+        calendarSelect = new CalendarSelect( 'en' ).allowNull();
+        riteSelect = new RiteSelect( 'en' );
+        apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+    } );
+
+    it( 'survives the change dispatch that applyRite fires after resetting the selection', () => {
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it', 'la' ] );
+    } );
+
+    it( 'restores the rite-level locales when a calendar is selected and then cleared', () => {
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        calendarSelect._domElement.value = 'lugano_ch';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it-IT' ] );
+
+        calendarSelect._domElement.value = '';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'it', 'la' ] );
+    } );
+
+    it( 'leaves the Roman rite offering every locale the API supports', () => {
+        expect( localeOptions() ).toEqual( [ 'en', 'it', 'la' ] );
+
+        calendarSelect._domElement.value = '';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( localeOptions() ).toEqual( [ 'en', 'it', 'la' ] );
     } );
 } );
 

@@ -293,6 +293,42 @@ export default class ApiOptions {
      * @param {boolean} hasNationalTier
      * @private
      */
+    /**
+     * Narrows the locale input to the locales the rite-level calendar is actually
+     * published in.
+     *
+     * The Ambrosian rite has liturgical books in Italian and Latin only, and the
+     * API's metadata says so — `ambrosian_calendars[].locales` is `['it','la']`.
+     * Without this the select kept offering every locale the API supports
+     * globally, so a user could request an Ambrosian calendar in a language that
+     * has no Ambrosian books behind it.
+     *
+     * Looks the rite up by convention rather than by branching on it: metadata
+     * announces a rite's own calendars under `{rite}_calendars`. The Roman rite
+     * has no such key, because its rite-level calendar is the General Roman
+     * Calendar, served in every locale the API supports — so the absence of the
+     * key correctly falls back to the full list.
+     *
+     * Only the RITE-LEVEL calendar is handled here. Once an actual nation or
+     * diocese is selected, its own `locales` take over via
+     * `setOptionsForCalendarLocales()` on the calendar-select path.
+     *
+     * @param {string} rite - The newly selected rite.
+     * @private
+     */
+    #applyRiteToLocaleInput( rite ) {
+        const riteCalendars = ApiClient._metadata?.[ `${rite}_calendars` ];
+        const riteLevelCalendar = Array.isArray( riteCalendars )
+            ? riteCalendars.find( calendar => calendar.calendar_id === rite )
+            : null;
+
+        if ( Array.isArray( riteLevelCalendar?.locales ) && riteLevelCalendar.locales.length > 0 ) {
+            this.#inputs.localeInput.setOptionsForCalendarLocales( riteLevelCalendar.locales );
+        } else {
+            this.#inputs.localeInput.resetOptions();
+        }
+    }
+
     #applyRiteToCalendarPathInput( hasNationalTier ) {
         const calendarPathElement = this.#inputs.calendarPathInput._domElement;
         const nationPathOption = calendarPathElement.querySelector( 'option[value="/calendar/nation/"]' );
@@ -365,6 +401,7 @@ export default class ApiOptions {
                 yearInputElement.dispatchEvent( new Event( 'change' ) );
             }
             this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
+            this.#applyRiteToLocaleInput( rite );
 
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId   = null;
@@ -482,12 +519,17 @@ export default class ApiOptions {
             this.#applyTemporalInputState( true );
         } else {
             this.#applyTemporalInputState( false );
-            this.#inputs.localeInput.resetOptions();
+            // An empty selection IS the rite-level calendar, so offer that
+            // calendar's locales rather than every locale the API supports.
+            // Falls back to the full list for a rite that does not restrict
+            // them, which is what the Roman rite does.
+            this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
             if (ev.target.value === '') {
                 this.#applyTemporalInputState( false );
-                this.#inputs.localeInput.resetOptions();
+                // See above: empty means the rite-level calendar.
+                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
             } else {
                 const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
                 switch(selectedCalendarType) {
