@@ -170,4 +170,58 @@ describe( 'linkToRiteSelect and ApiOptions together', () => {
         // listeners on one select and apply the rite twice per change.
         expect( () => calendarSelect.linkToRiteSelect( riteSelect ) ).toThrow( /already linked to a RiteSelect/ );
     } );
+
+    it( 'dispatches change exactly once per calendar select per rite change under ApiOptions', async () => {
+        // Regression pin: `linkToRiteSelect()` used to always dispatch its own
+        // `change`, and `ApiOptions` added a second dispatch once its endpoint state
+        // caught up, so a select with no dependent diocese selects received two
+        // `change` events per rite change instead of one — each one independently
+        // triggering a refetch in anything (e.g. `ApiClient`) that treats `change`
+        // as "refetch". `ApiOptions` now passes `dispatchChange: false` to
+        // `linkToRiteSelect()` so it alone owns the single dispatch, fired once
+        // `#currentEndpoint` is current.
+        const { default: ApiOptions } = await import( '../ApiOptions/ApiOptions.js' );
+
+        const riteSelect = buildRiteSelect();
+        const calendarSelect = new CalendarSelect( 'en' ).allowNull( true );
+        calendarSelect.appendTo( '#single' );
+
+        const apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+
+        let changes = 0;
+        calendarSelect._domElement.addEventListener( 'change', () => { changes++; } );
+
+        chooseRite( riteSelect, Rite.AMBROSIAN );
+
+        expect( changes ).toBe( 1 );
+    } );
+
+    it( 'dispatches change exactly once on a linked diocese select, and not at all on its nation select', async () => {
+        const { default: ApiOptions } = await import( '../ApiOptions/ApiOptions.js' );
+
+        const riteSelect = buildRiteSelect();
+        const nationSelect = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+            .allowNull( true );
+        nationSelect.appendTo( '#nation' );
+        const dioceseSelect = new CalendarSelect( 'en' )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS )
+            .linkToNationsSelect( nationSelect )
+            .allowNull( true );
+        dioceseSelect.appendTo( '#diocese' );
+
+        const apiOptions = new ApiOptions( 'en' );
+        apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ], riteSelect );
+
+        let nationChanges = 0;
+        let dioceseChanges = 0;
+        nationSelect._domElement.addEventListener( 'change', () => { nationChanges++; } );
+        dioceseSelect._domElement.addEventListener( 'change', () => { dioceseChanges++; } );
+
+        chooseRite( riteSelect, Rite.AMBROSIAN );
+
+        expect( dioceseChanges ).toBe( 1 );
+        expect( nationChanges ).toBe( 0 );
+    } );
 } );

@@ -364,7 +364,16 @@ export default class ApiOptions {
         // implementation of it. Linked FIRST so that each select's listener is
         // registered before the one below: listeners fire in registration order, and
         // the option state applied here assumes the selection has already been reset.
-        selects.forEach( cs => cs.linkToRiteSelect( riteSelect ) );
+        //
+        // `dispatchChange: false` (the second argument) keeps `linkToRiteSelect()`
+        // from dispatching `change` itself: this listener runs second and dispatches
+        // once, below, after `#currentEndpoint` is current. Without suppressing the
+        // earlier dispatch, a select with no dependent diocese selects would receive
+        // two `change` events per rite change — one immediately, rendering whatever
+        // listens (e.g. a `PathBuilder`) from the stale, pre-change endpoint, and one
+        // once this listener catches it up — each independently triggering any
+        // network fetch a listener like `ApiClient` makes on `change`.
+        selects.forEach( cs => cs.linkToRiteSelect( riteSelect, false ) );
 
         const applyRite = ( rite ) => {
             const riteProps = RiteProperties[ rite ];
@@ -394,15 +403,14 @@ export default class ApiOptions {
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId   = null;
 
-            // `linkToRiteSelect()` already dispatched its own `change` on each
-            // eligible select as part of the rebuild above (registered first, so it
-            // ran before this listener). `PathBuilder` (when constructed on this
-            // same select) is one of the listeners on the receiving end of that
-            // dispatch, and it renders from `#currentEndpoint` — which at that
-            // point still held the PREVIOUS rite, because this listener (the one
-            // that updates `#currentEndpoint`) had not run yet. Re-dispatching here,
-            // now that `#currentEndpoint` is current, is what makes the displayed
-            // path catch up.
+            // `linkToRiteSelect()` above was told NOT to dispatch its own `change`
+            // (`dispatchChange: false`), so this is the only dispatch each eligible
+            // select receives per rite change — exactly one, and it happens here,
+            // now that `#currentEndpoint` is current. `PathBuilder` (when
+            // constructed on this same select) renders from `#currentEndpoint` on
+            // that dispatch, so firing it before this point would have shown the
+            // PREVIOUS rite; firing it (again) after would have meant two fetches
+            // for whatever else — e.g. `ApiClient` — treats `change` as "refetch".
             //
             // Filtered the same way `linkToRiteSelect()` filters its own dispatch:
             // a select with dependent diocese selects (the nation half of a linked

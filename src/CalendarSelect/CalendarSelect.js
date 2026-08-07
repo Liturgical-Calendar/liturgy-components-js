@@ -61,6 +61,8 @@ export default class CalendarSelect {
     /** @type {CalendarSelect[]} Diocese selects that derive their per-nation narrowing from this one. */
     #dependentDioceseSelects              = [];
     #riteLinked                           = false;
+    /** @type {boolean} Whether `#applyLinkedRite` dispatches its own `change`. See `linkToRiteSelect()`. */
+    #riteChangeDispatch                   = true;
 
 
     /**
@@ -1276,10 +1278,18 @@ export default class CalendarSelect {
      * for a change event.
      *
      * @param {RiteSelect} riteSelect - The rite select to follow.
+     * @param {boolean} [dispatchChange=true] - Whether the rebuild dispatches its own
+     *        `change` on this select's DOM element (subject to the same
+     *        has-dependent-diocese-selects exclusion `#applyLinkedRite` always applies).
+     *        Defaults to `true`, which is what a standalone select needs so its own
+     *        listeners (e.g. a `PathBuilder`) hear about the rebuild. `ApiOptions`
+     *        passes `false` here and dispatches its own `change` once its endpoint
+     *        state has caught up, so a select it manages is not notified twice with
+     *        one stale in between. See `ApiOptions#handleLinkedRiteSelect`.
      * @returns {CalendarSelect} This instance, for chaining.
      * @throws {Error} If already linked to a rite select, or if `riteSelect` is not one.
      */
-    linkToRiteSelect( riteSelect ) {
+    linkToRiteSelect( riteSelect, dispatchChange = true ) {
         if ( this.#riteLinked ) {
             throw new Error( 'Current CalendarSelect instance is already linked to a RiteSelect instance.' );
         }
@@ -1287,6 +1297,7 @@ export default class CalendarSelect {
             throw new Error( 'Invalid type for parameter passed to linkToRiteSelect, must be of type `RiteSelect` but found type: ' + typeof riteSelect );
         }
         this.#riteLinked = true;
+        this.#riteChangeDispatch = dispatchChange;
         riteSelect._domElement.addEventListener( 'change', ( ev ) => this.#applyLinkedRite( ev.target.value ) );
         this.#applyLinkedRite( riteSelect._domElement.value );
         return this;
@@ -1320,7 +1331,14 @@ export default class CalendarSelect {
         // and stomp the flat list `_applyRite()` just built for a tierless rite.
         // With no dependent there is nothing to disturb, and staying silent would
         // instead strand a consumer holding the value we just cleared.
-        if ( false === this._hasDependentDioceseSelects ) {
+        //
+        // `#riteChangeDispatch` is the other half of that same silence, opted into
+        // by a caller (`ApiOptions`) that dispatches its own `change` later, once
+        // ITS state has caught up — see `linkToRiteSelect()`. Without it, a select
+        // with no dependent would receive two `change` events per rite change: this
+        // one immediately (querying `ApiOptions`' endpoint before it has updated
+        // its rite), and the caller's once it has.
+        if ( this.#riteChangeDispatch && false === this._hasDependentDioceseSelects ) {
             this.#domElement.dispatchEvent( new Event( 'change' ) );
         }
     }
