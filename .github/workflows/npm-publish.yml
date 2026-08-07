@@ -35,7 +35,14 @@ jobs:
       - name: Ensure an npm that supports trusted publishing
         run: npm install -g npm@latest
       - name: Install dependencies
-        run: yarn install --immutable && yarn compile
+        run: yarn install --immutable
+      - name: Compile
+        run: yarn compile
+      # A release must not ship a failing test suite. `yarn compile` only proves
+      # that the types check; it cannot catch a behavioural regression, so a
+      # broken build could previously reach the registry unnoticed.
+      - name: Run tests
+        run: yarn test
       # No NODE_AUTH_TOKEN: authentication is the OIDC exchange with npm, using
       # the id-token permission above. There is no long-lived credential to
       # expire, which is what broke the v1.5.0 publish.
