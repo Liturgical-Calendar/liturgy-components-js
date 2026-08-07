@@ -71,21 +71,22 @@ calendarSelect.appendTo('#calendarOptions');
 
 ### Available Methods
 
-| Method                          | Description                                              |
-| ------------------------------- | -------------------------------------------------------- |
-| `class(className)`              | CSS class(es) for the select element                     |
-| `id(id)`                        | ID for the select element (without '#')                  |
-| `name(name)`                    | Name attribute for the select element                    |
-| `label(options)`                | Configure the label element (`text`, `class`, `id`)      |
-| `wrapper(options)`              | Configure wrapper element (`as`: 'div'/'td', `class`)    |
-| `disabled(disabled=true)`       | Set disabled state                                       |
-| `filter(filter)`                | Filter calendar options (see Filtering section)          |
-| `rite(rite=Rite.ROMAN)`         | Set the rite this select is built for; settable once     |
-| `allowNull(allowNull=true)`     | Include the empty, rite-level calendar option            |
-| `after(htmlString)`             | HTML content after the select element                    |
-| `linkToNationsSelect(instance)` | Link to national calendars select for filtering dioceses |
-| `value(val?)`                   | Get/set value; with arg sets value, returns `this`       |
-| `onChange(callback)`            | Register callback for change events; returns `this`      |
+| Method                                            | Description                                              |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| `class(className)`                                | CSS class(es) for the select element                     |
+| `id(id)`                                          | ID for the select element (without '#')                  |
+| `name(name)`                                      | Name attribute for the select element                    |
+| `label(options)`                                  | Configure the label element (`text`, `class`, `id`)      |
+| `wrapper(options)`                                | Configure wrapper element (`as`: 'div'/'td', `class`)    |
+| `disabled(disabled=true)`                         | Set disabled state                                       |
+| `filter(filter)`                                  | Filter calendar options (see Filtering section)          |
+| `rite(rite=Rite.ROMAN)`                           | Set the rite this select is built for; settable once     |
+| `allowNull(allowNull=true)`                       | Include the empty, rite-level calendar option            |
+| `after(htmlString)`                               | HTML content after the select element                    |
+| `linkToNationsSelect(instance)`                   | Link to national calendars select for filtering dioceses |
+| `linkToRiteSelect(instance, dispatchChange=true)` | Link to a rite select; rebuilds on rite change           |
+| `value(val?)`                                     | Get/set value; with arg sets value, returns `this`       |
+| `onChange(callback)`                              | Register callback for change events; returns `this`      |
 
 The empty option added by `allowNull()` selects the **rite-level** calendar, not the General Roman
 Calendar specifically. It is labelled "General Roman Calendar" only when the select's rite is
@@ -163,6 +164,25 @@ already-rendered select dynamically, use `RiteSelect` linked through
 > appear in the default diocese list, because they belong to `Rite.AMBROSIAN`, not `Rite.ROMAN`. This
 > is a bug fix — Ambrosian dioceses never belonged under the Roman rite — but it is a visible change in
 > rendered output for any integrator who was relying on the old, rite-unaware diocese list.
+
+## Following a rite without an ApiOptions
+
+`ApiOptions.linkToCalendarSelect()` accepts only a `none` filtered select or a nations/dioceses pair.
+A select used on its own — to scope a permission or a test, say — links to the rite directly:
+
+```javascript
+const riteSelect = new RiteSelect( 'it' );
+riteSelect.appendTo( '#riteWrapper' );
+
+const calSelect = new CalendarSelect( 'it' )
+    .filter( CalendarSelectFilter.DIOCESAN_CALENDARS )
+    .allowNull( true )
+    .linkToRiteSelect( riteSelect );
+calSelect.appendTo( '#calendarWrapper' );
+```
+
+A `nations` filtered select is hidden while a rite with no national tier is selected — the
+Ambrosian rite has no national calendars — and shown again when the rite has one.
 
 ## Instance Properties
 

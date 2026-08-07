@@ -142,6 +142,20 @@ Selecting Ambrosian:
 
 Switching back to Roman reverses all of the above.
 
+## Driving a CalendarSelect without an ApiOptions
+
+`RiteSelect` is usually passed to `ApiOptions.linkToCalendarSelect()`, which wires it to the option
+inputs as well as the calendar select. When there is no `ApiOptions` on the page, link the calendar
+select to the rite directly instead:
+
+```javascript
+const calSelect = new CalendarSelect( 'it' )
+    .filter( CalendarSelectFilter.NATIONAL_CALENDARS )
+    .linkToRiteSelect( riteSelect );
+```
+
+See [`linkToRiteSelect()`](calendar-select.md) for the full behaviour.
+
 ## Back-Compatibility
 
 An embed that never instantiates `RiteSelect` and never passes one to `linkToCalendarSelect()` keeps
