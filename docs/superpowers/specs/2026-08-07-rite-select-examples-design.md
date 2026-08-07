@@ -126,9 +126,22 @@ than a visible failure.
 does for `CalendarSelect`. That method attaches a `change` listener to `riteSelect._domElement`, sets
 `#currentRite`, and re-issues the current request.
 
-When the current category is `national` and the incoming rite has no national tier, it **falls back to the
-rite-level calendar** (`/calendar/ambrosian`) rather than throwing. A user switching rites is not a
-programming error; the throw in `fetchNationalCalendar()` covers the programmatic case.
+It **always clears both the category and the calendar id**, re-targeting the request at the incoming
+rite-level calendar. A `calendar_id` from one rite is never valid under another — the same rule
+`ApiOptions` already applies when it resets the calendar selection on a rite change — and that holds for
+dioceses in **both** directions, not only for the national tier. Measured against the API:
+
+| Route                                   | Status  |
+| --------------------------------------- | ------- |
+| `/calendar/ambrosian/diocese/roma_it`   | **400** |
+| `/calendar/roman/diocese/lugano_ch`     | **400** |
+| `/calendar/ambrosian/diocese/lugano_ch` | 200     |
+
+So carrying any stale selection across a rite change produces an invalid request. Clearing
+unconditionally is both simpler than a per-tier check and the only correct option.
+
+This falls back rather than throwing: a user switching rites is not a programming error. The throw in
+`fetchNationalCalendar()` still covers the programmatic case.
 
 **Known redundant fetch.** When both an `ApiOptions` and an `ApiClient` are wired to the same
 `RiteSelect`, a rite change produces two requests. `#handleLinkedRiteSelect`'s `applyRite` resets the
@@ -161,7 +174,8 @@ and the year floor moved to 1976.
 The rite as a path segment. Mirrors the existing `PathBuilder` example with a `RiteSelect` added, so the
 rendered path walks `/calendar/roman` → `/calendar/ambrosian` →
 `/calendar/ambrosian/diocese/lugano_ch`. Also shows the `/calendar/nation/` route option disabling under
-Ambrosian and the selection falling back to `/calendar`.
+Ambrosian, with the route selection falling back to the base `/calendar` **option** — which, with a
+`RiteSelect` linked, renders as the path `/calendar/ambrosian`, not `/calendar`.
 
 ### examples/RiteSelectWebCalendar/
 

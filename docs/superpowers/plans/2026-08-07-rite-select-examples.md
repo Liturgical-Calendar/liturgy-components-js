@@ -593,7 +593,7 @@ describe( 'ApiClient listening to a RiteSelect', () => {
         expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
     } );
 
-    it( 'falls back to the rite-level calendar when the new rite has no national tier', () => {
+    it( 'falls back to the rite-level calendar from a national selection', () => {
         // A user switching rites is not a programming error, so this must not
         // hit the throw in fetchNationalCalendar. It re-targets instead.
         const riteSelect = new RiteSelect( 'en' );
@@ -607,6 +607,34 @@ describe( 'ApiClient listening to a RiteSelect', () => {
         expect( global.fetch ).toHaveBeenCalledTimes( 1 );
         expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
         expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/nation/' );
+    } );
+
+    it( 'falls back to the rite-level calendar from a diocesan selection, in both directions', () => {
+        // A calendar_id from one rite is never valid under another. Carrying a
+        // diocese across a rite change is a 400 in BOTH directions, verified
+        // against the API:
+        //   /calendar/ambrosian/diocese/roma_it   -> 400
+        //   /calendar/roman/diocese/lugano_ch     -> 400
+        const riteSelect = new RiteSelect( 'en' );
+        apiClient.rite( Rite.ROMAN ).listenTo( riteSelect );
+        apiClient.fetchDiocesanCalendar( 'roma_it' );
+        global.fetch.mockClear();
+
+        riteSelect._domElement.value = Rite.AMBROSIAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/ambrosian' );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/diocese/' );
+
+        // ...and back the other way, from an Ambrosian diocese to Roman.
+        apiClient.fetchDiocesanCalendar( 'lugano_ch' );
+        global.fetch.mockClear();
+
+        riteSelect._domElement.value = Rite.ROMAN;
+        riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).toContain( '/calendar/roman' );
+        expect( global.fetch.mock.calls[ 0 ][ 0 ] ).not.toContain( '/diocese/' );
     } );
 } );
 ```
@@ -650,12 +678,18 @@ After `#listenToCalendarSelect` (ends line 524), add:
 ```javascript
   /**
    * Attaches a change listener to a RiteSelect, so that changing the rite
-   * re-issues the current request under the new rite.
+   * re-issues the request under the new rite.
    *
-   * When the outgoing request was for a national calendar and the incoming rite
-   * has no national tier, the request is re-targeted at the rite-level calendar
-   * rather than throwing: a user switching rites is not a programming error.
-   * The throw in `fetchNationalCalendar()` still covers the programmatic case.
+   * Any current selection is dropped and the request re-targeted at the
+   * incoming rite-level calendar. A calendar_id from one rite is never valid
+   * under another — the same rule ApiOptions applies when it resets the
+   * calendar selection — and that holds for dioceses in BOTH directions, not
+   * only for the national tier: `/calendar/ambrosian/diocese/roma_it` and
+   * `/calendar/roman/diocese/lugano_ch` are both 400.
+   *
+   * This falls back rather than throwing: a user switching rites is not a
+   * programming error. The throw in `fetchNationalCalendar()` still covers the
+   * programmatic case.
    *
    * Note that wiring both an ApiOptions and an ApiClient to the same RiteSelect
    * produces two requests per rite change. `ApiOptions#handleLinkedRiteSelect`
@@ -674,10 +708,8 @@ After `#listenToCalendarSelect` (ends line 524), add:
     }
     riteSelect._domElement.addEventListener( 'change', ( ev ) => {
       this.rite( ev.target.value );
-      if ( this.#currentCategory === 'national' && false === RiteProperties[ this.#currentRite ].hasNationalTier ) {
-        this.#currentCategory   = '';
-        this.#currentCalendarId = '';
-      }
+      this.#currentCategory   = '';
+      this.#currentCalendarId = '';
       this.refetchCalendarData();
     });
     return this;

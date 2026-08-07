@@ -176,7 +176,7 @@ diocese, and neither is a user preference:
 The empty option currently renders as the literal `---` at three sites
 (`CalendarSelect.js:234`, `236`, `362`). It is _not_ labelled "General Roman
 Calendar" today; the `allowNull()` docblock says empty _means_ the General Roman
-Calendar, which is a different thing. So `emptyOptionLabel` introduces a label
+Calendar, which is a different thing. So `emptyOptionLabelKey` introduces a label
 where there was none, and applying it unconditionally would change the rendered
 markup of every existing embed. It is therefore applied **only when a
 `RiteSelect` is linked** — the same condition as the explicit path segment.
@@ -205,7 +205,7 @@ nation and diocese, whereas the existing `Input` classes map to query parameters
     `#addNationalCalendarWithDioceses` is never called. Dioceses are flat
     options, ungrouped.
 - The empty option keeps meaning "the rite-level calendar" and takes its label
-  from `emptyOptionLabel`.
+  from the `Messages` key named by `emptyOptionLabelKey`.
 
 **Hiding the nation select is not sufficient on its own, and this is the crux of
 the design.** Ambrosian has no national calendars, so filtering `#nationalCalendars`
@@ -267,7 +267,7 @@ Absent, nothing changes. Present, `ApiOptions` subscribes to the rite select's
 `change` event and, per the rite:
 
 - rebuilds the linked calendar select(s) against the new rite;
-- relabels the empty option from `emptyOptionLabel`;
+- relabels the empty option from the `Messages` key named by `emptyOptionLabelKey`;
 - hides the nation select when `hasNationalTier` is `false`;
 - disables the Epiphany, Ascension, Corpus Christi and Eternal High Priest inputs
   when `hasFixedTemporalOptions` is `true`;

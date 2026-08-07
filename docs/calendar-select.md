@@ -81,11 +81,17 @@ calendarSelect.appendTo('#calendarOptions');
 | `disabled(disabled=true)`       | Set disabled state                                       |
 | `filter(filter)`                | Filter calendar options (see Filtering section)          |
 | `rite(rite=Rite.ROMAN)`         | Set the rite this select is built for; settable once     |
-| `allowNull(allowNull=true)`     | Include empty option for General Roman Calendar          |
+| `allowNull(allowNull=true)`     | Include the empty, rite-level calendar option            |
 | `after(htmlString)`             | HTML content after the select element                    |
 | `linkToNationsSelect(instance)` | Link to national calendars select for filtering dioceses |
 | `value(val?)`                   | Get/set value; with arg sets value, returns `this`       |
 | `onChange(callback)`            | Register callback for change events; returns `this`      |
+
+The empty option added by `allowNull()` selects the **rite-level** calendar, not the General Roman
+Calendar specifically. It is labelled "General Roman Calendar" only when the select's rite is
+`Rite.ROMAN`; under `Rite.AMBROSIAN` it is labelled "Ambrosian Calendar" and selects the
+_comune ambrosiano_ at `/calendar/ambrosian`. The rite-specific label is applied in rite-aware mode
+only — without a linked `RiteSelect` the empty option keeps the generic `---` text.
 
 ### DOM Insertion Methods (non-chainable)
 
