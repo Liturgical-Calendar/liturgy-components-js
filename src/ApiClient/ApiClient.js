@@ -452,6 +452,9 @@ export default class ApiClient {
    */
   fetchNationalCalendar( calendar_id, locale = '' ) {
     this.#assertRiteSupported();
+    if ( false === RiteProperties[ this.#currentRite ].hasNationalTier ) {
+      throw new Error( `ApiClient.fetchNationalCalendar: the ${this.#currentRite} rite has no national calendars, so there is no route to request. Use fetchCalendar() for the rite-level calendar, or fetchDiocesanCalendar() for one of its dioceses.` );
+    }
     // Since the year parameter will be placed in the path, we extract it from the body params.
     // However, the only body param we need in this case is year_type,
     // so we also extract out all other params in order to discard them.

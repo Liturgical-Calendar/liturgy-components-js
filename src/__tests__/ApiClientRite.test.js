@@ -89,6 +89,24 @@ describe( 'ApiClient rite path composition', () => {
     } );
 } );
 
+describe( 'ApiClient national tier guard', () => {
+
+    it( 'refuses a national calendar under a rite that has no national tier', () => {
+        // There is no /calendar/ambrosian/nation/... route: the API's
+        // CalendarParams::validateRiteCompatibility() rejects a non-null
+        // NationalCalendar for Ambrosian. Pre-empt it rather than emit a 400.
+        apiClient.rite( Rite.AMBROSIAN );
+        expect( () => apiClient.fetchNationalCalendar( 'IT' ) ).toThrow( /has no national calendars/ );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it( 'still allows a national calendar under the Roman rite', () => {
+        apiClient.rite( Rite.ROMAN );
+        expect( () => apiClient.fetchNationalCalendar( 'IT' ) ).not.toThrow();
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+    } );
+} );
+
 describe( 'ApiClient rite cache isolation', () => {
 
     it( 'does not serve an Ambrosian request from the Roman cache entry', () => {
