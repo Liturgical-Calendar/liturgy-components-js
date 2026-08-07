@@ -109,11 +109,19 @@ describe( 'WebCalendar caption for a rite-level calendar', () => {
         expect( caption ).toBe( 'Calendario Ambrosiano - 2026' );
     } );
 
-    it( 'falls back to English for a locale with no rite-specific caption', async () => {
-        // Rite captions exist for `en` and `it` only, matching the policy for
-        // the other rite messages.
+    it( 'uses the Dutch caption for a Dutch locale', async () => {
         apiClient.rite( Rite.AMBROSIAN );
         const caption = await renderVia( new WebCalendar(), calendarData( { locale: 'nl' } ) );
+        expect( caption ).toBe( 'Ambrosiaanse kalender - 2026' );
+    } );
+
+    it( 'falls back to English for a locale with no rite-specific caption', async () => {
+        // Rite captions exist for the twelve locales this project maintains
+        // (en, it, la, es, fr, de, pt, nl, hu, id, sk, vi). Polish is one of the
+        // many locales that carry the other messages but not yet the rite ones,
+        // so it still exercises the English fallback.
+        apiClient.rite( Rite.AMBROSIAN );
+        const caption = await renderVia( new WebCalendar(), calendarData( { locale: 'pl' } ) );
         expect( caption ).toBe( 'Ambrosian Calendar - 2026' );
     } );
 

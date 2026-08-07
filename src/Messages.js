@@ -17,7 +17,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Liturgie van die dag",
         "SELECT_A_CALENDAR": "Kies 'n kalender",
-        "SELECT_ROUTE": "Kies 'n route"
+        "SELECT_ROUTE": "Kies 'n route",
+        "GENERAL_ROMAN_CALENDAR": "Algemene Romeinse Kalender"
     },
     "am": {
         "SUNDAY_JAN2_JAN8": "አዳሚድ 2 አማርኛ 8 አማርኛ",
@@ -37,7 +38,8 @@ const Messages = {
         "PSALTER": "የመዝሙር ሳምንት",
         "LITURGY_OF_THE_DAY": "የአምልኮ ቀን",
         "SELECT_A_CALENDAR": "የቀን መቁጠሪያ ይምረጡ",
-        "SELECT_ROUTE": "የቀን መቁጠሪያ ይምረጡ"
+        "SELECT_ROUTE": "የቀን መቁጠሪያ ይምረጡ",
+        "GENERAL_ROMAN_CALENDAR": "የምስራቅ ሮማን ዓመት"
     },
     "ar": {
         "SUNDAY_JAN2_JAN8": "الأحد بين 2 و 8 يناير",
@@ -57,7 +59,8 @@ const Messages = {
         "PSALTER": "المزامير",
         "LITURGY_OF_THE_DAY": "الليتورجية اليومية",
         "SELECT_A_CALENDAR": "اختر تقويم",
-        "SELECT_ROUTE": "اختر مسار"
+        "SELECT_ROUTE": "اختر مسار",
+        "GENERAL_ROMAN_CALENDAR": "التقويم الروماني العام"
     },
     "as": {
         "SUNDAY_JAN2_JAN8": "সোমবার ২ ও ৮ জানুয়ারির মধ্যে",
@@ -77,7 +80,8 @@ const Messages = {
         "PSALTER": "গীতমালাৰ সপ্তাহ",
         "LITURGY_OF_THE_DAY": "দৈনিক লিটাৰ্জিকেল",
         "SELECT_A_CALENDAR": "কেলেণ্ডাৰ পছন্দ কৰু",
-        "SELECT_ROUTE": "রুট পছন্দ কৰু"
+        "SELECT_ROUTE": "রুট পছন্দ কৰু",
+        "GENERAL_ROMAN_CALENDAR": "সাধাৰণ ৰোমান কেলেণ্ডাৰ"
     },
     "ast": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de xaneiro e o 8 de xaneiro",
@@ -97,7 +101,8 @@ const Messages = {
         "PSALTER": "Salterio",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Elixe un calendariu",
-        "SELECT_ROUTE": "Elixe un camín"
+        "SELECT_ROUTE": "Elixe un camín",
+        "GENERAL_ROMAN_CALENDAR": "Calendariu Xeneral Romanu"
     },
     "az": {
         "SUNDAY_JAN2_JAN8": "Pazar 2 və 8 yanvar arasında",
@@ -117,7 +122,8 @@ const Messages = {
         "PSALTER": "Məzmur",
         "LITURGY_OF_THE_DAY": "Günlük Liturgiya",
         "SELECT_A_CALENDAR": "Təqvimi seçin",
-        "SELECT_ROUTE": "Marşrut seçin"
+        "SELECT_ROUTE": "Marşrut seçin",
+        "GENERAL_ROMAN_CALENDAR": "Ümumi Roman Təqvimi"
     },
     "be": {
         "SUNDAY_JAN2_JAN8": "Нядзеля між 2 і 8 студзень",
@@ -137,7 +143,8 @@ const Messages = {
         "PSALTER": "Псалтыр",
         "LITURGY_OF_THE_DAY": "Літургічна дзень",
         "SELECT_A_CALENDAR": "Выберыце календар",
-        "SELECT_ROUTE": "Выберыце маршрут"
+        "SELECT_ROUTE": "Выберыце маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Агульны рымскі каляндар"
     },
     "bg": {
         "SUNDAY_JAN2_JAN8": "Неделя между 2 и 8 януари",
@@ -157,7 +164,8 @@ const Messages = {
         "PSALTER": "Псалтир",
         "LITURGY_OF_THE_DAY": "Денна литургия",
         "SELECT_A_CALENDAR": "Изберете календар",
-        "SELECT_ROUTE": "Изберете маршрут"
+        "SELECT_ROUTE": "Изберете маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Общият римски календар"
     },
     "bm": {
         "SUNDAY_JAN2_JAN8": "Dimansi Zanwuyekalo tile 2 ni 8 cɛ",
@@ -177,7 +185,8 @@ const Messages = {
         "PSALTER": "Kidung",
         "LITURGY_OF_THE_DAY": "Liturgik Zan",
         "SELECT_A_CALENDAR": "Sɛbɛ Kalɛndɛ",
-        "SELECT_ROUTE": "Sɛbɛ Marɛ"
+        "SELECT_ROUTE": "Sɛbɛ Marɛ",
+        "GENERAL_ROMAN_CALENDAR": "Kalɛndɛ General Roman"
     },
     "bn": {
         "SUNDAY_JAN2_JAN8": "সোমবার ২ ও ৮ জানুয়ারির মধ্যে",
@@ -197,7 +206,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "দৈনিক লিটার্জিকেল",
         "SELECT_A_CALENDAR": "কেলেণ্ডা পছন্দ কৰুন",
-        "SELECT_ROUTE": "মার্শৰ পছন্দ কৰুন"
+        "SELECT_ROUTE": "মার্শৰ পছন্দ কৰুন",
+        "GENERAL_ROMAN_CALENDAR": "সাধাৰণ ৰোমান কেলেণ্ডাৰ"
     },
     "bo": {
         "SUNDAY_JAN2_JAN8": "ཟླ་དང་པོའི་ཚེས་གཉིས་ནས་བརྒྱད་པའི་བར་གྱི་གཟའ་ཉི་མ།",
@@ -217,7 +227,8 @@ const Messages = {
         "PSALTER": "མགུར་གླུ།",
         "LITURGY_OF_THE_DAY": "སྣོན་ལས་ཆོ་གའི་ལོ།",
         "SELECT_A_CALENDAR": "ལོ་ཐོ་འདེམས།།",
-        "SELECT_ROUTE": "ལོ་ཐོ་འདེམས།།"
+        "SELECT_ROUTE": "ལོ་ཐོ་འདེམས།།",
+        "GENERAL_ROMAN_CALENDAR": "རོ་མན་ལོ།"
     },
     "br": {
         "SUNDAY_JAN2_JAN8": "Dimanche entre 2 et 8 janv.",
@@ -237,7 +248,8 @@ const Messages = {
         "PSALTER": "Sizhunvezh ar salmoù",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Dibab un deiziadur",
-        "SELECT_ROUTE": "Dibab un hent"
+        "SELECT_ROUTE": "Dibab un hent",
+        "GENERAL_ROMAN_CALENDAR": "Deiziadur roman"
     },
     "bs": {
         "SUNDAY_JAN2_JAN8": "Nedelja između 2. i 8. januar",
@@ -257,7 +269,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Dnevna liturgija",
         "SELECT_A_CALENDAR": "Odaberi kalendar",
-        "SELECT_ROUTE": "Odaberi put"
+        "SELECT_ROUTE": "Odaberi put",
+        "GENERAL_ROMAN_CALENDAR": "Opći rimski kalendar"
     },
     "ca": {
         "SUNDAY_JAN2_JAN8": "Dilluns entre el 2 de gener i el 8 de gener",
@@ -277,7 +290,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Selecciona un calendari",
-        "SELECT_ROUTE": "Selecciona una ruta"
+        "SELECT_ROUTE": "Selecciona una ruta",
+        "GENERAL_ROMAN_CALENDAR": "Calendari romà general"
     },
     "ce": {
         "SUNDAY_JAN2_JAN8": "Воскресенье между 2 и 8 января",
@@ -297,7 +311,8 @@ const Messages = {
         "PSALTER": "Псалтер",
         "LITURGY_OF_THE_DAY": "Дневная литургия",
         "SELECT_A_CALENDAR": "Рузма харжа",
-        "SELECT_ROUTE": "маршрут харжа"
+        "SELECT_ROUTE": "маршрут харжа",
+        "GENERAL_ROMAN_CALENDAR": "Общий римский календарь"
     },
     "cs": {
         "SUNDAY_JAN2_JAN8": "Neděle mezi 2. a 8. ledem",
@@ -317,7 +332,8 @@ const Messages = {
         "PSALTER": "žaltář",
         "LITURGY_OF_THE_DAY": "Denní liturgie",
         "SELECT_A_CALENDAR": "Vyberte kalendář",
-        "SELECT_ROUTE": "Vyberte cestu"
+        "SELECT_ROUTE": "Vyberte cestu",
+        "GENERAL_ROMAN_CALENDAR": "Obecný římský kalendář"
     },
     "cy": {
         "SUNDAY_JAN2_JAN8": "Dydd Sul i 2 a 8 Mawrth",
@@ -337,7 +353,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Dewiswch galendr",
-        "SELECT_ROUTE": "Dewiswch y ffordd"
+        "SELECT_ROUTE": "Dewiswch y ffordd",
+        "GENERAL_ROMAN_CALENDAR": "Calendr Rhufeinig Cyffredinol"
     },
     "da": {
         "SUNDAY_JAN2_JAN8": "Søndag mellem 2. og 8. januar",
@@ -357,7 +374,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Daglig liturgi",
         "SELECT_A_CALENDAR": "Vælg en kalender",
-        "SELECT_ROUTE": "Vælg en route"
+        "SELECT_ROUTE": "Vælg en route",
+        "GENERAL_ROMAN_CALENDAR": "Generel Romersk Kalender"
     },
     "de": {
         "SUNDAY_JAN2_JAN8": "Sonntag zwischen dem 2. und dem 8. Januar",
@@ -377,7 +395,13 @@ const Messages = {
         "PSALTER": "Psalterwoche",
         "LITURGY_OF_THE_DAY": "Tägliche Liturgie",
         "SELECT_A_CALENDAR": "Kalender auswählen",
-        "SELECT_ROUTE": "Route auswählen"
+        "SELECT_ROUTE": "Route auswählen",
+        "RITE_ROMAN": "Römischer Ritus",
+        "RITE_AMBROSIAN": "Ambrosianischer Ritus",
+        "SELECT_A_RITE": "Ritus auswählen",
+        "GENERAL_ROMAN_CALENDAR": "Allgemeiner römischer Kalender",
+        "AMBROSIAN_CALENDAR": "Ambrosianischer Kalender",
+        "AMBROSIAN_CALENDAR_CAPTION": "Ambrosianischer Kalender - {year}"
     },
     "ee": {
         "SUNDAY_JAN2_JAN8": "Kwasiɖagbe le January 2nd kple 8th dome",
@@ -397,7 +421,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Liturgiig Ɖa",
         "SELECT_A_CALENDAR": "Valige kalender",
-        "SELECT_ROUTE": "Valige route"
+        "SELECT_ROUTE": "Valige route",
+        "GENERAL_ROMAN_CALENDAR": "General Roman Calendar"
     },
     "el": {
         "SUNDAY_JAN2_JAN8": "Κυριακή μεταξύ των 2 και των 8 Ιανουαρίου",
@@ -417,7 +442,8 @@ const Messages = {
         "PSALTER": "Ψαλτήρι",
         "LITURGY_OF_THE_DAY": "Ημερής Λιτουργική",
         "SELECT_A_CALENDAR": "Επιλέξτε ένα Ημερολόγιο",
-        "SELECT_ROUTE": "Επιλέξτε Ρουτη"
+        "SELECT_ROUTE": "Επιλέξτε Ρουτη",
+        "GENERAL_ROMAN_CALENDAR": "Γενικό Ρωμαϊκό Ημερολόγιο"
     },
     "en": {
         "SUNDAY_JAN2_JAN8": "Sunday between January 2nd and 8th",
@@ -463,7 +489,8 @@ const Messages = {
         "PSALTER": "Psaltera",
         "LITURGY_OF_THE_DAY": "Daŭra Liturgio",
         "SELECT_A_CALENDAR": "Elektu kalendaron",
-        "SELECT_ROUTE": "Elektu rutenon"
+        "SELECT_ROUTE": "Elektu rutenon",
+        "GENERAL_ROMAN_CALENDAR": "Ĉefa Romia Kalendaro"
     },
     "es": {
         "SUNDAY_JAN2_JAN8": "Domingo entre el 2 de enero y el 8 de enero",
@@ -483,7 +510,13 @@ const Messages = {
         "PSALTER": "Salterio",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Seleccione un calendario",
-        "SELECT_ROUTE": "Seleccione una ruta"
+        "SELECT_ROUTE": "Seleccione una ruta",
+        "RITE_ROMAN": "Rito romano",
+        "RITE_AMBROSIAN": "Rito ambrosiano",
+        "SELECT_A_RITE": "Seleccionar un rito",
+        "GENERAL_ROMAN_CALENDAR": "Calendario romano general",
+        "AMBROSIAN_CALENDAR": "Calendario ambrosiano",
+        "AMBROSIAN_CALENDAR_CAPTION": "Calendario ambrosiano - {year}"
     },
     "et": {
         "SUNDAY_JAN2_JAN8": "Pühapäev 2. ja 8. jaanuaril",
@@ -503,7 +536,8 @@ const Messages = {
         "PSALTER": "Psalter",
         "LITURGY_OF_THE_DAY": "Tähe liturgia",
         "SELECT_A_CALENDAR": "Vali kalender",
-        "SELECT_ROUTE": "Vali rida"
+        "SELECT_ROUTE": "Vali rida",
+        "GENERAL_ROMAN_CALENDAR": "Üldine Rooma kalender"
     },
     "eu": {
         "SUNDAY_JAN2_JAN8": "Astelehena 2 eta 8 urteko",
@@ -523,7 +557,8 @@ const Messages = {
         "PSALTER": "Salterio",
         "LITURGY_OF_THE_DAY": "Liturgia Egutegia",
         "SELECT_A_CALENDAR": "Egutegia aukeratu",
-        "SELECT_ROUTE": "Ruta aukeratu"
+        "SELECT_ROUTE": "Ruta aukeratu",
+        "GENERAL_ROMAN_CALENDAR": "Erromatar Kalendario Orokorra"
     },
     "fa": {
         "SUNDAY_JAN2_JAN8": "یکشنبه بین ۲ تا ۸ مهر",
@@ -543,7 +578,8 @@ const Messages = {
         "PSALTER": "هفته مزمور",
         "LITURGY_OF_THE_DAY": "روز لیتورژیک",
         "SELECT_A_CALENDAR": "تقویم را انتخاب کنید",
-        "SELECT_ROUTE": "مسیر را انتخاب کنید"
+        "SELECT_ROUTE": "مسیر را انتخاب کنید",
+        "GENERAL_ROMAN_CALENDAR": "تقویم عمومی رومی"
     },
     "ff": {
         "SUNDAY_JAN2_JAN8": "Ñalnde alet hakkunde 2 e 8 lewru Yarkomaa",
@@ -563,7 +599,8 @@ const Messages = {
         "PSALTER": "psalter",
         "LITURGY_OF_THE_DAY": "Liturgik Zan",
         "SELECT_A_CALENDAR": "Sɛbɛ Kalɛndɛ",
-        "SELECT_ROUTE": "Sɛbɛ Marɛ"
+        "SELECT_ROUTE": "Sɛbɛ Marɛ",
+        "GENERAL_ROMAN_CALENDAR": "General Roman Kalendaar"
     },
     "fi": {
         "SUNDAY_JAN2_JAN8": "Sunnuntaina 2 ja 8 tammikuu",
@@ -583,7 +620,8 @@ const Messages = {
         "PSALTER": "psalttariviikko",
         "LITURGY_OF_THE_DAY": "Liturgiikka päivämäärä",
         "SELECT_A_CALENDAR": "Valitse kalenteri",
-        "SELECT_ROUTE": "Valitse reitti"
+        "SELECT_ROUTE": "Valitse reitti",
+        "GENERAL_ROMAN_CALENDAR": "Yleinen Roomalainen Kalenteri"
     },
     "fo": {
         "SUNDAY_JAN2_JAN8": "Sunnudagur 2 og 8 januar",
@@ -603,7 +641,8 @@ const Messages = {
         "PSALTER": "psaltaravika",
         "LITURGY_OF_THE_DAY": "Liturgiskur Dagur",
         "SELECT_A_CALENDAR": "Vel Kalendari",
-        "SELECT_ROUTE": "Vel reit"
+        "SELECT_ROUTE": "Vel reit",
+        "GENERAL_ROMAN_CALENDAR": "Almenna Rómanska Kalendari"
     },
     "fr": {
         "SUNDAY_JAN2_JAN8": "Dimanche entre le 2 janvier et le 8 janvier",
@@ -623,7 +662,13 @@ const Messages = {
         "PSALTER": "psautier",
         "LITURGY_OF_THE_DAY": "Liturgie du jour",
         "SELECT_A_CALENDAR": "Choisir un calendrier",
-        "SELECT_ROUTE": "Choisir une route"
+        "SELECT_ROUTE": "Choisir une route",
+        "RITE_ROMAN": "Rite romain",
+        "RITE_AMBROSIAN": "Rite ambrosien",
+        "SELECT_A_RITE": "Sélectionner un rite",
+        "GENERAL_ROMAN_CALENDAR": "Calendrier romain général",
+        "AMBROSIAN_CALENDAR": "Calendrier ambrosien",
+        "AMBROSIAN_CALENDAR_CAPTION": "Calendrier ambrosien - {year}"
     },
     "ga": {
         "SUNDAY_JAN2_JAN8": "Seoimhneann 2 agus 8 Eanáir",
@@ -643,7 +688,8 @@ const Messages = {
         "PSALTER": "tSaltair",
         "LITURGY_OF_THE_DAY": "Liturgíoch Dáta",
         "SELECT_A_CALENDAR": "Seoimhneann Calendur",
-        "SELECT_ROUTE": "Seoimhneann Róta"
+        "SELECT_ROUTE": "Seoimhneann Róta",
+        "GENERAL_ROMAN_CALENDAR": "An Calendur Rómhánach Ginearálta"
     },
     "gd": {
         "SUNDAY_JAN2_JAN8": "Sunnam 2 agus 8 Eanáir",
@@ -663,7 +709,8 @@ const Messages = {
         "PSALTER": "t-Salm",
         "LITURGY_OF_THE_DAY": "Liturgical Dath",
         "SELECT_A_CALENDAR": "Seoimhneann Caladain",
-        "SELECT_ROUTE": "Seoimhneann Ròta"
+        "SELECT_ROUTE": "Seoimhneann Ròta",
+        "GENERAL_ROMAN_CALENDAR": "Cadalain Roimheach Ginearàlta"
     },
     "gl": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de xaneiro e o 8 de xaneiro",
@@ -683,7 +730,8 @@ const Messages = {
         "PSALTER": "salterio",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Seleccionar un calendario",
-        "SELECT_ROUTE": "Seleccionar un camín"
+        "SELECT_ROUTE": "Seleccionar un camín",
+        "GENERAL_ROMAN_CALENDAR": "Calendario romano xeral"
     },
     "gn": {
         "SUNDAY_JAN2_JAN8": "Domingo 6 jasyporundy ha 8 jasyporundy mbytépe",
@@ -703,7 +751,8 @@ const Messages = {
         "PSALTER": "psalter",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Seleccionar un calendario",
-        "SELECT_ROUTE": "Seleccionar un camín"
+        "SELECT_ROUTE": "Seleccionar un camín",
+        "GENERAL_ROMAN_CALENDAR": "Calendario romano general"
     },
     "gu": {
         "SUNDAY_JAN2_JAN8": "સોંધવાર પહોંચાં અને શુક્રવાર પહોંચાં",
@@ -723,7 +772,8 @@ const Messages = {
         "PSALTER": "ઝબોર સપ્તાહ",
         "LITURGY_OF_THE_DAY": "દિવસની લિટર્જિકલ ઉજવણી",
         "SELECT_A_CALENDAR": "કેલેન્ડર પસંદ કરો",
-        "SELECT_ROUTE": "રોટ પસંદ કરો"
+        "SELECT_ROUTE": "રોટ પસંદ કરો",
+        "GENERAL_ROMAN_CALENDAR": "જનરલ રોમન કેલેન્ડર"
     },
     "gv": {
         "SUNDAY_JAN2_JAN8": "Dydd Sul i 2 a 8 Mawrth",
@@ -743,7 +793,8 @@ const Messages = {
         "PSALTER": "shiaghtin yn psalms",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Dewiswch galendr",
-        "SELECT_ROUTE": "Dewiswch y ffordd"
+        "SELECT_ROUTE": "Dewiswch y ffordd",
+        "GENERAL_ROMAN_CALENDAR": "Calendr Rhufeinig Cyffredinol"
     },
     "he": {
         "SUNDAY_JAN2_JAN8": "ראשון בין ה-2 וה-8 ינואר",
@@ -763,7 +814,8 @@ const Messages = {
         "PSALTER": "שבוע תהילים",
         "LITURGY_OF_THE_DAY": "ליטורגיה יומית",
         "SELECT_A_CALENDAR": "בחר קלנדר",
-        "SELECT_ROUTE": "בחר רוחב"
+        "SELECT_ROUTE": "בחר רוחב",
+        "GENERAL_ROMAN_CALENDAR": "לוח רומי כללי"
     },
     "hi": {
         "SUNDAY_JAN2_JAN8": "सोमवार 2 और 8 जनवरी के बीच",
@@ -783,7 +835,8 @@ const Messages = {
         "PSALTER": "भजन संहिता सप्ताह",
         "LITURGY_OF_THE_DAY": "लिटर्जिकल उत्सव",
         "SELECT_A_CALENDAR": "कैलेंडर का चयन करें",
-        "SELECT_ROUTE": "राउट का चयन करें"
+        "SELECT_ROUTE": "राउट का चयन करें",
+        "GENERAL_ROMAN_CALENDAR": "सामान्य रोमन कैलेंडर"
     },
     "hr": {
         "SUNDAY_JAN2_JAN8": "Nedjelja između 2. i 8. januar",
@@ -803,7 +856,8 @@ const Messages = {
         "PSALTER": "psaltirski tjedan",
         "LITURGY_OF_THE_DAY": "Dnevna liturgija",
         "SELECT_A_CALENDAR": "Odaberi kalendar",
-        "SELECT_ROUTE": "Odaberi put"
+        "SELECT_ROUTE": "Odaberi put",
+        "GENERAL_ROMAN_CALENDAR": "Opći rimski kalendar"
     },
     "hu": {
         "SUNDAY_JAN2_JAN8": "Szombat 2 és 8 janúari között",
@@ -823,7 +877,13 @@ const Messages = {
         "PSALTER": "zsoltáros hét",
         "LITURGY_OF_THE_DAY": "Egy napos liturgia",
         "SELECT_A_CALENDAR": "Naptár kiválasztása",
-        "SELECT_ROUTE": "Útvonal kiválasztása"
+        "SELECT_ROUTE": "Útvonal kiválasztása",
+        "RITE_ROMAN": "Római rítus",
+        "RITE_AMBROSIAN": "Ambrozián rítus",
+        "SELECT_A_RITE": "Válasszon rítust",
+        "GENERAL_ROMAN_CALENDAR": "Általános római naptár",
+        "AMBROSIAN_CALENDAR": "Ambrozián naptár",
+        "AMBROSIAN_CALENDAR_CAPTION": "Ambrozián naptár - {year}"
     },
     "hy": {
         "SUNDAY_JAN2_JAN8": "Երկուշակյան 2 երկուշակյան 8",
@@ -843,7 +903,8 @@ const Messages = {
         "PSALTER": "սաղմոսարան շաբաթ",
         "LITURGY_OF_THE_DAY": "Լիտորգիալ Դաս",
         "SELECT_A_CALENDAR": "Ընտանում Օրացույց",
-        "SELECT_ROUTE": "Ընտանում Համար"
+        "SELECT_ROUTE": "Ընտանում Համար",
+        "GENERAL_ROMAN_CALENDAR": "Ընդհանուր ռոմական օրացույց"
     },
     "id": {
         "SUNDAY_JAN2_JAN8": "Minggu antara 2 dan 8 Januari",
@@ -863,7 +924,13 @@ const Messages = {
         "PSALTER": "minggu mazmur",
         "LITURGY_OF_THE_DAY": "Liturgi Hari Ini",
         "SELECT_A_CALENDAR": "Pilih Kalender",
-        "SELECT_ROUTE": "Pilih Jalur"
+        "SELECT_ROUTE": "Pilih Jalur",
+        "RITE_ROMAN": "Ritus Roma",
+        "RITE_AMBROSIAN": "Ritus Ambrosian",
+        "SELECT_A_RITE": "Pilih ritus",
+        "GENERAL_ROMAN_CALENDAR": "Kalender Romawi Umum",
+        "AMBROSIAN_CALENDAR": "Kalender Ambrosian",
+        "AMBROSIAN_CALENDAR_CAPTION": "Kalender Ambrosian - {year}"
     },
     "ig": {
         "SUNDAY_JAN2_JAN8": "Nwenu 2 na 8 nwa mma",
@@ -883,7 +950,8 @@ const Messages = {
         "PSALTER": "izu psalms",
         "LITURGY_OF_THE_DAY": "Afọ Liturgical",
         "SELECT_A_CALENDAR": "Pilih Afọ",
-        "SELECT_ROUTE": "Pilih Rute"
+        "SELECT_ROUTE": "Pilih Rute",
+        "GENERAL_ROMAN_CALENDAR": "Afọ Roman General"
     },
     "is": {
         "SUNDAY_JAN2_JAN8": "Sunnudagur 2 og 8 januar",
@@ -903,7 +971,8 @@ const Messages = {
         "PSALTER": "sálmavika",
         "LITURGY_OF_THE_DAY": "Liturgisk dagur",
         "SELECT_A_CALENDAR": "Velja dagatal",
-        "SELECT_ROUTE": "Velja reit"
+        "SELECT_ROUTE": "Velja reit",
+        "GENERAL_ROMAN_CALENDAR": "Almennur Rómverskur dagatal"
     },
     "it": {
         "SUNDAY_JAN2_JAN8": "Domenica tra il 2 gennaio e l'8 gennaio",
@@ -949,7 +1018,8 @@ const Messages = {
         "PSALTER": "詩篇の週",
         "LITURGY_OF_THE_DAY": "今日のリトルジカル",
         "SELECT_A_CALENDAR": "カレンダーを選択",
-        "SELECT_ROUTE": "ルートを選択"
+        "SELECT_ROUTE": "ルートを選択",
+        "GENERAL_ROMAN_CALENDAR": "一般的なローマカレンダー"
     },
     "jv": {
         "SUNDAY_JAN2_JAN8": "Minggu antara 2 dan 8 Januari",
@@ -969,7 +1039,8 @@ const Messages = {
         "PSALTER": "Mazmur",
         "LITURGY_OF_THE_DAY": "Liturgi Hari Ini",
         "SELECT_A_CALENDAR": "Pilih Kalender",
-        "SELECT_ROUTE": "Pilih Jalur"
+        "SELECT_ROUTE": "Pilih Jalur",
+        "GENERAL_ROMAN_CALENDAR": "Kalender Romawi Umum"
     },
     "ka": {
         "SUNDAY_JAN2_JAN8": "კვარისი 2-დან 8-მდე",
@@ -989,7 +1060,8 @@ const Messages = {
         "PSALTER": "ფსალმუნთა კვირა",
         "LITURGY_OF_THE_DAY": "დღის ლიტრული",
         "SELECT_A_CALENDAR": "აირჩიეთ კალენდარი",
-        "SELECT_ROUTE": "აირჩიეთ მენიუ"
+        "SELECT_ROUTE": "აირჩიეთ მენიუ",
+        "GENERAL_ROMAN_CALENDAR": "რომის ზოგადი კალენდარი"
     },
     "kk": {
         "SUNDAY_JAN2_JAN8": "1-ненде 2 жаны 8 жаны",
@@ -1009,7 +1081,8 @@ const Messages = {
         "PSALTER": "псалтыр аптасы",
         "LITURGY_OF_THE_DAY": "Күнін Литургиялық",
         "SELECT_A_CALENDAR": "Күнтізбені танда",
-        "SELECT_ROUTE": "Маршруттаны танда"
+        "SELECT_ROUTE": "Маршруттаны танда",
+        "GENERAL_ROMAN_CALENDAR": "Жалпы Рим Күнтізбе"
     },
     "kl": {
         "SUNDAY_JAN2_JAN8": "Sunndag 2 og 8 januar",
@@ -1029,7 +1102,8 @@ const Messages = {
         "PSALTER": "psalmi sapaatip-akunnera",
         "LITURGY_OF_THE_DAY": "Liturgisk dag",
         "SELECT_A_CALENDAR": "Vælg en kalender",
-        "SELECT_ROUTE": "Vælg en route"
+        "SELECT_ROUTE": "Vælg en route",
+        "GENERAL_ROMAN_CALENDAR": "Generel Romersk Kalender"
     },
     "ko": {
         "SUNDAY_JAN2_JAN8": "1月2日~1月8日",
@@ -1049,7 +1123,8 @@ const Messages = {
         "PSALTER": "시편 주간",
         "LITURGY_OF_THE_DAY": "오늘의 리터그리컬",
         "SELECT_A_CALENDAR": "캘렌더를 선택하십시오",
-        "SELECT_ROUTE": "라우트를 선택하십시오"
+        "SELECT_ROUTE": "라우트를 선택하십시오",
+        "GENERAL_ROMAN_CALENDAR": "예제 로마 캘렌더"
     },
     "ku": {
         "SUNDAY_JAN2_JAN8": "Dewa 2 ve 8 Aralık arasında",
@@ -1069,7 +1144,8 @@ const Messages = {
         "PSALTER": "hefteya zebbûrê",
         "LITURGY_OF_THE_DAY": "Ji bo pîrozbahiya",
         "SELECT_A_CALENDAR": "Takvim seçin",
-        "SELECT_ROUTE": "Rota seçin"
+        "SELECT_ROUTE": "Rota seçin",
+        "GENERAL_ROMAN_CALENDAR": "Genel Roma Takvimi"
     },
     "la": {
         "SUNDAY_JAN2_JAN8": "Dominica inter 2 Januarii et 8 Januarii",
@@ -1089,7 +1165,13 @@ const Messages = {
         "PSALTER": "hebdomada psalterii",
         "LITURGY_OF_THE_DAY": "Liturgia dies",
         "SELECT_A_CALENDAR": "Elige calendarium",
-        "SELECT_ROUTE": "Elige route"
+        "SELECT_ROUTE": "Elige route",
+        "RITE_ROMAN": "Ritus Romanus",
+        "RITE_AMBROSIAN": "Ritus Ambrosianus",
+        "SELECT_A_RITE": "Elige ritum",
+        "GENERAL_ROMAN_CALENDAR": "Calendarium Romanum Generale",
+        "AMBROSIAN_CALENDAR": "Calendarium Ambrosianum",
+        "AMBROSIAN_CALENDAR_CAPTION": "Calendarium Ambrosianum - {year}"
     },
     "lb": {
         "SUNDAY_JAN2_JAN8": "Sonntag zwischen dem 2. und dem 8. Januar",
@@ -1109,7 +1191,8 @@ const Messages = {
         "PSALTER": "psalchterwoch",
         "LITURGY_OF_THE_DAY": "Tägliche Liturgie",
         "SELECT_A_CALENDAR": "Kalender auswählen",
-        "SELECT_ROUTE": "Route auswählen"
+        "SELECT_ROUTE": "Route auswählen",
+        "GENERAL_ROMAN_CALENDAR": "Allgemengen Roeme Kalenner"
     },
     "lt": {
         "SUNDAY_JAN2_JAN8": "Sekmadienis nuo 2 iki 8 g.",
@@ -1129,7 +1212,8 @@ const Messages = {
         "PSALTER": "psalmių savaitė",
         "LITURGY_OF_THE_DAY": "Dienės liturgija",
         "SELECT_A_CALENDAR": "Pasirinkite kalendorių",
-        "SELECT_ROUTE": "Pasirinkite rutes"
+        "SELECT_ROUTE": "Pasirinkite rutes",
+        "GENERAL_ROMAN_CALENDAR": "Bendras romėnų kalendorius"
     },
     "lv": {
         "SUNDAY_JAN2_JAN8": "Svētdiena no 2. līdz 8. gada",
@@ -1149,7 +1233,8 @@ const Messages = {
         "PSALTER": "psalmu nedēļa",
         "LITURGY_OF_THE_DAY": "Dienas liturgija",
         "SELECT_A_CALENDAR": "Izvēlieties kalendāru",
-        "SELECT_ROUTE": "Izvēlieties trasē"
+        "SELECT_ROUTE": "Izvēlieties trasē",
+        "GENERAL_ROMAN_CALENDAR": "Vispārīgais Romas kalendārs"
     },
     "mi": {
         "SUNDAY_JAN2_JAN8": "Rātā 2 a 8 Mawrth",
@@ -1169,7 +1254,8 @@ const Messages = {
         "PSALTER": "wiki psalter",
         "LITURGY_OF_THE_DAY": "Whakatutu",
         "SELECT_A_CALENDAR": "Rātaka mo",
-        "SELECT_ROUTE": "Rātaka mo"
+        "SELECT_ROUTE": "Rātaka mo",
+        "GENERAL_ROMAN_CALENDAR": "Rātaka Roman General"
     },
     "mk": {
         "SUNDAY_JAN2_JAN8": "Недела од 2 до 8 јануари",
@@ -1189,7 +1275,8 @@ const Messages = {
         "PSALTER": "псалтирска недела",
         "LITURGY_OF_THE_DAY": "Деновна литургия",
         "SELECT_A_CALENDAR": "Изберете календар",
-        "SELECT_ROUTE": "Изберете маршрут"
+        "SELECT_ROUTE": "Изберете маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Општ Римски Календар"
     },
     "ml": {
         "SUNDAY_JAN2_JAN8": "ഞായര്‍ 2 മാര്‍ച്ച് 8 മാര്‍ച്ച്",
@@ -1209,7 +1296,8 @@ const Messages = {
         "PSALTER": "സങ്കീർത്തന വാരം",
         "LITURGY_OF_THE_DAY": "ദിവസിക ലിറ്റർഗികൽ",
         "SELECT_A_CALENDAR": "കലണ്ടർ തിരഞ്ഞെടുക്കുക",
-        "SELECT_ROUTE": "മാര്‍ച്ച് തിരഞ്ഞെടുക്കുക"
+        "SELECT_ROUTE": "മാര്‍ച്ച് തിരഞ്ഞെടുക്കുക",
+        "GENERAL_ROMAN_CALENDAR": "സാമാന്യ റോമൻ കലണ്ടർ"
     },
     "mn": {
         "SUNDAY_JAN2_JAN8": "1-р сарын 2-оос 8-ны хооронд Ням гараг",
@@ -1229,7 +1317,8 @@ const Messages = {
         "PSALTER": "псалмын долоо хоног",
         "LITURGY_OF_THE_DAY": "Дээд Литургийн",
         "SELECT_A_CALENDAR": "Календарыг сонгох",
-        "SELECT_ROUTE": "Маршрутыг сонгох"
+        "SELECT_ROUTE": "Маршрутыг сонгох",
+        "GENERAL_ROMAN_CALENDAR": "Ерөнхий Ромын Календар"
     },
     "mt": {
         "SUNDAY_JAN2_JAN8": "Il-Ħadd bejn it-2 u t-8 ta’ Jannar",
@@ -1249,7 +1338,8 @@ const Messages = {
         "PSALTER": "ġimgħa tas-salterju",
         "LITURGY_OF_THE_DAY": "Ħadd Liturgiku",
         "SELECT_A_CALENDAR": "Għall kalendarju",
-        "SELECT_ROUTE": "Għall tratt"
+        "SELECT_ROUTE": "Għall tratt",
+        "GENERAL_ROMAN_CALENDAR": "Kalendarju Rumanġeneral"
     },
     "nb": {
         "SUNDAY_JAN2_JAN8": "Søndag mellom 2 og 8 januar",
@@ -1269,7 +1359,8 @@ const Messages = {
         "PSALTER": "salmeuke",
         "LITURGY_OF_THE_DAY": "Dagliturgi",
         "SELECT_A_CALENDAR": "Velg kalender",
-        "SELECT_ROUTE": "Velg vei"
+        "SELECT_ROUTE": "Velg vei",
+        "GENERAL_ROMAN_CALENDAR": "Generell Romersk Kalender"
     },
     "nl": {
         "SUNDAY_JAN2_JAN8": "Zondag tussen 2 en 8 januari",
@@ -1289,7 +1380,13 @@ const Messages = {
         "PSALTER": "psalmenweek",
         "LITURGY_OF_THE_DAY": "Dagliturgie",
         "SELECT_A_CALENDAR": "Kies een kalender",
-        "SELECT_ROUTE": "Kies een route"
+        "SELECT_ROUTE": "Kies een route",
+        "RITE_ROMAN": "Romeinse ritus",
+        "RITE_AMBROSIAN": "Ambrosiaanse ritus",
+        "SELECT_A_RITE": "Selecteer een ritus",
+        "GENERAL_ROMAN_CALENDAR": "Algemene Romeinse kalender",
+        "AMBROSIAN_CALENDAR": "Ambrosiaanse kalender",
+        "AMBROSIAN_CALENDAR_CAPTION": "Ambrosiaanse kalender - {year}"
     },
     "pl": {
         "SUNDAY_JAN2_JAN8": "Niedziela pomiedzy 2 i 8 stycznia",
@@ -1309,7 +1406,8 @@ const Messages = {
         "PSALTER": "tydzień psałterza",
         "LITURGY_OF_THE_DAY": "Dzien liturgiczny",
         "SELECT_A_CALENDAR": "Wybierz kalendarz",
-        "SELECT_ROUTE": "Wybierz trase"
+        "SELECT_ROUTE": "Wybierz trase",
+        "GENERAL_ROMAN_CALENDAR": "Ogólny kalendarz rzymski"
     },
     "pt": {
         "SUNDAY_JAN2_JAN8": "Domingo entre o 2 de janeiro e o 8 de janeiro",
@@ -1329,7 +1427,13 @@ const Messages = {
         "PSALTER": "semana do saltério",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Selecione um calendário",
-        "SELECT_ROUTE": "Selecione uma rota"
+        "SELECT_ROUTE": "Selecione uma rota",
+        "RITE_ROMAN": "Rito romano",
+        "RITE_AMBROSIAN": "Rito ambrosiano",
+        "SELECT_A_RITE": "Selecionar um rito",
+        "GENERAL_ROMAN_CALENDAR": "Calendário romano geral",
+        "AMBROSIAN_CALENDAR": "Calendário ambrosiano",
+        "AMBROSIAN_CALENDAR_CAPTION": "Calendário ambrosiano - {year}"
     },
     "qu": {
         "SUNDAY_JAN2_JAN8": "Suyuk 2 a 8 Mawrth",
@@ -1349,7 +1453,8 @@ const Messages = {
         "PSALTER": "simikuna semana",
         "LITURGY_OF_THE_DAY": "Liturgia diaria",
         "SELECT_A_CALENDAR": "Kina Calendar",
-        "SELECT_ROUTE": "Kina Route"
+        "SELECT_ROUTE": "Kina Route",
+        "GENERAL_ROMAN_CALENDAR": "General Roman Calendar"
     },
     "ro": {
         "SUNDAY_JAN2_JAN8": "Duminică dintre 2 și 8 ianuarie",
@@ -1369,7 +1474,8 @@ const Messages = {
         "PSALTER": "săptămâna psaltirii",
         "LITURGY_OF_THE_DAY": "Liturgia zilnic",
         "SELECT_A_CALENDAR": "Alege un calendar",
-        "SELECT_ROUTE": "Alege o rute"
+        "SELECT_ROUTE": "Alege o rute",
+        "GENERAL_ROMAN_CALENDAR": "Calendar roman general"
     },
     "ru": {
         "SUNDAY_JAN2_JAN8": "Воскресенье между 2 и 8 января",
@@ -1389,7 +1495,8 @@ const Messages = {
         "PSALTER": "псалтырная неделя",
         "LITURGY_OF_THE_DAY": "Дневная литургия",
         "SELECT_A_CALENDAR": "Выберите календарь",
-        "SELECT_ROUTE": "Выберите маршрут"
+        "SELECT_ROUTE": "Выберите маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Общий римский календарь"
     },
     "sk": {
         "SUNDAY_JAN2_JAN8": "Nedeľa medzi 2. a 8. januára",
@@ -1409,7 +1516,13 @@ const Messages = {
         "PSALTER": "žaltárny týždeň",
         "LITURGY_OF_THE_DAY": "Denná liturgia",
         "SELECT_A_CALENDAR": "Vyberte kalendár",
-        "SELECT_ROUTE": "Vyberte cestu"
+        "SELECT_ROUTE": "Vyberte cestu",
+        "RITE_ROMAN": "Rímsky rítus",
+        "RITE_AMBROSIAN": "Ambroziánsky rítus",
+        "SELECT_A_RITE": "Vyberte rítus",
+        "GENERAL_ROMAN_CALENDAR": "Všeobecný rímsky kalendár",
+        "AMBROSIAN_CALENDAR": "Ambroziánsky kalendár",
+        "AMBROSIAN_CALENDAR_CAPTION": "Ambroziánsky kalendár - {year}"
     },
     "sl": {
         "SUNDAY_JAN2_JAN8": "Nedelja med 2. in 8. januarju",
@@ -1429,7 +1542,8 @@ const Messages = {
         "PSALTER": "psalmski teden",
         "LITURGY_OF_THE_DAY": "Dnevna liturgija",
         "SELECT_A_CALENDAR": "Izberi koledar",
-        "SELECT_ROUTE": "Izberi pot"
+        "SELECT_ROUTE": "Izberi pot",
+        "GENERAL_ROMAN_CALENDAR": "Splošni rimskega koledarja"
     },
     "sq": {
         "SUNDAY_JAN2_JAN8": "E hënë 2 dhe 8 janar",
@@ -1449,7 +1563,8 @@ const Messages = {
         "PSALTER": "java e psaltirit",
         "LITURGY_OF_THE_DAY": "Liturgia e dita",
         "SELECT_A_CALENDAR": "Zgjidh kalendari",
-        "SELECT_ROUTE": "Zgjidh ceni"
+        "SELECT_ROUTE": "Zgjidh ceni",
+        "GENERAL_ROMAN_CALENDAR": "Kalendari romak i përgjithshëm"
     },
     "sr": {
         "SUNDAY_JAN2_JAN8": "Недеља од 2 до 8 јануара",
@@ -1469,7 +1584,8 @@ const Messages = {
         "PSALTER": "псалтирска недеља",
         "LITURGY_OF_THE_DAY": "Дневна литургија",
         "SELECT_A_CALENDAR": "Изаберите календар",
-        "SELECT_ROUTE": "Изаберите маршрут"
+        "SELECT_ROUTE": "Изаберите маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Општи Римски Календар"
     },
     "sv": {
         "SUNDAY_JAN2_JAN8": "Söndag mellan 2 och 8 januari",
@@ -1489,7 +1605,8 @@ const Messages = {
         "PSALTER": "psaltarvecka",
         "LITURGY_OF_THE_DAY": "Dagsliturgi",
         "SELECT_A_CALENDAR": "Välj kalender",
-        "SELECT_ROUTE": "Välj rutt"
+        "SELECT_ROUTE": "Välj rutt",
+        "GENERAL_ROMAN_CALENDAR": "Allmän romersk kalender"
     },
     "sw": {
         "SUNDAY_JAN2_JAN8": "Jumapili 2 na 8 Mwaka",
@@ -1509,7 +1626,8 @@ const Messages = {
         "PSALTER": "wiki ya zaburi",
         "LITURGY_OF_THE_DAY": "Liturujia ya Tarehe",
         "SELECT_A_CALENDAR": "Chagua Kalenda",
-        "SELECT_ROUTE": "Chagua Ruta"
+        "SELECT_ROUTE": "Chagua Ruta",
+        "GENERAL_ROMAN_CALENDAR": "Kalenda ya Roma ya Jumla"
     },
     "ta": {
         "SUNDAY_JAN2_JAN8": "ஞாயிற்றுக்கிழமை 2 மார்ச் 8 மார்ச்",
@@ -1529,7 +1647,8 @@ const Messages = {
         "PSALTER": "சங்கீத வாரம்",
         "LITURGY_OF_THE_DAY": "தேதிய லிடுர்கிகல்",
         "SELECT_A_CALENDAR": "காலண்டரை தேர்ந்தெடுக்கவும்",
-        "SELECT_ROUTE": "பாதை தேர்ந்தெடுக்கவும்"
+        "SELECT_ROUTE": "பாதை தேர்ந்தெடுக்கவும்",
+        "GENERAL_ROMAN_CALENDAR": "பொது ரோமன் காலண்டர்"
     },
     "th": {
         "SUNDAY_JAN2_JAN8": "วันอาทิตย์ระหว่างวันที่ 2 และ 8 มกราคม",
@@ -1549,7 +1668,8 @@ const Messages = {
         "PSALTER": "สัปดาห์สดุดี",
         "LITURGY_OF_THE_DAY": "ปฏิทินพิธีกรรม",
         "SELECT_A_CALENDAR": "เลือกปฏิทิน",
-        "SELECT_ROUTE": "เลือกรายละเอียด"
+        "SELECT_ROUTE": "เลือกรายละเอียด",
+        "GENERAL_ROMAN_CALENDAR": "ปฏิทินโรมันทั่วไป"
     },
     "tr": {
         "SUNDAY_JAN2_JAN8": "Pazartesi 2 ve 8 Aralık arasında",
@@ -1569,7 +1689,8 @@ const Messages = {
         "PSALTER": "mezmurlar haftası",
         "LITURGY_OF_THE_DAY": "Günlük Liturgi",
         "SELECT_A_CALENDAR": "Takvim seçin",
-        "SELECT_ROUTE": "Rota seçin"
+        "SELECT_ROUTE": "Rota seçin",
+        "GENERAL_ROMAN_CALENDAR": "Genel Roma Takvimi"
     },
     "uk": {
         "SUNDAY_JAN2_JAN8": "Неділя між 2 та 8 січня",
@@ -1589,7 +1710,8 @@ const Messages = {
         "PSALTER": "псалтирний тиждень",
         "LITURGY_OF_THE_DAY": "Денна літургія",
         "SELECT_A_CALENDAR": "Виберіть календар",
-        "SELECT_ROUTE": "Виберіть маршрут"
+        "SELECT_ROUTE": "Виберіть маршрут",
+        "GENERAL_ROMAN_CALENDAR": "Загальний римський календар"
     },
     "ur": {
         "SUNDAY_JAN2_JAN8": "الأحد بين 2 و 8 يناير",
@@ -1609,7 +1731,8 @@ const Messages = {
         "PSALTER": "زبور ہفتہ",
         "LITURGY_OF_THE_DAY": "دندان لیٹرگیک",
         "SELECT_A_CALENDAR": "کیلنڈر کو انتخاب کریں",
-        "SELECT_ROUTE": "مسیر کو انتخاب کریں"
+        "SELECT_ROUTE": "مسیر کو انتخاب کریں",
+        "GENERAL_ROMAN_CALENDAR": "عام رومن کیلنڈر"
     },
     "uz": {
         "SUNDAY_JAN2_JAN8": "Yakshanba 2 va 8 yanvar aralig'ida",
@@ -1629,7 +1752,8 @@ const Messages = {
         "PSALTER": "zaburlar haftasi",
         "LITURGY_OF_THE_DAY": "Kunlik liturgiya",
         "SELECT_A_CALENDAR": "Kalendar tanlang",
-        "SELECT_ROUTE": "Yo'nalish tanlang"
+        "SELECT_ROUTE": "Yo'nalish tanlang",
+        "GENERAL_ROMAN_CALENDAR": "Umumiy Rim taqvim"
     },
     "vi": {
         "SUNDAY_JAN2_JAN8": "Thứ 7 trong khoảng 2 và 8 tháng 1",
@@ -1649,7 +1773,13 @@ const Messages = {
         "PSALTER": "tuần thánh vịnh",
         "LITURGY_OF_THE_DAY": "Lịch lịch sử",
         "SELECT_A_CALENDAR": "Chọn lịch",
-        "SELECT_ROUTE": "Chọn tuyến đường"
+        "SELECT_ROUTE": "Chọn tuyến đường",
+        "RITE_ROMAN": "Nghi lễ Rôma",
+        "RITE_AMBROSIAN": "Nghi lễ Ambrôsiô",
+        "SELECT_A_RITE": "Chọn nghi lễ",
+        "GENERAL_ROMAN_CALENDAR": "Lịch La Mã chủ đạo",
+        "AMBROSIAN_CALENDAR": "Lịch Ambrôsiô",
+        "AMBROSIAN_CALENDAR_CAPTION": "Lịch Ambrôsiô - {year}"
     },
     "yi": {
         "SUNDAY_JAN2_JAN8": "ראשון בין 2 ו-8 ינואר",
@@ -1669,7 +1799,8 @@ const Messages = {
         "PSALTER": "זאַלם וואָך",
         "LITURGY_OF_THE_DAY": "ליטורגיק דיי",
         "SELECT_A_CALENDAR": "בחר קאלענדאר",
-        "SELECT_ROUTE": "בחר ראוט"
+        "SELECT_ROUTE": "בחר ראוט",
+        "GENERAL_ROMAN_CALENDAR": "גענעראל רומען קאלענדאר"
     },
     "zh": {
         "SUNDAY_JAN2_JAN8": "星期日在1月2日至1月8日之间",
@@ -1689,8 +1820,9 @@ const Messages = {
         "PSALTER": "诗篇周",
         "LITURGY_OF_THE_DAY": "每日礼仪",
         "SELECT_A_CALENDAR": "选择日历",
-        "SELECT_ROUTE": "选择路线"
-    }
+        "SELECT_ROUTE": "选择路线",
+        "GENERAL_ROMAN_CALENDAR": "通用罗马日历"
+    },
 };
 
 export default Messages;
