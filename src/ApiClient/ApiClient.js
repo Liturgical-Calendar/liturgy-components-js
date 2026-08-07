@@ -1,7 +1,7 @@
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import EventEmitter from './EventEmitter.js';
-import { YearType } from '../Enums.js';
+import { YearType, Rite, RiteProperties } from '../Enums.js';
 
 /**
  * A client for interacting with the Liturgical Calendar API.
@@ -128,6 +128,19 @@ export default class ApiClient {
   #currentCalendarId = '';
 
   /**
+   * The liturgical rite the current request is computed under.
+   *
+   * Instance state, deliberately: per-request state in this class is
+   * instance-level, and only genuinely shared things (`#apiUrl`, `#paths`,
+   * `#metadata`, `#calendarCache`) are static. A static rite would let two
+   * ApiClients on one page overwrite each other's requests.
+   *
+   * @type {'roman' | 'ambrosian'}
+   * @private
+   */
+  #currentRite = Rite.ROMAN;
+
+  /**
    * The event bus that can be used to subscribe to events emitted by the ApiClient.
    * @type {EventEmitter}
    * @private
@@ -221,6 +234,22 @@ export default class ApiClient {
       );
     }
     return keyParts.join('|');
+  }
+
+  /**
+   * Whether the API this client is pointed at understands the rite path segment.
+   *
+   * There is no version field in `/calendars`, so this is feature-detected: the
+   * rite-aware API announces `ambrosian_calendars`, v5 does not. v5 answers
+   * `/calendar/roman/nation/IT` with 400 — on EVERY route, not only Ambrosian
+   * ones — so emitting the segment unconditionally would break every request
+   * this library makes against it.
+   *
+   * @returns {boolean}
+   * @private
+   */
+  static get #supportsRite() {
+    return Array.isArray( ApiClient.#metadata?.ambrosian_calendars );
   }
 
   /**
@@ -634,6 +663,24 @@ export default class ApiClient {
   }
 
   /**
+   * Sets the liturgical rite for subsequent calendar requests.
+   *
+   * The rite is a path segment rather than a query parameter, so it is kept out
+   * of `#params` and composed into the URL by the fetch methods.
+   *
+   * @param {'roman' | 'ambrosian'} riteValue - A value of the `Rite` enum.
+   * @returns {ApiClient} This instance, for chaining.
+   * @throws {Error} If `riteValue` is not a value of the `Rite` enum.
+   */
+  rite( riteValue ) {
+    if ( false === Object.values( Rite ).includes( riteValue ) ) {
+      throw new Error( `ApiClient.rite: value must be a valid Rite, one of ${Object.values( Rite ).join( ', ' )}, but found: ${String( riteValue )}` );
+    }
+    this.#currentRite = riteValue;
+    return this;
+  }
+
+  /**
    * @deprecated Use year() instead. This method will be removed in a future version.
    * @param {number} year - The year for which to retrieve the calendar.
    * @returns {ApiClient} The current instance for method chaining.
@@ -683,6 +730,16 @@ export default class ApiClient {
    */
   get _metadata() {
     return ApiClient.#metadata;
+  }
+
+  /**
+   * The liturgical rite the current request is computed under.
+   *
+   * @type {'roman' | 'ambrosian'}
+   * @readonly
+   */
+  get _currentRite() {
+    return this.#currentRite;
   }
 
   /**
