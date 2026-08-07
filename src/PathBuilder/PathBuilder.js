@@ -113,6 +113,15 @@ export default class PathBuilder {
                     currentEndpoint.calendarId   = ev.target.value;
                     break;
                 }
+                default:
+                    // The empty option carries no `data-calendartype`. It means
+                    // the rite-level calendar, so the previous selection has to
+                    // be cleared — without this the last chosen nation or
+                    // diocese stays in the path forever and re-selecting the
+                    // empty option appears to do nothing.
+                    currentEndpoint.calendarType = null;
+                    currentEndpoint.calendarId   = null;
+                    break;
             }
             this.#updatePathValues();
         });

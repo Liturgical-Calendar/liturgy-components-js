@@ -489,6 +489,23 @@ describe( 'ApiOptions + PathBuilder: displayed path refreshes after a rite chang
     // the first is the static "GET" label.
     const displayedPath = () => container.querySelectorAll( 'code' )[ 1 ].textContent;
 
+    it( 'drops the calendar from the path when the empty option is selected', () => {
+        // PathBuilder's calendar-select listener switches on data-calendartype
+        // with cases for `national` and `diocesan`. The empty option carries
+        // neither, so without a default branch the previously selected calendar
+        // stayed in the endpoint forever. Independent of rite: reproduced on
+        // main by picking a diocese in examples/PathBuilder and then
+        // re-selecting the empty option, which left the diocese in the path.
+        calendarSelect._domElement.value = 'roma_it';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( displayedPath() ).toContain( '/diocese/roma_it' );
+
+        calendarSelect._domElement.value = '';
+        calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
+        expect( displayedPath() ).not.toContain( '/diocese/' );
+        expect( displayedPath() ).toContain( '/calendar/roman' );
+    } );
+
     it( 'refreshes the displayed path after a rite change resets the selection', () => {
         calendarSelect._domElement.value = 'roma_it';
         calendarSelect._domElement.dispatchEvent( new Event( 'change' ) );
