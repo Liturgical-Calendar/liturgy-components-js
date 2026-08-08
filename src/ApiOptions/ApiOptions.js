@@ -137,24 +137,89 @@ export default class ApiOptions {
     #currentEndpoint = new CurrentEndpoint();
 
     /**
+     * Whether a constructor argument is a plain options object.
+     *
+     * A bare `typeof options === 'object'` is not enough. `new Intl.Locale( 'it' )`
+     * is an object, and passing one here is a plausible slip precisely because
+     * `LocaleInput` DOES take an `Intl.Locale` — unrejected it destructures to no
+     * `locale` and no `apiClient`, silently building an English form on the
+     * fallback base. Tested by prototype, so any class instance is rejected, not
+     * just this one.
+     *
+     * @param {unknown} options - The candidate options object.
+     * @returns {boolean} True only for `{}`-shaped objects and null-prototype objects.
+     * @private
+     */
+    static #isPlainOptionsObject( options ) {
+        if ( null === options || typeof options !== 'object' || Array.isArray( options ) ) {
+            return false;
+        }
+        const prototype = Object.getPrototypeOf( options );
+        return null === prototype || prototype === Object.prototype;
+    }
+
+    /**
+     * Names a rejected argument's type for an error message.
+     *
+     * Distinguishes `null` and `array` from `object`, as `CalendarSelect` does, and
+     * additionally names a class instance by its constructor, so that the message
+     * for an `Intl.Locale` reads `found type: Locale` rather than the useless
+     * `must be of type \`object\` but found type: object`.
+     *
+     * @param {unknown} value - The rejected argument.
+     * @returns {string} A human-readable type name.
+     * @private
+     */
+    static #describeType( value ) {
+        if ( null === value ) {
+            return 'null';
+        }
+        if ( Array.isArray( value ) ) {
+            return 'array';
+        }
+        if ( typeof value === 'object' ) {
+            return value.constructor?.name ?? 'object';
+        }
+        return typeof value;
+    }
+
+    /**
      * Constructs an ApiOptions form.
      *
      * @param {string|{locale?: string, apiClient?: import('../ApiClient/ApiClient.js').default}} [options] - A locale string,
      *        or an options object. `apiClient` binds this form to that client's API base;
      *        omitting it binds to the first base registered.
-     * @throws {Error} If the locale is invalid, or no API base is available.
+     * @throws {Error} If `options` is neither a string nor a plain object, if the locale
+     *         is not a string or is invalid, or if no API base is available.
      */
     constructor( options = 'en' ) {
-        const { locale = 'en', apiClient = null } = typeof options === 'string'
-            ? { locale: options }
-            : ( options ?? {} );
+        // Validated before the base is resolved: a caller who passed the wrong KIND
+        // of argument needs to hear about that, not about the page's base registry.
+        if ( typeof options === 'string' ) {
+            options = { locale: options };
+        }
+        else if ( false === ApiOptions.#isPlainOptionsObject( options ) ) {
+            throw new Error( 'Invalid type for options, must be of type `object` but found type: ' + ApiOptions.#describeType( options ) );
+        }
+        const { locale = 'en', apiClient = null } = options;
+        if ( typeof locale !== 'string' ) {
+            throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + ApiOptions.#describeType( locale ) );
+        }
         this.#base = resolveBase( apiClient, 'ApiOptions' );
         const normalizedLocale = locale.replaceAll('_', '-');
-        const canonicalLocales = Intl.getCanonicalLocales(normalizedLocale);
-        if (canonicalLocales.length === 0) {
+        // Wrapped as `CalendarSelect` wraps it: `Intl.getCanonicalLocales` throws a
+        // RangeError reading `Incorrect locale information provided`, which names
+        // neither the offending tag nor the component. The `length === 0` branch it
+        // replaces was unreachable for that same reason.
+        try {
+            const canonicalLocales = Intl.getCanonicalLocales(normalizedLocale);
+            if (canonicalLocales.length === 0) {
+                throw new Error('Invalid locale: ' + normalizedLocale);
+            }
+            this.#locale = new Intl.Locale(canonicalLocales[0]);
+        } catch (e) {
             throw new Error('Invalid locale: ' + normalizedLocale);
         }
-        this.#locale = new Intl.Locale(canonicalLocales[0]);
         this.#inputs.epiphanyInput = new EpiphanyInput(this.#locale);
         this.#inputs.ascensionInput = new AscensionInput(this.#locale);
         this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);

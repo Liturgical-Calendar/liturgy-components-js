@@ -201,17 +201,112 @@ describe( 'ApiOptions binding', () => {
         expect( prodOptions._localeInput.options() ).toEqual( [ 'nl' ] );
     } );
 
-    it( 'warns on the fallback when more than one base is registered', () => {
+    /**
+     * Asserts ONCE, not merely that something was warned: `LocaleInput` receiving
+     * its base from `ApiOptions` rather than resolving one itself is the whole
+     * reason the warn-once dedupe was written. A `LocaleInput` that called
+     * `resolveBase` would emit a second, identical line for a part the caller
+     * never named, and a `toHaveBeenCalledWith` assertion would still pass.
+     */
+    it( 'warns on the fallback when more than one base is registered, exactly once', () => {
         const warn = jest.spyOn( console, 'warn' ).mockImplementation( () => {} );
         ApiBase.fromMetadata( DEV, FULL_METADATA );
         ApiBase.fromMetadata( PROD, OTHER_METADATA );
         new ApiOptions( 'en' );
         expect( warn ).toHaveBeenCalledWith( expect.stringContaining( 'ApiOptions' ) );
+        expect( warn ).toHaveBeenCalledTimes( 1 );
         warn.mockRestore();
     } );
 
     it( 'throws when no base is registered at all', () => {
         expect( () => new ApiOptions( 'en' ) ).toThrow( /has not been initialized/ );
+    } );
+
+} );
+
+describe( 'ApiOptions keeps the bare locale string form intact', () => {
+
+    beforeEach( () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+    } );
+
+    /**
+     * Asserted on the RENDERED option labels rather than on `_base`, because a
+     * constructor that ignored its argument and hardcoded `'en'` would satisfy a
+     * `_base` assertion. `Intl.DisplayNames` in Italian names the API's locales
+     * "italiano"; in English it names them "Italian".
+     */
+    it( 'applies the locale it is given rather than defaulting to English', () => {
+        const apiOptions = new ApiOptions( 'it-IT' );
+        const labels = Array.from( apiOptions._localeInput._domElement.options ).map( option => option.textContent );
+        expect( labels ).toContain( 'italiano' );
+        expect( labels ).not.toContain( 'Italian' );
+    } );
+
+    /** `it_IT` is not a canonical tag: unnormalized, `Intl.getCanonicalLocales` rejects it outright. */
+    it( 'normalizes an underscored locale to hyphens', () => {
+        const apiOptions = new ApiOptions( 'it_IT' );
+        const labels = Array.from( apiOptions._localeInput._domElement.options ).map( option => option.textContent );
+        expect( labels ).toContain( 'italiano' );
+    } );
+
+    it( 'still throws on an invalid locale', () => {
+        expect( () => new ApiOptions( 'not a locale' ) ).toThrow( /Invalid locale/ );
+    } );
+
+    /**
+     * `it__IT` normalizes to `it--IT`, which is what `Intl` rejects — so a message
+     * naming `it--IT` proves the throw reports the string actually validated
+     * rather than the raw argument.
+     */
+    it( 'names the normalized locale in the message, not the raw argument', () => {
+        expect( () => new ApiOptions( 'it__IT' ) ).toThrow( 'Invalid locale: it--IT' );
+    } );
+
+} );
+
+describe( 'ApiOptions rejects an argument that is neither a locale string nor an options object', () => {
+
+    const BAD_OPTIONS = /Invalid type for options, must be of type `object` but found type/;
+
+    beforeEach( () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+    } );
+
+    it( 'rejects null', () => {
+        expect( () => new ApiOptions( null ) ).toThrow( BAD_OPTIONS );
+    } );
+
+    it( 'rejects a number', () => {
+        expect( () => new ApiOptions( 123 ) ).toThrow( BAD_OPTIONS );
+    } );
+
+    it( 'rejects an array', () => {
+        expect( () => new ApiOptions( [ 'en' ] ) ).toThrow( /found type: array/ );
+    } );
+
+    /**
+     * The realistic slip, and the one a bare `typeof options === 'object'` check
+     * lets through: `LocaleInput` DOES take an `Intl.Locale`, so passing one here
+     * is an easy mistake. Left unchecked it destructures to no `locale` and no
+     * `apiClient`, silently building an English form on the fallback base.
+     */
+    it( 'rejects an Intl.Locale', () => {
+        expect( () => new ApiOptions( new Intl.Locale( 'it' ) ) ).toThrow( BAD_OPTIONS );
+    } );
+
+    it( 'rejects a non-string locale inside a valid options object', () => {
+        expect( () => new ApiOptions( { locale: 123 } ) ).toThrow( /Invalid type for locale, must be of type `string`/ );
+        expect( () => new ApiOptions( { locale: new Intl.Locale( 'it' ) } ) ).toThrow( /Invalid type for locale/ );
+    } );
+
+    it( 'still accepts an options object carrying only an apiClient', () => {
+        const prod = clientFor( PROD, OTHER_METADATA );
+        expect( new ApiOptions( { apiClient: prod } )._base ).toBe( ApiBase.resolve( PROD ) );
+    } );
+
+    it( 'still accepts no argument at all', () => {
+        expect( () => new ApiOptions() ).not.toThrow();
     } );
 
 } );
