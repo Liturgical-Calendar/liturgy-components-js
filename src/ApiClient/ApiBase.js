@@ -1,5 +1,6 @@
 import ApiClientError from './ApiClientError.js';
 import { Rite } from '../Enums.js';
+import { describeType } from '../OptionsValidation.js';
 
 /**
  * Component class names that have already been warned about an ambiguous fallback.
@@ -94,7 +95,8 @@ export default class ApiBase {
     }
 
     /**
-     * Asserts that a calendar index carries the fields every component reads.
+     * Asserts that a calendar index carries the fields every component reads, as
+     * the arrays every component reads them as.
      *
      * Both entry points that install metadata run this, because an index missing
      * `national_calendars`, `diocesan_calendars` or `locales` is not a usable
@@ -106,10 +108,23 @@ export default class ApiBase {
      * does — it is how every fixture in the test suite is built, so an incomplete
      * fixture would otherwise fail far from its cause.
      *
+     * Presence alone is not enough, and the gap reproduces the very failure the
+     * check exists to prevent, one step further down: an index carrying
+     * `locales: {}` passes a presence test, and then `this.#base.locales()` hands
+     * that object to `ApiClient.fetchCalendar`, where `.includes( … )` throws the
+     * same anonymous `TypeError` — now with a field that IS present, so the message
+     * would have been actively misleading had it named absence. The three are
+     * therefore required to be arrays, and the message names the field, the base
+     * URL and the type actually found.
+     *
+     * The index ITSELF is an object, not an array — `litcal_metadata` is a keyed
+     * record of calendar lists — which is why the outer check rejects arrays
+     * outright rather than requiring one.
+     *
      * @param {unknown} metadata - The candidate calendar index.
      * @param {string} url - The normalized base URL, for the message.
      * @returns {void}
-     * @throws {Error} If the index is not an object or omits a required field.
+     * @throws {Error} If the index is not an object, or omits a required field, or carries one that is not an array.
      * @private
      */
     static #assertValidIndex( metadata, url ) {
@@ -119,6 +134,9 @@ export default class ApiBase {
         [ 'national_calendars', 'diocesan_calendars', 'locales' ].forEach( field => {
             if ( false === Object.hasOwn( metadata, field ) ) {
                 throw new Error( `ApiBase: the calendar index of the base at ${url} carries no \`${field}\` field. Every component reads it; an index without it is not a usable calendar index.` );
+            }
+            if ( false === Array.isArray( metadata[ field ] ) ) {
+                throw new Error( `ApiBase: the \`${field}\` field of the calendar index of the base at ${url} must be an array, but found: ${describeType( metadata[ field ] )}. Every component iterates it; anything else surfaces later as a bare TypeError naming neither the field nor the API that served it.` );
             }
         } );
     }
@@ -150,7 +168,7 @@ export default class ApiBase {
      * @param {string} url - The base URL.
      * @param {import('../typedefs.js').CalendarIndex} metadata - The calendar index.
      * @returns {ApiBase}
-     * @throws {Error} If the metadata is not an object or omits `national_calendars`, `diocesan_calendars` or `locales`.
+     * @throws {Error} If the metadata is not an object, or omits `national_calendars`, `diocesan_calendars` or `locales`, or carries any of the three as something other than an array.
      */
     static fromMetadata( url, metadata ) {
         const normalized = ApiBase.normalizeUrl( url );

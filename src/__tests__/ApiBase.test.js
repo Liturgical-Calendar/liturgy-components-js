@@ -182,6 +182,68 @@ describe( 'ApiBase rejects an unusable calendar index', () => {
 
 } );
 
+/**
+ * Presence is not enough. An index carrying `locales: {}` satisfies a presence
+ * test and then fails one step further down, on the request path, as the same
+ * anonymous `TypeError` the presence check was written to prevent — from
+ * `ApiClient.fetchCalendar`, which calls `this.#base.locales().includes( … )`.
+ * The other two are iterated just as unconditionally. Both entry points are
+ * covered for each field, because `fromMetadata` is how the suite builds every
+ * fixture while `load` is how a live API delivers one.
+ */
+describe( 'ApiBase rejects a calendar index whose required fields are not arrays', () => {
+
+    const NOT_ARRAYS = { object: {}, null: null, string: 'nope', number: 3 };
+
+    [ 'national_calendars', 'diocesan_calendars', 'locales' ].forEach( field => {
+
+        it( `rejects a non-array \`${field}\` from fromMetadata`, () => {
+            Object.values( NOT_ARRAYS ).forEach( value => {
+                expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, [ field ]: value } ) )
+                    .toThrow( new RegExp( `\`${field}\`.+must be an array` ) );
+            } );
+            expect( ApiBase.all ).toHaveLength( 0 );
+        } );
+
+        it( `rejects a non-array \`${field}\` from load, as an ApiClientError`, async () => {
+            global.fetch = jest.fn().mockResolvedValue( okResponse( { ...FULL_METADATA, [ field ]: {} } ) );
+            const base = ApiBase.resolve( 'http://localhost:8000' );
+            await expect( base.load() ).rejects.toBeInstanceOf( ApiClientError );
+            await expect( base.load() ).rejects.toThrow( new RegExp( `\`${field}\`.+must be an array` ) );
+            expect( base.isLoaded ).toBe( false );
+        } );
+
+    } );
+
+    it( 'names the base url and the type actually found', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, locales: {} } ) )
+            .toThrow( /http:\/\/localhost:8000/ );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, locales: {} } ) )
+            .toThrow( /but found: Object/ );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, locales: 'en' } ) )
+            .toThrow( /but found: string/ );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, locales: null } ) )
+            .toThrow( /but found: null/ );
+    } );
+
+    /**
+     * The guard is on the three fields every component reads, not on every key an
+     * index carries: an API is free to add keys this library does not know, and
+     * `riteCalendars()` already tolerates a non-array `{rite}_calendars` by
+     * returning an empty list rather than throwing.
+     */
+    it( 'leaves optional keys alone', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, wider_regions: {} } ) ).not.toThrow();
+    } );
+
+    it( 'still accepts an index whose required fields are empty arrays', () => {
+        const base = ApiBase.fromMetadata( 'http://localhost:8000', { ...FULL_METADATA, national_calendars: [], diocesan_calendars: [], locales: [] } );
+        expect( base.locales() ).toEqual( [] );
+        expect( base.nationalCalendars() ).toEqual( [] );
+    } );
+
+} );
+
 describe( 'ApiBase.load', () => {
 
     it( 'requests the /calendars path of its own base', async () => {
