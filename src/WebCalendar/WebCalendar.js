@@ -711,16 +711,13 @@ export default class WebCalendar {
      * `'en_us'` and `'EN-us'` both become `'en-US'`.
      *
      * @param {string} locale - The locale identifier to set, following BCP 47 language tag format.
-     * @throws {Error} If the provided locale is not a string or an invalid locale identifier.
+     * @throws {Error} If the provided locale is not a string, is empty or blank, or is an invalid locale identifier.
      * @returns {WebCalendar} The current instance of the class for method chaining.
      */
     locale(locale) {
-        // Kept ahead of the shared helper, which has no reason to know that an empty
-        // string is a distinct kind of mistake: `Intl` rejects it like any other
-        // malformed tag, and `Invalid locale: ` naming nothing is no help at all.
-        if (locale === '') {
-            throw new Error('WebCalendar.locale:Invalid locale identifier, cannot be an empty string');
-        }
+        // The empty string needs no guard here: the shared helper rejects an empty or
+        // blank tag with a message of its own, naming this setter, so the check that
+        // used to sit ahead of this line bought nothing that the helper does not.
         // Named for the method rather than the class: `locale()` is a setter a caller
         // invokes by name, so `WebCalendar.locale:` points straight at the call.
         this.#locale = canonicalizeLocale(locale, 'WebCalendar.locale');

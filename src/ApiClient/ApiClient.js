@@ -5,6 +5,7 @@ import ApiBase, { assertSameBase } from './ApiBase.js';
 import ApiClientError from './ApiClientError.js';
 import EventEmitter from './EventEmitter.js';
 import { YearType, Rite, RiteProperties } from '../Enums.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 
 /**
  * A client for interacting with the Liturgical Calendar API.
@@ -436,10 +437,11 @@ export default class ApiClient {
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.
-   * @throws {Error} Synchronously, when the API cannot serve the current rite, when `locale` is
-   *                 given but is not a string, or when `locale` is given as an empty string.
-   *                 Nothing is thrown for a well-formed locale the calendar does not support: the
-   *                 request is made with the locale already in force.
+   * @throws {Error} Synchronously, when the API cannot serve the current rite, or when `locale` is
+   *                 given as anything other than a parseable locale tag — a non-string, an empty or
+   *                 blank string, or an unparseable one. Nothing is thrown for a well-formed locale
+   *                 the calendar does not support: the request is made with the locale already in
+   *                 force.
    */
   fetchCalendar(locale = null) {
     this.#assertRiteSupported();
@@ -455,21 +457,16 @@ export default class ApiClient {
     let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
 
     if (locale !== null) {
-      if (typeof locale !== 'string') {
-        throw new Error('ApiClient.fetchCalendar: locale must be a string');
-      }
-      if (locale === '') {
-        throw new Error('ApiClient.fetchCalendar: Invalid locale identifier, cannot be an empty string');
-      }
-      locale = locale.replace(/_/g, '-');
-      try {
-        const testLocale = new Intl.Locale(locale);
-        if (this.#base.locales().includes(testLocale.language)) {
-          this.#fetchCalendarHeaders['Accept-Language'] = locale;
-          resolvedLocale = locale;
-        };
-      } catch (e) {
-        console.error(e);
+      // The same shared guard the six components use, rather than a hand-rolled
+      // type check, a hand-rolled empty-string check and a hand-rolled `_` to `-`
+      // normalization: it rejects a non-string, an empty or blank tag and an
+      // unparseable one, naming this method in every message. A tag that parses
+      // but names a language the API does not serve is NOT an error — the request
+      // simply goes out with the locale already in force, as it always has.
+      const canonicalLocale = canonicalizeLocale(locale, 'ApiClient.fetchCalendar');
+      if (this.#base.locales().includes(new Intl.Locale(canonicalLocale).language)) {
+        this.#fetchCalendarHeaders['Accept-Language'] = canonicalLocale;
+        resolvedLocale = canonicalLocale;
       }
     }
 

@@ -27,12 +27,20 @@ import { describeType } from './OptionsValidation.js';
  * Three steps, in this order and only this order:
  *
  * 1. Reject a non-string, naming the component and the type actually found.
- * 2. Replace `_` with `-`. This MUST precede canonicalisation, not follow it:
+ * 2. Reject an empty or whitespace-only tag with a message of its own. This is
+ *    not a redundant guard: `Intl.getCanonicalLocales( '' )` does throw, so the
+ *    step below would reject it anyway — but the message it produces reads
+ *    `Invalid locale: ` and names nothing after the colon, which tells a caller
+ *    who passed `''` (or a trimmed-to-nothing form value) nothing at all. A
+ *    blank tag is a distinct kind of mistake from a malformed one wherever it
+ *    arrives, so it is reported distinctly, once, for all six components rather
+ *    than hand-rolled at the call sites that happened to notice.
+ * 3. Replace `_` with `-`. This MUST precede canonicalisation, not follow it:
  *    `Intl.getCanonicalLocales( 'it_IT' )` throws where `'it-IT'` succeeds, so
  *    canonicalising first would reject the underscore form this library has
  *    always accepted. Applied unconditionally — an `includes( '_' )` guard, as
  *    `CalendarSelect` had, only skips a no-op replace.
- * 3. Canonicalise through `Intl.getCanonicalLocales`, whose own `RangeError`
+ * 4. Canonicalise through `Intl.getCanonicalLocales`, whose own `RangeError`
  *    reads `Incorrect locale information provided` and names neither the
  *    offending tag nor the component that rejected it. Hence the wrap.
  *
@@ -50,11 +58,14 @@ import { describeType } from './OptionsValidation.js';
  * @param {unknown} locale - The caller-supplied locale tag.
  * @param {string} componentName - The rejecting component's name, for the message.
  * @returns {string} The canonical BCP 47 tag, e.g. `'it-IT'` for `'it_IT'` or `'EN-us'`.
- * @throws {Error} If `locale` is not a string, or is not a parseable locale tag.
+ * @throws {Error} If `locale` is not a string, is empty or blank, or is not a parseable locale tag.
  */
 export function canonicalizeLocale( locale, componentName ) {
     if ( typeof locale !== 'string' ) {
         throw new Error( `${componentName}: Invalid type for locale, must be of type \`string\` but found type: ${describeType( locale )}` );
+    }
+    if ( locale.trim() === '' ) {
+        throw new Error( `${componentName}: Invalid locale, cannot be an empty or blank string` );
     }
     const normalizedLocale = locale.replaceAll( '_', '-' );
     try {
@@ -83,7 +94,7 @@ export function canonicalizeLocale( locale, componentName ) {
  * @param {unknown} locale - The caller-supplied locale tag.
  * @param {string} componentName - The rejecting component's name, for the message.
  * @returns {Intl.Locale} The parsed locale.
- * @throws {Error} If `locale` is not a string, or is not a parseable locale tag.
+ * @throws {Error} If `locale` is not a string, is empty or blank, or is not a parseable locale tag.
  */
 export function toIntlLocale( locale, componentName ) {
     return new Intl.Locale( canonicalizeLocale( locale, componentName ) );

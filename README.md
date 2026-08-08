@@ -182,8 +182,10 @@ Requires `<script type="module">`, and a browser with **ES2022** support: Chrome
 On Node.js the floor is 16.11+ (18+ recommended).
 
 ES6 module support alone is not enough. The published code uses ES2022 runtime APIs — `Object.hasOwn()` and
-`Error`'s `cause` option — as well as `static #` private class fields. Runtime APIs cannot be transpiled away
-by a compiler target, so an older engine will fail at run time no matter how the package is built.
+`Error`'s `cause` option — as well as `static #` private class fields. A compiler `target` alone cannot
+transpile a runtime API away, and the published build ships no polyfills, so an older engine fails at run time
+on the artifact as shipped. Consuming the package through your own toolchain lifts that: transpile the syntax
+and polyfill the two APIs (core-js does both) and the floor is whatever your build targets.
 
 ## Development
 

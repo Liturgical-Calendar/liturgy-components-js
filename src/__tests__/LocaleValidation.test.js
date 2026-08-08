@@ -66,8 +66,20 @@ describe( 'canonicalizeLocale', () => {
                 .toThrow( 'ApiOptions: Invalid locale: it--IT' );
         } );
 
-        it( 'rejects an empty string', () => {
-            expect( () => canonicalizeLocale( '', 'Test' ) ).toThrow( /Invalid locale/ );
+        /**
+         * `Intl.getCanonicalLocales( '' )` throws on its own, so the guard is not
+         * there to detect anything — it is there for the message. Left to `Intl`
+         * the throw reads `Test: Invalid locale: ` and names nothing after the
+         * colon, which tells a caller who passed `''` nothing at all. Blank tags
+         * go the same way: an input trimmed to nothing is the same mistake.
+         */
+        it.each( [
+            [ 'an empty string', '' ],
+            [ 'a whitespace-only string', '   ' ],
+            [ 'a tab and newline', '\t\n' ]
+        ] )( 'rejects %s with a message of its own', ( _label, value ) => {
+            expect( () => canonicalizeLocale( value, 'Test' ) )
+                .toThrow( 'Test: Invalid locale, cannot be an empty or blank string' );
         } );
 
         /**

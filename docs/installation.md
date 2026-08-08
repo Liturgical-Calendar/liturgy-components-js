@@ -29,8 +29,14 @@ import {
 ## Runtime Requirements
 
 ES6 module support alone is not sufficient to run the library. The published code targets **ES2022** and uses
-ES2022 runtime APIs — `Object.hasOwn()` and `Error`'s `cause` option — which no build step can polyfill away
-for you. The floor is Chrome/Edge 94+, Firefox 93+, Safari 15.4+, or Node.js 16.11+.
+ES2022 runtime APIs — `Object.hasOwn()` and `Error`'s `cause` option — as well as `static #` private class
+fields. As published, on npm and on the CDN, nothing polyfills them, so the floor for running the shipped
+artifact as-is is Chrome/Edge 94+, Firefox 93+, Safari 15.4+, or Node.js 16.11+.
+
+The floor binds the published build, not your build. If you consume this package through your own toolchain
+and it transpiles the syntax and polyfills those APIs — core-js, or a `@babel/preset-env` with the right
+`targets` — the result runs on older engines; both APIs polyfill straightforwardly. What cannot be done is
+loading the CDN build directly into an engine below the floor.
 
 ## CDN Caching
 

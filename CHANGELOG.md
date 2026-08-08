@@ -110,8 +110,10 @@ And one entry that breaks no code, because it changes none — what narrows is w
 
   **The requirement is not new; only the statement of it is.** 1.5.0 already shipped `static #` private fields
   and `Object.hasOwn`, and 2.0.0 adds `Error`'s `cause` — the latter two are ES2022 _runtime_ APIs, which no
-  compiler `target` can transpile away, so an engine below the floor could never run this package however it
-  was built. Nothing to do if your engine clears it, and everything released since March 2022 does. If it does
+  compiler `target` can transpile away, and the published build ships no polyfills, so an engine below the
+  floor cannot run the artifact as published. It binds what is shipped, not what you build: a consumer whose
+  own toolchain transpiles the syntax and polyfills those two APIs (core-js does both) is not bound by it.
+  Nothing to do if your engine clears it, and everything released since March 2022 does. If it does
   not, then 1.5.0 did not work there either and pinning to it is no remedy; Safari 15.0 through 15.3 is the
   case to actually watch for, since it has `Error`'s `cause` but not `Object.hasOwn` — which this package calls
   while validating the calendar index, and again wherever a component reads its options bag. The floor is
@@ -217,6 +219,16 @@ And one entry that breaks no code, because it changes none — what narrows is w
   before resolving its API base, where previously only the type check did, so
   `new ApiOptions( 'not a locale' )` on a page with no base registered now complains about the locale rather
   than about the registry.
+
+  An empty or blank tag is named for what it is rather than reported as an unparseable one. `Intl` rejects
+  `''` like any other malformed tag, so the message would otherwise read `WebCalendar.locale: Invalid locale:`
+  with nothing at all after the colon; all six now read
+  `WebCalendar.locale: Invalid locale, cannot be an empty or blank string`, and a tag that is only whitespace
+  is treated as the same mistake. `ApiClient.fetchCalendar( locale )` joins them: it hand-rolled the same
+  type check, the same empty-string check and the same `_` to `-` normalization, and now calls the shared
+  guard, so a malformed tag passed to it throws with the method named rather than being logged to the console
+  and ignored, and the tag it puts in `Accept-Language` is the canonical one. Its own sentinels are unchanged —
+  `null` still means "no locale given", and a well-formed locale the calendar does not serve is still no error.
 
 - `WebCalendar.locale()` stores the canonical tag rather than the argument as written, so the `_locale` getter
   reads back canonically:

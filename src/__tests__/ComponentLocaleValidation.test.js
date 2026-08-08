@@ -24,8 +24,9 @@
  * from outside; what can be checked is checked, and the canonical tag itself is
  * covered by `LocaleValidation.test.js` against the same helper it calls.
  */
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClient from '../ApiClient/ApiClient.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
@@ -197,10 +198,17 @@ describe( 'WebCalendar', () => {
             .toThrow( 'WebCalendar.locale: Invalid type for locale, must be of type `string` but found type: number' );
     } );
 
-    /** Kept ahead of the shared helper, whose message would name nothing at all. */
-    it( 'still gives the empty string its own message', () => {
+    /**
+     * The empty string still gets a message of its own, but from the shared
+     * helper rather than from a guard hand-rolled in this one setter — so the
+     * setter is named with the space its old message was missing, and the other
+     * five components report a blank tag the same way.
+     */
+    it( 'gives the empty string its own message, from the shared helper', () => {
         expect( () => new WebCalendar().locale( '' ) )
-            .toThrow( 'WebCalendar.locale:Invalid locale identifier, cannot be an empty string' );
+            .toThrow( 'WebCalendar.locale: Invalid locale, cannot be an empty or blank string' );
+        expect( () => new WebCalendar().locale( '   ' ) )
+            .toThrow( 'WebCalendar.locale: Invalid locale, cannot be an empty or blank string' );
     } );
 
     /**
@@ -262,6 +270,51 @@ describe.each( [
 
     it( 'still rejects an explicitly null locale inside a bag rather than defaulting it', () => {
         expect( () => build( { locale: null } ) ).toThrow( /Invalid type for locale/ );
+    } );
+
+} );
+
+/**
+ * `ApiClient.fetchCalendar()` is not one of the six — it takes a locale as a
+ * per-request argument rather than as construction-time configuration — but it
+ * used to hand-roll the same three checks, so it now calls the same helper. Its
+ * own sentinels are unchanged: `null` means "no locale given, keep the one in
+ * force", and a well-formed tag the API does not serve is silently kept out of
+ * the header rather than rejected.
+ */
+describe( 'ApiClient.fetchCalendar locale argument', () => {
+
+    let apiClient;
+
+    beforeEach( async () => {
+        global.fetch = jest.fn().mockResolvedValue( {
+            ok: true,
+            json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {}, messages: [] } )
+        } );
+        apiClient = await ApiClient.init( API_URL );
+    } );
+
+    it( 'rejects an empty or blank locale, naming the method', () => {
+        expect( () => apiClient.fetchCalendar( '' ) )
+            .toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
+        expect( () => apiClient.fetchCalendar( '   ' ) )
+            .toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it( 'rejects a non-string locale, naming the method and the type', () => {
+        expect( () => apiClient.fetchCalendar( 123 ) )
+            .toThrow( 'ApiClient.fetchCalendar: Invalid type for locale, must be of type `string` but found type: number' );
+    } );
+
+    it( 'still treats null as "no locale given"', () => {
+        expect( () => apiClient.fetchCalendar( null ) ).not.toThrow();
+        expect( global.fetch ).toHaveBeenCalled();
+    } );
+
+    it( 'normalizes an underscored locale into the Accept-Language header', () => {
+        apiClient.fetchCalendar( 'it_IT' );
+        expect( global.fetch.mock.calls[ 0 ][ 1 ].headers[ 'Accept-Language' ] ).toBe( 'it-IT' );
     } );
 
 } );
