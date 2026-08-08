@@ -376,8 +376,7 @@ export default class ApiClient {
    * Refetches calendar data based on the current category and calendar ID.
    *
    * This method determines the current category of the calendar (national, diocesan, or general)
-   * and fetches the corresponding calendar data. It logs the fetched calendar type and the
-   * calendar data to the console once the data is retrieved.
+   * and fetches the corresponding calendar data.
    *
    * If the current category is 'national', it fetches the national calendar using the current
    * calendar ID. If the category is 'diocesan', it fetches the diocesan calendar. For any other
@@ -385,13 +384,21 @@ export default class ApiClient {
    *
    * @returns {Promise<import('../typedefs.js').CalendarData>} The promise of whichever fetch
    *                                                           method the current category
-   *                                                           selects. Resolves to the calendar
-   *                                                           data, or rejects with an
+   *                                                           selects, with that method's
+   *                                                           behaviour. Resolves to THIS
+   *                                                           request's calendar data — unless a
+   *                                                           newer request has superseded it
+   *                                                           while it was in flight, in which
+   *                                                           case it resolves to the client's
+   *                                                           current calendar data instead:
+   *                                                           another request's data, or `{}` if
+   *                                                           none has landed yet. Rejects with an
    *                                                           `ApiClientError` if the request
-   *                                                           fails. A caller that discards it
-   *                                                           must attach a handler, since the
-   *                                                           rejection would otherwise go
-   *                                                           unhandled.
+   *                                                           fails, after emitting
+   *                                                           `calendarFetchFailed`. A caller that
+   *                                                           discards it must attach a handler,
+   *                                                           since the rejection would otherwise
+   *                                                           go unhandled.
    */
   refetchCalendarData() {
     if ( this.#currentCategory === 'national' ) {
