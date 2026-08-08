@@ -6,11 +6,6 @@ Input.setGlobalWrapper('div');
 Input.setGlobalWrapperClass('form-group col col-md-3');
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-        return;
-    }
-
     const riteSelect = new RiteSelect('en-US')
         .class('form-select')
         .id('riteSelect')
@@ -55,5 +50,14 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     // listener runs. See ApiClient#listenToRiteSelect for why that is tolerated.
     apiClient.listenTo(calendarSelect).listenTo(apiOptions).listenTo(riteSelect);
 
-    apiClient.fetchCalendar();
+    // The promise returned by a fetch method belongs to the caller: the library only
+    // suppresses the rejections of the fire-and-forget requests it issues itself
+    // (those driven by the selects above), so this one has to be handled here.
+    apiClient.fetchCalendar().catch(error => {
+        document.querySelector('#litcalWebcalendar').textContent =
+            `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+    });
+}).catch(error => {
+    document.querySelector('#litcalWebcalendar').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

@@ -139,5 +139,15 @@ ApiClient.init('http://localhost:8000').then( (apiClient) => {
                 .listenTo(apiClient);
     // appendTo() must be called separately as it doesn't return `this`
     webCalendar.appendTo('#litcalWebcalendar');
-    apiClient.fetchNationalCalendar('VA');
+
+    // The promise returned by a fetch method belongs to the caller: the library only
+    // suppresses the rejections of the fire-and-forget requests it issues itself, so
+    // this one has to be handled here.
+    apiClient.fetchNationalCalendar('VA').catch( (error) => {
+        document.querySelector('#litcalWebcalendar').textContent =
+            `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+    });
+}).catch( (error) => {
+    document.querySelector('#litcalWebcalendar').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

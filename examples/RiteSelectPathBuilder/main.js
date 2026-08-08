@@ -6,11 +6,6 @@ Input.setGlobalWrapper('div');
 Input.setGlobalWrapperClass('form-group col col-md-3');
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-        return;
-    }
-
     const riteSelect = new RiteSelect('en-US')
         .class('form-select')
         .id('riteSelect')
@@ -47,4 +42,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
         .buttonWrapperClass('col-sm-3')
         .buttonClass('btn btn-primary');
     pathBuilder.replace('#pathBuilderResult');
+}).catch(error => {
+    document.querySelector('#pathBuilderResult').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

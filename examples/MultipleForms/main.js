@@ -84,158 +84,166 @@ function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
 }
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-    } else {
-        const liturgicalCalendarSelectEngNations = new CalendarSelect(); // default English
-        const liturgicalCalendarSelectEngDioceses = new CalendarSelect(); // default English
-        const liturgicalCalendarSelectEng = (new CalendarSelect( 'en-US' )).allowNull();
-        const liturgicalCalendarSelectEsp = (new CalendarSelect( 'es-ES' )).allowNull();
-        const liturgicalCalendarSelectIta = (new CalendarSelect( 'it-IT' )).allowNull();
-        const liturgicalCalendarSelectDeu = (new CalendarSelect( 'de-DE' )).allowNull();
-        const apiOptionsEng = new ApiOptions( 'en-US' );
-        const apiOptionsEsp = new ApiOptions( 'es-ES' );
-        const apiOptionsIta = new ApiOptions( 'it-IT' );
-        const apiOptionsDeu = new ApiOptions( 'de-DE' );
-        apiOptionsEng._localeInput.defaultValue( 'en' );
-        apiOptionsEsp._localeInput.defaultValue( 'es' );
-        apiOptionsIta._localeInput.defaultValue( 'it' );
-        apiOptionsDeu._localeInput.defaultValue( 'de' );
-        apiOptionsEng._acceptHeaderInput.hide();
-        apiOptionsEsp._acceptHeaderInput.hide();
-        apiOptionsIta._acceptHeaderInput.hide();
-        apiOptionsDeu._acceptHeaderInput.hide();
-        apiOptionsEng._yearInput.class( 'form-control' );
-        apiOptionsEsp._yearInput.class( 'form-control' );
-        apiOptionsIta._yearInput.class( 'form-control' );
-        apiOptionsDeu._yearInput.class( 'form-control' );
+    const liturgicalCalendarSelectEngNations = new CalendarSelect(); // default English
+    const liturgicalCalendarSelectEngDioceses = new CalendarSelect(); // default English
+    const liturgicalCalendarSelectEng = (new CalendarSelect( 'en-US' )).allowNull();
+    const liturgicalCalendarSelectEsp = (new CalendarSelect( 'es-ES' )).allowNull();
+    const liturgicalCalendarSelectIta = (new CalendarSelect( 'it-IT' )).allowNull();
+    const liturgicalCalendarSelectDeu = (new CalendarSelect( 'de-DE' )).allowNull();
+    const apiOptionsEng = new ApiOptions( 'en-US' );
+    const apiOptionsEsp = new ApiOptions( 'es-ES' );
+    const apiOptionsIta = new ApiOptions( 'it-IT' );
+    const apiOptionsDeu = new ApiOptions( 'de-DE' );
+    apiOptionsEng._localeInput.defaultValue( 'en' );
+    apiOptionsEsp._localeInput.defaultValue( 'es' );
+    apiOptionsIta._localeInput.defaultValue( 'it' );
+    apiOptionsDeu._localeInput.defaultValue( 'de' );
+    apiOptionsEng._acceptHeaderInput.hide();
+    apiOptionsEsp._acceptHeaderInput.hide();
+    apiOptionsIta._acceptHeaderInput.hide();
+    apiOptionsDeu._acceptHeaderInput.hide();
+    apiOptionsEng._yearInput.class( 'form-control' );
+    apiOptionsEsp._yearInput.class( 'form-control' );
+    apiOptionsIta._yearInput.class( 'form-control' );
+    apiOptionsDeu._yearInput.class( 'form-control' );
 
-        apiOptionsEng._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEng._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEng._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEng._holydaysOfObligationInput.class('d-none');
+    apiOptionsEng._ascensionInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEng._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEng._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEng._holydaysOfObligationInput.class('d-none');
 
-        apiOptionsEsp._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEsp._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEsp._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsEsp._holydaysOfObligationInput.class('d-none');
+    apiOptionsEsp._ascensionInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEsp._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEsp._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsEsp._holydaysOfObligationInput.class('d-none');
 
-        apiOptionsIta._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsIta._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsIta._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsIta._holydaysOfObligationInput.class('d-none');
+    apiOptionsIta._ascensionInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsIta._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsIta._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsIta._holydaysOfObligationInput.class('d-none');
 
-        apiOptionsDeu._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsDeu._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsDeu._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptionsDeu._holydaysOfObligationInput.class('d-none');
+    apiOptionsDeu._ascensionInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsDeu._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsDeu._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptionsDeu._holydaysOfObligationInput.class('d-none');
 
-        apiClient.listenTo( liturgicalCalendarSelectEng );
-        apiClient.listenTo( apiOptionsEng );
+    apiClient.listenTo( liturgicalCalendarSelectEng );
+    apiClient.listenTo( apiOptionsEng );
 
-        const webCalendar = new WebCalendar();
-        webCalendar.id('LitCalTable')
-        .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
-        .psalterWeekColumn()
-        .removeHeaderRow()
-        .seasonColor(ColorAs.CSS_CLASS)
-        .seasonColorColumns(Column.LITURGICAL_SEASON)
-        .eventColor(ColorAs.INDICATOR)
-        .eventColorColumns(Column.EVENT_DETAILS)
-        .monthHeader()
-        .dateFormat(DateFormat.DAY_ONLY)
-        .columnOrder(ColumnOrder.GRADE_FIRST)
-        .gradeDisplay(GradeDisplay.ABBREVIATED)
-        .attachTo( '#litcalWebcalendar' ).listenTo(apiClient);
+    const webCalendar = new WebCalendar();
+    webCalendar.id('LitCalTable')
+    .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
+    .psalterWeekColumn()
+    .removeHeaderRow()
+    .seasonColor(ColorAs.CSS_CLASS)
+    .seasonColorColumns(Column.LITURGICAL_SEASON)
+    .eventColor(ColorAs.INDICATOR)
+    .eventColorColumns(Column.EVENT_DETAILS)
+    .monthHeader()
+    .dateFormat(DateFormat.DAY_ONLY)
+    .columnOrder(ColumnOrder.GRADE_FIRST)
+    .gradeDisplay(GradeDisplay.ABBREVIATED)
+    .listenTo(apiClient);
+    // appendTo() must be called separately as it doesn't return `this`. Chaining
+    // `.listenTo()` off it — as this example did — threw before anything below ran.
+    webCalendar.appendTo( '#litcalWebcalendar' );
 
-        /**
-         * English
-         */
-        liturgicalCalendarSelectEngNations.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectEngNationsLabel',
-            text: 'Select a nation'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEngNations').class('form-select').filter(CalendarSelectFilter.NATIONAL_CALENDARS).appendTo( '#calendarSelectEnglish');
+    /**
+     * English
+     */
+    liturgicalCalendarSelectEngNations.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectEngNationsLabel',
+        text: 'Select a nation'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectEngNationsWrapper'
+    }).id('liturgicalCalendarSelectEngNations').class('form-select').filter(CalendarSelectFilter.NATIONAL_CALENDARS).appendTo( '#calendarSelectEnglish');
 
-        liturgicalCalendarSelectEngDioceses.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectEngDiocesesLabel',
-            text: 'Select a diocese'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEngDioceses').class('form-select').filter(CalendarSelectFilter.DIOCESAN_CALENDARS)
-            .linkToNationsSelect( liturgicalCalendarSelectEngNations )
-            .after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>This calendar selector is linked to the previous nations calendar selector.</i></small>')
-            .appendTo( '#calendarSelectEnglish');
+    liturgicalCalendarSelectEngDioceses.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectEngDiocesesLabel',
+        text: 'Select a diocese'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectEngNationsWrapper'
+    }).id('liturgicalCalendarSelectEngDioceses').class('form-select').filter(CalendarSelectFilter.DIOCESAN_CALENDARS)
+        .linkToNationsSelect( liturgicalCalendarSelectEngNations )
+        .after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>This calendar selector is linked to the previous nations calendar selector.</i></small>')
+        .appendTo( '#calendarSelectEnglish');
 
-        liturgicalCalendarSelectEng.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectEngLabel',
-            text: 'Select a calendar'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectEngNationsWrapper'
-        }).id('liturgicalCalendarSelectEng').class('form-select').after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>The WebCalendar instance is listening to this CalendarSelect instance; any changes will produce a calendar below all of the forms.</i></small>').appendTo( '#calendarOptionsEnglish');
+    liturgicalCalendarSelectEng.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectEngLabel',
+        text: 'Select a calendar'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectEngNationsWrapper'
+    }).id('liturgicalCalendarSelectEng').class('form-select').after('<small class="text-secondary"><i class="fas fa-circle-info me-2"></i><i>The WebCalendar instance is listening to this CalendarSelect instance; any changes will produce a calendar below all of the forms.</i></small>').appendTo( '#calendarOptionsEnglish');
 
-        apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng ).appendTo( '#calendarOptionsEnglish' )
+    apiOptionsEng.linkToCalendarSelect( liturgicalCalendarSelectEng ).appendTo( '#calendarOptionsEnglish' )
 
-        wireHdobVS(apiOptionsEng, liturgicalCalendarSelectEng, 'hdob-virtual-select-eng');
+    wireHdobVS(apiOptionsEng, liturgicalCalendarSelectEng, 'hdob-virtual-select-eng');
 
-        /**
-         * Spanish
-         */
-        liturgicalCalendarSelectEsp.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectEspLabel',
-            text: 'Selecciona calendario'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectEspNationsWrapper'
-        }).id('liturgicalCalendarSelectEsp').class('form-select').allowNull().appendTo( '#calendarOptionsSpanish');
+    /**
+     * Spanish
+     */
+    liturgicalCalendarSelectEsp.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectEspLabel',
+        text: 'Selecciona calendario'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectEspNationsWrapper'
+    }).id('liturgicalCalendarSelectEsp').class('form-select').allowNull().appendTo( '#calendarOptionsSpanish');
 
-        apiOptionsEsp.linkToCalendarSelect( liturgicalCalendarSelectEsp ).appendTo( '#calendarOptionsSpanish' );
+    apiOptionsEsp.linkToCalendarSelect( liturgicalCalendarSelectEsp ).appendTo( '#calendarOptionsSpanish' );
 
-        wireHdobVS(apiOptionsEsp, liturgicalCalendarSelectEsp, 'hdob-virtual-select-esp');
-
-
-        /**
-         * Italian
-         */
-        liturgicalCalendarSelectIta.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectItaLabel',
-            text: 'Seleziona calendario'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectItaNationsWrapper'
-        }).id('liturgicalCalendarSelectIta').class('form-select').appendTo( '#calendarOptionsItalian');
-
-        apiOptionsIta.linkToCalendarSelect( liturgicalCalendarSelectIta ).appendTo( '#calendarOptionsItalian' );
-
-        wireHdobVS(apiOptionsIta, liturgicalCalendarSelectIta, 'hdob-virtual-select-ita');
+    wireHdobVS(apiOptionsEsp, liturgicalCalendarSelectEsp, 'hdob-virtual-select-esp');
 
 
-        /**
-         * German
-         */
-        liturgicalCalendarSelectDeu.label({
-            class: 'form-label d-block mb-1',
-            id: 'liturgicalCalendarSelectDeuLabel',
-            text: 'Kalender ausw&auml;hlen'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'liturgicalCalendarSelectDeuNationsWrapper'
-        }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarOptionsGerman');
+    /**
+     * Italian
+     */
+    liturgicalCalendarSelectIta.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectItaLabel',
+        text: 'Seleziona calendario'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectItaNationsWrapper'
+    }).id('liturgicalCalendarSelectIta').class('form-select').appendTo( '#calendarOptionsItalian');
 
-        apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu ).appendTo( '#calendarOptionsGerman' );
+    apiOptionsIta.linkToCalendarSelect( liturgicalCalendarSelectIta ).appendTo( '#calendarOptionsItalian' );
 
-        wireHdobVS(apiOptionsDeu, liturgicalCalendarSelectDeu, 'hdob-virtual-select-deu');
+    wireHdobVS(apiOptionsIta, liturgicalCalendarSelectIta, 'hdob-virtual-select-ita');
 
-        // Fetch initial webcalendar
-        apiClient.fetchNationalCalendar( 'VA' );
-    }
+
+    /**
+     * German
+     */
+    liturgicalCalendarSelectDeu.label({
+        class: 'form-label d-block mb-1',
+        id: 'liturgicalCalendarSelectDeuLabel',
+        text: 'Kalender ausw&auml;hlen'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'liturgicalCalendarSelectDeuNationsWrapper'
+    }).id('liturgicalCalendarSelectDeu').class('form-select').appendTo( '#calendarOptionsGerman');
+
+    apiOptionsDeu.linkToCalendarSelect( liturgicalCalendarSelectDeu ).appendTo( '#calendarOptionsGerman' );
+
+    wireHdobVS(apiOptionsDeu, liturgicalCalendarSelectDeu, 'hdob-virtual-select-deu');
+
+    // Fetch initial webcalendar.
+    // The promise returned by a fetch method belongs to the caller: the library only
+    // suppresses the rejections of the fire-and-forget requests it issues itself, so
+    // this one has to be handled here.
+    apiClient.fetchNationalCalendar( 'VA' ).catch(error => {
+        document.querySelector('#litcalWebcalendar').textContent =
+            `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+    });
+}).catch(error => {
+    document.querySelector('#litcalWebcalendar').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

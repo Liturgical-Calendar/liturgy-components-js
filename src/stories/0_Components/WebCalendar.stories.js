@@ -1,4 +1,4 @@
-import { WebCalendar, ApiClient, Column, Grouping, DateFormat, ColumnOrder, GradeDisplay, ColorAs } from "@liturgical-calendar/components-js";
+import { WebCalendar, ApiClient, ApiBase, Column, Grouping, DateFormat, ColumnOrder, GradeDisplay, ColorAs } from "@liturgical-calendar/components-js";
 import '../webcalendar.css';
 
 /**
@@ -158,11 +158,11 @@ const meta = {
             handles: [ 'change', 'change #webCalendarContainer select' ],
         },
     },
-    render: (args, { loaded: { apiClient } }) => {
+    render: (args, { loaded: { apiClient, apiClientError } }) => {
         const container = document.createElement('div');
         container.id = 'webCalendarContainer';
         if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
+            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ( apiClientError?.url ?? ApiBase.DEFAULT_URL );
         } else {
             const { onChange, locale, ...rest } = args;
             const webCalendar = new WebCalendar(rest);
@@ -170,7 +170,11 @@ const meta = {
                 webCalendar.locale(locale);
             }
             webCalendar.listenTo(apiClient).attachTo(container);
-            apiClient.fetchCalendar(locale);
+            // The promise a story receives from a fetch method is the story's own: the
+            // library only suppresses the rejections of the requests it issues itself.
+            apiClient.fetchCalendar(locale).catch(error => {
+                container.textContent = 'Could not load the calendar from ' + ( error.url ?? ApiBase.DEFAULT_URL ) + ': ' + error.message;
+            });
         }
         return container;
     },

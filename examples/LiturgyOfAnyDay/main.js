@@ -4,11 +4,6 @@ const userLanguages = Utils.getUserLanguages();
 const initialLang = userLanguages[0] || 'en';
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-        return;
-    }
-
     // Create CalendarSelect with General Roman Calendar as default
     const calendarSelect = new CalendarSelect(initialLang);
     calendarSelect
@@ -95,6 +90,18 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     // Wire ApiClient to listen to CalendarSelect and ApiOptions
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
 
-    // Fetch the General Roman Calendar with the selected locale
-    apiClient.fetchCalendar(selectedLocale);
+    // Fetch the General Roman Calendar with the selected locale.
+    // The promise returned by a fetch method belongs to the caller: the library only
+    // suppresses the rejections of the fire-and-forget requests it issues itself, so
+    // this one has to be handled here. The message is prepended to the widget rather
+    // than written over `#liturgyOfAnyDay`, which `replace()` has already consumed.
+    apiClient.fetchCalendar(selectedLocale).catch(error => {
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-warning m-3';
+        banner.textContent = `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+        liturgyOfAnyDay._domElement.prepend(banner);
+    });
+}).catch(error => {
+    document.querySelector('#liturgyOfAnyDay').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

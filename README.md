@@ -16,8 +16,6 @@ import {
 } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 ApiClient.init().then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     const calendarSelect = new CalendarSelect('en-US')
         .class('form-select')
         .allowNull();
@@ -30,7 +28,11 @@ ApiClient.init().then((apiClient) => {
     liturgy.appendTo('#liturgy-container');
 
     apiClient.listenTo(calendarSelect);
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not load the calendar: ${error.message}`);
+    });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url}: ${error.message}`);
 });
 </script>
 ```

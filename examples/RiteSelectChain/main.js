@@ -8,11 +8,6 @@ Input.setGlobalWrapperClass('form-group col col-md-3');
 // ApiClient.init() is still required: CalendarSelect reads the calendar metadata
 // it fetches. This example simply never asks the client for a calendar.
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-        return;
-    }
-
     const riteSelect = new RiteSelect('en-US')
         .class('form-select')
         .id('riteSelect')
@@ -48,4 +43,7 @@ ApiClient.init('http://localhost:8000').then(apiClient => {
     // calendar selects, which in turn drive the option inputs.
     apiOptions.linkToCalendarSelect([ nationSelect, dioceseSelect ], riteSelect);
     apiOptions.appendTo('#calendarOptions');
+}).catch(error => {
+    document.querySelector('#calendarSelects').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });
