@@ -2681,6 +2681,9 @@ git commit -m "Migrate the test suite to ApiBase fixtures instead of fetch mocks
   `examples/RiteSelectPathBuilder/main.js`, `examples/RiteSelectWebCalendar/main.js`,
   `examples/WebCalendar/main.js`
 - Modify: every file under `src/stories/` that calls `ApiClient.init()`
+- Modify: `.storybook/preview.ts` — its `loaders` array awaits `ApiClient.init()` at line 15, outside
+  `src/stories/`, so the grep in Step 3 will not find it
+- Modify: `README.md`'s quick-start snippet, which still shows the `if ( !apiClient )` guard
 - Create: `examples/CompareBases/index.html`, `examples/CompareBases/main.js`
 
 **Interfaces:**
@@ -2709,9 +2712,14 @@ removed.
 
 Apply the same change to each, targeting whichever element that example already used for its error message.
 
-- [ ] **Step 3: Update the stories**
+- [ ] **Step 3: Update the stories and the Storybook preview**
 
-Run: `grep -rln "ApiClient.init" src/stories/`
+Run: `grep -rln "ApiClient.init" src/stories/ .storybook/`
+
+`.storybook/preview.ts:15` awaits `ApiClient.init()` inside a `loaders` entry. A rejecting `init()` makes
+that loader reject, which kills every story rather than letting each render its own error message, so it
+needs a `.catch` that resolves to a sentinel the stories can test — keep `apiClient` as the loader's key
+and give it `null` on failure, since the stories already guard on a falsy client.
 
 For each file, the existing error branch reads
 
