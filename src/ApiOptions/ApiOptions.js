@@ -15,6 +15,7 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
+import { assertPlainOptions, describeType } from '../OptionsValidation.js';
 import Utils from '../Utils.js';
 
 /**
@@ -137,53 +138,6 @@ export default class ApiOptions {
     #currentEndpoint = new CurrentEndpoint();
 
     /**
-     * Whether a constructor argument is a plain options object.
-     *
-     * A bare `typeof options === 'object'` is not enough. `new Intl.Locale( 'it' )`
-     * is an object, and passing one here is a plausible slip precisely because
-     * `LocaleInput` DOES take an `Intl.Locale` — unrejected it destructures to no
-     * `locale` and no `apiClient`, silently building an English form on the
-     * fallback base. Tested by prototype, so any class instance is rejected, not
-     * just this one.
-     *
-     * @param {unknown} options - The candidate options object.
-     * @returns {boolean} True only for `{}`-shaped objects and null-prototype objects.
-     * @private
-     */
-    static #isPlainOptionsObject( options ) {
-        if ( null === options || typeof options !== 'object' || Array.isArray( options ) ) {
-            return false;
-        }
-        const prototype = Object.getPrototypeOf( options );
-        return null === prototype || prototype === Object.prototype;
-    }
-
-    /**
-     * Names a rejected argument's type for an error message.
-     *
-     * Distinguishes `null` and `array` from `object`, as `CalendarSelect` does, and
-     * additionally names a class instance by its constructor, so that the message
-     * for an `Intl.Locale` reads `found type: Locale` rather than the useless
-     * `must be of type \`object\` but found type: object`.
-     *
-     * @param {unknown} value - The rejected argument.
-     * @returns {string} A human-readable type name.
-     * @private
-     */
-    static #describeType( value ) {
-        if ( null === value ) {
-            return 'null';
-        }
-        if ( Array.isArray( value ) ) {
-            return 'array';
-        }
-        if ( typeof value === 'object' ) {
-            return value.constructor?.name ?? 'object';
-        }
-        return typeof value;
-    }
-
-    /**
      * Constructs an ApiOptions form.
      *
      * @param {string|{locale?: string, apiClient?: import('../ApiClient/ApiClient.js').default}} [options] - A locale string,
@@ -198,12 +152,15 @@ export default class ApiOptions {
         if ( typeof options === 'string' ) {
             options = { locale: options };
         }
-        else if ( false === ApiOptions.#isPlainOptionsObject( options ) ) {
-            throw new Error( 'Invalid type for options, must be of type `object` but found type: ' + ApiOptions.#describeType( options ) );
+        else {
+            // `null` is rejected here rather than defaulted, unlike in `CalendarSelect`
+            // and `RiteSelect`. See issue #32 — the divergence is deliberate and pinned
+            // by test, not an oversight of this refactor.
+            assertPlainOptions( options, 'ApiOptions' );
         }
         const { locale = 'en', apiClient = null } = options;
         if ( typeof locale !== 'string' ) {
-            throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + ApiOptions.#describeType( locale ) );
+            throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + describeType( locale ) );
         }
         this.#base = resolveBase( apiClient, 'ApiOptions' );
         const normalizedLocale = locale.replaceAll('_', '-');

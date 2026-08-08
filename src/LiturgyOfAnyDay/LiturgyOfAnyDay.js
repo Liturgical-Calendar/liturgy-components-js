@@ -3,6 +3,7 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import { DayInput, MonthInput, YearInput } from '../ApiOptions/Input/index.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
 
 export default class LiturgyOfAnyDay {
 
@@ -134,20 +135,26 @@ export default class LiturgyOfAnyDay {
      * Constructs a LiturgyOfAnyDay object.
      *
      * @param {string|Object|null} [options=null] - The locale or options object.
-     * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `options` is neither a string nor a plain object, or if the locale is invalid.
      */
     constructor(options = null) {
         if (typeof options === 'string') {
             this.#validateLocale(options);
         }
-        else if (typeof options === 'object' && options !== null) {
+        else if (null === options || typeof options === 'undefined') {
+            // "No options given, use the defaults" — unchanged, see issue #32. What DID
+            // change is that this is now the only path to the defaults: a single trailing
+            // `else` used to absorb an array, a number or an `Intl.Locale` here too, and
+            // build the widget in English as silently as for a missing argument.
+            this.#validateLocale('en');
+        }
+        else {
+            assertPlainOptions(options, 'LiturgyOfAnyDay');
             if (options.hasOwnProperty('locale')) {
                 this.#validateLocale(options.locale);
             } else {
                 this.#validateLocale('en');
             }
-        } else {
-            this.#validateLocale('en');
         }
 
         const now = new Date();

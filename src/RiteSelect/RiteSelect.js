@@ -1,6 +1,7 @@
 import Messages from '../Messages.js';
 import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
 
 /**
  * A select menu for the liturgical rite a calendar request is computed under.
@@ -41,11 +42,11 @@ export default class RiteSelect {
             options = { locale: options };
         }
         else if ( null === options || typeof options === 'undefined' ) {
+            // As in `CalendarSelect`: "no options given, use the defaults". See issue #32.
             options = { locale: 'en' };
         }
-        else if ( typeof options !== 'object' || Array.isArray( options ) ) {
-            const optionsType = Array.isArray( options ) ? 'array' : typeof options;
-            throw new Error( 'Invalid type for options, must be of type `object` but found type: ' + optionsType );
+        else {
+            assertPlainOptions( options, 'RiteSelect' );
         }
 
         const { locale: inputLocale, id, name } = options;

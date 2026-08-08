@@ -3,6 +3,7 @@ import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
 import Utils from '../Utils.js';
 
 /**
@@ -137,6 +138,8 @@ export default class CalendarSelect {
      *                                  The locale should be a valid ISO 639-1 code that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *
+     * @throws {Error} If `options` is neither a string nor a plain object — a class instance such as
+     *                 an `Intl.Locale` is rejected, not silently destructured to nothing.
      * @throws {Error} If the locale is invalid.
      */
     constructor(options) {
@@ -144,11 +147,13 @@ export default class CalendarSelect {
             options = { locale: options };
         }
         else if (null === options || typeof options === 'undefined') {
+            // Kept as "no options given, use the defaults". Whether it SHOULD mean that
+            // rather than "wrong argument", as `ApiOptions` has it, is issue #32; the
+            // guard below deliberately does not decide it.
             options = { locale: 'en' };
         }
-        else if (typeof options !== 'object' || Array.isArray(options)) {
-            const optionsType = Array.isArray(options) ? 'array' : typeof options;
-            throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
+        else {
+            assertPlainOptions(options, 'CalendarSelect');
         }
         const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
         if (inputLocale !== undefined && inputLocale !== null) {

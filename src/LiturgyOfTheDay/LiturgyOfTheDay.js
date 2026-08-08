@@ -2,6 +2,7 @@ import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
 
 export default class LiturgyOfTheDay {
 
@@ -147,20 +148,28 @@ export default class LiturgyOfTheDay {
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *                                  The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
      *
-     * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `options` is neither a string nor a plain object, or if the locale is invalid.
      */
     constructor(options = null) {
         if (typeof options === 'string') {
             this.#validateLocale(options);
         }
-        else if (typeof options === 'object') {
+        else if (null === options || typeof options === 'undefined') {
+            // `typeof null === 'object'`, so without this branch the no-argument form
+            // that `options = null` advertises fell through to `options.hasOwnProperty(...)`
+            // and threw `TypeError: Cannot read properties of null`. It is given its
+            // sibling's behaviour rather than a throw: a crash is not behaviour worth
+            // preserving, and matching `LiturgyOfAnyDay` leaves issue #32 free to decide
+            // what `null` should mean across all five components at once.
+            this.#validateLocale('en');
+        }
+        else {
+            assertPlainOptions(options, 'LiturgyOfTheDay');
             if (options.hasOwnProperty('locale')) {
                 this.#validateLocale(options.locale);
             } else {
                 this.#validateLocale('en');
             }
-        } else {
-            throw new Error('LiturgyOfTheDay: Invalid options passed to constructor, must be of type string or object but found type: ' + typeof options);
         }
         const now = new Date();
         this.#date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
@@ -177,7 +186,7 @@ export default class LiturgyOfTheDay {
         this.#eventsElementsWrapper = document.createElement('div');
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
-        if (typeof options === 'object') {
+        if (typeof options === 'object' && options !== null) {
             if (options.hasOwnProperty('id')) {
                 this.id(options.id);
             }
