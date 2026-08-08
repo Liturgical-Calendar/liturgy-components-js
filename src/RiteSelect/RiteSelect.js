@@ -79,7 +79,7 @@ export default class RiteSelect {
         } ).join( '' );
         this.#domElement.value = Rite.ROMAN;
 
-        if ( options.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( options, 'class' ) ) {
             this.class( options.class );
         }
         if ( id ) {
@@ -216,7 +216,7 @@ export default class RiteSelect {
             this.#labelElement.setAttribute( 'for', this.#domElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( labelOptions, 'class' ) ) {
             if ( typeof labelOptions.class !== 'string' ) {
                 throw new Error( 'Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class );
             }
@@ -231,7 +231,7 @@ export default class RiteSelect {
             this.#labelElement.className = labelOptions.class;
         }
 
-        if ( labelOptions.hasOwnProperty( 'id' ) ) {
+        if ( Object.hasOwn( labelOptions, 'id' ) ) {
             if ( typeof labelOptions.id !== 'string' ) {
                 throw new Error( 'Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id );
             }
@@ -243,7 +243,7 @@ export default class RiteSelect {
             this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'text' ) ) {
+        if ( Object.hasOwn( labelOptions, 'text' ) ) {
             if ( typeof labelOptions.text !== 'string' ) {
                 throw new Error( 'Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text );
             }

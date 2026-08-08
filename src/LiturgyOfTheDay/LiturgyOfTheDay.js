@@ -156,8 +156,8 @@ export default class LiturgyOfTheDay {
         }
         else if (null === options || typeof options === 'undefined') {
             // `typeof null === 'object'`, so without this branch the no-argument form
-            // that `options = null` advertises fell through to `options.hasOwnProperty(...)`
-            // and threw `TypeError: Cannot read properties of null`. It is given its
+            // that `options = null` advertises fell through to the option reads below
+            // and threw a `TypeError` — `Object.hasOwn( null, … )` still would. It is given its
             // sibling's behaviour rather than a throw: a crash is not behaviour worth
             // preserving, and matching `LiturgyOfAnyDay` leaves issue #32 free to decide
             // what `null` should mean across all five components at once.
@@ -165,7 +165,7 @@ export default class LiturgyOfTheDay {
         }
         else {
             assertPlainOptions(options, 'LiturgyOfTheDay');
-            if (options.hasOwnProperty('locale')) {
+            if (Object.hasOwn(options, 'locale')) {
                 this.#validateLocale(options.locale);
             } else {
                 this.#validateLocale('en');
@@ -187,43 +187,43 @@ export default class LiturgyOfTheDay {
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
         if (typeof options === 'object' && options !== null) {
-            if (options.hasOwnProperty('id')) {
+            if (Object.hasOwn(options, 'id')) {
                 this.id(options.id);
             }
-            if (options.hasOwnProperty('class')) {
+            if (Object.hasOwn(options, 'class')) {
                 this.class(options.class);
             }
-            if (options.hasOwnProperty('titleClass')) {
+            if (Object.hasOwn(options, 'titleClass')) {
                 this.titleClass(options.titleClass);
             }
-            if (options.hasOwnProperty('dateClass')) {
+            if (Object.hasOwn(options, 'dateClass')) {
                 this.dateClass(options.dateClass);
             }
-            if (options.hasOwnProperty('eventClass')) {
+            if (Object.hasOwn(options, 'eventClass')) {
                 this.eventClass(options.eventClass);
             }
-            if (options.hasOwnProperty('eventGradeClass')) {
+            if (Object.hasOwn(options, 'eventGradeClass')) {
                 this.eventGradeClass(options.eventGradeClass);
             }
-            if (options.hasOwnProperty('eventCommonClass')) {
+            if (Object.hasOwn(options, 'eventCommonClass')) {
                 this.eventCommonClass(options.eventCommonClass);
             }
-            if (options.hasOwnProperty('eventYearCycleClass')) {
+            if (Object.hasOwn(options, 'eventYearCycleClass')) {
                 this.eventYearCycleClass(options.eventYearCycleClass);
             }
-            if (options.hasOwnProperty('eventsWrapperClass')) {
+            if (Object.hasOwn(options, 'eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsWrapperClass')) {
+            if (Object.hasOwn(options, 'readingsWrapperClass')) {
                 this.readingsWrapperClass(options.readingsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsLabelClass')) {
+            if (Object.hasOwn(options, 'readingsLabelClass')) {
                 this.readingsLabelClass(options.readingsLabelClass);
             }
-            if (options.hasOwnProperty('readingClass')) {
+            if (Object.hasOwn(options, 'readingClass')) {
                 this.readingClass(options.readingClass);
             }
-            if (options.hasOwnProperty('showReadings')) {
+            if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
             }
         }
@@ -296,7 +296,7 @@ export default class LiturgyOfTheDay {
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
-            if (celebration.hasOwnProperty('liturgical_year')) {
+            if (Object.hasOwn(celebration, 'liturgical_year')) {
                 const celebrationLiturgicalYearElement = document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
                     celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
@@ -620,10 +620,10 @@ export default class LiturgyOfTheDay {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }
-            if (!data.hasOwnProperty('litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
+            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
                 throw new Error('LiturgyOfTheDay: Invalid liturgical calendar data received in `calendarFetched` event');
             }
-            if (!data.hasOwnProperty('settings') || !data.hasOwnProperty('metadata') || !data.hasOwnProperty('messages')) {
+            if (!Object.hasOwn(data, 'settings') || !Object.hasOwn(data, 'metadata') || !Object.hasOwn(data, 'messages')) {
                 throw new Error('LiturgyOfTheDay: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
             const todaysTimestamp = this.#date.getTime();

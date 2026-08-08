@@ -260,49 +260,49 @@ export default class WebCalendar {
         if (typeof options !== 'object') {
             throw new Error('Invalid type for options on WebCalendar instance, must be of type object but found type: ' + typeof options);
         }
-        if (options.hasOwnProperty('class')) {
+        if (Object.hasOwn(options, 'class')) {
             this.class(options.class);
         }
-        if (options.hasOwnProperty('id')) {
+        if (Object.hasOwn(options, 'id')) {
             this.id(options.id);
         }
-        if (options.hasOwnProperty('firstColumnGrouping')) {
+        if (Object.hasOwn(options, 'firstColumnGrouping')) {
             this.firstColumnGrouping(options.firstColumnGrouping);
         }
-        if (options.hasOwnProperty('removeHeaderRow')) {
+        if (Object.hasOwn(options, 'removeHeaderRow')) {
             this.removeHeaderRow(options.removeHeaderRow);
         }
-        if (options.hasOwnProperty('removeCaption')) {
+        if (Object.hasOwn(options, 'removeCaption')) {
             this.removeCaption(options.removeCaption);
         }
-        if (options.hasOwnProperty('psalterWeekColumn')) {
+        if (Object.hasOwn(options, 'psalterWeekColumn')) {
             this.psalterWeekColumn(options.psalterWeekColumn);
         }
-        if (options.hasOwnProperty('eventColor')) {
+        if (Object.hasOwn(options, 'eventColor')) {
             this.eventColor(options.eventColor);
         }
-        if (options.hasOwnProperty('seasonColor')) {
+        if (Object.hasOwn(options, 'seasonColor')) {
             this.seasonColor(options.seasonColor);
         }
-        if (options.hasOwnProperty('seasonColorColumns')) {
+        if (Object.hasOwn(options, 'seasonColorColumns')) {
             this.seasonColorColumns(options.seasonColorColumns);
         }
-        if (options.hasOwnProperty('eventColorColumns')) {
+        if (Object.hasOwn(options, 'eventColorColumns')) {
             this.eventColorColumns(options.eventColorColumns);
         }
-        if (options.hasOwnProperty('monthHeader')) {
+        if (Object.hasOwn(options, 'monthHeader')) {
             this.monthHeader(options.monthHeader);
         }
-        if (options.hasOwnProperty('dateFormat')) {
+        if (Object.hasOwn(options, 'dateFormat')) {
             this.dateFormat(options.dateFormat);
         }
-        if (options.hasOwnProperty('columnOrder')) {
+        if (Object.hasOwn(options, 'columnOrder')) {
             this.columnOrder(options.columnOrder);
         }
-        if (options.hasOwnProperty('gradeDisplay')) {
+        if (Object.hasOwn(options, 'gradeDisplay')) {
             this.gradeDisplay(options.gradeDisplay);
         }
-        if (options.hasOwnProperty('latinInterface')) {
+        if (Object.hasOwn(options, 'latinInterface')) {
             this.latinInterface(options.latinInterface);
         }
     }
@@ -1117,7 +1117,7 @@ export default class WebCalendar {
         }
 
         // Third column is Event Details
-        let currentCycle = litevent.hasOwnProperty('liturgical_year') && litevent.liturgical_year !== null
+        let currentCycle = Object.hasOwn(litevent, 'liturgical_year') && litevent.liturgical_year !== null
             ? ' (' + litevent.liturgical_year + ')'
             : '';
         const eventDetailsCell = document.createElement('td');
@@ -1208,7 +1208,7 @@ export default class WebCalendar {
         if (false === this.#removeCaption) {
             const caption = document.createElement('caption');
             let captionText;
-            if (this.#calendarData.settings.hasOwnProperty('diocesan_calendar')) {
+            if (Object.hasOwn(this.#calendarData.settings, 'diocesan_calendar')) {
                 const replacements = {
                     'diocese': this.#calendarData.metadata.diocese_name,
                     'year': this.#calendarData.settings.year
@@ -1216,7 +1216,7 @@ export default class WebCalendar {
                 captionText = Messages[this.#baseLocale]['DIOCESAN_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
                     return replacements[p1];
                 });
-            } else if (this.#calendarData.settings.hasOwnProperty('national_calendar')) {
+            } else if (Object.hasOwn(this.#calendarData.settings, 'national_calendar')) {
                 const nation = new Intl.DisplayNames([this.#locale], { type: 'region' }).of(this.#calendarData.settings.national_calendar);
                 const replacements = {
                     'nation': nation,
@@ -1463,10 +1463,10 @@ export default class WebCalendar {
             if (typeof data !== 'object') {
                 throw new Error('WebCalendar: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }
-            if (!data.hasOwnProperty('litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
+            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
                 throw new Error('WebCalendar: Invalid liturgical calendar data received in `calendarFetched` event');
             }
-            if (!data.hasOwnProperty('settings') || !data.hasOwnProperty('metadata') || !data.hasOwnProperty('messages')) {
+            if (!Object.hasOwn(data, 'settings') || !Object.hasOwn(data, 'metadata') || !Object.hasOwn(data, 'messages')) {
                 throw new Error('WebCalendar: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
             data.litcal = data.litcal.map(event => {

@@ -150,7 +150,7 @@ export default class LiturgyOfAnyDay {
         }
         else {
             assertPlainOptions(options, 'LiturgyOfAnyDay');
-            if (options.hasOwnProperty('locale')) {
+            if (Object.hasOwn(options, 'locale')) {
                 this.#validateLocale(options.locale);
             } else {
                 this.#validateLocale('en');
@@ -212,46 +212,46 @@ export default class LiturgyOfAnyDay {
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
         if (typeof options === 'object' && options !== null) {
-            if (options.hasOwnProperty('id')) {
+            if (Object.hasOwn(options, 'id')) {
                 this.id(options.id);
             }
-            if (options.hasOwnProperty('class')) {
+            if (Object.hasOwn(options, 'class')) {
                 this.class(options.class);
             }
-            if (options.hasOwnProperty('titleClass')) {
+            if (Object.hasOwn(options, 'titleClass')) {
                 this.titleClass(options.titleClass);
             }
-            if (options.hasOwnProperty('dateClass')) {
+            if (Object.hasOwn(options, 'dateClass')) {
                 this.dateClass(options.dateClass);
             }
-            if (options.hasOwnProperty('dateControlsClass')) {
+            if (Object.hasOwn(options, 'dateControlsClass')) {
                 this.dateControlsClass(options.dateControlsClass);
             }
-            if (options.hasOwnProperty('eventClass')) {
+            if (Object.hasOwn(options, 'eventClass')) {
                 this.eventClass(options.eventClass);
             }
-            if (options.hasOwnProperty('eventGradeClass')) {
+            if (Object.hasOwn(options, 'eventGradeClass')) {
                 this.eventGradeClass(options.eventGradeClass);
             }
-            if (options.hasOwnProperty('eventCommonClass')) {
+            if (Object.hasOwn(options, 'eventCommonClass')) {
                 this.eventCommonClass(options.eventCommonClass);
             }
-            if (options.hasOwnProperty('eventYearCycleClass')) {
+            if (Object.hasOwn(options, 'eventYearCycleClass')) {
                 this.eventYearCycleClass(options.eventYearCycleClass);
             }
-            if (options.hasOwnProperty('eventsWrapperClass')) {
+            if (Object.hasOwn(options, 'eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsWrapperClass')) {
+            if (Object.hasOwn(options, 'readingsWrapperClass')) {
                 this.readingsWrapperClass(options.readingsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsLabelClass')) {
+            if (Object.hasOwn(options, 'readingsLabelClass')) {
                 this.readingsLabelClass(options.readingsLabelClass);
             }
-            if (options.hasOwnProperty('readingClass')) {
+            if (Object.hasOwn(options, 'readingClass')) {
                 this.readingClass(options.readingClass);
             }
-            if (options.hasOwnProperty('showReadings')) {
+            if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
             }
         }
@@ -409,7 +409,7 @@ export default class LiturgyOfAnyDay {
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
-            if (celebration.hasOwnProperty('liturgical_year')) {
+            if (Object.hasOwn(celebration, 'liturgical_year')) {
                 const celebrationLiturgicalYearElement = document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
                     celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
@@ -824,7 +824,7 @@ export default class LiturgyOfAnyDay {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfAnyDay: Invalid type for data received in `calendarFetched` event');
             }
-            if (!data.hasOwnProperty('litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
+            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
                 throw new Error('LiturgyOfAnyDay: Invalid liturgical calendar data received');
             }
             this.#calendarData = data;

@@ -28,6 +28,14 @@
  * A null-prototype object is accepted: it carries no inherited keys to collide with
  * option names, which is the property being protected here.
  *
+ * Because of that, and because an ordinary bag may carry a `hasOwnProperty` key of
+ * its own, every call site MUST read an accepted bag with `Object.hasOwn( bag, key )`
+ * rather than `bag.hasOwnProperty( key )`. The latter is a method looked up ON the
+ * caller's object: absent from a null-prototype bag, and shadowed by an own key of
+ * that name on a bag that has `Object.prototype` — which no prototype test can
+ * detect, since such a bag is plain by every definition. Reading it either way threw
+ * a bare `TypeError`, so the guard promised a shape its call sites then rejected.
+ *
  * @param {unknown} options - The candidate options object.
  * @returns {boolean} True only for `{}`-shaped objects and null-prototype objects.
  */

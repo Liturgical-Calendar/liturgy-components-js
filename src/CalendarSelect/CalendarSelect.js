@@ -204,7 +204,7 @@ export default class CalendarSelect {
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
 
-        if (options.hasOwnProperty('class')) {
+        if (Object.hasOwn(options, 'class')) {
             this.class(options.class);
         }
         if (id) {
@@ -758,7 +758,7 @@ export default class CalendarSelect {
             this.#labelElement.setAttribute( 'for', this.#domElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'class') ) {
+        if ( Object.hasOwn( labelOptions, 'class' ) ) {
             if ( typeof labelOptions.class !== 'string' ) {
                 throw new Error('Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class);
             }
@@ -773,7 +773,7 @@ export default class CalendarSelect {
             this.#labelElement.className = labelOptions.class;
         }
 
-        if (labelOptions.hasOwnProperty('id')) {
+        if (Object.hasOwn(labelOptions, 'id')) {
             if (typeof labelOptions.id !== 'string') {
                 throw new Error('Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id);
             }
@@ -785,7 +785,7 @@ export default class CalendarSelect {
             this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'text' ) ) {
+        if ( Object.hasOwn( labelOptions, 'text' ) ) {
             if ( typeof labelOptions.text !== 'string' ) {
                 throw new Error('Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text);
             }
@@ -797,7 +797,7 @@ export default class CalendarSelect {
         }
 
         /*
-        if ( labelOptions.hasOwnProperty( 'after' ) ) {
+        if ( Object.hasOwn( labelOptions, 'after' ) ) {
             if ( typeof labelOptions.after !== 'string' ) {
                 throw new Error('Invalid type for label after, must be of type string but found type: ' + typeof labelOptions.after);
             }
@@ -851,7 +851,7 @@ export default class CalendarSelect {
             throw new Error('Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property');
         }
 
-        if (wrapperOptions.hasOwnProperty('as')) {
+        if (Object.hasOwn(wrapperOptions, 'as')) {
             if (typeof wrapperOptions.as !== 'string') {
                 throw new Error('Invalid type for wrapper `as` property, must be of type string but found type: ' + typeof wrapperOptions.as);
             }
@@ -866,7 +866,7 @@ export default class CalendarSelect {
         this.#hasWrapper = true;
         this.#wrapperSet = true;
 
-        if ( wrapperOptions.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( wrapperOptions, 'class' ) ) {
             if ( typeof wrapperOptions.class !== 'string' ) {
                 throw new Error('Invalid type for wrapper class, must be of type string but found type: ' + typeof wrapperOptions.class);
             }
@@ -881,7 +881,7 @@ export default class CalendarSelect {
             this.#wrapperElement.className = wrapperOptions.class;
         }
 
-        if ( wrapperOptions.hasOwnProperty( 'id' ) ) {
+        if ( Object.hasOwn( wrapperOptions, 'id' ) ) {
             if ( typeof wrapperOptions.id !== 'string' ) {
                 throw new Error('Invalid type for wrapper id, must be of type string but found type: ' + typeof wrapperOptions.id);
             }
