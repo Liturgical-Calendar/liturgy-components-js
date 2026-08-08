@@ -20,6 +20,12 @@ export default class ApiBase {
     /** @type {string} */
     static #defaultUrl = 'https://litcal.johnromanodorazio.com/api/dev';
 
+    /** @type {number} Maximum cached responses per base. */
+    static #maxEntries = 50;
+
+    /** @type {number|null} Cache entry lifetime in milliseconds, or null for no expiry. */
+    static #ttl = null;
+
     /** @type {string} */
     #url;
 
@@ -28,6 +34,9 @@ export default class ApiBase {
 
     /** @type {Promise<ApiBase>|null} The in-flight `/calendars` request, if any. */
     #loadPromise = null;
+
+    /** @type {Map<string, {data: object, timestamp: number}>} Responses fetched from this base, in least-recently-read order. */
+    #cache = new Map();
 
     /**
      * Not for direct use: obtain a base through {@link ApiBase.resolve} or
@@ -212,6 +221,91 @@ export default class ApiBase {
         } );
 
         return this.#loadPromise;
+    }
+
+    /**
+     * Configures the response cache for every base.
+     *
+     * Global rather than per-base: no use case has asked for one base to cache
+     * differently from another.
+     *
+     * @param {object} [limits] - The limits to apply. Omitted keys are left unchanged.
+     * @param {number} [limits.maxEntries] - Maximum cached responses per base. Must be a positive integer.
+     * @param {number|null} [limits.ttl] - Entry lifetime in milliseconds, or null for no expiry.
+     * @returns {void}
+     * @throws {Error} If a supplied limit is out of range.
+     */
+    static cacheLimits( { maxEntries, ttl } = {} ) {
+        if ( maxEntries !== undefined ) {
+            if ( false === Number.isInteger( maxEntries ) || maxEntries < 1 ) {
+                throw new Error( 'ApiBase.cacheLimits: maxEntries must be a positive integer, but found: ' + String( maxEntries ) );
+            }
+            ApiBase.#maxEntries = maxEntries;
+        }
+        if ( ttl !== undefined ) {
+            if ( ttl !== null && ( typeof ttl !== 'number' || ttl <= 0 ) ) {
+                throw new Error( 'ApiBase.cacheLimits: ttl must be null or a positive number of milliseconds, but found: ' + String( ttl ) );
+            }
+            ApiBase.#ttl = ttl;
+        }
+    }
+
+    /**
+     * Empties the response cache of every registered base.
+     *
+     * @returns {void}
+     */
+    static clearAllCaches() {
+        ApiBase.#registry.forEach( base => base.clearCache() );
+    }
+
+    /**
+     * Reads a cached response.
+     *
+     * A read moves the entry to the end of the insertion order, so that the map's
+     * own ordering is least-recently-read first and eviction needs no separate
+     * bookkeeping.
+     *
+     * @param {string} key - The cache key.
+     * @returns {object|null} The cached data, or null on a miss or an expired entry.
+     */
+    getCached( key ) {
+        if ( false === this.#cache.has( key ) ) {
+            return null;
+        }
+        const entry = this.#cache.get( key );
+        if ( ApiBase.#ttl !== null && Date.now() - entry.timestamp > ApiBase.#ttl ) {
+            this.#cache.delete( key );
+            return null;
+        }
+        this.#cache.delete( key );
+        this.#cache.set( key, entry );
+        return entry.data;
+    }
+
+    /**
+     * Stores a response, evicting the least recently read entries beyond the limit.
+     *
+     * @param {string} key - The cache key.
+     * @param {object} data - The response data to cache.
+     * @returns {void}
+     */
+    setCached( key, data ) {
+        this.#cache.delete( key );
+        this.#cache.set( key, { data, timestamp: Date.now() } );
+        while ( this.#cache.size > ApiBase.#maxEntries ) {
+            const oldest = this.#cache.keys().next().value;
+            this.#cache.delete( oldest );
+        }
+    }
+
+    /**
+     * Empties this base's response cache.
+     *
+     * @returns {void}
+     */
+    clearCache() {
+        this.#cache.clear();
     }
 
 }
