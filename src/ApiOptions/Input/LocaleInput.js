@@ -1,10 +1,30 @@
 import SelectInput from "./SelectInput.js";
-import ApiClient from "../../ApiClient/ApiClient.js";
 
 export default class LocaleInput extends SelectInput {
 
-    static #apiLocales        = null;
-    static #apiLocalesDisplay = {};
+    /**
+     * The API base whose supported locales this input offers.
+     *
+     * Supplied by the `ApiOptions` that constructs this input, which has already
+     * resolved it. Deliberately NOT resolved here: `resolveBase` warns once per
+     * component name when it falls back ambiguously, and resolving in both places
+     * would emit that warning for a part the caller never named.
+     *
+     * @type {import('../../ApiClient/ApiBase.js').default}
+     */
+    #base                     = null;
+
+    /**
+     * The locales of the bound base, cached per instance.
+     *
+     * Was static, which was safe only while every input on the page read one API.
+     *
+     * @type {string[]}
+     */
+    #apiLocales               = null;
+
+    /** @type {Object<string, Map<string, string>>} */
+    #apiLocalesDisplay        = {};
     //#regionNames              = null;
     #languageNames            = null;
     /** @type {HTMLOptionElement[]} */
@@ -18,18 +38,20 @@ export default class LocaleInput extends SelectInput {
      *                                          Intl.getCanonicalLocales function or an instance of Intl.Locale.
      *                                          If the locale string contains an underscore, the underscore will be replaced
      *                                          with a hyphen.
+     * @param {import('../../ApiClient/ApiBase.js').default} base - The API base whose supported locales this input offers.
      *
-     * @throws {Error} If the locale is invalid.
+     * @throws {Error} If the locale is invalid, or the base has not been loaded.
      */
-    constructor( locale = null) {
+    constructor( locale = null, base = null ) {
         super();
         this._domElement.name = 'locale';
         this._domElement.id = 'locale';
         this._labelElement.textContent = 'locale';
         this._labelElement.htmlFor = this._domElement.id;
-        if (ApiClient._metadata === null) {
-            throw new Error('ApiClient has not yet been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the LocaleInput instances within the callback.');
+        if ( null === base ) {
+            throw new Error( 'LocaleInput requires an ApiBase. It is constructed by ApiOptions, which supplies one; construct an ApiOptions rather than a LocaleInput directly.' );
         }
+        this.#base = base;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -38,19 +60,19 @@ export default class LocaleInput extends SelectInput {
         }
         //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
         this.#languageNames = new Intl.DisplayNames([locale.language], { type: 'language' });
-        if (LocaleInput.#apiLocales === null) {
-            LocaleInput.#apiLocales = ApiClient._metadata.locales;
+        if (this.#apiLocales === null) {
+            this.#apiLocales = this.#base.locales();
         }
-        if (false === LocaleInput.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
-            LocaleInput.#apiLocalesDisplay[locale.language] = new Map();
-            LocaleInput.#apiLocales.forEach((localeVal) => {
-                LocaleInput.#apiLocalesDisplay[locale.language].set(localeVal, this.#languageNames.of(localeVal));
+        if (false === this.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
+            this.#apiLocalesDisplay[locale.language] = new Map();
+            this.#apiLocales.forEach((localeVal) => {
+                this.#apiLocalesDisplay[locale.language].set(localeVal, this.#languageNames.of(localeVal));
             });
-            LocaleInput.#apiLocalesDisplay[locale.language] = new Map(
-                [...LocaleInput.#apiLocalesDisplay[locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
+            this.#apiLocalesDisplay[locale.language] = new Map(
+                [...this.#apiLocalesDisplay[locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
             );
         }
-        this.#options = Array.from(LocaleInput.#apiLocalesDisplay[locale.language]).map(([value, label]) => {
+        this.#options = Array.from(this.#apiLocalesDisplay[locale.language]).map(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
             option.title = value;

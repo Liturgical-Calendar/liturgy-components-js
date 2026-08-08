@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import ApiOptions from '../ApiOptions/ApiOptions.js';
 import { Rite } from '../Enums.js';
 import { FULL_METADATA, OTHER_METADATA } from '../__fixtures__/metadata.js';
 
@@ -172,6 +173,45 @@ describe( 'the ambiguous fallback warns once per component', () => {
         new CalendarSelect( 'en' );
         expect( warn ).toHaveBeenCalledTimes( 2 );
         warn.mockRestore();
+    } );
+
+} );
+
+describe( 'ApiOptions binding', () => {
+
+    it( 'accepts a locale string as before', () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const apiOptions = new ApiOptions( 'it-IT' );
+        expect( apiOptions._base ).toBe( ApiBase.resolve( DEV ) );
+    } );
+
+    it( 'binds to the client it is given', () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prod = clientFor( PROD, OTHER_METADATA );
+        const apiOptions = new ApiOptions( { locale: 'en', apiClient: prod } );
+        expect( apiOptions._base ).toBe( ApiBase.resolve( PROD ) );
+    } );
+
+    it( 'offers the locales of its own base', () => {
+        const dev  = clientFor( DEV, FULL_METADATA );
+        const prod = clientFor( PROD, OTHER_METADATA );
+        const devOptions  = new ApiOptions( { locale: 'en', apiClient: dev } );
+        const prodOptions = new ApiOptions( { locale: 'en', apiClient: prod } );
+        expect( devOptions._localeInput.options() ).toEqual( expect.arrayContaining( [ 'it' ] ) );
+        expect( prodOptions._localeInput.options() ).toEqual( [ 'nl' ] );
+    } );
+
+    it( 'warns on the fallback when more than one base is registered', () => {
+        const warn = jest.spyOn( console, 'warn' ).mockImplementation( () => {} );
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        new ApiOptions( 'en' );
+        expect( warn ).toHaveBeenCalledWith( expect.stringContaining( 'ApiOptions' ) );
+        warn.mockRestore();
+    } );
+
+    it( 'throws when no base is registered at all', () => {
+        expect( () => new ApiOptions( 'en' ) ).toThrow( /has not been initialized/ );
     } );
 
 } );

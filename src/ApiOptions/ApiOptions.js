@@ -12,7 +12,7 @@ import {
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
 import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import Utils from '../Utils.js';
@@ -67,6 +67,17 @@ export default class ApiOptions {
 
     /** @type {?Intl.Locale} */
     #locale                = null;
+
+    /**
+     * The API base this form reads its metadata from.
+     *
+     * Resolved ONCE, in the constructor, and held: `ApiBase.fromMetadata()`
+     * replaces a registry entry rather than mutating it, so re-resolving by URL
+     * later could silently swap the API under a form that is already on screen.
+     *
+     * @type {ApiBase}
+     */
+    #base                  = null;
 
     /** @type {boolean} */
     #pathBuilderEnabled    = false;
@@ -126,19 +137,22 @@ export default class ApiOptions {
     #currentEndpoint = new CurrentEndpoint();
 
     /**
-     * Constructs an instance of the ApiOptions class, initializing various input components
-     * with the given locale. Throws an error if the locale is invalid.
+     * Constructs an ApiOptions form.
      *
-     * @param {string} locale - The locale to use for initialization, defaults to 'en'.
-     *                          Underscores in the locale string are replaced with hyphens.
-     *
-     * @throws {Error} If the locale is invalid or not recognized.
+     * @param {string|{locale?: string, apiClient?: import('../ApiClient/ApiClient.js').default}} [options] - A locale string,
+     *        or an options object. `apiClient` binds this form to that client's API base;
+     *        omitting it binds to the first base registered.
+     * @throws {Error} If the locale is invalid, or no API base is available.
      */
-    constructor( locale = 'en' ) {
-        locale = locale.replaceAll('_', '-');
-        const canonicalLocales = Intl.getCanonicalLocales(locale);
+    constructor( options = 'en' ) {
+        const { locale = 'en', apiClient = null } = typeof options === 'string'
+            ? { locale: options }
+            : ( options ?? {} );
+        this.#base = resolveBase( apiClient, 'ApiOptions' );
+        const normalizedLocale = locale.replaceAll('_', '-');
+        const canonicalLocales = Intl.getCanonicalLocales(normalizedLocale);
         if (canonicalLocales.length === 0) {
-            throw new Error('Invalid locale: ' + locale);
+            throw new Error('Invalid locale: ' + normalizedLocale);
         }
         this.#locale = new Intl.Locale(canonicalLocales[0]);
         this.#inputs.epiphanyInput = new EpiphanyInput(this.#locale);
@@ -146,7 +160,7 @@ export default class ApiOptions {
         this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);
         this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
         this.#inputs.holydaysOfObligationInput = new HolydaysOfObligationInput();
-        this.#inputs.localeInput = new LocaleInput(this.#locale);
+        this.#inputs.localeInput = new LocaleInput(this.#locale, this.#base);
         this.#inputs.yearInput = new YearInput();
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
         this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
@@ -243,7 +257,7 @@ export default class ApiOptions {
         if ( false === RiteProperties[ calendarSelect._rite ].hasNationalTier ) {
             return;
         }
-        const nationalCalendarForDiocese = ApiClient._metadata.national_calendars.find( nationCalendarObj => nationCalendarObj.calendar_id === diocesanCalendar.nation );
+        const nationalCalendarForDiocese = this.#base.nationalCalendars().find( nationCalendarObj => nationCalendarObj.calendar_id === diocesanCalendar.nation );
         //console.info('handling national calendar settings for diocesan calendar:', nationalCalendarForDiocese.settings);
         this.#applySettingsToInputs( nationalCalendarForDiocese.settings );
     }
@@ -304,10 +318,11 @@ export default class ApiOptions {
      * has no Ambrosian books behind it.
      *
      * Looks the rite up by convention rather than by branching on it: metadata
-     * announces a rite's own calendars under `{rite}_calendars`. The Roman rite
-     * has no such key, because its rite-level calendar is the General Roman
-     * Calendar, served in every locale the API supports — so the absence of the
-     * key correctly falls back to the full list.
+     * announces a rite's own calendars under `{rite}_calendars`, which is what
+     * `ApiBase.riteCalendars()` reads. The Roman rite has no such key, because
+     * its rite-level calendar is the General Roman Calendar, served in every
+     * locale the API supports — so `riteCalendars()` yields an empty list and
+     * this correctly falls back to the full one.
      *
      * Only the RITE-LEVEL calendar is handled here. Once an actual nation or
      * diocese is selected, its own `locales` take over via
@@ -317,10 +332,8 @@ export default class ApiOptions {
      * @private
      */
     #applyRiteToLocaleInput( rite ) {
-        const riteCalendars = ApiClient._metadata?.[ `${rite}_calendars` ];
-        const riteLevelCalendar = Array.isArray( riteCalendars )
-            ? riteCalendars.find( calendar => calendar.calendar_id === rite )
-            : null;
+        const riteCalendars = this.#base.riteCalendars( rite );
+        const riteLevelCalendar = riteCalendars.find( calendar => calendar.calendar_id === rite ) ?? null;
 
         if ( Array.isArray( riteLevelCalendar?.locales ) && riteLevelCalendar.locales.length > 0 ) {
             this.#inputs.localeInput.setOptionsForCalendarLocales( riteLevelCalendar.locales );
@@ -471,13 +484,17 @@ export default class ApiOptions {
     #applyCalendarToInputs( calendarSelect, calendarId, calendarType, notify = false ) {
         switch ( calendarType ) {
             case 'national': {
-                const nationalCalendar = ApiClient._metadata.national_calendars.find( obj => obj.calendar_id === calendarId );
+                const nationalCalendar = this.#base.nationalCalendars().find( obj => obj.calendar_id === calendarId );
                 this.#applySettingsToInputs( nationalCalendar.settings );
                 this.#inputs.localeInput.setOptionsForCalendarLocales( nationalCalendar.locales );
                 break;
             }
             case 'diocesan': {
-                const diocesanCalendar = ApiClient._metadata.diocesan_calendars.find( obj => obj.calendar_id === calendarId );
+                // The whole diocesan list, not `diocesanCalendars( rite )`: this looks
+                // one diocese up by id and must find it whatever its rite, whereas the
+                // query method filters by rite and would return nothing for a diocese
+                // of another one.
+                const diocesanCalendar = this.#base.metadata.diocesan_calendars.find( obj => obj.calendar_id === calendarId );
                 this.#applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar );
                 if ( Object.hasOwn( diocesanCalendar, 'settings' ) ) {
                     this.#applySettingsToInputs( diocesanCalendar.settings );
@@ -930,5 +947,17 @@ export default class ApiOptions {
      */
     get _currentEndpoint() {
         return this.#currentEndpoint;
+    }
+
+    /**
+     * The API base this form reads its metadata from.
+     *
+     * Package-internal: `PathBuilder` uses it to verify that the form and the
+     * `CalendarSelect` it is paired with are bound to the same API.
+     *
+     * @returns {ApiBase}
+     */
+    get _base() {
+        return this.#base;
     }
 }
