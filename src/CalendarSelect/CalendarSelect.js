@@ -1349,6 +1349,7 @@ export default class CalendarSelect {
      * @throws {Error} If the type of calendarSelectInstance is not a `CalendarSelect`.
      * @throws {Error} If the filter of the current `dioceses` filtered CalendarSelect instance is not `dioceses`.
      * @throws {Error} If the filter of the linked `nations` filtered CalendarSelect instance is not `nations`.
+     * @throws {Error} If the two CalendarSelect instances are bound to different API bases.
      */
     linkToNationsSelect( calendarSelectInstance ) {
         if (this.#linked) {
@@ -1362,6 +1363,13 @@ export default class CalendarSelect {
         }
         if ( calendarSelectInstance._filter !== CalendarSelectFilter.NATIONAL_CALENDARS ) {
             throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
+        }
+        if ( this.#base !== calendarSelectInstance._base ) {
+            throw new Error(
+                `CalendarSelect.linkToNationsSelect: this dioceses CalendarSelect and the nations CalendarSelect passed to it are bound to different API bases — `
+                + `${this.#base.url} and ${calendarSelectInstance._base.url}. Dioceses narrowed by one API's nations and `
+                + `filled from another API's dioceses would describe neither.`
+            );
         }
         const linkedDomElement = calendarSelectInstance._domElement;
         // Kept as a reference, not just a closure over the DOM element: a rite

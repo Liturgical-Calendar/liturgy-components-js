@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
+import PathBuilder from '../PathBuilder/PathBuilder.js';
 import { Rite } from '../Enums.js';
 import { FULL_METADATA, OTHER_METADATA } from '../__fixtures__/metadata.js';
 
@@ -307,6 +308,30 @@ describe( 'ApiOptions rejects an argument that is neither a locale string nor an
 
     it( 'still accepts no argument at all', () => {
         expect( () => new ApiOptions() ).not.toThrow();
+    } );
+
+} );
+
+describe( 'PathBuilder binding', () => {
+
+    it( 'renders the url of the base its arguments share', () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const apiOptions     = new ApiOptions( { locale: 'en', apiClient: prodClient } );
+        const calendarSelect = new CalendarSelect( { locale: 'en', apiClient: prodClient } );
+        const pathBuilder    = new PathBuilder( apiOptions, calendarSelect );
+        expect( pathBuilder._domElement.textContent ).toContain( PROD );
+        expect( pathBuilder._domElement.textContent ).not.toContain( DEV );
+    } );
+
+    it( 'throws when its arguments are bound to different bases, naming both', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const apiOptions     = new ApiOptions( { locale: 'en', apiClient: devClient } );
+        const calendarSelect = new CalendarSelect( { locale: 'en', apiClient: prodClient } );
+        expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( /different API bases/ );
+        expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
+        expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( /example\.org/ );
     } );
 
 } );
