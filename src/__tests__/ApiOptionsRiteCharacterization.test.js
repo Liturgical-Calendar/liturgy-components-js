@@ -1,11 +1,16 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
-import ApiClient from '../ApiClient/ApiClient.js';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { ApiOptionsFilter, CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
 
+/**
+ * Local rather than the shared `FULL_METADATA`: these assertions name TWO
+ * Ambrosian dioceses, `milano_it` and `lugano_ch`, and the shared fixture
+ * carries only the first.
+ */
 const METADATA = {
     locales: [ 'en', 'it', 'la' ],
     national_calendars: [
@@ -20,17 +25,13 @@ const METADATA = {
     ambrosian_calendars: [ { calendar_id: 'ambrosian', rite: 'ambrosian', locales: [ 'it', 'la' ] } ]
 };
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    await ApiClient.init();
-} );
+const API_URL = 'http://localhost:8000';
 
-beforeEach( async () => {
-    ApiClient.clearCache();
-    await ApiClient.init();
+// A fresh registry per test, holding one base built straight from the fixture.
+// No `global.fetch` mock at all: nothing here issues a request.
+beforeEach( () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, METADATA );
     document.body.innerHTML =
         '<div id="rite"></div><div id="nation"></div><div id="diocese"></div><div id="single"></div><div id="opts"></div>';
 } );

@@ -9,25 +9,22 @@ import { FULL_METADATA } from '../__fixtures__/metadata.js';
 const DEV = 'http://localhost:8000';
 
 /**
- * A base whose `/calendars` index loads, but whose every calendar request 500s.
- * Hoisted to module scope because both the direct-rejection describe and the
- * discarded-caller describe below need it.
+ * A base whose index is already loaded from the fixture, but whose every
+ * calendar request 500s. Hoisted to module scope because both the
+ * direct-rejection describe and the discarded-caller describe below need it.
+ *
+ * Only the calendar half is mocked. The index no longer arrives over `fetch` at
+ * all, so a `/calendars` request reaching the mock would itself be the failure —
+ * which is why the mock has no branch for one.
  */
-const mockMetadataThenFailure = () => {
-    global.fetch = jest.fn( url => url.endsWith( '/calendars' )
-        ? Promise.resolve( {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: () => Promise.resolve( { litcal_metadata: FULL_METADATA } )
-        } )
-        : Promise.resolve( {
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-            text: () => Promise.resolve( 'boom' )
-        } )
-    );
+const loadBaseThenFailEveryCalendarRequest = () => {
+    ApiBase.fromMetadata( DEV, FULL_METADATA );
+    global.fetch = jest.fn( () => Promise.resolve( {
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: () => Promise.resolve( 'boom' )
+    } ) );
 };
 
 beforeEach( () => {
@@ -79,7 +76,7 @@ describe( 'ApiClient.init failure', () => {
 describe( 'ApiClient calendar fetch failure', () => {
 
     it( 'rejects with an ApiClientError carrying the status', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         await expect( client.fetchCalendar() ).rejects.toMatchObject( {
             status: 500,
@@ -88,7 +85,7 @@ describe( 'ApiClient calendar fetch failure', () => {
     } );
 
     it( 'emits calendarFetchFailed with the error and the request rite', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         const onFailure = jest.fn();
         client.on( 'calendarFetchFailed', onFailure );
@@ -99,7 +96,7 @@ describe( 'ApiClient calendar fetch failure', () => {
     } );
 
     it( 'does not emit calendarFetched on a failure', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         const onFetched = jest.fn();
         client.on( 'calendarFetched', onFetched );
@@ -108,7 +105,7 @@ describe( 'ApiClient calendar fetch failure', () => {
     } );
 
     it( 'does not cache a failed response', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         await expect( client.fetchCalendar() ).rejects.toBeInstanceOf( ApiClientError );
         await expect( client.fetchCalendar() ).rejects.toBeInstanceOf( ApiClientError );
@@ -117,13 +114,13 @@ describe( 'ApiClient calendar fetch failure', () => {
     } );
 
     it( 'rejects from fetchNationalCalendar too', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         await expect( client.fetchNationalCalendar( 'IT' ) ).rejects.toBeInstanceOf( ApiClientError );
     } );
 
     it( 'rejects from fetchDiocesanCalendar too', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         await expect( client.fetchDiocesanCalendar( 'romamo_it' ) ).rejects.toBeInstanceOf( ApiClientError );
     } );
@@ -159,7 +156,7 @@ describe( 'ApiClient fire-and-forget callers', () => {
     };
 
     it( 'returns the promise from refetchCalendarData rather than dropping it', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );
         const returned = client.refetchCalendarData();
         expect( returned ).toBeInstanceOf( Promise );
@@ -167,7 +164,7 @@ describe( 'ApiClient fire-and-forget callers', () => {
     } );
 
     it( 'suppresses the unhandled rejection of a discarded refetch without losing the error', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client     = await ApiClient.init( DEV );
         const riteSelect = new RiteSelect( 'en' );
         const onFailure  = jest.fn();
@@ -190,7 +187,7 @@ describe( 'ApiClient fire-and-forget callers', () => {
     } );
 
     it( 'logs a discarded failure when nothing is subscribed to calendarFetchFailed', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client     = await ApiClient.init( DEV );
         const riteSelect = new RiteSelect( 'en' );
         client.listenTo( riteSelect );
@@ -211,7 +208,7 @@ describe( 'ApiClient fire-and-forget callers', () => {
     } );
 
     it( 'stays silent when a calendarFetchFailed subscriber is handling the error', async () => {
-        mockMetadataThenFailure();
+        loadBaseThenFailEveryCalendarRequest();
         const client     = await ApiClient.init( DEV );
         const riteSelect = new RiteSelect( 'en' );
         client.on( 'calendarFetchFailed', jest.fn() );

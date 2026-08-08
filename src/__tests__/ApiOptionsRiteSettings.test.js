@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, jest } from '@jest/globals';
-import ApiClient from '../ApiClient/ApiClient.js';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
@@ -16,6 +16,10 @@ import { Rite } from '../Enums.js';
  * national calendar. `lugano_ch` is the loud case — nation `CH` has no Roman
  * national calendar at all, so the lookup returns `undefined` and dereferencing
  * `.settings` throws.
+ *
+ * Local rather than the shared `FULL_METADATA`: both of those cases need a
+ * diocese under a nation with no national calendar, and an `IT` whose four
+ * temporal settings are visibly non-default. The shared fixture has neither.
  */
 const METADATA = {
     locales: [ 'en', 'it', 'la' ],
@@ -40,12 +44,13 @@ const METADATA = {
     ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
 };
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    await ApiClient.init();
+const API_URL = 'http://localhost:8000';
+
+// A fresh registry per test, holding one base built straight from the fixture.
+// No `global.fetch` mock at all: nothing here issues a request.
+beforeEach( () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, METADATA );
 } );
 
 // No `CurrentEndpoint` reset is needed here: each `ApiOptions` constructs its

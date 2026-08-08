@@ -1,41 +1,27 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
-import ApiClient from '../ApiClient/ApiClient.js';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
+import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 /**
- * Enough metadata for a national and a diocesan calendar to exist, so both
- * filters have something to render.
+ * The shared fixture is enough here: it carries national and diocesan calendars
+ * both, so either filter has something to render.
  */
-const METADATA = {
-    locales: [ 'en', 'it', 'la' ],
-    national_calendars: [
-        { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} },
-        { calendar_id: 'VA', locales: [ 'la', 'it-IT' ], settings: {} }
-    ],
-    diocesan_calendars: [
-        { calendar_id: 'romamo_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ], rite: 'roman' }
-    ],
-    ambrosian_calendars: [ { calendar_id: 'ambrosian', rite: 'ambrosian', locales: [ 'it', 'la' ] } ]
-};
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    await ApiClient.init();
-} );
+const API_URL = 'http://localhost:8000';
 
 let apiOptions;
 let calendarSelect;
 let pathElement;
 
-beforeEach( async () => {
-    ApiClient.clearCache();
-    await ApiClient.init();
+// A fresh registry per test, holding one base built straight from the fixture.
+// No `global.fetch` mock at all: nothing here issues a request.
+beforeEach( () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, FULL_METADATA );
 
     document.body.innerHTML = '<div id="pathBuilder"></div><div id="calSelect"></div>';
 

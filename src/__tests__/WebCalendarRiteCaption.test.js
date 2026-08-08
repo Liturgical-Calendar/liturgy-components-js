@@ -1,15 +1,12 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase from '../ApiClient/ApiBase.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { Rite } from '../Enums.js';
+import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
-const METADATA = {
-    locales: [ 'en', 'it', 'la' ],
-    national_calendars: [ { calendar_id: 'IT', locales: [ 'it-IT' ], settings: {} } ],
-    diocesan_calendars: [ { calendar_id: 'romamo_it', nation: 'IT', diocese: 'Diocesi di Roma', locales: [ 'it-IT' ], rite: 'roman' } ],
-    ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
-};
+const API_URL = 'http://localhost:8000';
 
 /**
  * One event, shaped like a real `/calendar` response entry. Only the fields
@@ -53,17 +50,13 @@ const calendarData = ( settings = {} ) => ( {
 
 let apiClient;
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    apiClient = await ApiClient.init();
-} );
-
+// A fresh registry and client per test, built straight from the shared fixture.
+// No `global.fetch` mock at all: every payload below is handed to the client
+// directly, through the same `calendarFetched` event a real response would take.
 beforeEach( async () => {
-    ApiClient.clearCache();
-    apiClient = await ApiClient.init();
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, FULL_METADATA );
+    apiClient = await ApiClient.init( API_URL );
 } );
 
 /**

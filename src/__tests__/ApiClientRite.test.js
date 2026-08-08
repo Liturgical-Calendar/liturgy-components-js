@@ -1,14 +1,17 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase from '../ApiClient/ApiBase.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite } from '../Enums.js';
 
 /**
  * v6-shaped metadata: `ambrosian_calendars` is present, which is the capability
  * probe for rite support. The v5 shape (no such key) is exercised in
- * ApiClientRiteLegacyMetadata.test.js — ApiClient caches metadata in a static
- * field, so a second fixture needs the fresh module registry Jest gives per file.
+ * ApiClientRiteLegacyMetadata.test.js.
+ *
+ * Local rather than the shared `FULL_METADATA`: `lugano_ch` is the Ambrosian
+ * diocese these path assertions name, and the shared fixture does not carry it.
  */
 const METADATA = {
     locales: [ 'en', 'it', 'la' ],
@@ -20,25 +23,27 @@ const METADATA = {
     ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
 };
 
+const API_URL = 'http://localhost:8000';
+
 let apiClient;
 
-beforeAll( async () => {
+// A FRESH base and client per test. The base is built straight from the fixture,
+// so no `/calendars` request is ever made; `global.fetch` remains mocked for the
+// CALENDAR requests alone, which several tests below count and inspect.
+//
+// ApiClient carries per-request state (#currentCategory, #currentCalendarId,
+// #currentRite) that would otherwise leak between tests and make them
+// order-dependent — a national fetch in one test changes what
+// refetchCalendarData() does in the next. init() is cheap here: the base is
+// already loaded, so it resolves a new instance without fetching.
+beforeEach( async () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, METADATA );
     global.fetch = jest.fn().mockResolvedValue( {
         ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
+        json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {}, messages: [] } )
     } );
-    apiClient = await ApiClient.init();
-} );
-
-// A FRESH client per test. ApiClient carries per-request state (#currentCategory,
-// #currentCalendarId, #currentRite) that would otherwise leak between tests and
-// make them order-dependent — a national fetch in one test changes what
-// refetchCalendarData() does in the next. init() is cheap here: #metadata is
-// already cached, so it resolves a new instance without fetching.
-beforeEach( async () => {
-    ApiClient.clearCache();
-    apiClient = await ApiClient.init();
-    global.fetch.mockClear();
+    apiClient = await ApiClient.init( API_URL );
 } );
 
 describe( 'ApiClient rite state', () => {
