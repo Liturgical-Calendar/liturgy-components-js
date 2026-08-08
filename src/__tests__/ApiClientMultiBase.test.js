@@ -126,6 +126,23 @@ describe( 'ApiClient bound to a base', () => {
         warn.mockRestore();
     } );
 
+    // The call sits outside any try, as the argument to expect(): a synchronous
+    // throw would fail these at the call rather than at the assertion, which is
+    // what distinguishes "rejects" from "throws before a promise exists".
+    it( 'rejects rather than throwing synchronously on an empty url', async () => {
+        await expect( ApiClient.init( '' ) ).rejects.toThrow( /non-empty string/ );
+    } );
+
+    it( 'rejects rather than throwing synchronously on a non-string url', async () => {
+        await expect( ApiClient.init( 42 ) ).rejects.toThrow( /non-empty string/ );
+    } );
+
+    it( 'registers nothing and requests nothing for an invalid url', async () => {
+        await expect( ApiClient.init( '' ) ).rejects.toThrow();
+        expect( ApiBase.all ).toHaveLength( 0 );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
     it( 'clears every base cache on the static clearCache', async () => {
         const dev  = await ApiClient.init( DEV );
         const prod = await ApiClient.init( PROD );

@@ -159,18 +159,30 @@ export default class ApiClient {
    * API — and it works because every per-request field on this class is instance
    * state.
    *
+   * Every failure mode is reported by rejecting the returned promise, never by
+   * throwing synchronously — including a malformed `url`, which `ApiBase.resolve`
+   * rejects before any request is made. An `init()` that threw at the call site
+   * would escape past the `.catch()` a consumer wrote around it.
+   *
    * @param {string|null} [url] - The API base URL. When null, the constant default
    *                              base is used, NOT the first base already registered:
    *                              a call that means "the public API" must not resolve
    *                              to localhost because a comparison page registered it
-   *                              first.
+   *                              first. An empty string is rejected rather than
+   *                              treated as "unspecified".
    * @returns {Promise<ApiClient>} Resolves to a new client once the base is loaded.
-   * @throws {ApiClientError} If the base's `/calendars` request fails.
+   *                               Rejects with an `ApiClientError` if the base's
+   *                               `/calendars` request fails, or with a plain `Error`
+   *                               if `url` is not a non-empty string.
    * @static
    */
   static init( url = null ) {
-    const base = ApiBase.resolve( url ?? ApiBase.DEFAULT_URL );
-    return base.load().then( () => new ApiClient( base ) );
+    try {
+      const base = ApiBase.resolve( url ?? ApiBase.DEFAULT_URL );
+      return base.load().then( () => new ApiClient( base ) );
+    } catch ( error ) {
+      return Promise.reject( error );
+    }
   }
 
   /**
