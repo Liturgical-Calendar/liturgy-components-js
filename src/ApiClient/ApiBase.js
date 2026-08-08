@@ -419,3 +419,34 @@ export default class ApiBase {
     }
 
 }
+
+/**
+ * Resolves the API base a component should read its metadata from.
+ *
+ * Prefers the base of an explicitly supplied client. Falling back to the first
+ * registered base keeps every page written before per-base binding working
+ * untouched — but the fallback announces itself once more than one base exists,
+ * because a component silently reading the wrong API's calendars is the exact
+ * failure this release removes.
+ *
+ * @param {{base: ApiBase}|null|undefined} apiClient - The client to bind to, if any.
+ * @param {string} componentName - The binding component's class name, for messages.
+ * @returns {ApiBase} The resolved base.
+ * @throws {Error} If no client is given and no base is registered.
+ */
+export function resolveBase( apiClient, componentName ) {
+    if ( apiClient !== null && apiClient !== undefined ) {
+        if ( false === apiClient.base instanceof ApiBase ) {
+            throw new Error( `${componentName}: the apiClient option must be an ApiClient obtained from ApiClient.init().` );
+        }
+        return apiClient.base;
+    }
+    const fallback = ApiBase.default;
+    if ( null === fallback ) {
+        throw new Error( `${componentName}: ApiClient has not been initialized. Please initialize with \`ApiClient.init().then(() => { ... })\`, and construct ${componentName} instances within the callback.` );
+    }
+    if ( ApiBase.all.length > 1 ) {
+        console.warn( `${componentName} was constructed without an apiClient while ${ApiBase.all.length} API bases are registered, and bound to ${fallback.url}. Pass \`apiClient\` explicitly to choose.` );
+    }
+    return fallback;
+}

@@ -1,4 +1,4 @@
-import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
 import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
@@ -28,9 +28,16 @@ import Utils from '../Utils.js';
  * @see https://github.com/Liturgical-Calendar/liturgy-components-js
  */
 export default class CalendarSelect {
-    static #metadata                    = null;
-    static #nationalCalendars             = [];
-    static #diocesanCalendars             = [];
+    /** @type {ApiBase} The API base this select reads its calendars from. */
+    #base                                 = null;
+
+    /**
+     * @type {import('../typedefs.js').NationalCalendar[]} A per-instance COPY of the
+     * base's national calendars: `#buildAllOptions()` sorts this list in place, by
+     * the instance's own locale, and must not reorder the metadata every other
+     * client of the same base reads.
+     */
+    #nationalCalendars                    = [];
     #nationalCalendarsWithDioceses        = [];
     #rite                                 = Rite.ROMAN;
     #riteSet                              = false;
@@ -97,7 +104,7 @@ export default class CalendarSelect {
      * @private
      */
     #addNationalCalendarWithDioceses( nation ) {
-        const nationalCalendar = CalendarSelect.#nationalCalendars.find( item => item.calendar_id === nation );
+        const nationalCalendar = this.#nationalCalendars.find( item => item.calendar_id === nation );
         if ( undefined === nationalCalendar ) {
             throw new Error(
                 'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `'
@@ -108,39 +115,6 @@ export default class CalendarSelect {
             );
         }
         this.#nationalCalendarsWithDioceses.push( nationalCalendar );
-    }
-
-    /**
-     * Initializes the CalendarSelect class.
-     *
-     * This method initializes the CalendarSelect class by storing the metadata obtained from the ApiClient
-     * class in a private class property. This method must be called before any CalendarSelect instances are created.
-     * If the ApiClient class has not been initialized, or failed to initialize, an error will be thrown.
-     *
-     * @throws {Error} If the ApiClient class has not been initialized.
-     * @throws {Error} If the ApiClient class failed to initialize.
-     * @throws {Error} If the ApiClient class initialized with an invalid object.
-     * @throws {Error} If the ApiClient class initialized with an object that does not contain the expected properties.
-     * @static
-     * @private
-     */
-    static #init() {
-        if ( null === ApiClient._metadata ) {
-            throw new Error('ApiClient has not been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
-        } else {
-            if (ApiClient._metadata === false) {
-                throw new Error('The ApiClient class was unable to initialize.');
-            }
-            if (typeof ApiClient._metadata !== 'object') {
-                throw new Error('The ApiClient class was unable to initialize: expected object, found ' + typeof ApiClient._metadata + '.');
-            }
-            if (false === ApiClient._metadata.hasOwnProperty('national_calendars') || false === ApiClient._metadata.hasOwnProperty('diocesan_calendars')) {
-                throw new Error('The ApiClient class was unable to initialize: expected object with `national_calendars` and `diocesan_calendars` properties.');
-            }
-            CalendarSelect.#metadata = ApiClient._metadata;
-            CalendarSelect.#nationalCalendars =  CalendarSelect.#metadata.national_calendars;
-            CalendarSelect.#diocesanCalendars = CalendarSelect.#metadata.diocesan_calendars;
-        }
     }
 
     /**
@@ -158,6 +132,7 @@ export default class CalendarSelect {
      *                                  - `disabled`: a boolean to indicate whether the `CalendarSelect` DOM input element should be disabled.
      *                                  - `label`: The label for the `CalendarSelect` DOM input (an object with a `text` property, and optionally `class` and `id` properties).
      *                                  - `wrapper`: The wrapper for the `CalendarSelect` component (an object with an `as` property, and optionally `class` and `id` properties).
+     *                                  - `apiClient`: The `ApiClient` whose API base this select should read its calendars from. When omitted, the first registered base is used, and a warning is emitted if more than one base is registered.
      *                                  If a string is passed, it is expected to be the locale code to use for the `CalendarSelect` UI elements.
      *                                  The locale should be a valid ISO 639-1 code that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
@@ -175,7 +150,7 @@ export default class CalendarSelect {
             const optionsType = Array.isArray(options) ? 'array' : typeof options;
             throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
         }
-        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite } = options;
+        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             if (typeof inputLocale !== 'string') {
                 throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
@@ -214,9 +189,13 @@ export default class CalendarSelect {
             this.#riteSet = true;
         }
 
-        if (null === CalendarSelect.#metadata) {
-            CalendarSelect.#init();
-        }
+        // Must stay ahead of `#buildAllOptions()`, which reads both the base and the
+        // national list, and after the `rite` handling above, which sets `this.#rite`.
+        // The base is resolved ONCE and held: `ApiBase.fromMetadata()` replaces a
+        // registry entry rather than mutating it, so re-resolving by URL later could
+        // silently swap the API under a select that is already on screen.
+        this.#base              = resolveBase( apiClient, 'CalendarSelect' );
+        this.#nationalCalendars = [ ...this.#base.nationalCalendars() ];
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
 
@@ -361,16 +340,19 @@ export default class CalendarSelect {
         this.#dioceseOptionsGrouped         = [];
 
         const riteProps = RiteProperties[ this.#rite ];
-        // A diocesan entry with no `rite` field is Roman. The `rite` field is a
-        // v6 addition: the live v5 API (`/api/v5/calendars`) announces no rite
-        // on any diocesan entry, and everything it has ever served is Roman.
-        // Filtering on a strict `=== this.#rite` would therefore drop EVERY
-        // diocese for a v5-pinned consumer and empty the list with no error and
-        // no warning — and bumping the pin is exactly how this release reaches
-        // the frontend.
-        const dioceses  = CalendarSelect.#diocesanCalendars.filter(
-            diocesanCalendarObj => ( diocesanCalendarObj.rite ?? Rite.ROMAN ) === this.#rite
-        );
+        // Re-read from the base on EVERY build rather than caching a rite-filtered
+        // list at construction: `_applyRite()` calls this method again whenever the
+        // rite changes (a linked `RiteSelect` does exactly that), and a snapshot
+        // taken under the construction-time rite would go stale on the first change.
+        //
+        // `ApiBase.diocesanCalendars()` performs the rite filtering, treating a
+        // diocesan entry with no `rite` field as Roman. The `rite` field is a v6
+        // addition: the live v5 API (`/api/v5/calendars`) announces no rite on any
+        // diocesan entry, and everything it has ever served is Roman. Filtering on a
+        // strict `=== this.#rite` would therefore drop EVERY diocese for a v5-pinned
+        // consumer and empty the list with no error and no warning — and bumping the
+        // pin is exactly how this release reaches the frontend.
+        const dioceses  = this.#base.diocesanCalendars( this.#rite );
 
         if ( false === riteProps.hasNationalTier ) {
             // A rite with no national tier has no national calendars to group under.
@@ -394,8 +376,8 @@ export default class CalendarSelect {
             this.#addDioceseOption( diocesanCalendarObj );
         } );
 
-        CalendarSelect.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
-        CalendarSelect.#nationalCalendars.forEach( nationalCalendar => {
+        this.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
+        this.#nationalCalendars.forEach( nationalCalendar => {
             if ( false === this.#hasNationalCalendarWithDioceses( nationalCalendar.calendar_id ) ) {
                 // This is the first time we call CalendarSelect.#addNationOption().
                 // This will ensure that the VATICAN (a nation without any diocese) will be added as the first option.
@@ -617,6 +599,18 @@ export default class CalendarSelect {
      */
     get _rite() {
         return this.#rite;
+    }
+
+    /**
+     * The API base this select reads its calendars from.
+     *
+     * Package-internal: `PathBuilder` uses it to verify that the select and the
+     * `ApiOptions` it is paired with are bound to the same API.
+     *
+     * @returns {ApiBase} The bound API base.
+     */
+    get _base() {
+        return this.#base;
     }
 
     /**
