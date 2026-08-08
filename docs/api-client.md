@@ -318,8 +318,10 @@ test('lists the national calendars of its base', () => {
 });
 ```
 
-The metadata must be an object carrying `national_calendars` and `diocesan_calendars`; anything else is
-rejected with a message naming the missing field.
+The metadata must be an object carrying `national_calendars`, `diocesan_calendars` and `locales`, each of them
+an array; anything else is rejected with a message naming the field, the type actually found and the base URL.
+A field that is present but not an array is refused just as an absent one is — `locales: {}` would otherwise
+pass here and fail later, on the request path, as a bare `TypeError`.
 
 ## Static Properties
 

@@ -11,7 +11,8 @@ to log and swallow is now a rejection the caller owns. `ApiClient.init()` reject
 `false`, and the fetch methods return a promise that rejects instead of one that cannot fail. Everything else in
 this release is additive, a deprecation, or a narrower break — two of the three reach only code that imports
 past the package's public exports, and the third refuses an argument the components used to accept and quietly
-ignore.
+ignore. One entry under Breaking is none of those and changes no code at all: the package now declares the
+ES2022 floor it has always required.
 
 The work merged after 1.5.0 that never got a release of its own is folded into the sections below rather than
 kept apart: `CalendarSelect.linkToRiteSelect()`, the rite vocabulary in ten more languages, and the path
@@ -95,6 +96,28 @@ Three narrower breaks, listed for completeness:
   A locale string or a genuine options object is unaffected. What each component makes of `null` is deliberately
   unchanged, and the five still do not agree about it — that is issue #32, left open rather than settled here.
 
+And one entry that breaks no code, because it changes none — what narrows is what the package says it needs:
+
+- **ES2022 is now the declared runtime floor.** `tsconfig.json` pins `"target": "ES2022"` in place of
+  `"esnext"`, which drifted with every TypeScript release and so stated no contract at all, and the browser
+  support lines in `README.md`, `CLAUDE.md` and `docs/installation.md` name concrete engines in place of
+  "modern browsers with ES6 module support", a bar 2017-era engines cleared:
+
+  ```text
+  Before — Modern browsers with ES6 module support.
+  After  — Chrome/Edge 94+, Firefox 93+, Safari 15.4+, Node.js 16.11+.
+  ```
+
+  **The requirement is not new; only the statement of it is.** 1.5.0 already shipped `static #` private fields
+  and `Object.hasOwn`, and 2.0.0 adds `Error`'s `cause` — the latter two are ES2022 _runtime_ APIs, which no
+  compiler `target` can transpile away, so an engine below the floor could never run this package however it
+  was built. Nothing to do if your engine clears it, and everything released since March 2022 does. If it does
+  not, then 1.5.0 did not work there either and pinning to it is no remedy; Safari 15.0 through 15.3 is the
+  case to actually watch for, since it has `Error`'s `cause` but not `Object.hasOwn` — which this package calls
+  while validating the calendar index, and again wherever a component reads its options bag. The floor is
+  stated in the documentation, not enforced by a `package.json` `engines` field, so neither npm nor yarn will
+  warn you about it at install time.
+
 ### Added
 
 - `ApiBase`: one object per API base URL, owning that base's URL, its `/calendars` index and its response cache.
@@ -163,9 +186,50 @@ Three narrower breaks, listed for completeness:
   locale string nor a plain object is rejected with a message ending in `found type: Locale` — naming the type,
   so that the plausible slip `new ApiOptions( new Intl.Locale( 'it' ) )` is recognizable. That same call
   previously failed with `TypeError: locale.replaceAll is not a function`, which named neither the argument nor
-  the component. An invalid locale string likewise now reads `Invalid locale: xx-INVALID` rather than the
-  `RangeError` that `Intl.getCanonicalLocales` raises. That guard is now one shared implementation rather than
-  six divergent ones, and every component taking an options bag uses it — see the third narrower break above.
+  the component. An invalid locale string likewise now reads `ApiOptions: Invalid locale: not a locale` rather
+  than the `RangeError` that `Intl.getCanonicalLocales` raises. That guard is now one shared implementation
+  rather than six divergent ones, and every component taking an options bag uses it — see the third narrower
+  break above.
+- All six components that sanitize a caller's locale — `CalendarSelect`, `RiteSelect`, `WebCalendar`,
+  `ApiOptions`, `LiturgyOfTheDay` and `LiturgyOfAnyDay` — now report a bad one the same way, naming both
+  themselves and the tag `Intl` actually rejected. They used to disagree: for a malformed tag the first four
+  named the tag but not themselves, while the two liturgy widgets threw one opaque message for a malformed tag
+  and a wrong-typed argument alike:
+
+  ```text
+  // Before
+  Invalid locale: not a locale             // CalendarSelect, RiteSelect, ApiOptions
+  Invalid locale identifier: not a locale  // WebCalendar.locale()
+  LiturgyOfTheDay: Invalid locale          // both liturgy widgets, for either fault
+
+  // After
+  CalendarSelect: Invalid locale: not a locale
+  WebCalendar.locale: Invalid locale: not a locale
+  LiturgyOfTheDay: Invalid type for locale, must be of type `string` but found type: Locale
+  ```
+
+  The tag named is the normalized one, as it always was for the four that named a tag at all —
+  `new ApiOptions( 'it__IT' )` reports `it--IT`, which is what `Intl` was handed — and the type comes from the
+  same `describeType` the options guard uses, so an `Intl.Locale` passed where a locale string belongs reads
+  `found type: Locale` rather than `found type: object`. `WebCalendar.locale` is prefixed with the method
+  rather than the class because it is a setter a caller invokes by name. No message text is API: match on the
+  thrown `Error`, never on what it says. One ordering change comes with this: `ApiOptions` validates the locale
+  before resolving its API base, where previously only the type check did, so
+  `new ApiOptions( 'not a locale' )` on a page with no base registered now complains about the locale rather
+  than about the registry.
+
+- `WebCalendar.locale()` stores the canonical tag rather than the argument as written, so the `_locale` getter
+  reads back canonically:
+
+  ```js
+  webCalendar.locale( 'EN-us' );
+  webCalendar._locale; // Before: 'EN-us' — After: 'en-US'
+  ```
+
+  It was the one component that probed the tag with `new Intl.Locale` and then threw the parsed result away.
+  Formatting is unaffected, and always would have been — `Intl` canonicalizes internally — so this is visible
+  only to code that reads `_locale` back, and only for an argument that was not already canonical.
+
 - `ApiClient.init( url )` with no argument uses the constant default base rather than the first base already
   registered, so a call meaning "the public API" cannot resolve to a localhost base a comparison page happened
   to register first. An empty string is rejected rather than treated as "unspecified".
@@ -195,9 +259,31 @@ Three narrower breaks, listed for completeness:
   is returned rather than duplicated. A failed load clears itself, so a later call can retry.
 - A failed calendar request no longer emits `calendarFetched` with `undefined` data and caches it. It emits
   `calendarFetchFailed` and rejects.
-- A `/calendars` response that is not an object, or that omits `national_calendars` or `diocesan_calendars`, is
-  rejected by `load()` — and by `fromMetadata()` — naming the missing field and the URL of the API that omitted
-  it, rather than only surfacing when some component happens to read it.
+- A `/calendars` response that is not an object, that omits `national_calendars`, `diocesan_calendars` or
+  `locales`, or that carries any of those three as something other than an array, is rejected by `load()` — and
+  by `fromMetadata()` — naming the field, the type actually found and the URL of the API that served it, rather
+  than only surfacing when some component happens to read it. Requiring the three to be present was not enough
+  on its own: an index carrying `locales: {}` passed that check and then failed a step further down, on the
+  request path, as a bare `TypeError` out of `.includes()` naming neither the field nor the API — the very
+  failure the check exists to prevent, and with a field that is present, so a message about absence would have
+  been actively misleading.
+- An options bag with no prototype, or one carrying its own `hasOwnProperty` key, no longer throws
+  `TypeError: options.hasOwnProperty is not a function`. `CalendarSelect`, `RiteSelect`, `WebCalendar`,
+  `LiturgyOfTheDay` and `LiturgyOfAnyDay` read their options — and the `label` bags both selects accept, and the
+  `wrapper` bag `CalendarSelect` accepts — by calling `hasOwnProperty` **on the caller's object**, which
+  `Object.create( null )` does not carry and which `{ locale: 'it', hasOwnProperty: 'x' }` shadows. Both are
+  plain objects that the components' own guard accepts, deliberately so in the first case, and both failed with
+  a bare `TypeError` naming neither the component nor the option:
+
+  ```js
+  const options = Object.assign( Object.create( null ), { locale: 'it', class: 'form-select' } );
+  new CalendarSelect( options ); // Before: TypeError: options.hasOwnProperty is not a function
+                                 // After:  the `class` option is applied
+  ```
+
+  The reads now use `Object.hasOwn`, which depends on neither the bag's prototype nor its keys. `ApiOptions`
+  was never affected: it destructures its options rather than probing them.
+
 - `CalendarSelect` no longer sorts the shared metadata's national calendar list in place; it sorts its own copy,
   by its own locale.
 - `ApiClient._metadata` was typed as `CalendarMetadata`, the per-response metadata block, rather than as the
