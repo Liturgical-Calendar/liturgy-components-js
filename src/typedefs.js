@@ -155,6 +155,23 @@
  */
 
 /**
+ * The body of a single calendar response: the calculated liturgical events for one
+ * calendar and year, together with the settings they were calculated under.
+ *
+ * Note that `metadata` here is {@link CalendarMetadata}, the per-response block
+ * describing this one calculation. It is NOT {@link CalendarIndex}, the `/calendars`
+ * index of which calendars the API offers. The two are unrelated objects that happen
+ * to sit behind similar names, and conflating them is exactly the confusion this
+ * release exists to remove.
+ *
+ * @typedef {Object} CalendarData
+ * @prop {CalendarEvent[]} litcal - The calculated liturgical events, in date order
+ * @prop {CalendarSettings} settings - The settings the calendar was calculated under
+ * @prop {CalendarMetadata} metadata - Metadata about this response and this calculation
+ * @prop {string[]} messages - Validation and information messages raised while calculating
+ */
+
+/**
  * @typedef {Object} Counter
  * @prop {number} cm - The count of the liturgical events within the same month
  * @prop {number} cs - The count of the liturgical events within the same season

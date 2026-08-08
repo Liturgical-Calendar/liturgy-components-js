@@ -47,7 +47,7 @@ export default class ApiClient {
   });
 
   /**
-   * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
+   * @type {import('../typedefs.js').CalendarData}
    * @private
    */
   #calendarData = {};
@@ -415,7 +415,17 @@ export default class ApiClient {
    * If the same calendar with identical parameters was previously fetched, the cached data
    * is returned without making a new API request.
    *
-   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to THIS request's calendar
+   *                                                           data — unless a newer request has
+   *                                                           superseded it while it was in
+   *                                                           flight, in which case it resolves to
+   *                                                           the client's current calendar data
+   *                                                           instead: another request's data, or
+   *                                                           `{}` if none has landed yet. The
+   *                                                           superseded response is still cached
+   *                                                           under its own key, but it never
+   *                                                           overwrites newer data and no
+   *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.
@@ -502,7 +512,17 @@ export default class ApiClient {
    * Fetches a national liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the national calendar to fetch
    * @param {string} [locale] - The locale for the national calendar
-   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to THIS request's calendar
+   *                                                           data — unless a newer request has
+   *                                                           superseded it while it was in
+   *                                                           flight, in which case it resolves to
+   *                                                           the client's current calendar data
+   *                                                           instead: another request's data, or
+   *                                                           `{}` if none has landed yet. The
+   *                                                           superseded response is still cached
+   *                                                           under its own key, but it never
+   *                                                           overwrites newer data and no
+   *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.
@@ -582,7 +602,17 @@ export default class ApiClient {
    * Fetches a diocesan liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the diocesan calendar to fetch
    * @param {string} [locale] - The locale for the diocesan calendar
-   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to THIS request's calendar
+   *                                                           data — unless a newer request has
+   *                                                           superseded it while it was in
+   *                                                           flight, in which case it resolves to
+   *                                                           the client's current calendar data
+   *                                                           instead: another request's data, or
+   *                                                           `{}` if none has landed yet. The
+   *                                                           superseded response is still cached
+   *                                                           under its own key, but it never
+   *                                                           overwrites newer data and no
+   *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.

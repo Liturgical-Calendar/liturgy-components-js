@@ -15,7 +15,7 @@ export default class WebCalendar {
     #baseLocale = 'en';
 
     /**
-     * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
+     * @type {import('../typedefs.js').CalendarData}
      */
     #calendarData = null;
 
