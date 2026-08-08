@@ -26,6 +26,12 @@ import {
 > <script type="module" src="myScript.js"></script>
 > ```
 
+## Runtime Requirements
+
+ES6 module support alone is not sufficient to run the library. The published code targets **ES2022** and uses
+ES2022 runtime APIs — `Object.hasOwn()` and `Error`'s `cause` option — which no build step can polyfill away
+for you. The floor is Chrome/Edge 94+, Firefox 93+, Safari 15.4+, or Node.js 16.11+.
+
 ## CDN Caching
 
 > [!NOTE]

@@ -178,7 +178,12 @@ export {
 
 ## Browser Support
 
-Modern browsers with ES6 module support. Requires `<script type="module">`.
+Requires `<script type="module">`, and a browser with **ES2022** support: Chrome/Edge 94+, Firefox 93+, Safari 15.4+.
+On Node.js the floor is 16.11+ (18+ recommended).
+
+ES6 module support alone is not enough. The published code uses ES2022 runtime APIs — `Object.hasOwn()` and
+`Error`'s `cause` option — as well as `static #` private class fields. Runtime APIs cannot be transpiled away
+by a compiler target, so an older engine will fail at run time no matter how the package is built.
 
 ## Development
 

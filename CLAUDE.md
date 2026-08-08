@@ -104,9 +104,22 @@ yarn docker               # Run compile:watch and storybook:ci in parallel
 
 ### TypeScript/JavaScript
 
-- **Target:** ES2020 modules
+- **Target:** ES2022 modules
 - **Strict mode:** Enabled
 - **Output:** `/dist/index.js` (ES module) and `/dist/index.d.ts` (type definitions)
+
+**ES2022 is a floor, not a preference.** The sources use `static #` private fields — ES2022 _syntax_ —
+and, more decisively, `Object.hasOwn()` and `Error`'s `cause` option, which are ES2022 **runtime APIs**
+that no `target` setting can transpile away. Lowering `target` would therefore produce output that still
+fails on an older engine, just less obviously. `tsconfig.json` pins `ES2022` rather than `esnext`, which
+drifts with every TypeScript release and so states no contract at all.
+
+**The build cannot catch a false target claim.** `allowJs` is on but **`checkJs` is off**, so TypeScript
+parses the JS sources and emits them but never type-checks them, and it does not flag a runtime API that
+postdates the target. The project compiles clean at ES2020 and ES2022 alike — which is how the earlier
+ES2020 claim survived unnoticed. Any change to the ECMAScript floor must be verified by reading the
+emitted `dist/`, not by trusting a green `yarn compile`. (Turning `checkJs` on is a much larger change
+and deliberately out of scope.)
 
 **Key Patterns:**
 
@@ -309,7 +322,7 @@ en, it, la, es, fr, de, pt, nl, hu, id, sk, vi
 - **No build step for production** - Components work as-is with ES6 module imports
 - **API dependency** - Components require access to Liturgical Calendar API
 - **Default API URL** - `https://litcal.johnromanodorazio.com/api/dev`
-- **Browser support** - Modern browsers with ES6 module support
+- **Browser support** - Browsers with ES2022 support (see the Target section under Code Standards): Chrome/Edge 94+, Firefox 93+, Safari 15.4+. ES6 module support alone is not sufficient
 
 ## Component Wiring Patterns
 

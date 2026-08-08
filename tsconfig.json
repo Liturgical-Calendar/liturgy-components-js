@@ -1,7 +1,11 @@
 {
     "compilerOptions": {
       // Basic compiler options
-      "target": "esnext", // Set the target JavaScript version to modern ES modules
+      // ES2022 is a floor the emitted code genuinely requires, not a preference: the sources use
+      // `static #` private fields (ES2022 syntax), `Object.hasOwn` and `Error`'s `cause` option
+      // (ES2022 runtime APIs, which no target setting can transpile away). Pinned rather than
+      // `esnext`, which states no contract at all because it drifts with every TypeScript release.
+      "target": "ES2022", // Set the target JavaScript version
       "module": "ESNext", // Set the module system to ES modules
       "strict": true, // Enable all strict type checking options
       "esModuleInterop": true, // Allow emit ES modules and JSX files into ES modules
