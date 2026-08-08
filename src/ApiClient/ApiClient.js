@@ -1,6 +1,7 @@
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
+import ApiBase from './ApiBase.js';
 import EventEmitter from './EventEmitter.js';
 import { YearType, Rite, RiteProperties } from '../Enums.js';
 
@@ -16,28 +17,17 @@ import { YearType, Rite, RiteProperties } from '../Enums.js';
  * and provides methods to listen to UI component changes.
  *
  * @example
- * const client = new ApiClient();
- * // Initialize with default API URL
- * await ApiClient.init();
+ * // Initialize against the default API base
+ * const client = await ApiClient.init();
  * // Fetch General Roman Calendar
- * const calendarData = await client.fetchCalendar();
+ * client.fetchCalendar();
  *
  * @example
  * // Fetch a National Calendar
- * const client = new ApiClient();
- * const nationalCalendarData = client.fetchNationalCalendar('IT').then( data => {
- *   // Handle the response data
- * });
+ * const client = await ApiClient.init();
+ * client.fetchNationalCalendar('IT');
  */
 export default class ApiClient {
-  /**
-   * @type {string}
-   * @private
-   * @static
-   * @default 'https://litcal.johnromanodorazio.com/api/dev'
-   */
-  static #apiUrl = 'https://litcal.johnromanodorazio.com/api/dev';
-
   /**
    * @type {{calendars: '/calendars', calendar: '/calendar', events: '/events', easter: '/easter', decrees: '/decrees', data: '/data', missals: '/missals', tests: '/tests', schemas: '/schemas'}}
    * @private
@@ -56,27 +46,10 @@ export default class ApiClient {
   });
 
   /**
-   * @type {import('../typedefs.js').CalendarMetadata | null}
-   * @private
-   * @static
-   * Response object from the API /calendars path
-   */
-  static #metadata = null;
-
-  /**
    * @type {{litcal: import('../typedefs.js').CalendarEvent[], settings: import('../typedefs.js').CalendarSettings, metadata: import('../typedefs.js').CalendarMetadata, messages: string[]}}
    * @private
    */
   #calendarData = {};
-
-  /**
-   * Cache for calendar data, keyed by a combination of calendar parameters.
-   * This allows reusing previously fetched data when the same parameters are requested.
-   * @type {Map<string, {data: object, timestamp: number}>}
-   * @private
-   * @static
-   */
-  static #calendarCache = new Map();
 
   /**
    * @type {{'Content-Type': 'application/json', Accept: 'application/json', ['Accept-Language']: string}}
@@ -132,9 +105,9 @@ export default class ApiClient {
    * The liturgical rite the current request is computed under.
    *
    * Instance state, deliberately: per-request state in this class is
-   * instance-level, and only genuinely shared things (`#apiUrl`, `#paths`,
-   * `#metadata`, `#calendarCache`) are static. A static rite would let two
-   * ApiClients on one page overwrite each other's requests.
+   * instance-level, and only genuinely shared things (`#paths`, and the base's
+   * own metadata and cache) live outside the instance. A static rite would let
+   * two ApiClients on one page overwrite each other's requests.
    *
    * @type {'roman' | 'ambrosian'}
    * @private
@@ -157,6 +130,19 @@ export default class ApiClient {
   #requestRevision = 0;
 
   /**
+   * The API base this client is bound to: its URL, its calendar index, and its
+   * response cache.
+   *
+   * Instance state, deliberately. Holding the base statically is what allowed a
+   * second `init()` to leave a client pointing at one API while reporting
+   * another's calendars.
+   *
+   * @type {ApiBase}
+   * @private
+   */
+  #base = null;
+
+  /**
    * The event bus that can be used to subscribe to events emitted by the ApiClient.
    * @type {EventEmitter}
    * @private
@@ -164,61 +150,49 @@ export default class ApiClient {
   #eventBus = null;
 
   /**
-   * Initializes the ApiClient with an optional API URL.
-   * If a URL is provided, it sets the internal API URL to the given value.
-   * Then, it fetches the available liturgical calendars from the API.
+   * Initializes an ApiClient against an API base, loading that base's calendar
+   * index if it has not been loaded already.
    *
-   * @param {string|null} url - Optional API URL to override the default URL.
-   * @returns {Promise<ApiClient|boolean>} A promise that resolves to an `ApiClient` instance when the calendar metadata has been fetched, or `false` if an error occurs.
+   * Returns a NEW client on every call, including for a base already registered:
+   * only the per-base state is shared. Two clients on one base is a supported
+   * arrangement — it is what lets one page compare two rites served by a single
+   * API — and it works because every per-request field on this class is instance
+   * state.
+   *
+   * @param {string|null} [url] - The API base URL. When null, the constant default
+   *                              base is used, NOT the first base already registered:
+   *                              a call that means "the public API" must not resolve
+   *                              to localhost because a comparison page registered it
+   *                              first.
+   * @returns {Promise<ApiClient>} Resolves to a new client once the base is loaded.
+   * @throws {ApiClientError} If the base's `/calendars` request fails.
    * @static
    */
   static init( url = null ) {
-    if ( url ) {
-      this.#apiUrl = url;
-    }
-    return ApiClient.#fetchCalendars();
+    const base = ApiBase.resolve( url ?? ApiBase.DEFAULT_URL );
+    return base.load().then( () => new ApiClient( base ) );
   }
 
   /**
-   * Fetches metadata about available liturgical calendars from the API.
+   * Instantiates an ApiClient bound to an API base.
    *
-   * This method sends a GET request to the API endpoint for calendars metadata when the `#metadata` property is null, and processes the response.
-   * If the request is successful, it extracts the `litcal_metadata` from the response data
-   * and assigns it to the `#metadata` property of the `ApiClient` class.
-   * If the `#metadata` property is not null, it returns a resolved promise with the `ApiClient` instance.
-   * This way, if the static init method is called more than once, initialization is only performed once, and only one fetch request is made to the API.
+   * Use {@link ApiClient.init} rather than calling this directly: `init()`
+   * guarantees the base's calendar index is loaded before any component reads it.
    *
-   * @returns {Promise<ApiClient|boolean>} A promise that resolves to an `ApiClient` instance if the request is successful, or `false` if an error occurs.
+   * @param {ApiBase} base - The API base this client issues its requests against.
    */
-  static #fetchCalendars() {
-    if ( null === this.#metadata ) {
-      return fetch( `${this.#apiUrl}${this.#paths.calendars}` ).then(response => {
-        if ( response.ok ) {
-          return response.json();
-        }
-      }).then(data => {
-        const { litcal_metadata } = data;
-        ApiClient.#metadata = litcal_metadata;
-        return new ApiClient();
-      }).catch(error => {
-        console.error( error );
-        return false;
-      });
-    } else {
-      return Promise.resolve(new ApiClient());
-    }
-  }
-
-  /**
-   * Instantiates a new instance of the ApiClient class.
-   *
-   * The constructor does not perform any specific actions, but it provides
-   * access to instance methods and private properties of the class.
-   * This allows the client to interact with the Liturgical Calendar API,
-   * possibly listening to changes in the UI components.
-   */
-  constructor() {
+  constructor( base ) {
+    this.#base     = base;
     this.#eventBus = new EventEmitter();
+  }
+
+  /**
+   * The API base this client is bound to.
+   *
+   * @returns {ApiBase}
+   */
+  get base() {
+    return this.#base;
   }
 
   /**
@@ -257,22 +231,6 @@ export default class ApiClient {
   }
 
   /**
-   * Whether the API this client is pointed at understands the rite path segment.
-   *
-   * There is no version field in `/calendars`, so this is feature-detected: the
-   * rite-aware API announces `ambrosian_calendars`, v5 does not. v5 answers
-   * `/calendar/roman/nation/IT` with 400 — on EVERY route, not only Ambrosian
-   * ones — so emitting the segment unconditionally would break every request
-   * this library makes against it.
-   *
-   * @returns {boolean}
-   * @private
-   */
-  static get #supportsRite() {
-    return Array.isArray( ApiClient.#metadata?.ambrosian_calendars );
-  }
-
-  /**
    * Refuses a request for a non-Roman rite against an API that cannot serve one.
    *
    * Pre-empts the API's rejection rather than surfacing it: v5 answers any path
@@ -284,8 +242,8 @@ export default class ApiClient {
    * @private
    */
   #assertRiteSupported() {
-    if ( this.#currentRite !== Rite.ROMAN && false === ApiClient.#supportsRite ) {
-      throw new Error( `ApiClient: the API at ${ApiClient.#apiUrl} does not support the ${this.#currentRite} rite. Rite support was added in API v6; this API announces no ambrosian_calendars in its metadata.` );
+    if ( this.#currentRite !== Rite.ROMAN && false === this.#base.supportsRite ) {
+      throw new Error( `ApiClient: the API at ${this.#base.url} does not support the ${this.#currentRite} rite. Rite support was added in API v6; this API announces no ambrosian_calendars in its metadata.` );
     }
   }
 
@@ -296,11 +254,7 @@ export default class ApiClient {
    * @private
    */
   #getCachedData(cacheKey) {
-    if (ApiClient.#calendarCache.has(cacheKey)) {
-      const cached = ApiClient.#calendarCache.get(cacheKey);
-      return cached.data;
-    }
-    return null;
+    return this.#base.getCached( cacheKey );
   }
 
   /**
@@ -310,10 +264,7 @@ export default class ApiClient {
    * @private
    */
   #setCachedData(cacheKey, data) {
-    ApiClient.#calendarCache.set(cacheKey, {
-      data: data,
-      timestamp: Date.now()
-    });
+    this.#base.setCached( cacheKey, data );
   }
 
   /**
@@ -322,7 +273,7 @@ export default class ApiClient {
    * @static
    */
   static clearCache() {
-    ApiClient.#calendarCache.clear();
+    ApiBase.clearAllCaches();
   }
 
   /**
@@ -339,7 +290,7 @@ export default class ApiClient {
     const resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
 
     // Guard against uninitialized metadata
-    if (!ApiClient.#metadata) {
+    if (!this.#base.metadata) {
       return resolvedLocale;
     }
 
@@ -347,8 +298,8 @@ export default class ApiClient {
       const phpLocale = locale.replace(/-/g, '_');
       const jsLocale = phpLocale.replace(/_/g, '-');
       const metadataArray = category === 'national'
-        ? ApiClient.#metadata.national_calendars
-        : ApiClient.#metadata.diocesan_calendars;
+        ? this.#base.metadata.national_calendars
+        : this.#base.metadata.diocesan_calendars;
 
       if (!metadataArray) {
         return resolvedLocale;
@@ -422,7 +373,7 @@ export default class ApiClient {
       locale = locale.replace(/_/g, '-');
       try {
         const testLocale = new Intl.Locale(locale);
-        if (ApiClient.#metadata.locales.includes(testLocale.language)) {
+        if (this.#base.locales().includes(testLocale.language)) {
           this.#fetchCalendarHeaders['Accept-Language'] = locale;
           resolvedLocale = locale;
         };
@@ -440,8 +391,8 @@ export default class ApiClient {
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`, {
+    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -503,8 +454,8 @@ export default class ApiClient {
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
+    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -567,8 +518,8 @@ export default class ApiClient {
       return;
     }
 
-    const riteSegment = ApiClient.#supportsRite ? `/${requestRite}` : '';
-    fetch(`${ApiClient.#apiUrl}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
+    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
@@ -841,35 +792,55 @@ export default class ApiClient {
   }
 
   /**
-   * This static getter provides access to the metadata object that contains information
-   * about the available liturgical calendars, including national and diocesan calendars.
-   * The metadata is initially fetched from the API during the client initialization.
+   * The calendar index of the first registered base.
    *
-   * @returns {import('../typedefs.js').CalendarMetadata} An object containing the metadata of the liturgical calendars.
+   * @deprecated Read `apiClient.base.metadata` instead. With more than one base
+   *             registered this getter cannot know which one the caller means, and
+   *             answers with the first.
+   * @returns {import('../typedefs.js').CalendarIndex|null}
+   * @static
    */
   static get _metadata() {
-    return ApiClient.#metadata;
+    ApiClient.#warnAmbiguousStatic( '_metadata' );
+    return ApiBase.default?.metadata ?? null;
   }
 
   /**
-   * Static getter provides access to the internal API URL
-   * used by the ApiClient to make requests to the liturgical calendar API.
+   * The URL of the first registered base.
    *
-   * @returns {string} The API URL.
+   * @deprecated Read `apiClient.base.url` instead.
+   * @returns {string|null}
+   * @static
    */
   static get _apiUrl() {
-    return ApiClient.#apiUrl;
+    ApiClient.#warnAmbiguousStatic( '_apiUrl' );
+    return ApiBase.default?.url ?? null;
   }
 
   /**
-   * The metadata object that contains information about the available liturgical
-   * calendars, including national and diocesan calendars.
-   * The metadata is initially fetched from the API during static ApiClient initialization.
+   * Warns that a deprecated static was read while more than one base was registered.
    *
-   * @type {import('../typedefs.js').CalendarMetadata}
+   * Silent only in the single-base case, which is every page written before this
+   * release. Silent ambiguity is the failure this release removes; a fallback that
+   * never says which base it picked would reintroduce it.
+   *
+   * @param {string} accessor - The name of the accessor being read.
+   * @returns {void}
+   * @private
+   */
+  static #warnAmbiguousStatic( accessor ) {
+    if ( ApiBase.all.length > 1 ) {
+      console.warn( `ApiClient.${accessor} is ambiguous: ${ApiBase.all.length} API bases are registered, and it resolved to ${ApiBase.default.url}. Read it from a specific client instead, as apiClient.base.` );
+    }
+  }
+
+  /**
+   * The calendar index of the base this client is bound to.
+   *
+   * @returns {import('../typedefs.js').CalendarIndex|null}
    */
   get _metadata() {
-    return ApiClient.#metadata;
+    return this.#base.metadata;
   }
 
   /**
@@ -883,12 +854,12 @@ export default class ApiClient {
   }
 
   /**
-   * The internal API URL used by the ApiClient to make requests to the liturgical calendar API.
+   * The URL of the base this client is bound to, which it issues its requests against.
    *
    * @returns {string} The API URL.
    */
   get _apiUrl() {
-    return ApiClient.#apiUrl;
+    return this.#base.url;
   }
 
   /**
