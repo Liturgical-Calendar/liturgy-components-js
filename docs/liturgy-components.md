@@ -173,8 +173,6 @@ import {
 } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     // Calendar selection
     const calendarSelect = new CalendarSelect('en-US')
         .allowNull()

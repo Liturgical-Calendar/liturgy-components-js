@@ -53,8 +53,6 @@ import {
 } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     // Configure global styling
     Input.setGlobalInputClass('form-select');
     Input.setGlobalLabelClass('form-label');

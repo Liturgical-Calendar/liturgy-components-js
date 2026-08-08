@@ -6,32 +6,41 @@ and provides the fetched data to those components.
 
 ## Initialization
 
-The `ApiClient` must be statically initialized before any UI components can be used:
+An `ApiClient` must be initialized before any UI components are constructed, because they read the calendar
+index it loads:
 
 ```javascript
 import { ApiClient } from '@liturgical-calendar/components-js';
 
 // Initialize with a local API URL
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (apiClient instanceof ApiClient) {
-        // Create and configure UI components here
-    }
+    // Create and configure UI components here
+}).catch((error) => {
+    console.error(`Could not reach ${error.url}: ${error.message}`);
 });
 
 // Initialize with the default remote API URL
-ApiClient.init().then((apiClient) => {
-    if (apiClient instanceof ApiClient) {
-        // Create and configure UI components here
-    }
-});
+const apiClient = await ApiClient.init();
 ```
 
-The default API URL is `https://litcal.johnromanodorazio.com/api/dev/`.
+The default API URL is `https://litcal.johnromanodorazio.com/api/dev`.
 
-The `init()` method returns a promise that resolves to:
+`init()` returns a promise that resolves to a new `ApiClient`, or **rejects**:
 
-- An `ApiClient` instance if successful
-- `false` if an error occurs
+- with an `ApiClientError` if the base's `/calendars` request fails, carrying `url`, `status`, `statusText`,
+  `body` and `cause`
+- with a plain `Error` if the `url` argument is not a non-empty string
+
+Nothing is thrown synchronously, so one `.catch()` — or one `try`/`catch` around the `await` — covers both.
+
+> [!IMPORTANT]
+> Before 2.0.0, `init()` logged the error and resolved to `false`, and call sites guarded with
+> `if (apiClient instanceof ApiClient)`. That guard is now dead code: the `then` callback only runs on success.
+> Replace it with a `.catch()`.
+
+`init()` returns a **new** client on every call, including for a base already registered. Only the base's
+metadata and cache are shared, so two clients against one API can hold different settings — different rites,
+for instance.
 
 ## Listening to UI Components
 
@@ -39,11 +48,9 @@ Configure the `ApiClient` to listen to `CalendarSelect` and `ApiOptions` compone
 
 ```javascript
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (apiClient instanceof ApiClient) {
-        const calendarSelect = new CalendarSelect();
-        const apiOptions = new ApiOptions();
-        apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-    }
+    const calendarSelect = new CalendarSelect();
+    const apiOptions = new ApiOptions();
+    apiClient.listenTo(calendarSelect).listenTo(apiOptions);
 });
 ```
 
@@ -82,6 +89,53 @@ apiClient.refetchCalendarData();
 
 The `locale` parameter is optional for all fetch methods. When provided, it sets the `Accept-Language` header for the request.
 The locale is validated against the calendar's supported locales before being applied.
+
+Each fetch method returns a promise. It resolves to this request's calendar data — or, when a newer request has
+superseded it while it was in flight, to the client's current calendar data — and rejects with an
+`ApiClientError` after emitting `calendarFetchFailed`. A promise you hold is yours to handle:
+
+```javascript
+try {
+    const calendarData = await apiClient.fetchNationalCalendar('IT', 'it');
+} catch (error) {
+    console.error(`${error.status} ${error.statusText} from ${error.url}`);
+}
+```
+
+## Errors
+
+`ApiClientError` extends `Error` and carries the request context as enumerable properties, so it survives
+logging and `JSON.stringify`:
+
+| Property     | Meaning                                                   |
+| ------------ | --------------------------------------------------------- |
+| `url`        | The URL that was requested                                |
+| `status`     | The HTTP status, or `null` if the request never completed |
+| `statusText` | The HTTP status text, or `null` for the same reason       |
+| `body`       | The response body as text, when it could be read          |
+| `cause`      | The underlying error, when the request never completed    |
+
+A failed calendar request emits `calendarFetchFailed` as `(error, { rite })` before the promise rejects:
+
+```javascript
+apiClient.on('calendarFetchFailed', (error, { rite }) => {
+    banner.textContent = `The ${rite} calendar could not be loaded: ${error.message}`;
+});
+```
+
+`on()` is chainable. `calendarFetched` is emitted as `(data, { rite })` on success.
+
+### Which failures are logged
+
+Only the ones nobody could have handled:
+
+- A promise **you** hold — from your own `fetchCalendar()` call — rejects and is **not** logged. Handling it is
+  yours.
+- The requests the library issues for itself — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year
+  handling — have no caller to return a promise to. Their error is delivered to `calendarFetchFailed`, then
+  suppressed if anything is subscribed to that event, or logged with `console.error` if nothing is.
+
+Subscribing to `calendarFetchFailed` therefore takes over reporting entirely, and silences the console.
 
 ## Configuration Methods
 
@@ -169,20 +223,107 @@ await apiClient.fetchCalendar('en');
 apiClient.year(2026);
 await apiClient.fetchCalendar('en'); // Fetches from API
 
-// Clear all cached data
+// Clear all cached data, on every registered base
 ApiClient.clearCache();
 ```
+
+The cache belongs to the API base, not to the `ApiClient` class, so two clients on one base share it and two
+bases never see each other's responses. It is bounded: 50 entries per base by default, evicted
+least-recently-**read** first. Both the limit and an optional expiry are set globally through `ApiBase`:
+
+```javascript
+import { ApiBase } from '@liturgical-calendar/components-js';
+
+ApiBase.cacheLimits({ maxEntries: 200, ttl: 15 * 60 * 1000 }); // 200 entries, 15 minutes
+ApiBase.cacheLimits({ ttl: null });                            // no expiry (the default)
+ApiBase.clearAllCaches();                                      // what ApiClient.clearCache() delegates to
+```
+
+## API bases
+
+An `ApiBase` is one API base URL and everything belonging to it: the `/calendars` index and the response cache.
+Bases are registered in a static registry keyed by normalized URL, so two clients pointed at the same API share
+one metadata fetch and one cache. `apiClient.base` is the base a client is bound to.
+
+```javascript
+const dev = await ApiClient.init('http://localhost:8000');
+const prod = await ApiClient.init('https://litcal.johnromanodorazio.com/api/dev');
+
+dev.base.url; // 'http://localhost:8000'
+dev.base.metadata; // that API's calendar index
+```
+
+Pass a client as the `apiClient` option to bind a component to its base:
+
+```javascript
+const devSelect = new CalendarSelect({ locale: 'en', apiClient: dev });
+const devOptions = new ApiOptions({ locale: 'en', apiClient: dev });
+```
+
+Omitting it binds to the first base registered, which is what every single-base page does implicitly. Once more
+than one base is registered, an unbound component warns once per component class and names the base it chose.
+`PathBuilder` has no `apiClient` option: it takes its base from the `ApiOptions` and `CalendarSelect` handed to
+it, and throws if those disagree, as does `CalendarSelect.linkToNationsSelect()`.
+
+`examples/CompareBases/` is a complete two-pane page built this way.
+
+### Querying a base
+
+```javascript
+apiClient.base.locales(); // every locale this API supports
+apiClient.base.nationalCalendars(); // every national calendar
+apiClient.base.diocesanCalendars(Rite.ROMAN); // dioceses of a rite (Roman by default)
+apiClient.base.riteCalendars(Rite.AMBROSIAN); // a rite's own rite-level calendars
+apiClient.base.isValidDioceseForNation('romamo_it', 'IT'); // true
+apiClient.base.supportsRite; // whether the API understands the rite path segment
+```
+
+Every one of these except `supportsRite` throws, rather than answering emptily, if the base has not been
+loaded — an empty calendar list is indistinguishable from an API that genuinely serves none, and would surface
+as an empty select with no explanation. `supportsRite` is feature detection and answers `false` for an
+unloaded base.
+
+### Testing without mocking fetch
+
+`ApiBase.fromMetadata(url, metadata)` registers a loaded base with no network request, and `ApiBase.reset()`
+empties the registry between tests:
+
+```javascript
+import { ApiBase, ApiClient, CalendarSelect } from '@liturgical-calendar/components-js';
+
+beforeEach(() => {
+    ApiBase.reset();
+});
+
+test('lists the national calendars of its base', () => {
+    const base = ApiBase.fromMetadata('http://test.local', METADATA);
+    const calendarSelect = new CalendarSelect({ locale: 'en', apiClient: new ApiClient(base) });
+    // …
+});
+```
+
+The metadata must be an object carrying `national_calendars` and `diocesan_calendars`; anything else is
+rejected with a message naming the missing field.
 
 ## Static Properties
 
 ```javascript
-ApiClient._apiUrl    // The API URL being used
-ApiClient._metadata  // Metadata about available liturgical calendars
+ApiClient._apiUrl // DEPRECATED — the URL of the FIRST registered base
+ApiClient._metadata // DEPRECATED — the calendar index of the FIRST registered base
 ```
+
+> [!WARNING]
+> Both are deprecated as of 2.0.0. With more than one base registered they cannot know which one the caller
+> means, so they answer with the first and warn on every read. Read them from a specific client instead, as
+> `apiClient.base.url` and `apiClient.base.metadata`. The instance getters `apiClient._apiUrl` and
+> `apiClient._metadata` are not deprecated and answer for that client's own base.
 
 ## Instance Properties
 
 ```javascript
+apiClient.base          // The ApiBase this client is bound to
+apiClient._apiUrl       // That base's URL
+apiClient._metadata     // That base's calendar index
 apiClient._calendarData // Latest fetched calendar data
 apiClient._eventBus     // EventEmitter instance for event handling (EventEmitter is an internal class that is not exported)
 

@@ -8,7 +8,18 @@ The `ApiOptions` component generates form controls for the Liturgical Calendar A
 import { ApiOptions } from '@liturgical-calendar/components-js';
 
 const apiOptions = new ApiOptions('en-US');
+
+// Or with an options object, binding the form to a specific API base
+const bound = new ApiOptions({ locale: 'en-US', apiClient });
 ```
+
+The constructor accepts a locale string or a plain options object with `locale` and `apiClient` keys, and
+throws for anything else, naming the type it found — so `new ApiOptions(new Intl.Locale('it'))` reads
+`found type: Locale` instead of the `TypeError: locale.replaceAll is not a function` it raised before 2.0.0.
+
+The `apiClient` option binds the form to that client's API base, which is where `_localeInput` reads the
+supported locales from. Omitting it binds to the first base initialized, and warns once if more than one is
+registered. See [Using two API bases on one page](api-client.md#api-bases).
 
 ## Form Controls
 
@@ -193,8 +204,6 @@ Without a `RiteSelect`, paths are unaffected and stay in the shorter form.
 import { ApiClient, ApiOptions, Input } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     // Global Bootstrap styling
     Input.setGlobalInputClass('form-select');
     Input.setGlobalLabelClass('form-label d-block mb-1');

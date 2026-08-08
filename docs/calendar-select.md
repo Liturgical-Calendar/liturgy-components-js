@@ -35,9 +35,15 @@ const calendarSelect = new CalendarSelect({
     allowNull: true,
     disabled: false,
     label: { text: 'Select a calendar', class: 'form-label' },
-    wrapper: { as: 'div', class: 'form-group' }
+    wrapper: { as: 'div', class: 'form-group' },
+    apiClient // binds this select to that client's API base
 });
 ```
+
+The `apiClient` option binds the select to the API base of that client, so it lists that API's calendars.
+Omitting it binds to the first base initialized — which is every single-base page — and warns once, naming the
+base it chose, if more than one is registered. See
+[Using two API bases on one page](api-client.md#api-bases).
 
 The `rite` option (a value of the `Rite` enum, see [Enums Reference](enums.md)) determines which
 diocesan calendars are offered and whether a national tier is shown at all. It defaults to
@@ -251,8 +257,6 @@ When using `CalendarSelect` **with `PathBuilder`**:
 import { ApiClient, CalendarSelect, ApiOptions, ApiOptionsFilter } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     const calendarSelect = new CalendarSelect('en-US')
         .allowNull()
         .class('form-select')
