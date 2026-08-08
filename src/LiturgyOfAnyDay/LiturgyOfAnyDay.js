@@ -194,9 +194,10 @@ export default class LiturgyOfAnyDay {
                 const month = parseInt(this.#monthInput._domElement.value, 10);
                 const isDecember31st = (month === 12 && day === 31);
                 const yearToFetch = isDecember31st ? newYear + 1 : newYear;
-                // The failure is already delivered to subscribers through 'calendarFetchFailed';
-                // this catch only stops the discarded promise becoming an unhandled rejection.
-                this.#apiClient.year(yearToFetch).refetchCalendarData().catch(() => {});
+                // Dropping the promise here would surface as an unhandled rejection. The client
+                // suppresses it when a 'calendarFetchFailed' subscriber exists and logs it when
+                // none does; delegating keeps that rule identical across modules.
+                this.#apiClient._discardRequest(this.#apiClient.year(yearToFetch).refetchCalendarData());
             }
         });
 
@@ -308,16 +309,16 @@ export default class LiturgyOfAnyDay {
             if (isDecember31st && this.#currentYearType !== YearType.LITURGICAL) {
                 // Switch to LITURGICAL year type with year+1 to get vigil masses
                 this.#currentYearType = YearType.LITURGICAL;
-                // The failure is already delivered to subscribers through 'calendarFetchFailed';
-                // this catch only stops the discarded promise becoming an unhandled rejection.
-                this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData().catch(() => {});
+                // Dropping the promise here would surface as an unhandled rejection — see the
+                // year input listener above; ApiClient owns the log-or-suppress rule.
+                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData());
                 return true; // Refetch triggered, wait for calendarFetched event to render
             } else if (!isDecember31st && this.#currentYearType !== YearType.CIVIL) {
                 // Switch back to CIVIL year type
                 this.#currentYearType = YearType.CIVIL;
-                // The failure is already delivered to subscribers through 'calendarFetchFailed';
-                // this catch only stops the discarded promise becoming an unhandled rejection.
-                this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData().catch(() => {});
+                // Dropping the promise here would surface as an unhandled rejection — see the
+                // year input listener above; ApiClient owns the log-or-suppress rule.
+                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData());
                 return true; // Refetch triggered, wait for calendarFetched event to render
             }
         }

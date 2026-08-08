@@ -334,16 +334,42 @@ export default class ApiClient {
    * Discards the outcome of a request issued for its side effects alone.
    *
    * The change listeners this class attaches to UI components fire a request and have
-   * no caller to hand the promise back to. The failure is not swallowed: it has already
-   * been delivered to every subscriber through `calendarFetchFailed` by the time this
-   * runs. This exists solely so that the dropped promise does not surface as an
-   * unhandled rejection — it is a suppressor, not error handling.
+   * no caller to hand the promise back to, so the rejection would surface as an
+   * unhandled rejection. What happens to it depends on whether anyone is listening:
+   *
+   * - **A `calendarFetchFailed` subscriber exists** — the error has already been
+   *   delivered to it, so this stays silent. It is a suppressor, not error handling.
+   * - **No subscriber exists** — the error would otherwise vanish entirely, leaving no
+   *   trace that the calendar simply never arrived. It is logged with `console.error`,
+   *   which is what these methods did unconditionally before they learned to reject.
+   *   Silence here would be a regression for anyone upgrading without subscribing.
    *
    * @param {Promise<*>} request - The request whose outcome is being discarded.
    * @returns {void}
    */
   #discardRequest( request ) {
-    request.catch( () => {} );
+    request.catch( error => {
+      const listeners = this.#eventBus._events[ 'calendarFetchFailed' ];
+      if ( undefined === listeners || 0 === listeners.length ) {
+        console.error( error );
+      }
+    } );
+  }
+
+  /**
+   * Discards the outcome of a request on behalf of a component in this package.
+   *
+   * Package-internal. Components such as `LiturgyOfAnyDay` drive the client for its
+   * side effects and drop the promise, and need the same handling as the listeners
+   * inside this class — see {@link ApiClient#discardRequest} for what that is. They
+   * delegate here rather than reimplementing the subscriber check, so that behaviour
+   * cannot drift between modules.
+   *
+   * @param {Promise<*>} request - The request whose outcome is being discarded.
+   * @returns {void}
+   */
+  _discardRequest( request ) {
+    this.#discardRequest( request );
   }
 
   /**

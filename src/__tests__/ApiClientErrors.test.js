@@ -189,4 +189,43 @@ describe( 'ApiClient fire-and-forget callers', () => {
         expect( onFailure.mock.calls[ 0 ][ 0 ].status ).toBe( 500 );
     } );
 
+    it( 'logs a discarded failure when nothing is subscribed to calendarFetchFailed', async () => {
+        mockMetadataThenFailure();
+        const client     = await ApiClient.init( DEV );
+        const riteSelect = new RiteSelect( 'en' );
+        client.listenTo( riteSelect );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            const reasons = await unhandledRejectionsDuring( () => {
+                riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+            } );
+            expect( reasons ).toEqual( [] );
+            // With no subscriber the error has nowhere else to go. Staying silent here
+            // would be a regression on the pre-2.0 unconditional console.error.
+            expect( consoleError ).toHaveBeenCalledTimes( 1 );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).toBeInstanceOf( ApiClientError );
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+    it( 'stays silent when a calendarFetchFailed subscriber is handling the error', async () => {
+        mockMetadataThenFailure();
+        const client     = await ApiClient.init( DEV );
+        const riteSelect = new RiteSelect( 'en' );
+        client.on( 'calendarFetchFailed', jest.fn() );
+        client.listenTo( riteSelect );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await unhandledRejectionsDuring( () => {
+                riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
+            } );
+            expect( consoleError ).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
 } );
