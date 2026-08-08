@@ -1,4 +1,5 @@
 import ApiClientError from './ApiClientError.js';
+import { Rite } from '../Enums.js';
 
 /**
  * One Liturgical Calendar API base URL, and everything that belongs to it: the
@@ -306,6 +307,115 @@ export default class ApiBase {
      */
     clearCache() {
         this.#cache.clear();
+    }
+
+    /**
+     * Asserts that this base's metadata has been loaded.
+     *
+     * Query methods throw rather than returning an empty result, because an empty
+     * calendar list is indistinguishable from an API that genuinely serves none and
+     * would surface as an empty select with no explanation.
+     *
+     * @param {string} method - The name of the calling method, for the message.
+     * @returns {void}
+     * @throws {Error} If the metadata has not been loaded.
+     * @private
+     */
+    #assertLoaded( method ) {
+        if ( null === this.#metadata ) {
+            throw new Error( `ApiBase.${method}: the base at ${this.#url} has not been loaded. Await load() — or ApiClient.init() — before querying its metadata.` );
+        }
+    }
+
+    /**
+     * Every locale this API supports.
+     *
+     * @returns {string[]}
+     * @throws {Error} If the metadata has not been loaded.
+     */
+    locales() {
+        this.#assertLoaded( 'locales' );
+        return this.#metadata.locales;
+    }
+
+    /**
+     * Every national calendar this API serves.
+     *
+     * Takes no rite: whether a rite has a national tier at all is a property of the
+     * rite (`RiteProperties[ rite ].hasNationalTier`), not of the metadata.
+     *
+     * @returns {import('../typedefs.js').NationalCalendar[]}
+     * @throws {Error} If the metadata has not been loaded.
+     */
+    nationalCalendars() {
+        this.#assertLoaded( 'nationalCalendars' );
+        return this.#metadata.national_calendars;
+    }
+
+    /**
+     * The diocesan calendars belonging to a rite.
+     *
+     * A diocesan entry with no `rite` field is Roman: the field is a v6 addition,
+     * and everything the v5 API ever served was Roman. Filtering on a strict
+     * equality against `rite` would drop every diocese on a v5 API.
+     *
+     * @param {'roman'|'ambrosian'} [rite] - The rite to filter by. Defaults to `Rite.ROMAN`.
+     * @returns {import('../typedefs.js').DiocesanCalendar[]}
+     * @throws {Error} If the metadata has not been loaded.
+     */
+    diocesanCalendars( rite = Rite.ROMAN ) {
+        this.#assertLoaded( 'diocesanCalendars' );
+        return this.#metadata.diocesan_calendars.filter(
+            diocesanCalendar => ( diocesanCalendar.rite ?? Rite.ROMAN ) === rite
+        );
+    }
+
+    /**
+     * A rite's own rite-level calendars, announced under the `{rite}_calendars` key.
+     *
+     * The Roman rite has no such key, because its rite-level calendar is the General
+     * Roman Calendar, served in every locale the API supports. The absence of the key
+     * is therefore not an error and yields an empty list.
+     *
+     * @param {'roman'|'ambrosian'} rite - The rite whose own calendars are wanted.
+     * @returns {import('../typedefs.js').NationalCalendar[]}
+     * @throws {Error} If the metadata has not been loaded.
+     */
+    riteCalendars( rite ) {
+        this.#assertLoaded( 'riteCalendars' );
+        const riteCalendars = this.#metadata[ `${rite}_calendars` ];
+        return Array.isArray( riteCalendars ) ? riteCalendars : [];
+    }
+
+    /**
+     * Whether this API understands the rite path segment.
+     *
+     * There is no version field in `/calendars`, so this is feature-detected: the
+     * rite-aware API announces `ambrosian_calendars`, v5 does not. v5 answers any
+     * path carrying a rite segment with a bare 400 — on EVERY route, not only
+     * Ambrosian ones — so emitting the segment unconditionally would break every
+     * request this library makes against it.
+     *
+     * @returns {boolean}
+     */
+    get supportsRite() {
+        return Array.isArray( this.#metadata?.ambrosian_calendars );
+    }
+
+    /**
+     * Whether a diocese belongs to a nation according to this API's metadata.
+     *
+     * @param {string} dioceseId - The diocesan calendar ID.
+     * @param {string} nation - The national calendar ID (ISO 3166-1 alpha-2).
+     * @returns {boolean} False when the diocese is unknown to this API.
+     * @throws {Error} If the metadata has not been loaded.
+     */
+    isValidDioceseForNation( dioceseId, nation ) {
+        this.#assertLoaded( 'isValidDioceseForNation' );
+        const diocese = this.#metadata.diocesan_calendars.find(
+            diocesanCalendar => diocesanCalendar.calendar_id === dioceseId
+        );
+        return undefined !== diocese && diocese.nation === nation;
     }
 
 }
