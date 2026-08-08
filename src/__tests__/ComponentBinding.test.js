@@ -1,10 +1,10 @@
 /** @jest-environment jsdom */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
+import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
-import { Rite } from '../Enums.js';
+import { Rite, CalendarSelectFilter } from '../Enums.js';
 import { FULL_METADATA, OTHER_METADATA } from '../__fixtures__/metadata.js';
 
 const DEV  = 'http://localhost:8000';
@@ -332,6 +332,63 @@ describe( 'PathBuilder binding', () => {
         expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( /different API bases/ );
         expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
         expect( () => new PathBuilder( apiOptions, calendarSelect ) ).toThrow( /example\.org/ );
+    } );
+
+} );
+
+describe( 'CalendarSelect.linkToNationsSelect binding', () => {
+
+    it( 'throws when the dioceses select and the nations select are bound to different bases, naming both', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const nationSelect = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        const dioceseSelect = new CalendarSelect( { locale: 'en', apiClient: prodClient } )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
+        expect( () => dioceseSelect.linkToNationsSelect( nationSelect ) ).toThrow( /different API bases/ );
+        expect( () => dioceseSelect.linkToNationsSelect( nationSelect ) ).toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
+        expect( () => dioceseSelect.linkToNationsSelect( nationSelect ) ).toThrow( /example\.org/ );
+    } );
+
+    it( 'does not link when it throws, leaving both selects unlinked', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const nationSelect = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        const dioceseSelect = new CalendarSelect( { locale: 'en', apiClient: prodClient } )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
+        expect( () => dioceseSelect.linkToNationsSelect( nationSelect ) ).toThrow();
+        expect( dioceseSelect._hasDependentDioceseSelects ).toBe( false );
+        expect( nationSelect._hasDependentDioceseSelects ).toBe( false );
+    } );
+
+} );
+
+describe( 'ApiBase.assertSameBase', () => {
+
+    it( 'does not throw when both bases are the same', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        expect( () => assertSameBase( base, base, 'Test: a and b', 'Nothing would break.' ) ).not.toThrow();
+    } );
+
+    it( 'throws naming both URLs when the bases differ', () => {
+        const dev  = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prod = ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        expect( () => assertSameBase( dev, prod, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /different API bases/ );
+        expect( () => assertSameBase( dev, prod, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
+        expect( () => assertSameBase( dev, prod, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /example\.org/ );
+    } );
+
+    it( 'includes the given pairing and consequence text in the message', () => {
+        const dev  = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prod = ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        expect( () => assertSameBase( dev, prod, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /^Test: a and b are bound to different API bases/ );
+        expect( () => assertSameBase( dev, prod, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /Something would break\.$/ );
     } );
 
 } );

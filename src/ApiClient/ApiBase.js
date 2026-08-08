@@ -509,3 +509,27 @@ export function resolveBase( apiClient, componentName ) {
     }
     return fallback;
 }
+
+/**
+ * Asserts that two bases involved in a component pairing are the same one.
+ *
+ * Shared by every pairing that must agree on their API base — `PathBuilder` binding the
+ * `ApiOptions`/`CalendarSelect` it was constructed with, `CalendarSelect.linkToNationsSelect()`
+ * binding a dioceses select to a nations select, and any future pairing — so the message
+ * shape cannot drift between call sites while a mismatch is still reported with the specific
+ * pairing that failed and both concrete URLs, not just "somewhere, two bases disagreed".
+ *
+ * @param {ApiBase} a - The first base.
+ * @param {ApiBase} b - The second base.
+ * @param {string} pairing - Identifies the failing pairing, e.g. `"PathBuilder: the apiOptions
+ *        and calendarSelect passed to it"`. Prefixed to the message, before the shared "are bound
+ *        to different API bases" clause.
+ * @param {string} consequence - Explains what the mismatch would cause. Appended after both URLs.
+ * @returns {void}
+ * @throws {Error} If `a` and `b` are not the same base.
+ */
+export function assertSameBase( a, b, pairing, consequence ) {
+    if ( a !== b ) {
+        throw new Error( `${pairing} are bound to different API bases — ${a.url} and ${b.url}. ${consequence}` );
+    }
+}

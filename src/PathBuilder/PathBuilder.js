@@ -1,7 +1,7 @@
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
-import ApiBase from '../ApiClient/ApiBase.js';
+import ApiBase, { assertSameBase } from '../ApiClient/ApiBase.js';
 import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
 
 // `CurrentEndpoint`, `CalendarType` and `RequestPayload` are defined in
@@ -42,13 +42,11 @@ export default class PathBuilder {
         if (!calendarSelect || false === calendarSelect instanceof CalendarSelect) {
             throw new Error('calendarSelect must be an instance of CalendarSelect');
         }
-        if ( apiOptions._base !== calendarSelect._base ) {
-            throw new Error(
-                `PathBuilder: the apiOptions and calendarSelect passed to it are bound to different API bases — `
-                + `${apiOptions._base.url} and ${calendarSelect._base.url}. A path built from one API's options and `
-                + `another API's calendars would point at neither.`
-            );
-        }
+        assertSameBase(
+            apiOptions._base, calendarSelect._base,
+            'PathBuilder: the apiOptions and calendarSelect passed to it',
+            `A path built from one API's options and another API's calendars would point at neither.`
+        );
         this.#base = apiOptions._base;
 
         this.#currentEndpoint = apiOptions._currentEndpoint;
