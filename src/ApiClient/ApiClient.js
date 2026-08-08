@@ -500,6 +500,19 @@ export default class ApiClient {
           } );
       }
       return response.json();
+    }).catch( error => {
+      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to land in this catch, get
+      // relabelled `POST <url> failed: …`, and be re-emitted as
+      // `calendarFetchFailed`, handing subscribers both events for one request
+      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+      // it now propagates to the returned promise unwrapped and emits nothing.
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -510,12 +523,6 @@ export default class ApiClient {
       this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
-    }).catch( error => {
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
     });
   }
 
@@ -590,6 +597,19 @@ export default class ApiClient {
           } );
       }
       return response.json();
+    }).catch( error => {
+      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to land in this catch, get
+      // relabelled `POST <url> failed: …`, and be re-emitted as
+      // `calendarFetchFailed`, handing subscribers both events for one request
+      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+      // it now propagates to the returned promise unwrapped and emits nothing.
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -600,12 +620,6 @@ export default class ApiClient {
       this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
-    }).catch( error => {
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
     });
   }
 
@@ -680,6 +694,19 @@ export default class ApiClient {
           } );
       }
       return response.json();
+    }).catch( error => {
+      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to land in this catch, get
+      // relabelled `POST <url> failed: …`, and be re-emitted as
+      // `calendarFetchFailed`, handing subscribers both events for one request
+      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+      // it now propagates to the returned promise unwrapped and emits nothing.
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -690,12 +717,6 @@ export default class ApiClient {
       this.#calendarData = data;
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
-    }).catch( error => {
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
     });
   }
 

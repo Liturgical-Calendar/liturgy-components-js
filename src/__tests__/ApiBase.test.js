@@ -122,6 +122,7 @@ describe( 'ApiBase rejects an unusable calendar index', () => {
 
     const { national_calendars, ...NO_NATIONS  } = FULL_METADATA;
     const { diocesan_calendars, ...NO_DIOCESES } = FULL_METADATA;
+    const { locales,            ...NO_LOCALES  } = FULL_METADATA;
 
     it( 'rejects metadata with no national_calendars from fromMetadata', () => {
         expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow( /national_calendars/ );
@@ -129,6 +130,25 @@ describe( 'ApiBase rejects an unusable calendar index', () => {
 
     it( 'rejects metadata with no diocesan_calendars from fromMetadata', () => {
         expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_DIOCESES ) ).toThrow( /diocesan_calendars/ );
+    } );
+
+    /**
+     * `locales` is required for the same reason as the other two, but it fails on
+     * the request path rather than at construction: `ApiClient.fetchCalendar`
+     * calls `this.#base.locales().includes( … )`, so an index without it produces
+     * a bare `TypeError: Cannot read properties of undefined (reading 'includes')`
+     * — exactly the failure mode this validation exists to prevent.
+     */
+    it( 'rejects metadata with no locales from fromMetadata', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_LOCALES ) ).toThrow( /locales/ );
+    } );
+
+    it( 'rejects metadata with no locales from load, as an ApiClientError', async () => {
+        global.fetch = jest.fn().mockResolvedValue( okResponse( NO_LOCALES ) );
+        const base = ApiBase.resolve( 'http://localhost:8000' );
+        await expect( base.load() ).rejects.toBeInstanceOf( ApiClientError );
+        await expect( base.load() ).rejects.toThrow( /locales/ );
+        expect( base.isLoaded ).toBe( false );
     } );
 
     it( 'names the base url in the message', () => {

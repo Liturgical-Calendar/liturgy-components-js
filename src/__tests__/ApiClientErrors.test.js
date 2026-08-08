@@ -127,6 +127,65 @@ describe( 'ApiClient calendar fetch failure', () => {
 
 } );
 
+/**
+ * A throwing `calendarFetched` listener is the listener's bug, not the API's.
+ *
+ * `EventEmitter.emit` is a synchronous `forEach`, and `WebCalendar`'s
+ * `calendarFetched` handler throws on malformed data — so with the `.catch`
+ * attached after the emit stage, a rendering bug propagated into it, was
+ * relabelled `POST <url> failed: …`, and was re-emitted as `calendarFetchFailed`
+ * even though the HTTP request had succeeded. A subscriber then saw BOTH events
+ * for one request. The `.catch` now sits between the response-handling stage and
+ * the cache/emit stage, so a listener's throw reaches the caller unwrapped and
+ * emits nothing.
+ */
+describe( 'ApiClient does not report a listener failure as a fetch failure', () => {
+
+    const loadBaseThenServeEveryCalendarRequest = () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        global.fetch = jest.fn( () => Promise.resolve( {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {} } )
+        } ) );
+    };
+
+    const cases = [
+        [ 'fetchCalendar', client => client.fetchCalendar() ],
+        [ 'fetchNationalCalendar', client => client.fetchNationalCalendar( 'IT' ) ],
+        [ 'fetchDiocesanCalendar', client => client.fetchDiocesanCalendar( 'romamo_it' ) ]
+    ];
+
+    it.each( cases )( '%s rejects with the listener\'s own error, unwrapped', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client        = await ApiClient.init( DEV );
+        const listenerError = new Error( 'listener blew up' );
+        client.on( 'calendarFetched', () => { throw listenerError; } );
+        // One call only: a second would be served from the cache, whose emit is
+        // synchronous and outside the promise chain under test.
+        let caught = null;
+        try {
+            await fetchWith( client );
+        } catch ( error ) {
+            caught = error;
+        }
+        expect( caught ).toBe( listenerError );
+        expect( caught ).not.toBeInstanceOf( ApiClientError );
+    } );
+
+    it.each( cases )( '%s emits no calendarFetchFailed when a calendarFetched listener throws', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client    = await ApiClient.init( DEV );
+        const onFailure = jest.fn();
+        client.on( 'calendarFetched', () => { throw new Error( 'listener blew up' ); } );
+        client.on( 'calendarFetchFailed', onFailure );
+        await expect( fetchWith( client ) ).rejects.toThrow( 'listener blew up' );
+        expect( onFailure ).not.toHaveBeenCalled();
+    } );
+
+} );
+
 describe( 'ApiClient fire-and-forget callers', () => {
 
     /**

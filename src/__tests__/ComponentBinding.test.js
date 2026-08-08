@@ -496,4 +496,42 @@ describe( 'ApiBase.assertSameBase', () => {
             .toThrow( /Something would break\.$/ );
     } );
 
+    /**
+     * Every caller reads the other side's base off a component property, so a
+     * caller passing the wrong type hands in `undefined`. Dereferencing `.url` on
+     * it produced a bare `TypeError: Cannot read properties of undefined (reading
+     * 'url')` from inside this helper, naming neither the pairing nor the side at
+     * fault.
+     */
+    it( 'reports a missing first base rather than throwing a TypeError on .url', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        expect( () => assertSameBase( undefined, base, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /the first carries no API base/ );
+        expect( () => assertSameBase( undefined, base, 'Test: a and b', 'Something would break.' ) )
+            .not.toThrow( TypeError );
+    } );
+
+    it( 'reports a missing second base', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        expect( () => assertSameBase( base, undefined, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /the second carries no API base/ );
+    } );
+
+    it( 'reports both sides when neither carries a base', () => {
+        expect( () => assertSameBase( undefined, null, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /the first carries no API base \(found undefined\), and the second carries no API base \(found null\)/ );
+    } );
+
+    it( 'rejects an object that merely looks like a base', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        expect( () => assertSameBase( base, { url: DEV }, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /the second carries no API base/ );
+    } );
+
+    it( 'names the pairing in the missing-base message', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        expect( () => assertSameBase( base, undefined, 'Test: a and b', 'Something would break.' ) )
+            .toThrow( /^Test: a and b cannot be checked for a shared API base/ );
+    } );
+
 } );

@@ -97,12 +97,14 @@ export default class ApiBase {
      * Asserts that a calendar index carries the fields every component reads.
      *
      * Both entry points that install metadata run this, because an index missing
-     * `national_calendars` or `diocesan_calendars` is not a usable calendar index:
-     * without the check it reaches a component and surfaces as a bare
-     * `TypeError: undefined is not iterable`, naming neither the missing field nor
-     * the API that omitted it. `fromMetadata` needs it as much as `load` does — it
-     * is how every fixture in the test suite is built, so an incomplete fixture
-     * would otherwise fail far from its cause.
+     * `national_calendars`, `diocesan_calendars` or `locales` is not a usable
+     * calendar index: without the check it reaches a component and surfaces as a
+     * bare `TypeError: undefined is not iterable` — or, for `locales`, as
+     * `Cannot read properties of undefined (reading 'includes')` from
+     * `ApiClient.fetchCalendar` on the request path — naming neither the missing
+     * field nor the API that omitted it. `fromMetadata` needs it as much as `load`
+     * does — it is how every fixture in the test suite is built, so an incomplete
+     * fixture would otherwise fail far from its cause.
      *
      * @param {unknown} metadata - The candidate calendar index.
      * @param {string} url - The normalized base URL, for the message.
@@ -114,7 +116,7 @@ export default class ApiBase {
         if ( null === metadata || typeof metadata !== 'object' || Array.isArray( metadata ) ) {
             throw new Error( `ApiBase: the calendar index of the base at ${url} must be an object, but found: ${Array.isArray( metadata ) ? 'array' : typeof metadata}.` );
         }
-        [ 'national_calendars', 'diocesan_calendars' ].forEach( field => {
+        [ 'national_calendars', 'diocesan_calendars', 'locales' ].forEach( field => {
             if ( false === Object.hasOwn( metadata, field ) ) {
                 throw new Error( `ApiBase: the calendar index of the base at ${url} carries no \`${field}\` field. Every component reads it; an index without it is not a usable calendar index.` );
             }
@@ -148,7 +150,7 @@ export default class ApiBase {
      * @param {string} url - The base URL.
      * @param {import('../typedefs.js').CalendarIndex} metadata - The calendar index.
      * @returns {ApiBase}
-     * @throws {Error} If the metadata is not an object or omits `national_calendars` or `diocesan_calendars`.
+     * @throws {Error} If the metadata is not an object or omits `national_calendars`, `diocesan_calendars` or `locales`.
      */
     static fromMetadata( url, metadata ) {
         const normalized = ApiBase.normalizeUrl( url );
@@ -519,16 +521,34 @@ export function resolveBase( apiClient, componentName ) {
  * shape cannot drift between call sites while a mismatch is still reported with the specific
  * pairing that failed and both concrete URLs, not just "somewhere, two bases disagreed".
  *
- * @param {ApiBase} a - The first base.
+ * Every caller reads the other side's base off a property of the component handed to it —
+ * `calendarSelectInstance._base`, `apiOptions._base`. When that argument is not the component
+ * type the pairing expects, the property is `undefined`, and reading `.url` off it threw a bare
+ * `TypeError: Cannot read properties of undefined (reading 'url')` from inside this helper —
+ * hiding the real cause, which is that one side was never a component with a base at all. Both
+ * arguments are therefore checked before either is dereferenced, and the message names which
+ * side was absent.
+ *
+ * @param {ApiBase} a - The first base, in the order the `pairing` text names the two sides.
  * @param {ApiBase} b - The second base.
  * @param {string} pairing - Identifies the failing pairing, e.g. `"PathBuilder: the apiOptions
  *        and calendarSelect passed to it"`. Prefixed to the message, before the shared "are bound
  *        to different API bases" clause.
  * @param {string} consequence - Explains what the mismatch would cause. Appended after both URLs.
  * @returns {void}
- * @throws {Error} If `a` and `b` are not the same base.
+ * @throws {Error} If either argument is not an `ApiBase`, or if `a` and `b` are not the same base.
  */
 export function assertSameBase( a, b, pairing, consequence ) {
+    const absent = [];
+    if ( false === a instanceof ApiBase ) {
+        absent.push( `the first carries no API base (found ${String( a )})` );
+    }
+    if ( false === b instanceof ApiBase ) {
+        absent.push( `the second carries no API base (found ${String( b )})` );
+    }
+    if ( absent.length > 0 ) {
+        throw new Error( `${pairing} cannot be checked for a shared API base: ${absent.join( ', and ' )}. Pass the component type this pairing expects — one constructed with an \`apiClient\`, or bound to the default base — rather than an object that holds no base.` );
+    }
     if ( a !== b ) {
         throw new Error( `${pairing} are bound to different API bases — ${a.url} and ${b.url}. ${consequence}` );
     }

@@ -15,6 +15,7 @@ import { Rite, CalendarSelectFilter } from '../Enums.js';
  * self-consistent index — deliberately does not contain.
  */
 const METADATA = {
+    locales: [ 'en', 'it', 'la' ],
     national_calendars: [
         { calendar_id: 'IT', locales: [ 'it-IT' ] },
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ] }
