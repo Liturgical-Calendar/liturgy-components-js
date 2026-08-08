@@ -478,7 +478,22 @@ export default class ApiClient {
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      // The emit stays synchronous, exactly as before: on a hit, listeners have
+      // always run before this statement returns, and callers may depend on that.
+      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to throw straight out of the
+      // fetch method, before any promise existed, and `.catch()` on the call could
+      // never see it. On a cache MISS the same throw reaches the caller as a
+      // rejection, because the `.catch` below sits above the emit stage. A
+      // listener's throw is the listener's bug, but it must reach the caller the
+      // same way on a hit as on a miss: cache state is not something a caller
+      // controls or can even observe. Do not "simplify" this `try` away.
+      try {
+        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      } catch ( error ) {
+        return Promise.reject( error );
+      }
       return Promise.resolve( cachedData );
     }
 
@@ -575,7 +590,22 @@ export default class ApiClient {
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      // The emit stays synchronous, exactly as before: on a hit, listeners have
+      // always run before this statement returns, and callers may depend on that.
+      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to throw straight out of the
+      // fetch method, before any promise existed, and `.catch()` on the call could
+      // never see it. On a cache MISS the same throw reaches the caller as a
+      // rejection, because the `.catch` below sits above the emit stage. A
+      // listener's throw is the listener's bug, but it must reach the caller the
+      // same way on a hit as on a miss: cache state is not something a caller
+      // controls or can even observe. Do not "simplify" this `try` away.
+      try {
+        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      } catch ( error ) {
+        return Promise.reject( error );
+      }
       return Promise.resolve( cachedData );
     }
 
@@ -672,7 +702,22 @@ export default class ApiClient {
     const cachedData = this.#getCachedData(cacheKey);
     if (cachedData) {
       this.#calendarData = cachedData;
-      this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      // The emit stays synchronous, exactly as before: on a hit, listeners have
+      // always run before this statement returns, and callers may depend on that.
+      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+      // WebCalendar does, on malformed data — used to throw straight out of the
+      // fetch method, before any promise existed, and `.catch()` on the call could
+      // never see it. On a cache MISS the same throw reaches the caller as a
+      // rejection, because the `.catch` below sits above the emit stage. A
+      // listener's throw is the listener's bug, but it must reach the caller the
+      // same way on a hit as on a miss: cache state is not something a caller
+      // controls or can even observe. Do not "simplify" this `try` away.
+      try {
+        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+      } catch ( error ) {
+        return Promise.reject( error );
+      }
       return Promise.resolve( cachedData );
     }
 

@@ -27,6 +27,31 @@ const loadBaseThenFailEveryCalendarRequest = () => {
     } ) );
 };
 
+/**
+ * The mirror image: a base already loaded from the fixture, whose every calendar
+ * request succeeds. Hoisted to module scope because both listener-failure
+ * describes below need it — the cache-miss one and the cache-hit one.
+ */
+const loadBaseThenServeEveryCalendarRequest = () => {
+    ApiBase.fromMetadata( DEV, FULL_METADATA );
+    global.fetch = jest.fn( () => Promise.resolve( {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {} } )
+    } ) );
+};
+
+/**
+ * The three fetch methods, so that every contract below is asserted of all of
+ * them rather than of whichever one happened to be written first.
+ */
+const fetchCases = [
+    [ 'fetchCalendar', client => client.fetchCalendar() ],
+    [ 'fetchNationalCalendar', client => client.fetchNationalCalendar( 'IT' ) ],
+    [ 'fetchDiocesanCalendar', client => client.fetchDiocesanCalendar( 'romamo_it' ) ]
+];
+
 beforeEach( () => {
     ApiBase.reset();
 } );
@@ -141,29 +166,14 @@ describe( 'ApiClient calendar fetch failure', () => {
  */
 describe( 'ApiClient does not report a listener failure as a fetch failure', () => {
 
-    const loadBaseThenServeEveryCalendarRequest = () => {
-        ApiBase.fromMetadata( DEV, FULL_METADATA );
-        global.fetch = jest.fn( () => Promise.resolve( {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {} } )
-        } ) );
-    };
-
-    const cases = [
-        [ 'fetchCalendar', client => client.fetchCalendar() ],
-        [ 'fetchNationalCalendar', client => client.fetchNationalCalendar( 'IT' ) ],
-        [ 'fetchDiocesanCalendar', client => client.fetchDiocesanCalendar( 'romamo_it' ) ]
-    ];
-
-    it.each( cases )( '%s rejects with the listener\'s own error, unwrapped', async ( _name, fetchWith ) => {
+    it.each( fetchCases )( '%s rejects with the listener\'s own error, unwrapped', async ( _name, fetchWith ) => {
         loadBaseThenServeEveryCalendarRequest();
         const client        = await ApiClient.init( DEV );
         const listenerError = new Error( 'listener blew up' );
         client.on( 'calendarFetched', () => { throw listenerError; } );
-        // One call only: a second would be served from the cache, whose emit is
-        // synchronous and outside the promise chain under test.
+        // One call only, so that this exercises the cache-MISS path specifically.
+        // The cache-hit path reaches the caller the same way, and is covered
+        // separately in the describe below.
         let caught = null;
         try {
             await fetchWith( client );
@@ -174,7 +184,7 @@ describe( 'ApiClient does not report a listener failure as a fetch failure', () 
         expect( caught ).not.toBeInstanceOf( ApiClientError );
     } );
 
-    it.each( cases )( '%s emits no calendarFetchFailed when a calendarFetched listener throws', async ( _name, fetchWith ) => {
+    it.each( fetchCases )( '%s emits no calendarFetchFailed when a calendarFetched listener throws', async ( _name, fetchWith ) => {
         loadBaseThenServeEveryCalendarRequest();
         const client    = await ApiClient.init( DEV );
         const onFailure = jest.fn();
@@ -182,6 +192,103 @@ describe( 'ApiClient does not report a listener failure as a fetch failure', () 
         client.on( 'calendarFetchFailed', onFailure );
         await expect( fetchWith( client ) ).rejects.toThrow( 'listener blew up' );
         expect( onFailure ).not.toHaveBeenCalled();
+    } );
+
+} );
+
+/**
+ * The same contract, on the cached branch.
+ *
+ * A cache hit returns early, before the promise chain that carries the `.catch`
+ * above the emit stage exists at all. `EventEmitter.emit` being a synchronous
+ * `forEach`, a throwing `calendarFetched` listener used to throw straight OUT of
+ * the fetch method on a hit — `apiClient.fetchCalendar().catch( handler )` never
+ * ran `handler`, because no promise had been returned for `.catch` to attach to.
+ * The identical listener on a cache miss arrived as a rejection. One method thus
+ * had two different failure contracts, selected by whether the response happened
+ * to be cached — which a caller neither controls nor can observe. The cached
+ * branch now wraps its emit and returns `Promise.reject( error )`.
+ *
+ * Every rejection assertion below calls the fetch method OUTSIDE any `try`, as
+ * the argument to `expect()`, so that a synchronous throw fails the test at the
+ * call rather than being caught by the assertion. That is the whole point: an
+ * assertion that tolerated both would not distinguish the fix from the bug.
+ */
+describe( 'ApiClient rejects rather than throwing synchronously on a cache hit', () => {
+
+    /**
+     * Fetches once with no listeners attached, so the response lands in the cache
+     * and a second identical call is served from it, then clears the fetch mock so
+     * that a later `not.toHaveBeenCalled()` proves the second call was a cache hit.
+     *
+     * @param {ApiClient} client - The client to prime.
+     * @param {Function} fetchWith - The fetch method under test, applied to `client`.
+     * @returns {Promise<object>} The data the priming call resolved to.
+     */
+    const primeTheCache = async ( client, fetchWith ) => {
+        const data = await fetchWith( client );
+        global.fetch.mockClear();
+        return data;
+    };
+
+    it.each( fetchCases )( '%s serves an identical second call from the cache', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client = await ApiClient.init( DEV );
+        await primeTheCache( client, fetchWith );
+        await fetchWith( client );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it.each( fetchCases )( '%s rejects with the listener\'s own error, unwrapped, on a cache hit', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client        = await ApiClient.init( DEV );
+        await primeTheCache( client, fetchWith );
+        const listenerError = new Error( 'listener blew up on cached data' );
+        client.on( 'calendarFetched', () => { throw listenerError; } );
+        await expect( fetchWith( client ) ).rejects.toBe( listenerError );
+        await expect( fetchWith( client ) ).rejects.not.toBeInstanceOf( ApiClientError );
+        // Still the cached branch, not a silent refetch that happened to fail.
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it.each( fetchCases )( '%s emits no calendarFetchFailed on a cache hit whose listener throws', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client    = await ApiClient.init( DEV );
+        await primeTheCache( client, fetchWith );
+        const onFailure = jest.fn();
+        client.on( 'calendarFetched', () => { throw new Error( 'listener blew up on cached data' ); } );
+        client.on( 'calendarFetchFailed', onFailure );
+        await expect( fetchWith( client ) ).rejects.toThrow( 'listener blew up on cached data' );
+        expect( onFailure ).not.toHaveBeenCalled();
+    } );
+
+    it.each( fetchCases )( '%s still resolves to the cached data and still emits calendarFetched', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client    = await ApiClient.init( DEV );
+        const cached    = await primeTheCache( client, fetchWith );
+        const onFetched = jest.fn();
+        client.on( 'calendarFetched', onFetched );
+        await expect( fetchWith( client ) ).resolves.toBe( cached );
+        expect( onFetched ).toHaveBeenCalledTimes( 1 );
+        expect( onFetched.mock.calls[ 0 ][ 0 ] ).toBe( cached );
+        expect( onFetched.mock.calls[ 0 ][ 1 ] ).toEqual( { rite: 'roman' } );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it.each( fetchCases )( '%s notifies a cache-hit listener before the call returns', async ( _name, fetchWith ) => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client    = await ApiClient.init( DEV );
+        await primeTheCache( client, fetchWith );
+        const onFetched = jest.fn();
+        client.on( 'calendarFetched', onFetched );
+        // The emit on a hit is deliberately still synchronous: wrapping it in a
+        // `try` fixes the returned promise's contract and nothing else. Deferring
+        // it into a microtask would also have made the throw a rejection, but would
+        // have moved this assertion's ground out from under any consumer relying on
+        // a cached call having already notified its listeners.
+        const pending = fetchWith( client );
+        expect( onFetched ).toHaveBeenCalledTimes( 1 );
+        await pending;
     } );
 
 } );
