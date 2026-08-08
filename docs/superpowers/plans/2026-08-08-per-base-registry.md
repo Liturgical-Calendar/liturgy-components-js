@@ -2702,6 +2702,21 @@ git commit -m "Migrate the test suite to ApiBase fixtures instead of fetch mocks
 - Consumes: everything from Tasks 1–9.
 - Produces: no library change. Working examples under the rejecting `init()`.
 
+**Two distinct kinds of call site, needing two greps.** `init()` is only half of it. The three fetch
+methods now reject too, and `ApiClient`'s internal `#discardRequest` suppressor deliberately covers only
+the library's own fire-and-forget paths — a consumer's own `apiClient.fetchCalendar( locale )` is the
+consumer's promise, so an unhandled rejection there is correct behaviour and must be handled at the call
+site. Both greps are needed:
+
+```bash
+grep -rn "ApiClient.init" examples/ src/stories/ .storybook/
+grep -rn "\.fetchCalendar(\|\.fetchNationalCalendar(\|\.fetchDiocesanCalendar(" examples/ src/stories/
+```
+
+The second finds roughly five discarded calls in `examples/` and seven in `src/stories/` that the first
+misses entirely. Each needs a `.catch()` rendering the failure where that page or story already renders
+its errors.
+
 - [ ] **Step 1: Update one example and confirm the pattern**
 
 In `examples/WebCalendar/main.js`, replace the
