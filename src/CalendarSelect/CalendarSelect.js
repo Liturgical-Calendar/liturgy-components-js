@@ -4,6 +4,7 @@ import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
 import { assertPlainOptions } from '../OptionsValidation.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
 
 /**
@@ -157,23 +158,8 @@ export default class CalendarSelect {
         }
         const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
-            if (typeof inputLocale !== 'string') {
-                throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
-            }
-            let locale = inputLocale;
-            if (locale.includes('_')) {
-                locale = locale.replaceAll('_', '-');
-            }
-            try {
-                const canonicalLocales = Intl.getCanonicalLocales(locale);
-                if (canonicalLocales.length === 0) {
-                    throw new Error('Invalid locale: ' + locale);
-                }
-                this.#locale = canonicalLocales[0];
-                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
-            } catch (e) {
-                throw new Error('Invalid locale: ' + locale);
-            }
+            this.#locale = canonicalizeLocale(inputLocale, 'CalendarSelect');
+            this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
         } else {
             this.#locale = 'en';
             try {

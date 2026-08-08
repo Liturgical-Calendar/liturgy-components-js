@@ -2,6 +2,7 @@ import Messages from '../Messages.js';
 import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
 import { assertPlainOptions } from '../OptionsValidation.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 
 /**
  * A select menu for the liturgical rite a calendar request is computed under.
@@ -51,22 +52,7 @@ export default class RiteSelect {
 
         const { locale: inputLocale, id, name } = options;
         if ( inputLocale !== undefined && inputLocale !== null ) {
-            if ( typeof inputLocale !== 'string' ) {
-                throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale );
-            }
-            // Matches CalendarSelect: canonicalize through `Intl.getCanonicalLocales`
-            // so an invalid locale is reported with this library's own message
-            // rather than as a raw `RangeError` out of `new Intl.Locale()`.
-            const locale = inputLocale.replaceAll( '_', '-' );
-            try {
-                const canonicalLocales = Intl.getCanonicalLocales( locale );
-                if ( canonicalLocales.length === 0 ) {
-                    throw new Error( 'Invalid locale: ' + locale );
-                }
-                this.#locale = canonicalLocales[ 0 ];
-            } catch ( e ) {
-                throw new Error( 'Invalid locale: ' + locale );
-            }
+            this.#locale = canonicalizeLocale( inputLocale, 'RiteSelect' );
         }
 
         const language = new Intl.Locale( this.#locale ).language;

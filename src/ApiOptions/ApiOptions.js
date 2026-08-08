@@ -15,7 +15,8 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
-import { assertPlainOptions, describeType } from '../OptionsValidation.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
 
 /**
@@ -159,24 +160,13 @@ export default class ApiOptions {
             assertPlainOptions( options, 'ApiOptions' );
         }
         const { locale = 'en', apiClient = null } = options;
-        if ( typeof locale !== 'string' ) {
-            throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + describeType( locale ) );
-        }
+        // Both locale checks now precede `resolveBase`, where previously only the
+        // type check did: the comment above applies just as much to a malformed tag
+        // as to a wrong-typed one. A caller who wrote `new ApiOptions( 'not a locale' )`
+        // on a page with no registered base hears about the locale rather than the
+        // registry — which is the argument they got wrong.
+        this.#locale = toIntlLocale( locale, 'ApiOptions' );
         this.#base = resolveBase( apiClient, 'ApiOptions' );
-        const normalizedLocale = locale.replaceAll('_', '-');
-        // Wrapped as `CalendarSelect` wraps it: `Intl.getCanonicalLocales` throws a
-        // RangeError reading `Incorrect locale information provided`, which names
-        // neither the offending tag nor the component. The `length === 0` branch it
-        // replaces was unreachable for that same reason.
-        try {
-            const canonicalLocales = Intl.getCanonicalLocales(normalizedLocale);
-            if (canonicalLocales.length === 0) {
-                throw new Error('Invalid locale: ' + normalizedLocale);
-            }
-            this.#locale = new Intl.Locale(canonicalLocales[0]);
-        } catch (e) {
-            throw new Error('Invalid locale: ' + normalizedLocale);
-        }
         this.#inputs.epiphanyInput = new EpiphanyInput(this.#locale);
         this.#inputs.ascensionInput = new AscensionInput(this.#locale);
         this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);

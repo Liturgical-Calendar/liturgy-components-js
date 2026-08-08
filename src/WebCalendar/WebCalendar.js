@@ -2,6 +2,7 @@ import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, Latin
 import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 
 export default class WebCalendar {
     /**
@@ -706,30 +707,29 @@ export default class WebCalendar {
      * date to show the day of the month and the full weekday name; otherwise, it
      * uses the configured date style.
      *
+     * The tag is normalized (`_` to `-`) and canonicalized before it is stored, so
+     * `'en_us'` and `'EN-us'` both become `'en-US'`.
+     *
      * @param {string} locale - The locale identifier to set, following BCP 47 language tag format.
      * @throws {Error} If the provided locale is not a string or an invalid locale identifier.
      * @returns {WebCalendar} The current instance of the class for method chaining.
      */
     locale(locale) {
-        if (typeof locale !== 'string') {
-            throw new Error('WebCalendar.locale: Invalid type for locale, must be of type string but found type: ' + typeof locale);
-        }
+        // Kept ahead of the shared helper, which has no reason to know that an empty
+        // string is a distinct kind of mistake: `Intl` rejects it like any other
+        // malformed tag, and `Invalid locale: ` naming nothing is no help at all.
         if (locale === '') {
             throw new Error('WebCalendar.locale:Invalid locale identifier, cannot be an empty string');
         }
-        locale = locale.replace(/_/g, '-');
-        try {
-            const testLocale = new Intl.Locale(locale);
-            this.#locale = locale;
-            this.#baseLocale = testLocale.language;
-            this.#monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
-            if (this.#dateFormat === DateFormat.DAY_ONLY) {
-                this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { day: 'numeric', weekday: 'long', timeZone: 'UTC' });
-            } else {
-                this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
-            }
-        } catch (e) {
-            throw new Error('Invalid locale identifier: ' + locale);
+        // Named for the method rather than the class: `locale()` is a setter a caller
+        // invokes by name, so `WebCalendar.locale:` points straight at the call.
+        this.#locale = canonicalizeLocale(locale, 'WebCalendar.locale');
+        this.#baseLocale = new Intl.Locale(this.#locale).language;
+        this.#monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
+        if (this.#dateFormat === DateFormat.DAY_ONLY) {
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { day: 'numeric', weekday: 'long', timeZone: 'UTC' });
+        } else {
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
         }
         return this;
     }
@@ -1188,7 +1188,9 @@ export default class WebCalendar {
      * @returns {WebCalendar} The current instance of the WebCalendar class
      */
     async buildTable() {
-        this.locale(this.#calendarData.settings.locale.replaceAll('_', '-'));
+        // The API returns `en_US`-style tags; `locale()` normalizes the underscores
+        // itself now, so the caller no longer repeats the replacement here.
+        this.locale(this.#calendarData.settings.locale);
 
         // In the PHP version we create the table element here,
         // but in this JS version we create the table element in the constructor.

@@ -3,6 +3,7 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { assertPlainOptions } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfTheDay {
 
@@ -241,15 +242,7 @@ export default class LiturgyOfTheDay {
      * @private
      */
     #validateLocale(locale) {
-        if (typeof locale !== 'string') {
-            throw new Error('LiturgyOfTheDay: Invalid locale');
-        }
-        locale = locale.replaceAll('_', '-');
-        try {
-            this.#locale = new Intl.Locale(locale);
-        } catch (e) {
-            throw new Error('LiturgyOfTheDay: Invalid locale');
-        }
+        this.#locale = toIntlLocale(locale, 'LiturgyOfTheDay');
     }
 
     /**

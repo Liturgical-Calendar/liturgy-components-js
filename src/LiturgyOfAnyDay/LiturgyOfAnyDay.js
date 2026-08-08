@@ -4,6 +4,7 @@ import { DayInput, MonthInput, YearInput } from '../ApiOptions/Input/index.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { assertPlainOptions } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfAnyDay {
 
@@ -265,15 +266,7 @@ export default class LiturgyOfAnyDay {
      * @private
      */
     #validateLocale(locale) {
-        if (typeof locale !== 'string') {
-            throw new Error('LiturgyOfAnyDay: Invalid locale');
-        }
-        locale = locale.replaceAll('_', '-');
-        try {
-            this.#locale = new Intl.Locale(locale);
-        } catch (e) {
-            throw new Error('LiturgyOfAnyDay: Invalid locale');
-        }
+        this.#locale = toIntlLocale(locale, 'LiturgyOfAnyDay');
     }
 
     /**
