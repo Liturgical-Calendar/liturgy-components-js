@@ -37,23 +37,36 @@ for the full coordination strategy across PHP, JavaScript, and React platforms.
 
 ```text
 liturgy-components-js/
-├── src/                      # TypeScript source files
-│   ├── index.js             # Main entry point
-│   ├── ApiClient.js         # API communication, event emitter
-│   ├── CalendarSelect.js    # Calendar dropdown component
-│   ├── ApiOptions.js        # API parameter form controls
-│   ├── WebCalendar.js       # Calendar table renderer
-│   ├── LiturgyOfTheDay.js   # Daily liturgy widget
-│   ├── PathBuilder.js       # API URL builder
-│   ├── Enums.js             # Type-safe enumerations
-│   ├── Messages.js          # Localized UI strings (13 languages)
-│   ├── Utils.js             # Utility functions
-│   ├── ApiOptions/Input/    # Form input components
-│   ├── WebCalendar/         # Table rendering helpers
-│   └── stories/             # Storybook stories
-├── dist/                    # Compiled output
-├── examples/                # Working example applications
-└── .storybook/              # Storybook configuration
+├── src/                            # TypeScript source files
+│   ├── index.js                    # Main entry point
+│   ├── Enums.js                    # Type-safe enumerations
+│   ├── Messages.js                 # Localized UI strings (13 languages)
+│   ├── Utils.js                    # Utility functions
+│   ├── typedefs.js                 # Shared JSDoc typedefs
+│   ├── ApiClient/
+│   │   ├── ApiClient.js            # API communication, per-base client
+│   │   ├── ApiBase.js              # One object per API base URL: registry, metadata, cache
+│   │   ├── ApiClientError.js       # Error carrying url/status/statusText/body/cause
+│   │   └── EventEmitter.js         # Event bus used by ApiClient
+│   ├── ApiOptions/
+│   │   ├── ApiOptions.js           # API parameter form controls
+│   │   └── Input/                  # Form input components
+│   ├── CalendarSelect/             # Calendar dropdown component
+│   ├── RiteSelect/                 # Rite dropdown component
+│   ├── PathBuilder/
+│   │   ├── PathBuilder.js          # API URL builder
+│   │   └── CurrentEndpoint.js      # Endpoint state a PathBuilder renders
+│   ├── WebCalendar/                # Calendar table renderer and helpers
+│   ├── LiturgyOfTheDay/            # Daily liturgy widget
+│   ├── LiturgyOfAnyDay/            # Liturgy of any selected date widget
+│   ├── ReadingsRenderer/           # Lectionary readings renderer
+│   ├── __fixtures__/               # Metadata fixtures for the tests
+│   ├── __tests__/                  # Jest unit tests
+│   └── stories/                    # Storybook stories
+├── dist/                           # Compiled output
+├── docs/                           # Component and API documentation
+├── examples/                       # Working example applications
+└── .storybook/                     # Storybook configuration
 ```
 
 ## Development Commands

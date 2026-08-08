@@ -4,9 +4,11 @@ Releases before 2.0.0 are not recorded here; see the git history.
 
 ## 2.0.0
 
-One breaking change forced the major version: `ApiClient.init()` now rejects instead of resolving to `false`.
-Everything else in this release is additive, a deprecation, or a narrower break that only affects code reaching
-past the package's public exports.
+Two breaking changes forced the major version, and both are the same change of mind: a failure the library used
+to log and swallow is now a rejection the caller owns. `ApiClient.init()` rejects instead of resolving to
+`false`, and the fetch methods return a promise that rejects instead of one that cannot fail. Everything else in
+this release is additive, a deprecation, or a narrower break that only affects code reaching past the package's
+public exports.
 
 ### Breaking
 
@@ -35,6 +37,33 @@ past the package's public exports.
   ```
 
   The `instanceof` guard is now dead code and can be deleted: the `then` callback only runs on success.
+
+- `fetchCalendar()`, `fetchNationalCalendar()`, `fetchDiocesanCalendar()` and `refetchCalendarData()` now return
+  a promise that **rejects** when the request fails. They previously returned `undefined` and ended in a
+  `.catch()` that logged the error with `console.error` and swallowed it, so a failed request could never reach
+  the caller. Called as a bare statement — the documented idiom, and what every example in this repository did —
+  a failure now surfaces as an unhandled promise rejection instead of a logged error:
+
+  ```js
+  // Before — returned undefined; the library logged any failure for you
+  apiClient.fetchCalendar( 'en' );
+
+  // After — handle the promise
+  apiClient.fetchCalendar( 'en' ).catch( error => {
+      console.error( `Could not fetch from ${error.url}: ${error.message}` );
+  } );
+
+  // …or report failures once, through the event, and discard the individual promise
+  apiClient.on( 'calendarFetchFailed', error => showBanner( error ) );
+  apiClient.fetchCalendar( 'en' ).catch( () => {} );
+  ```
+
+  The promise resolves to this request's calendar data — or, if a newer request superseded it in flight, to the
+  client's current data — and rejects with an `ApiClientError` after emitting `calendarFetchFailed`. A promise
+  you hold is yours: the library does not log it on your behalf. Its `console.error` fallback covers only its
+  own fire-and-forget calls — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year handling — which
+  have no caller to hand a promise back to, and even those are silenced once anything is subscribed to
+  `calendarFetchFailed`. Subscribing is therefore the intended way to take over reporting entirely.
 
 Two narrower breaks, listed for completeness:
 
@@ -74,10 +103,15 @@ Two narrower breaks, listed for completeness:
   survive logging and `JSON.stringify`.
 - The `calendarFetchFailed` event, emitted as `( error, { rite } )`, and `apiClient.on( event, listener )` as a
   chainable shorthand for `apiClient._eventBus.on()`.
-- Guards against pairing components across bases. `new PathBuilder( apiOptions, calendarSelect )` throws when
-  its two arguments are bound to different bases — a path built from one API's options and another API's
-  calendars would point at neither — and takes its own base from them rather than from an option of its own.
-  `CalendarSelect.linkToNationsSelect()` throws on the same mismatch.
+- Guards against pairing components across bases, on every pairing that crosses instances.
+  `new PathBuilder( apiOptions, calendarSelect )` throws when its two arguments are bound to different bases —
+  a path built from one API's options and another API's calendars would point at neither — and takes its own
+  base from them rather than from an option of its own.
+  `CalendarSelect.linkToNationsSelect()` throws on the same mismatch, as does
+  `ApiOptions.linkToCalendarSelect()` for every select passed to it, in both its single and its
+  nation/diocese-pair forms, and `ApiClient.listenTo()` for a `CalendarSelect` or an `ApiOptions` bound
+  elsewhere. A `RiteSelect` is exempt: it builds its options from the `Rite` enum, reads no metadata, and so
+  holds no base to disagree about. Each guard names both URLs and what the mismatch would have caused.
 - `ApiBase` and `ApiClientError` are exported from the package root.
 - The `CalendarIndex`, `NationalCalendar`, `DiocesanCalendar`, `DiocesanGroup`, `WiderRegion` and `CalendarData`
   typedefs.
@@ -85,16 +119,6 @@ Two narrower breaks, listed for completeness:
 
 ### Changed
 
-- `fetchCalendar()`, `fetchNationalCalendar()` and `fetchDiocesanCalendar()` return a promise. They previously
-  returned `undefined`, so awaiting one resolved immediately without waiting for the request. The promise
-  resolves to this request's calendar data — or, if a newer request superseded it in flight, to the client's
-  current data — and rejects with an `ApiClientError` after emitting `calendarFetchFailed`.
-- Failures are logged only when nobody could have handled them. A promise you hold is yours: your
-  `fetchCalendar()` rejects and is not logged. The requests the library issues for itself — the listeners behind
-  `listenTo()`, and `LiturgyOfAnyDay`'s year handling — have no caller to hand a promise back to, so their
-  rejection is delivered to `calendarFetchFailed` and then suppressed if anything is subscribed to it, or logged
-  with `console.error` if nothing is. Subscribing to `calendarFetchFailed` therefore silences the console
-  entirely, which is the intended way to take over reporting.
 - Response caches are bounded, and belong to a base rather than to the `ApiClient` class: 50 entries per base by
   default, evicted least-recently-**read** first, with optional expiry. Both are configured through
   `ApiBase.cacheLimits( { maxEntries, ttl } )`. The cache was previously a single unbounded static map shared by

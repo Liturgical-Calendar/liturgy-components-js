@@ -35,6 +35,22 @@ export default class PathBuilder {
      */
     #currentEndpoint;
 
+    /**
+     * Builds a PathBuilder that renders, and keeps up to date, the API path described by an
+     * `ApiOptions` and a `CalendarSelect`.
+     *
+     * Takes no API base of its own: it adopts the one its two arguments already share, which
+     * is why they are required to agree on it.
+     *
+     * @param {ApiOptions} apiOptions - The `ApiOptions` whose inputs drive the path. Its
+     *   `CurrentEndpoint` is borrowed rather than copied, so the rite and calendar mutations
+     *   that `ApiOptions` performs land on the very object serialized here.
+     * @param {CalendarSelect} calendarSelect - The select supplying the `calendar_id` segment
+     *   of the path.
+     * @throws {Error} If `apiOptions` is not an instance of `ApiOptions`.
+     * @throws {Error} If `calendarSelect` is not an instance of `CalendarSelect`.
+     * @throws {Error} If the two arguments are bound to different API bases.
+     */
     constructor(apiOptions, calendarSelect) {
         if (!apiOptions || false === apiOptions instanceof ApiOptions) {
             throw new Error('calendarPathInput must be an instance of CalendarPathInput');

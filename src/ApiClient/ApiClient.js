@@ -1,7 +1,7 @@
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import ApiBase from './ApiBase.js';
+import ApiBase, { assertSameBase } from './ApiBase.js';
 import ApiClientError from './ApiClientError.js';
 import EventEmitter from './EventEmitter.js';
 import { YearType, Rite, RiteProperties } from '../Enums.js';
@@ -436,6 +436,10 @@ export default class ApiClient {
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.
+   * @throws {Error} Synchronously, when the API cannot serve the current rite, when `locale` is
+   *                 given but is not a string, or when `locale` is given as an empty string.
+   *                 Nothing is thrown for a well-formed locale the calendar does not support: the
+   *                 request is made with the locale already in force.
    */
   fetchCalendar(locale = null) {
     this.#assertRiteSupported();
@@ -728,12 +732,25 @@ export default class ApiClient {
    * @param {CalendarSelect|RiteSelect|ApiOptions} uiComponent - The component to listen to.
    * @returns {ApiClient} This instance, for chaining.
    * @throws {Error} If the argument is not one of the three supported types.
+   * @throws {Error} If a `CalendarSelect` or `ApiOptions` is bound to a different API base
+   *                 than this client.
    */
   listenTo( uiComponent = null ) {
     if ( false === uiComponent instanceof CalendarSelect
       && false === uiComponent instanceof ApiOptions
       && false === uiComponent instanceof RiteSelect ) {
       throw new Error( 'ApiClient.listenTo(): Expected an instance of CalendarSelect, RiteSelect or ApiOptions' );
+    }
+    // A `RiteSelect` is deliberately not checked: it builds its options from the
+    // `Rite` enum, reads no metadata and therefore holds no base, so there is
+    // nothing to compare it against.
+    if ( uiComponent instanceof CalendarSelect || uiComponent instanceof ApiOptions ) {
+      const componentName = uiComponent instanceof CalendarSelect ? 'CalendarSelect' : 'ApiOptions';
+      assertSameBase(
+        this.#base, uiComponent._base,
+        `ApiClient.listenTo(): this ApiClient and the ${componentName} passed to it`,
+        'Every change in that component would send this client after a calendar_id the other API serves, against an API that does not.'
+      );
     }
     if (uiComponent instanceof CalendarSelect) {
       return this.#listenToCalendarSelect( uiComponent );

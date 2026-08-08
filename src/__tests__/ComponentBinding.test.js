@@ -4,6 +4,8 @@ import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
+import ApiClient from '../ApiClient/ApiClient.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite, CalendarSelectFilter } from '../Enums.js';
 import { FULL_METADATA, OTHER_METADATA } from '../__fixtures__/metadata.js';
 
@@ -360,6 +362,109 @@ describe( 'CalendarSelect.linkToNationsSelect binding', () => {
         expect( () => dioceseSelect.linkToNationsSelect( nationSelect ) ).toThrow();
         expect( dioceseSelect._hasDependentDioceseSelects ).toBe( false );
         expect( nationSelect._hasDependentDioceseSelects ).toBe( false );
+    } );
+
+} );
+
+describe( 'ApiOptions.linkToCalendarSelect binding', () => {
+
+    it( 'throws when the single linked CalendarSelect is bound to another base, naming both', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const apiOptions     = new ApiOptions( { locale: 'en', apiClient: devClient } );
+        const calendarSelect = new CalendarSelect( { locale: 'en', apiClient: prodClient } );
+        expect( () => apiOptions.linkToCalendarSelect( calendarSelect ) ).toThrow( /different API bases/ );
+        expect( () => apiOptions.linkToCalendarSelect( calendarSelect ) ).toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
+        expect( () => apiOptions.linkToCalendarSelect( calendarSelect ) ).toThrow( /example\.org/ );
+    } );
+
+    it( 'throws when either half of a linked nation/diocese pair is bound to another base', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+
+        const strayNation = new CalendarSelect( { locale: 'en', apiClient: prodClient } )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        const ownDiocese  = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
+        expect( () => new ApiOptions( { locale: 'en', apiClient: devClient } )
+            .linkToCalendarSelect( [ strayNation, ownDiocese ] ) ).toThrow( /different API bases/ );
+
+        const ownNation     = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        const strayDiocese  = new CalendarSelect( { locale: 'en', apiClient: prodClient } )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
+        expect( () => new ApiOptions( { locale: 'en', apiClient: devClient } )
+            .linkToCalendarSelect( [ ownNation, strayDiocese ] ) ).toThrow( /different API bases/ );
+    } );
+
+    it( 'does not throw when every linked select shares the ApiOptions base', () => {
+        const devClient = clientFor( DEV, FULL_METADATA );
+        const nation  = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.NATIONAL_CALENDARS );
+        const diocese = new CalendarSelect( { locale: 'en', apiClient: devClient } )
+            .filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
+        expect( () => new ApiOptions( { locale: 'en', apiClient: devClient } )
+            .linkToCalendarSelect( [ nation, diocese ] ) ).not.toThrow();
+        expect( () => new ApiOptions( { locale: 'en', apiClient: devClient } )
+            .linkToCalendarSelect( new CalendarSelect( { locale: 'en', apiClient: devClient } ) ) ).not.toThrow();
+    } );
+
+    /**
+     * The guard belongs with the other validation, and validation runs before any
+     * side effect: a rejected link must leave the instance linkable, and must not
+     * have flipped `explicitRite` or attached a rite listener on the way out.
+     */
+    it( 'leaves the ApiOptions unlinked when it throws', () => {
+        const devClient  = clientFor( DEV, FULL_METADATA );
+        const prodClient = clientFor( PROD, OTHER_METADATA );
+        const apiOptions = new ApiOptions( { locale: 'en', apiClient: devClient } );
+        const stray      = new CalendarSelect( { locale: 'en', apiClient: prodClient } );
+        expect( () => apiOptions.linkToCalendarSelect( stray, new RiteSelect( 'en' ) ) ).toThrow( /different API bases/ );
+        expect( apiOptions._currentEndpoint.explicitRite ).toBe( false );
+        expect( () => apiOptions.linkToCalendarSelect(
+            new CalendarSelect( { locale: 'en', apiClient: devClient } )
+        ) ).not.toThrow();
+    } );
+
+} );
+
+describe( 'ApiClient.listenTo binding', () => {
+
+    it( 'throws when the CalendarSelect is bound to another base, naming both', () => {
+        const dev    = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prod   = ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        const client = new ApiClient( dev );
+        const select = new CalendarSelect( { locale: 'en', apiClient: { base: prod } } );
+        expect( () => client.listenTo( select ) ).toThrow( /different API bases/ );
+        expect( () => client.listenTo( select ) ).toThrow( new RegExp( DEV.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) ) );
+        expect( () => client.listenTo( select ) ).toThrow( /example\.org/ );
+    } );
+
+    it( 'throws when the ApiOptions is bound to another base', () => {
+        const dev    = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const prod   = ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        const client = new ApiClient( dev );
+        const apiOptions = new ApiOptions( { locale: 'en', apiClient: { base: prod } } );
+        expect( () => client.listenTo( apiOptions ) ).toThrow( /different API bases/ );
+    } );
+
+    it( 'does not throw for components bound to the client own base', () => {
+        const dev    = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const client = new ApiClient( dev );
+        expect( () => client.listenTo( new CalendarSelect( { locale: 'en', apiClient: { base: dev } } ) ) ).not.toThrow();
+        expect( () => client.listenTo( new ApiOptions( { locale: 'en', apiClient: { base: dev } } ) ) ).not.toThrow();
+    } );
+
+    /**
+     * A `RiteSelect` builds its options from the `Rite` enum and reads no metadata,
+     * so it holds no base at all. The guard must skip it rather than compare against
+     * an invented one.
+     */
+    it( 'accepts a RiteSelect, which holds no base', () => {
+        const dev = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        ApiBase.fromMetadata( PROD, OTHER_METADATA );
+        const client = new ApiClient( dev );
+        expect( () => client.listenTo( new RiteSelect( 'en' ) ) ).not.toThrow();
     } );
 
 } );

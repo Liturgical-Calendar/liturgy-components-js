@@ -12,7 +12,7 @@ import {
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import ApiBase, { resolveBase } from '../ApiClient/ApiBase.js';
+import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import Utils from '../Utils.js';
@@ -523,6 +523,30 @@ export default class ApiOptions {
     }
 
     /**
+     * Asserts that a `CalendarSelect` about to be linked reads the same API as this
+     * instance does.
+     *
+     * Applied to every select passed to `linkToCalendarSelect()`, in both its shapes,
+     * because both end in the same place: `#applyCalendarToInputs()` looks the
+     * selected `calendar_id` up in THIS instance's base. A select filled from another
+     * API offers ids that lookup does not find, and the `undefined` it returns is
+     * dereferenced one line later, inside a `change` listener whose exception the DOM
+     * discards — so the failure is a stale locale select and nothing in the console.
+     *
+     * @param {CalendarSelect} calendarSelectInstance - The select being linked.
+     * @returns {void}
+     * @throws {Error} If the select is bound to a different API base than this instance.
+     * @private
+     */
+    #assertLinkedSelectSharesBase( calendarSelectInstance ) {
+        assertSameBase(
+            this.#base, calendarSelectInstance._base,
+            'ApiOptions.linkToCalendarSelect: this ApiOptions and the CalendarSelect passed to it',
+            `Applying a calendar chosen from one API's select to the other API's option inputs would look its calendar_id up in metadata that does not describe it, and throw inside a change listener the DOM discards, leaving the locale select silently stale.`
+        );
+    }
+
+    /**
      * Applies a selected calendar's own settings and locales to the option inputs.
      *
      * Extracted so both linked forms behave alike. This work used to be inlined
@@ -758,6 +782,8 @@ export default class ApiOptions {
      * implicit form.
      * @returns {ApiOptions} - The ApiOptions instance.
      * @throws {Error} If `riteSelect` is provided but is not an instance of `RiteSelect`.
+     * @throws {Error} If any of the CalendarSelect instances passed is bound to a different API base
+     * than this ApiOptions instance.
      */
     linkToCalendarSelect(calendarSelect, riteSelect = null) {
         if (this.#linked) {
@@ -788,6 +814,7 @@ export default class ApiOptions {
             ) {
                 throw new Error('When linking two CalendarSelect instances, one instance must be a `nations` filtered CalendarSelect and the other a `dioceses` filtered CalendarSelect, instead we found: ' + calendarSelect[0]._filter + ' and ' + calendarSelect[1]._filter);
             }
+            calendarSelect.forEach( calendarSelectInstance => this.#assertLinkedSelectSharesBase( calendarSelectInstance ) );
             this.#handleMultipleLinkedCalendarSelects(calendarSelect);
         } else {
             if (false === calendarSelect instanceof CalendarSelect) {
@@ -799,6 +826,7 @@ export default class ApiOptions {
             if (calendarSelect._domElement.children.length === 0) {
                 throw new Error('ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
             }
+            this.#assertLinkedSelectSharesBase( calendarSelect );
             this.#handleSingleLinkedCalendarSelect(calendarSelect);
         }
         // Only now, with `calendarSelect` fully validated, do the rite side

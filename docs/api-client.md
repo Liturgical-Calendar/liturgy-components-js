@@ -102,6 +102,16 @@ try {
 }
 ```
 
+**This is a breaking change in 2.0.0.** Before it, these methods returned `undefined` and logged any failure
+with `console.error` themselves, so the bare-statement calls shown above could not fail visibly. They now
+reject, and a bare statement leaves that rejection unhandled. Either handle the promise, or report failures
+once through the event and discard the promise deliberately:
+
+```javascript
+apiClient.on('calendarFetchFailed', error => showBanner(error));
+apiClient.fetchCalendar('en').catch(() => {});
+```
+
 ## Errors
 
 `ApiClientError` extends `Error` and carries the request context as enumerable properties, so it survives
