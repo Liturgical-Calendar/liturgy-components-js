@@ -84,6 +84,10 @@ throws if those two disagree. `CalendarSelect.linkToNationsSelect()` throws on t
 metadata and cache are shared. That is what allows two clients on one API to hold different rites:
 
 ```javascript
+import { ApiClient, Rite } from '@liturgical-calendar/components-js';
+
+const BASE = 'https://litcal.johnromanodorazio.com/api/dev';
+
 const roman = await ApiClient.init(BASE);
 const ambrosian = await ApiClient.init(BASE);
 ambrosian.rite(Rite.AMBROSIAN);

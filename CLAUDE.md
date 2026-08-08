@@ -213,7 +213,8 @@ The `ApiClient` is the central hub for API communication. It fetches calendar da
 const apiClient = await ApiClient.init(BaseUrl); // wrap in try/catch, or use .catch()
 ```
 
-The three fetch methods also return promises that reject with an `ApiClientError`, after emitting
+The fetch methods — `fetchCalendar()`, `fetchNationalCalendar()`, `fetchDiocesanCalendar()` and
+`refetchCalendarData()` — also return promises that reject with an `ApiClientError`, after emitting
 `calendarFetchFailed` as `(error, { rite })`. Subscribe with the chainable `apiClient.on(event, listener)`.
 
 Failures are logged only when nobody could have handled them: a promise the caller holds rejects and is not

@@ -63,7 +63,9 @@ public exports.
   you hold is yours: the library does not log it on your behalf. Its `console.error` fallback covers only its
   own fire-and-forget calls — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year handling — which
   have no caller to hand a promise back to, and even those are silenced once anything is subscribed to
-  `calendarFetchFailed`. Subscribing is therefore the intended way to take over reporting entirely.
+  `calendarFetchFailed`. Subscribing is therefore the intended way to take over reporting entirely. A throw from
+  a `calendarFetched` listener is **not** a fetch failure: it propagates to the returned promise unwrapped, and
+  emits no `calendarFetchFailed`.
 
 Two narrower breaks, listed for completeness:
 
