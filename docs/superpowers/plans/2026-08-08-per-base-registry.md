@@ -2478,13 +2478,20 @@ git commit -m "Bind ApiOptions and LocaleInput to an ApiBase"
 **Files:**
 
 - Modify: `src/PathBuilder/PathBuilder.js` (constructor at `:36`, the URL reads at `:64` and `:177`)
+- Modify: `src/CalendarSelect/CalendarSelect.js` — `linkToNationsSelect()` and `linkToRiteSelect()`
 - Test: `src/__tests__/ComponentBinding.test.js` (append)
 
 **Interfaces:**
 
 - Consumes: `apiOptions._base` from Task 8 and `calendarSelect._base` from Task 7.
 - Produces: a `PathBuilder` that renders its own base's URL and throws when its two arguments disagree about
-  the base.
+  the base; `linkToNationsSelect()` and `linkToRiteSelect()` that throw on the same mismatch.
+
+**The guard belongs on every pairing, not only `PathBuilder`.** `linkToNationsSelect()` narrows one select's
+diocese list using another select's chosen nation. Given two selects bound to different bases, the dioceses
+come from one API and the nations from another, and the result is a silently wrong option list — the same
+failure `PathBuilder`'s guard exists to catch, in a place a user is more likely to reach. Apply the identical
+check and the identical error shape, naming both URLs, in `linkToNationsSelect()` and `linkToRiteSelect()`.
 
 - [ ] **Step 1: Write the failing test**
 
