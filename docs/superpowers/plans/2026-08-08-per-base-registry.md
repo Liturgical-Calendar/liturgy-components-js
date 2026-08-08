@@ -2003,8 +2003,9 @@ git commit -m "Propagate API failures as ApiClientError instead of swallowing th
 
 **Files:**
 
+- Modify: `src/ApiClient/ApiBase.js` (append the `resolveBase` named export after the class — Step 3)
 - Modify: `src/CalendarSelect/CalendarSelect.js` (statics at `:31`–`:33`, `#init()` at `:127`, the constructor
-  at `:167`, the `#init()` call at `:218`, the diocesan filter at `:372`, the national list at `:340`)
+  at `:167`, the `#init()` guard at `:217`–`:219`, the diocesan filter at `:372`, the national list at `:340`)
 - Test: `src/__tests__/ComponentBinding.test.js`
 
 **Interfaces:**
