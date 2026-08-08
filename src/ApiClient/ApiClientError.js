@@ -26,11 +26,15 @@ export default class ApiClientError extends Error {
         this.status     = status;
         this.statusText = statusText;
         this.body       = body;
-        // Set explicitly as a plain property, like its siblings above: the native `cause` option
-        // passed to `super()` is honoured on modern runtimes, but is silently dropped (no exception,
-        // `err.cause` simply `undefined`) on ES2022-`error-cause`-less runtimes that otherwise support
-        // ES modules (e.g. Chrome 61-92, Safari 11-14). This property survives on all of them.
-        this.cause      = cause;
+        // `super()` already sets `cause` where the runtime honours ES2022 `error-cause` (and silently
+        // drops it, with no exception, on ES-module-capable runtimes that predate it, e.g. Chrome 61-92,
+        // Safari 11-14) — but even when it is set, the spec defines it as non-enumerable, and a plain
+        // `this.cause = cause` here would only update that existing property's value, not its
+        // enumerability ([[Set]] cannot do that). `Object.defineProperty` forces `cause` to be
+        // enumerable in both the "supplied" and "omitted" cases, so it behaves like its four siblings
+        // above: visible to `Object.keys`, `JSON.stringify` and log serializers, whether it holds an
+        // error or `null`.
+        Object.defineProperty( this, 'cause', { value: cause, writable: true, enumerable: true, configurable: true } );
     }
 
 }

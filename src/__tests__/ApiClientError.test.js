@@ -42,4 +42,11 @@ describe( 'ApiClientError', () => {
         expect( err.cause ).toBeNull();
     } );
 
+    it( 'exposes cause as an enumerable own property, whether supplied or omitted', () => {
+        const errWithCause = new ApiClientError( 'wrapped', { cause: new TypeError( 'fetch failed' ) } );
+        const errWithoutCause = new ApiClientError( 'failed' );
+        expect( Object.keys( errWithCause ) ).toContain( 'cause' );
+        expect( Object.keys( errWithoutCause ) ).toContain( 'cause' );
+    } );
+
 } );
