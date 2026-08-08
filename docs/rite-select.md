@@ -221,7 +221,11 @@ riteSelect.appendTo( '#rite' );
 
 apiClient.listenTo( riteSelect ); // changing the rite refetches
 apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
-apiClient.fetchCalendar();        // GET /calendar/ambrosian
+try {
+    await apiClient.fetchCalendar(); // GET /calendar/ambrosian
+} catch ( error ) {
+    console.error( `Could not fetch calendar: ${error.message}` );
+}
 ```
 
 Two behaviours are worth knowing:

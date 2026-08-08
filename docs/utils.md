@@ -74,7 +74,9 @@ ApiClient.init().then(apiClient => {
     apiOptions._localeInput._domElement.value = selectedLocale;
 
     // Fetch with the matched locale
-    apiClient.fetchCalendar(selectedLocale);
+    apiClient.fetchCalendar(selectedLocale).catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
 });
 ```
 

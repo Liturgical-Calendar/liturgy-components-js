@@ -158,7 +158,9 @@ apiClient.year(2025);
 apiClient.yearType(YearType.LITURGICAL);
 
 // Chainable
-apiClient.year(2025).yearType(YearType.CIVIL).fetchCalendar('en');
+apiClient.year(2025).yearType(YearType.CIVIL).fetchCalendar('en').catch((error) => {
+    console.error(`Could not fetch calendar: ${error.message}`);
+});
 ```
 
 > [!NOTE]
@@ -179,7 +181,11 @@ riteSelect.appendTo('#rite');
 
 apiClient.listenTo(riteSelect);   // changing the rite refetches
 apiClient.rite(Rite.AMBROSIAN);   // or set it directly; chainable
-apiClient.fetchCalendar();        // GET /calendar/ambrosian
+try {
+    await apiClient.fetchCalendar(); // GET /calendar/ambrosian
+} catch (error) {
+    console.error(`Could not fetch calendar: ${error.message}`);
+}
 ```
 
 Against a rite-aware API (v6 or `dev`) the segment is emitted for **every** rite, including Roman, so

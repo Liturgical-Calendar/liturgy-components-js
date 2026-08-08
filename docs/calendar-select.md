@@ -273,6 +273,8 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     apiOptions.appendTo('#calendarOptions');
 
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
 });
 ```

@@ -22,7 +22,9 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
         .listenTo(apiClient);
     liturgyOfTheDay.replace('#liturgyOfTheDay');
 
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
 });
 ```
 
@@ -60,7 +62,9 @@ By default, `year_type=LITURGICAL` is fetched. To ensure all events display thro
 import { ApiClient, LiturgyOfTheDay, YearType } from '@liturgical-calendar/components-js';
 
 // Option 1: Use CIVIL year type
-apiClient.yearType(YearType.CIVIL).fetchCalendar('en');
+apiClient.yearType(YearType.CIVIL).fetchCalendar('en').catch((error) => {
+    console.error(`Could not fetch calendar: ${error.message}`);
+});
 
 // Option 2: Handle edge cases dynamically (recommended)
 // See examples/LiturgyOfTheDay for full implementation
@@ -93,7 +97,9 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
         .listenTo(apiClient);
     liturgyOfAnyDay.appendTo('#liturgyContainer');
 
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
 });
 ```
 
@@ -236,6 +242,8 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 
     // Wire up ApiClient
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
 });
 ```
