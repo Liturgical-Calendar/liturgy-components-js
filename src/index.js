@@ -1,4 +1,5 @@
 import ApiClient from "./ApiClient/ApiClient.js";
+import ApiClientError from './ApiClient/ApiClientError.js';
 import CalendarSelect from "./CalendarSelect/CalendarSelect.js";
 import RiteSelect from "./RiteSelect/RiteSelect.js";
 import ApiOptions from "./ApiOptions/ApiOptions.js";
@@ -12,6 +13,7 @@ import { Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay, ApiOp
 
 export {
     ApiClient,
+    ApiClientError,
     CalendarSelect,
     RiteSelect,
     ApiOptions,

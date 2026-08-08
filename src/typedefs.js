@@ -162,4 +162,59 @@
  * @prop {number} cd - The count of the liturgical events within the same day
  */
 
+/**
+ * @typedef {Object} NationalCalendar
+ * @prop {string} calendar_id - The calendar ID (ISO 3166-1 alpha-2 country code)
+ * @prop {string[]} locales - The locales supported by this calendar
+ * @prop {string[]} missals - The Roman Missal editions available for this calendar
+ * @prop {{epiphany: string, ascension: string, corpus_christi: string, eternal_high_priest: boolean}} settings - The calendar's default settings
+ * @prop {string} [wider_region] - The wider region this calendar belongs to
+ * @prop {string[]} [dioceses] - The calendar IDs of the dioceses within this nation
+ */
+
+/**
+ * @typedef {Object} DiocesanCalendar
+ * @prop {string} calendar_id - The calendar ID for the diocese
+ * @prop {string} diocese - The name of the diocese
+ * @prop {string} nation - The nation this diocese belongs to (ISO 3166-1 alpha-2 country code)
+ * @prop {string[]} locales - The locales supported by this calendar
+ * @prop {string} timezone - The IANA timezone for this diocese
+ * @prop {string} [group] - The diocesan group this diocese belongs to
+ * @prop {{epiphany?: string, ascension?: string, corpus_christi?: string}} [settings] - Settings overriding the national defaults
+ * @prop {'roman'|'ambrosian'} [rite] - The rite this diocese celebrates. Absent on the v5 API, where a missing value means `roman`.
+ */
+
+/**
+ * @typedef {Object} DiocesanGroup
+ * @prop {string} group_name - The name of the diocesan group
+ * @prop {string[]} dioceses - The calendar IDs of the dioceses in this group
+ */
+
+/**
+ * @typedef {Object} WiderRegion
+ * @prop {string} name - The name of the wider region
+ * @prop {string[]} locales - The locales supported by this region
+ * @prop {string} api_path - The API path for this region's calendar
+ */
+
+/**
+ * The response body of the API's `/calendars` path: an index of every calendar the
+ * API can serve.
+ *
+ * Distinct from {@link CalendarMetadata}, which is the `metadata` block within a
+ * single calendar response. The two describe different objects and must not be
+ * used interchangeably.
+ *
+ * @typedef {Object} CalendarIndex
+ * @prop {NationalCalendar[]} national_calendars - Every national calendar
+ * @prop {string[]} national_calendars_keys - The calendar IDs of every national calendar
+ * @prop {DiocesanCalendar[]} diocesan_calendars - Every diocesan calendar
+ * @prop {string[]} diocesan_calendars_keys - The calendar IDs of every diocesan calendar
+ * @prop {DiocesanGroup[]} diocesan_groups - Groups of dioceses
+ * @prop {WiderRegion[]} wider_regions - Wider regions, such as continents
+ * @prop {string[]} wider_regions_keys - The names of every wider region
+ * @prop {string[]} locales - Every locale the API supports
+ * @prop {NationalCalendar[]} [ambrosian_calendars] - The Ambrosian rite's own calendars. Absent on the v5 API; its absence is how rite support is feature-detected.
+ */
+
 export default {};
