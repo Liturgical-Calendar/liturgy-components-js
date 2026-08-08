@@ -1,6 +1,7 @@
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
 import Utils from '../Utils.js';
 
@@ -57,6 +58,11 @@ export default class CalendarSelect {
     #allowNull                            = false;
     /** @type {?CalendarSelect} The `nations` filtered select this one is linked to, if any. */
     #linkedNationsSelect                  = null;
+    /** @type {CalendarSelect[]} Diocese selects that derive their per-nation narrowing from this one. */
+    #dependentDioceseSelects              = [];
+    #riteLinked                           = false;
+    /** @type {boolean} Whether `#applyLinkedRite` dispatches its own `change`. See `linkToRiteSelect()`. */
+    #riteChangeDispatch                   = true;
 
 
     /**
@@ -575,6 +581,32 @@ export default class CalendarSelect {
     _setHidden( hidden ) {
         const target = this.#wrapperElement ?? this.#domElement;
         target.hidden = hidden;
+    }
+
+    /**
+     * Records that `dioceseSelect` derives its options from this select.
+     *
+     * Called by `linkToNationsSelect()` on the nations instance. The link is
+     * otherwise one-directional — the diocese holds `#linkedNationsSelect` and the
+     * nation knows nothing — which leaves a nation select unable to tell whether
+     * dispatching `change` would disturb a dependent. See `linkToRiteSelect()`.
+     *
+     * @param {CalendarSelect} dioceseSelect - The dependent, `dioceses` filtered select.
+     * @returns {void}
+     */
+    _registerDependentDioceseSelect( dioceseSelect ) {
+        if ( false === this.#dependentDioceseSelects.includes( dioceseSelect ) ) {
+            this.#dependentDioceseSelects.push( dioceseSelect );
+        }
+    }
+
+    /**
+     * Whether any diocese select derives its options from this one.
+     *
+     * @returns {boolean}
+     */
+    get _hasDependentDioceseSelects() {
+        return this.#dependentDioceseSelects.length > 0;
     }
 
     /**
@@ -1234,6 +1266,86 @@ export default class CalendarSelect {
     }
 
     /**
+     * Makes this select follow a `RiteSelect`, rebuilding its options whenever the
+     * rite changes.
+     *
+     * Works for any filter, which is what a select used without an `ApiOptions`
+     * needs — `ApiOptions.linkToCalendarSelect()` accepts only a `none` filtered
+     * single select or a nations/dioceses pair.
+     *
+     * The rite is applied once immediately with the rite select's current value,
+     * so a select mounted under an already-chosen rite is correct without waiting
+     * for a change event.
+     *
+     * @param {RiteSelect} riteSelect - The rite select to follow.
+     * @param {boolean} [dispatchChange=true] - Second, positional argument (not an
+     *        options object): whether the rebuild dispatches its own `change` on
+     *        this select's DOM element (subject to the same has-dependent-diocese-selects
+     *        exclusion `#applyLinkedRite` always applies).
+     *        Defaults to `true`, which is what a standalone select needs so its own
+     *        listeners (e.g. a `PathBuilder`) hear about the rebuild. `ApiOptions`
+     *        calls `linkToRiteSelect( riteSelect, false )` and dispatches its own
+     *        `change` once its endpoint state has caught up, so a select it manages
+     *        is not notified twice with one stale in between. See
+     *        `ApiOptions#handleLinkedRiteSelect`.
+     * @returns {CalendarSelect} This instance, for chaining.
+     * @throws {Error} If already linked to a rite select, or if `riteSelect` is not one.
+     */
+    linkToRiteSelect( riteSelect, dispatchChange = true ) {
+        if ( this.#riteLinked ) {
+            throw new Error( 'Current CalendarSelect instance is already linked to a RiteSelect instance. Note that `ApiOptions.linkToCalendarSelect()` links a RiteSelect internally, so this can happen without ever calling `linkToRiteSelect()` yourself.' );
+        }
+        if ( false === riteSelect instanceof RiteSelect ) {
+            throw new Error( 'Invalid type for parameter passed to linkToRiteSelect, must be of type `RiteSelect` but found type: ' + typeof riteSelect );
+        }
+        this.#riteLinked = true;
+        this.#riteChangeDispatch = dispatchChange;
+        riteSelect._domElement.addEventListener( 'change', ( ev ) => this.#applyLinkedRite( ev.target.value ) );
+        this.#applyLinkedRite( riteSelect._domElement.value );
+        return this;
+    }
+
+    /**
+     * Rebuilds this select for `rite`, as a linked `RiteSelect` changes.
+     *
+     * @param {string} rite - A value from the `Rite` enum.
+     * @returns {void}
+     * @private
+     */
+    #applyLinkedRite( rite ) {
+        const riteProps = RiteProperties[ rite ];
+
+        // Cleared BEFORE the rebuild as well as after: a diocese select linked to a
+        // nation select re-derives its per-nation narrowing from that select's
+        // CURRENT value inside `_applyRite()`, and that value must already be the
+        // reset one rather than the outgoing rite's — otherwise the rebuilt list is
+        // filtered for a nation that is no longer selected.
+        this.#domElement.value = '';
+        this._applyRite( rite, true );
+        this.#domElement.value = '';
+
+        if ( CalendarSelectFilter.NATIONAL_CALENDARS === this.#filter ) {
+            this._setHidden( false === riteProps.hasNationalTier );
+        }
+
+        // A dependent diocese select carries its own `change` listener on this
+        // element, which would re-derive its options for the now-empty nation value
+        // and stomp the flat list `_applyRite()` just built for a tierless rite.
+        // With no dependent there is nothing to disturb, and staying silent would
+        // instead strand a consumer holding the value we just cleared.
+        //
+        // `#riteChangeDispatch` is the other half of that same silence, opted into
+        // by a caller (`ApiOptions`) that dispatches its own `change` later, once
+        // ITS state has caught up — see `linkToRiteSelect()`. Without it, a select
+        // with no dependent would receive two `change` events per rite change: this
+        // one immediately (querying `ApiOptions`' endpoint before it has updated
+        // its rite), and the caller's once it has.
+        if ( this.#riteChangeDispatch && false === this._hasDependentDioceseSelects ) {
+            this.#domElement.dispatchEvent( new Event( 'change' ) );
+        }
+    }
+
+    /**
      * Links the current `dioceses` filtered CalendarSelect instance to a `nations` filtered CalendarSelect instance.
      * When the selected nation is changed in the linked `nations` filtered CalendarSelect instance, the diocese options
      * of the current `dioceses` filtered CalendarSelect instance will be filtered accordingly.
@@ -1262,6 +1374,9 @@ export default class CalendarSelect {
         // change rebuilds this select's options from scratch, and `_applyRite()`
         // needs to re-derive the per-nation narrowing from this same select.
         this.#linkedNationsSelect = calendarSelectInstance;
+        // Tell the nations select it now has a dependent, so it can decide
+        // whether dispatching `change` would disturb one. See `linkToRiteSelect()`.
+        calendarSelectInstance._registerDependentDioceseSelect( this );
         this.#filterDioceseOptionsForNation( linkedDomElement.value );
         linkedDomElement.addEventListener( 'change', (ev) => {
             const newNationValue = ev.target.value;
