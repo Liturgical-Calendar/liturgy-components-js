@@ -1,14 +1,21 @@
 # Changelog
 
-Releases before 2.0.0 are not recorded here; see the git history.
+Releases up to and including 1.5.0 are not recorded here; see the git history. There is no 1.6.0 — the release
+prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. This
+entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
 ## 2.0.0
 
 Two breaking changes forced the major version, and both are the same change of mind: a failure the library used
 to log and swallow is now a rejection the caller owns. `ApiClient.init()` rejects instead of resolving to
 `false`, and the fetch methods return a promise that rejects instead of one that cannot fail. Everything else in
-this release is additive, a deprecation, or a narrower break that only affects code reaching past the package's
-public exports.
+this release is additive, a deprecation, or a narrower break — two of the three reach only code that imports
+past the package's public exports, and the third refuses an argument the components used to accept and quietly
+ignore.
+
+The work merged after 1.5.0 that never got a release of its own is folded into the sections below rather than
+kept apart: `CalendarSelect.linkToRiteSelect()`, the rite vocabulary in ten more languages, and the path
+builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings all of it.
 
 ### Breaking
 
@@ -67,7 +74,7 @@ public exports.
   a `calendarFetched` listener is **not** a fetch failure: it propagates to the returned promise unwrapped, and
   emits no `calendarFetchFailed`.
 
-Two narrower breaks, listed for completeness:
+Three narrower breaks, listed for completeness:
 
 - The `ApiClient` constructor now takes the `ApiBase` it is bound to: `new ApiClient( base )`. It previously
   took no arguments and worked standalone, because the URL and metadata were statics. `new ApiClient()` now
@@ -78,6 +85,15 @@ Two narrower breaks, listed for completeness:
   exported from the package root, so this only affects code deep-importing
   `ApiOptions/Input/index.js`. Construct an `ApiOptions`, which supplies the base itself, or pass one:
   `new LocaleInput( locale, apiClient.base )`.
+- `CalendarSelect`, `RiteSelect`, `LiturgyOfTheDay` and `LiturgyOfAnyDay` now reject an options argument that is
+  neither a string nor a plain object, as `ApiOptions` already did. Each of the four previously accepted any
+  class instance and then took every default, English included: `new CalendarSelect( new Intl.Locale( 'it' ) )`
+  built an English select and warned about nothing, because an `Intl.Locale` shares not one property name with
+  `locale`, `id`, `filter` or any other option and so destructures to `{}`. The test is by prototype, so any
+  class instance is refused and a null-prototype object still passes; the message names the component and the
+  type it found — ``CalendarSelect: Invalid type for options, must be of type `object` but found type: Locale``.
+  A locale string or a genuine options object is unaffected. What each component makes of `null` is deliberately
+  unchanged, and the five still do not agree about it — that is issue #32, left open rather than settled here.
 
 ### Added
 
@@ -118,6 +134,24 @@ Two narrower breaks, listed for completeness:
 - The `CalendarIndex`, `NationalCalendar`, `DiocesanCalendar`, `DiocesanGroup`, `WiderRegion` and `CalendarData`
   typedefs.
 - `PathBuilder` exposes a `_domElement` getter.
+- `CalendarSelect.linkToRiteSelect( riteSelect, dispatchChange = true )`: makes a select follow a `RiteSelect`,
+  rebuilding its options on every rite change and once immediately with the rite select's current value, so a
+  select mounted under an already-chosen rite is correct without waiting for a change event. It works for any
+  filter, which is what `ApiOptions.linkToCalendarSelect()` does not cover — that accepts only a `none` filtered
+  select or a nations/dioceses pair — so a lone `nations` or `dioceses` filtered select can now follow a rite.
+  A `nations` filtered select is hidden while a rite with no national tier is selected, the Ambrosian rite
+  having none, and shown again when the rite has one. It throws if the select is already linked to a rite
+  select, or if the argument is not a `RiteSelect`. `ApiOptions` now drives its own rite handling through this
+  same method rather than a second copy of it, passing `dispatchChange = false` so that a select it manages
+  hears one `change` per rite change — its own, dispatched once the endpoint state has caught up — rather than
+  two with a stale one in between.
+- The rite vocabulary beyond `en` and `it`. `GENERAL_ROMAN_CALENDAR` now exists for all 84 locales in the
+  catalogue, derived from each locale's already-reviewed `GENERAL_ROMAN_CALENDAR_CAPTION` by dropping its
+  trailing `- {year}` suffix, so nothing is invented. `RITE_ROMAN`, `RITE_AMBROSIAN`, `SELECT_A_RITE`,
+  `AMBROSIAN_CALENDAR` and `AMBROSIAN_CALENDAR_CAPTION` are translated for the ten further locales this project
+  maintains — `la`, `es`, `fr`, `de`, `pt`, `nl`, `hu`, `id`, `sk` and `vi` — bringing those five keys to twelve
+  locales. The remaining 72 still fall back to English for them: machine-translated liturgical terminology
+  belongs in Weblate, under native review, rather than in the catalogue.
 
 ### Changed
 
@@ -130,12 +164,19 @@ Two narrower breaks, listed for completeness:
   so that the plausible slip `new ApiOptions( new Intl.Locale( 'it' ) )` is recognizable. That same call
   previously failed with `TypeError: locale.replaceAll is not a function`, which named neither the argument nor
   the component. An invalid locale string likewise now reads `Invalid locale: xx-INVALID` rather than the
-  `RangeError` that `Intl.getCanonicalLocales` raises.
+  `RangeError` that `Intl.getCanonicalLocales` raises. That guard is now one shared implementation rather than
+  six divergent ones, and every component taking an options bag uses it — see the third narrower break above.
 - `ApiClient.init( url )` with no argument uses the constant default base rather than the first base already
   registered, so a call meaning "the public API" cannot resolve to a localhost base a comparison page happened
   to register first. An empty string is rejected rather than treated as "unspecified".
 - `ApiClient.init()` returns a **new** client on every call, including for a base already registered; only the
   metadata and cache are shared. That is what allows two clients against one API to hold different rites.
+- On a rite change, the `change` event that tells a calendar select's own listeners to redraw is now withheld
+  from a select that has a dependent diocese select, rather than from any `nations` filtered select. The two
+  rules agree for a linked nation/diocese pair, which is what the exclusion is for: the nation select carries
+  the diocese select's listener, and dispatching would have it re-derive the diocese options for a nation value
+  that was just cleared. They differ for a `nations` filtered select with nothing depending on it, which used to
+  be passed over on the strength of its filter alone and is now told, as any other select is.
 
 ### Deprecated
 
@@ -161,3 +202,12 @@ Two narrower breaks, listed for completeness:
   by its own locale.
 - `ApiClient._metadata` was typed as `CalendarMetadata`, the per-response metadata block, rather than as the
   `/calendars` index it actually returns.
+- Switching the path builder from `/calendar/nation/` to `/calendar/diocese/` no longer throws
+  `Filter has already been set to ...`, stranding the select on the national list. `ApiOptions` drives one
+  `CalendarSelect` between the two lists on every path change, which is the component working as designed
+  rather than a configuration chain contradicting itself, so it now calls `_applyFilter()`, which rebuilds
+  without the one-shot guard. `filter()` keeps that guard, and both entry points reject an unknown filter alike.
+  This mirrors the existing `rite()` / `_applyRite()` split, for the same reason.
+- `new LiturgyOfTheDay()` — the no-argument form its own default parameter advertises — no longer throws
+  `TypeError: Cannot read properties of null`. `typeof null === 'object'` carried it past the object branch and
+  into a property read on `null`; it now falls back to the default locale, as `LiturgyOfAnyDay` does.
