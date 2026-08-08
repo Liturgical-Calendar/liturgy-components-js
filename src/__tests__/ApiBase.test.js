@@ -110,6 +110,58 @@ describe( 'ApiBase.fromMetadata', () => {
 
 } );
 
+/**
+ * An index missing these fields used to be caught by `CalendarSelect.#init()`.
+ * With per-base binding that method is gone, so the check belongs here, where
+ * every component benefits from it: unvalidated, an incomplete index surfaces
+ * far from its cause as a bare `TypeError` naming neither the field nor the API.
+ * `fromMetadata` is validated as well as `load`, because it is how the whole
+ * test suite builds its fixtures.
+ */
+describe( 'ApiBase rejects an unusable calendar index', () => {
+
+    const { national_calendars, ...NO_NATIONS  } = FULL_METADATA;
+    const { diocesan_calendars, ...NO_DIOCESES } = FULL_METADATA;
+
+    it( 'rejects metadata with no national_calendars from fromMetadata', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow( /national_calendars/ );
+    } );
+
+    it( 'rejects metadata with no diocesan_calendars from fromMetadata', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_DIOCESES ) ).toThrow( /diocesan_calendars/ );
+    } );
+
+    it( 'names the base url in the message', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow( /http:\/\/localhost:8000/ );
+    } );
+
+    it( 'rejects metadata that is not an object', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', null ) ).toThrow( /must be an object/ );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', 'nope' ) ).toThrow( /must be an object/ );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', [] ) ).toThrow( /must be an object/ );
+    } );
+
+    it( 'registers nothing when it rejects', () => {
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow();
+        expect( ApiBase.all ).toHaveLength( 0 );
+    } );
+
+    it( 'rejects an incomplete index from load, as an ApiClientError', async () => {
+        global.fetch = jest.fn().mockResolvedValue( okResponse( NO_NATIONS ) );
+        const base = ApiBase.resolve( 'http://localhost:8000' );
+        await expect( base.load() ).rejects.toBeInstanceOf( ApiClientError );
+        await expect( base.load() ).rejects.toThrow( /national_calendars/ );
+    } );
+
+    it( 'leaves the base unloaded when load rejects an incomplete index', async () => {
+        global.fetch = jest.fn().mockResolvedValue( okResponse( NO_DIOCESES ) );
+        const base = ApiBase.resolve( 'http://localhost:8000' );
+        await expect( base.load() ).rejects.toThrow( /diocesan_calendars/ );
+        expect( base.isLoaded ).toBe( false );
+    } );
+
+} );
+
 describe( 'ApiBase.load', () => {
 
     it( 'requests the /calendars path of its own base', async () => {

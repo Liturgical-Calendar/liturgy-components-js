@@ -2,6 +2,22 @@ import ApiClientError from './ApiClientError.js';
 import { Rite } from '../Enums.js';
 
 /**
+ * Component class names that have already been warned about an ambiguous fallback.
+ *
+ * Module-level so the ledger is per session rather than per call: the warning
+ * reports a systemic misconfiguration of the page, not a per-instance event, and
+ * a component that builds sub-components (`ApiOptions` building a `LocaleInput`)
+ * would otherwise emit the identical line once per constructed part. Keyed by
+ * component name so each class still gets its own first warning.
+ *
+ * Cleared by {@link ApiBase.reset}, which starts a fresh registry: warnings about
+ * a registry that no longer exists should not silence warnings about the new one.
+ *
+ * @type {Set<string>}
+ */
+const warnedComponents = new Set();
+
+/**
  * One Liturgical Calendar API base URL, and everything that belongs to it: the
  * calendar index served by its `/calendars` path, and the cache of calendar
  * responses fetched from it.
@@ -78,6 +94,34 @@ export default class ApiBase {
     }
 
     /**
+     * Asserts that a calendar index carries the fields every component reads.
+     *
+     * Both entry points that install metadata run this, because an index missing
+     * `national_calendars` or `diocesan_calendars` is not a usable calendar index:
+     * without the check it reaches a component and surfaces as a bare
+     * `TypeError: undefined is not iterable`, naming neither the missing field nor
+     * the API that omitted it. `fromMetadata` needs it as much as `load` does — it
+     * is how every fixture in the test suite is built, so an incomplete fixture
+     * would otherwise fail far from its cause.
+     *
+     * @param {unknown} metadata - The candidate calendar index.
+     * @param {string} url - The normalized base URL, for the message.
+     * @returns {void}
+     * @throws {Error} If the index is not an object or omits a required field.
+     * @private
+     */
+    static #assertValidIndex( metadata, url ) {
+        if ( null === metadata || typeof metadata !== 'object' || Array.isArray( metadata ) ) {
+            throw new Error( `ApiBase: the calendar index of the base at ${url} must be an object, but found: ${Array.isArray( metadata ) ? 'array' : typeof metadata}.` );
+        }
+        [ 'national_calendars', 'diocesan_calendars' ].forEach( field => {
+            if ( false === Object.hasOwn( metadata, field ) ) {
+                throw new Error( `ApiBase: the calendar index of the base at ${url} carries no \`${field}\` field. Every component reads it; an index without it is not a usable calendar index.` );
+            }
+        } );
+    }
+
+    /**
      * Returns the registered base for a URL, registering an unloaded one if absent.
      *
      * Never performs a network request; call {@link ApiBase#load} for that.
@@ -104,9 +148,12 @@ export default class ApiBase {
      * @param {string} url - The base URL.
      * @param {import('../typedefs.js').CalendarIndex} metadata - The calendar index.
      * @returns {ApiBase}
+     * @throws {Error} If the metadata is not an object or omits `national_calendars` or `diocesan_calendars`.
      */
     static fromMetadata( url, metadata ) {
-        const base = new ApiBase( ApiBase.normalizeUrl( url ) );
+        const normalized = ApiBase.normalizeUrl( url );
+        ApiBase.#assertValidIndex( metadata, normalized );
+        const base = new ApiBase( normalized );
         base.#metadata = metadata;
         ApiBase.#registry.set( base.url, base );
         return base;
@@ -132,12 +179,14 @@ export default class ApiBase {
     }
 
     /**
-     * Empties the registry.
+     * Empties the registry, and the ledger of components already warned about an
+     * ambiguous fallback.
      *
      * @returns {void}
      */
     static reset() {
         ApiBase.#registry.clear();
+        warnedComponents.clear();
     }
 
     /**
@@ -207,6 +256,10 @@ export default class ApiBase {
                     { url: requestUrl }
                 );
             }
+            // A plain Error here is deliberate: the `catch` below wraps anything
+            // that is not already an ApiClientError, so the message survives and
+            // callers still see the ApiClientError that `load()` promises.
+            ApiBase.#assertValidIndex( data.litcal_metadata, this.#url );
             this.#metadata    = data.litcal_metadata;
             this.#loadPromise = null;
             return this;
@@ -429,6 +482,11 @@ export default class ApiBase {
  * because a component silently reading the wrong API's calendars is the exact
  * failure this release removes.
  *
+ * That announcement is made at most ONCE per component class per session, and is
+ * reset only by {@link ApiBase.reset}. It reports a systemic misconfiguration of
+ * the page rather than a per-instance event, and a component that builds
+ * sub-components would otherwise repeat the identical line once per part.
+ *
  * @param {{base: ApiBase}|null|undefined} apiClient - The client to bind to, if any.
  * @param {string} componentName - The binding component's class name, for messages.
  * @returns {ApiBase} The resolved base.
@@ -445,7 +503,8 @@ export function resolveBase( apiClient, componentName ) {
     if ( null === fallback ) {
         throw new Error( `${componentName}: ApiClient has not been initialized. Please initialize with \`ApiClient.init().then(() => { ... })\`, and construct ${componentName} instances within the callback.` );
     }
-    if ( ApiBase.all.length > 1 ) {
+    if ( ApiBase.all.length > 1 && false === warnedComponents.has( componentName ) ) {
+        warnedComponents.add( componentName );
         console.warn( `${componentName} was constructed without an apiClient while ${ApiBase.all.length} API bases are registered, and bound to ${fallback.url}. Pass \`apiClient\` explicitly to choose.` );
     }
     return fallback;
