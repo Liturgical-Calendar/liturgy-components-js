@@ -37,4 +37,9 @@ describe( 'ApiClientError', () => {
         expect( err.cause ).toBe( inner );
     } );
 
+    it( 'defaults cause to null when omitted', () => {
+        const err = new ApiClientError( 'failed' );
+        expect( err.cause ).toBeNull();
+    } );
+
 } );

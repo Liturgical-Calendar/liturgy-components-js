@@ -26,6 +26,11 @@ export default class ApiClientError extends Error {
         this.status     = status;
         this.statusText = statusText;
         this.body       = body;
+        // Set explicitly as a plain property, like its siblings above: the native `cause` option
+        // passed to `super()` is honoured on modern runtimes, but is silently dropped (no exception,
+        // `err.cause` simply `undefined`) on ES2022-`error-cause`-less runtimes that otherwise support
+        // ES modules (e.g. Chrome 61-92, Safari 11-14). This property survives on all of them.
+        this.cause      = cause;
     }
 
 }

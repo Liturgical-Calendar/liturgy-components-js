@@ -167,7 +167,7 @@
  * @prop {string} calendar_id - The calendar ID (ISO 3166-1 alpha-2 country code)
  * @prop {string[]} locales - The locales supported by this calendar
  * @prop {string[]} missals - The Roman Missal editions available for this calendar
- * @prop {{epiphany: string, ascension: string, corpus_christi: string, eternal_high_priest: boolean}} settings - The calendar's default settings
+ * @prop {{epiphany: string, ascension: string, corpus_christi: string, eternal_high_priest: boolean, holydays_of_obligation: {[event_key: string]: boolean}}} settings - The calendar's default settings
  * @prop {string} [wider_region] - The wider region this calendar belongs to
  * @prop {string[]} [dioceses] - The calendar IDs of the dioceses within this nation
  */
@@ -198,8 +198,9 @@
  */
 
 /**
- * The response body of the API's `/calendars` path: an index of every calendar the
- * API can serve.
+ * The `litcal_metadata` value unwrapped from the response body of the API's `/calendars` path
+ * (i.e. `data.litcal_metadata`, not the raw response body itself): an index of every calendar
+ * the API can serve.
  *
  * Distinct from {@link CalendarMetadata}, which is the `metadata` block within a
  * single calendar response. The two describe different objects and must not be
@@ -215,6 +216,7 @@
  * @prop {string[]} wider_regions_keys - The names of every wider region
  * @prop {string[]} locales - Every locale the API supports
  * @prop {NationalCalendar[]} [ambrosian_calendars] - The Ambrosian rite's own calendars. Absent on the v5 API; its absence is how rite support is feature-detected.
+ * @prop {string[]} [ambrosian_calendars_keys] - The calendar IDs of every Ambrosian calendar. Absent on the v5 API; its absence is how rite support is feature-detected.
  */
 
 export default {};
