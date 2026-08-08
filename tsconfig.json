@@ -23,6 +23,7 @@
       "**/*.stories.*",
       "./src/stories/**/*",
       "**/*.test.*",
-      "./src/__tests__/**/*"
+      "./src/__tests__/**/*",
+      "./src/__fixtures__/**/*"
     ]
 }
