@@ -36,8 +36,13 @@ past the package's public exports.
 
   The `instanceof` guard is now dead code and can be deleted: the `then` callback only runs on success.
 
-One narrower break, listed for completeness:
+Two narrower breaks, listed for completeness:
 
+- The `ApiClient` constructor now takes the `ApiBase` it is bound to: `new ApiClient( base )`. It previously
+  took no arguments and worked standalone, because the URL and metadata were statics. `new ApiClient()` now
+  leaves the client with no base, and the first fetch fails with a bare `TypeError`. `ApiClient.init()` was
+  always the documented way to obtain a client and is unaffected; the constructor is worth knowing about
+  because it is how a test builds a client on a base from `ApiBase.fromMetadata()`.
 - `LocaleInput` now requires an `ApiBase` as its second constructor argument and throws without one. It is not
   exported from the package root, so this only affects code deep-importing
   `ApiOptions/Input/index.js`. Construct an `ApiOptions`, which supplies the base itself, or pass one:
@@ -59,8 +64,10 @@ One narrower break, listed for completeness:
 - `ApiBase.fromMetadata( url, metadata )` registers a loaded base with no network request — the supported way to
   exercise components in tests without mocking `fetch`. `ApiBase.reset()` empties the registry between tests.
 - `ApiBase` metadata queries: `locales()`, `nationalCalendars()`, `diocesanCalendars( rite )`,
-  `riteCalendars( rite )`, `isValidDioceseForNation( dioceseId, nation )`, and the `supportsRite` getter. Each
-  throws, rather than answering emptily, when the base has not been loaded.
+  `riteCalendars( rite )`, `isValidDioceseForNation( dioceseId, nation )`, and the `supportsRite` getter. The
+  methods throw, rather than answering emptily, when the base has not been loaded — an empty calendar list is
+  indistinguishable from an API that genuinely serves none. `supportsRite` is feature detection and is the one
+  exception: it answers `false` for an unloaded base.
 - `ApiBase.cacheLimits( { maxEntries, ttl } )` and `ApiBase.clearAllCaches()`, plus `ApiBase.resolve()`,
   `ApiBase.normalizeUrl()`, `ApiBase.DEFAULT_URL`, `ApiBase.default` and `ApiBase.all`.
 - `ApiClientError`, carrying `url`, `status`, `statusText`, `body` and `cause` as enumerable properties, so they
