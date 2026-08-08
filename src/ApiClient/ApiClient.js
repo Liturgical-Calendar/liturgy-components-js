@@ -2,6 +2,7 @@ import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiBase from './ApiBase.js';
+import ApiClientError from './ApiClientError.js';
 import EventEmitter from './EventEmitter.js';
 import { YearType, Rite, RiteProperties } from '../Enums.js';
 
@@ -361,6 +362,11 @@ export default class ApiClient {
    *
    * If the same calendar with identical parameters was previously fetched, the cached data
    * is returned without making a new API request.
+   *
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   *                                                           Rejects with an `ApiClientError` if
+   *                                                           the request fails, after emitting
+   *                                                           `calendarFetchFailed`.
    */
   fetchCalendar(locale = null) {
     this.#assertRiteSupported();
@@ -400,18 +406,27 @@ export default class ApiClient {
     if (cachedData) {
       this.#calendarData = cachedData;
       this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      return;
+      return Promise.resolve( cachedData );
     }
 
     const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`, {
+    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`;
+    return fetch( requestUrl, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
     }).then( response => {
-      if ( response.ok ) {
-        return response.json();
+      if ( false === response.ok ) {
+        return response.text()
+          .catch( () => null )
+          .then( body => {
+            throw new ApiClientError(
+              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+              { url: requestUrl, status: response.status, statusText: response.statusText, body }
+            );
+          } );
       }
+      return response.json();
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -423,8 +438,11 @@ export default class ApiClient {
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
-      console.error( error );
-      return false;
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     });
   }
 
@@ -432,7 +450,12 @@ export default class ApiClient {
    * Fetches a national liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the national calendar to fetch
    * @param {string} [locale] - The locale for the national calendar
-   * @throws {Error} When network request fails
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   *                                                           Rejects with an `ApiClientError` if
+   *                                                           the request fails, after emitting
+   *                                                           `calendarFetchFailed`.
+   * @throws {Error} Synchronously, when the current rite has no national tier, or when the
+   *                 API cannot serve the current rite.
    * @description This method fetches a national liturgical calendar by its ID, and optionally a supported locale. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
@@ -463,18 +486,27 @@ export default class ApiClient {
     if (cachedData) {
       this.#calendarData = cachedData;
       this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      return;
+      return Promise.resolve( cachedData );
     }
 
     const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`, {
+    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`;
+    return fetch( requestUrl, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
     }).then( response => {
-      if ( response.ok ) {
-        return response.json();
+      if ( false === response.ok ) {
+        return response.text()
+          .catch( () => null )
+          .then( body => {
+            throw new ApiClientError(
+              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+              { url: requestUrl, status: response.status, statusText: response.statusText, body }
+            );
+          } );
       }
+      return response.json();
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -486,8 +518,11 @@ export default class ApiClient {
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
-      console.error( error );
-      return false;
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     });
   }
 
@@ -495,7 +530,11 @@ export default class ApiClient {
    * Fetches a diocesan liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the diocesan calendar to fetch
    * @param {string} [locale] - The locale for the diocesan calendar
-   * @throws {Error} When network request fails
+   * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to the calendar data.
+   *                                                           Rejects with an `ApiClientError` if
+   *                                                           the request fails, after emitting
+   *                                                           `calendarFetchFailed`.
+   * @throws {Error} Synchronously, when the API cannot serve the current rite.
    * @description This method fetches a diocesan liturgical calendar by its ID, and optionally a supported locale. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
@@ -527,18 +566,27 @@ export default class ApiClient {
     if (cachedData) {
       this.#calendarData = cachedData;
       this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      return;
+      return Promise.resolve( cachedData );
     }
 
     const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    fetch(`${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`, {
+    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`;
+    return fetch( requestUrl, {
       method: 'POST',
       headers: this.#fetchCalendarHeaders,
       body: JSON.stringify( params )
     }).then( response => {
-      if ( response.ok ) {
-        return response.json();
+      if ( false === response.ok ) {
+        return response.text()
+          .catch( () => null )
+          .then( body => {
+            throw new ApiClientError(
+              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+              { url: requestUrl, status: response.status, statusText: response.statusText, body }
+            );
+          } );
       }
+      return response.json();
     }).then( data => {
       // Cache regardless: the response is valid for its own key even if a newer
       // request has superseded it, and caching it saves refetching later.
@@ -550,9 +598,27 @@ export default class ApiClient {
       this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
       return this.#calendarData;
     }).catch( error => {
-      console.error( error );
-      return false;
+      const apiError = error instanceof ApiClientError
+        ? error
+        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+      throw apiError;
     });
+  }
+
+  /**
+   * Subscribes a listener to one of this client's events.
+   *
+   * Events: `calendarFetched` — `( data, { rite } )` — and `calendarFetchFailed`
+   * — `( error, { rite } )`.
+   *
+   * @param {string} event - The event name.
+   * @param {Function} listener - The listener to invoke.
+   * @returns {ApiClient} This client, for chaining.
+   */
+  on( event, listener ) {
+    this.#eventBus.on( event, listener );
+    return this;
   }
 
   /**
