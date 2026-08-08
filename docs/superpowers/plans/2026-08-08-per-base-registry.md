@@ -1743,8 +1743,19 @@ git commit -m "Bind ApiClient to an ApiBase instead of static per-base fields"
 
 **Files:**
 
-- Modify: `src/ApiClient/ApiClient.js` (the three fetch methods)
+- Modify: `src/ApiClient/ApiClient.js` (the three fetch methods; `refetchCalendarData()` at `:344`; the
+  fire-and-forget call inside the `listenTo` subscription at `:720`)
+- Modify: `src/LiturgyOfAnyDay/LiturgyOfAnyDay.js` (the three `refetchCalendarData()` calls at `:197`,
+  `:309`, `:314`)
 - Test: `src/__tests__/ApiClientErrors.test.js`
+
+**Fire-and-forget callers.** Once the three fetch methods reject, every caller that discards their promise
+turns a handled failure into an unhandled rejection in the browser. `refetchCalendarData()` discards all
+three, and it in turn has four discarding callers — one inside `ApiClient` itself and three in
+`LiturgyOfAnyDay`. `refetchCalendarData()` must therefore `return` the promise it currently drops, and each
+of the four call sites must attach a handler. Since `calendarFetchFailed` already carries the error to
+subscribers, those handlers are deliberate no-op suppressors and must carry a comment saying so — an
+unexplained empty `catch` is indistinguishable from a swallowed bug.
 
 **Interfaces:**
 
