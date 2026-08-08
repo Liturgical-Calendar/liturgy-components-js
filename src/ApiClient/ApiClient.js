@@ -331,6 +331,22 @@ export default class ApiClient {
   }
 
   /**
+   * Discards the outcome of a request issued for its side effects alone.
+   *
+   * The change listeners this class attaches to UI components fire a request and have
+   * no caller to hand the promise back to. The failure is not swallowed: it has already
+   * been delivered to every subscriber through `calendarFetchFailed` by the time this
+   * runs. This exists solely so that the dropped promise does not surface as an
+   * unhandled rejection — it is a suppressor, not error handling.
+   *
+   * @param {Promise<*>} request - The request whose outcome is being discarded.
+   * @returns {void}
+   */
+  #discardRequest( request ) {
+    request.catch( () => {} );
+  }
+
+  /**
    * Refetches calendar data based on the current category and calendar ID.
    *
    * This method determines the current category of the calendar (national, diocesan, or general)
@@ -340,14 +356,24 @@ export default class ApiClient {
    * If the current category is 'national', it fetches the national calendar using the current
    * calendar ID. If the category is 'diocesan', it fetches the diocesan calendar. For any other
    * category, it fetches the General Roman Calendar.
+   *
+   * @returns {Promise<import('../typedefs.js').CalendarData>} The promise of whichever fetch
+   *                                                           method the current category
+   *                                                           selects. Resolves to the calendar
+   *                                                           data, or rejects with an
+   *                                                           `ApiClientError` if the request
+   *                                                           fails. A caller that discards it
+   *                                                           must attach a handler, since the
+   *                                                           rejection would otherwise go
+   *                                                           unhandled.
    */
   refetchCalendarData() {
     if ( this.#currentCategory === 'national' ) {
-      this.fetchNationalCalendar( this.#currentCalendarId );
+      return this.fetchNationalCalendar( this.#currentCalendarId );
     } else if ( this.#currentCategory === 'diocesan' ) {
-      this.fetchDiocesanCalendar( this.#currentCalendarId );
+      return this.fetchDiocesanCalendar( this.#currentCalendarId );
     } else {
-      this.fetchCalendar();
+      return this.fetchCalendar();
     }
   }
 
@@ -673,11 +699,11 @@ export default class ApiClient {
       this.#currentCalendarId = selectedOption.value;
       this.#currentCategory = selectedOption.dataset.calendartype ?? '';
       if ( this.#currentCategory === 'national' ) {
-        this.fetchNationalCalendar( this.#currentCalendarId );
+        this.#discardRequest( this.fetchNationalCalendar( this.#currentCalendarId ) );
       } else if ( this.#currentCategory === 'diocesan' ) {
-        this.fetchDiocesanCalendar( this.#currentCalendarId );
+        this.#discardRequest( this.fetchDiocesanCalendar( this.#currentCalendarId ) );
       } else {
-        this.fetchCalendar();
+        this.#discardRequest( this.fetchCalendar() );
       }
     });
     return this;
@@ -717,7 +743,7 @@ export default class ApiClient {
       this.rite( ev.target.value );
       this.#currentCategory   = '';
       this.#currentCalendarId = '';
-      this.refetchCalendarData();
+      this.#discardRequest( this.refetchCalendarData() );
     });
     return this;
   }
@@ -745,28 +771,28 @@ export default class ApiClient {
       this.#params.epiphany = event.target.value;
       //console.log(`updated epiphany to ${this.#params.epiphany}`);
       if (this.#currentCategory === '') {
-        this.refetchCalendarData();
+        this.#discardRequest( this.refetchCalendarData() );
       }
     });
     apiOptions._ascensionInput._domElement.addEventListener( 'change', event => {
       this.#params.ascension = event.target.value;
       //console.log(`updated ascension to ${this.#params.ascension}`);
       if (this.#currentCategory === '') {
-        this.refetchCalendarData();
+        this.#discardRequest( this.refetchCalendarData() );
       }
     });
     apiOptions._corpusChristiInput._domElement.addEventListener( 'change', event => {
       this.#params.corpus_christi = event.target.value;
       //console.log(`updated corpus_christi to ${this.#params.corpus_christi}`);
       if (this.#currentCategory === '') {
-        this.refetchCalendarData();
+        this.#discardRequest( this.refetchCalendarData() );
       }
     });
     apiOptions._eternalHighPriestInput._domElement.addEventListener( 'change', event => {
       this.#params.eternal_high_priest = event.target.value === 'true';
       //console.log(`updated eternal_high_priest to ${this.#params.eternal_high_priest}`);
       if (this.#currentCategory === '') {
-        this.refetchCalendarData();
+        this.#discardRequest( this.refetchCalendarData() );
       }
     });
     apiOptions._holydaysOfObligationInput._domElement.addEventListener( 'change', event => {
@@ -776,23 +802,23 @@ export default class ApiClient {
       this.#params.holydays_of_obligation = selectedStates;
       //console.log('updated holydays_of_obligation to:', this.#params.holydays_of_obligation);
       if (this.#currentCategory === '') {
-        this.refetchCalendarData();
+        this.#discardRequest( this.refetchCalendarData() );
       }
     });
     apiOptions._yearInput._domElement.addEventListener( 'change', event => {
       this.#params.year = parseInt(event.target.value, 10);
       //console.log(`updated year to ${this.#params.year}`);
-      this.refetchCalendarData();
+      this.#discardRequest( this.refetchCalendarData() );
     });
     apiOptions._yearTypeInput._domElement.addEventListener( 'change', event => {
       this.#params.year_type = event.target.value;
       //console.log(`updated year_type to ${this.#params.year_type}`);
-      this.refetchCalendarData();
+      this.#discardRequest( this.refetchCalendarData() );
     });
     apiOptions._localeInput._domElement.addEventListener( 'change', event => {
       this.#fetchCalendarHeaders['Accept-Language'] = event.target.value;
       //console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
-      this.refetchCalendarData();
+      this.#discardRequest( this.refetchCalendarData() );
     });
     return this;
   }
