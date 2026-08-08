@@ -108,6 +108,36 @@ describe( 'CalendarSelect.linkToRiteSelect', () => {
         expect( dioceseSelect._domElement.value ).toBe( '' );
     } );
 
+    it( 'rebuilds a none filtered select, clears its value, and dispatches change exactly once', () => {
+        // The `none` filter is what the public frontend forms use, and until now its
+        // standalone behaviour was only ever exercised through `ApiOptions`. Covered
+        // here directly, so a regression in the standalone path cannot hide behind
+        // `ApiOptions` still passing.
+        const riteSelect = buildRiteSelect();
+        const calendarSelect = new CalendarSelect( 'en' )
+            .allowNull( true )
+            .linkToRiteSelect( riteSelect );
+        calendarSelect.appendTo( '#single' );
+
+        // Select a real option so the reset below is observable rather than vacuous.
+        const preset = [ ...calendarSelect._domElement.options ]
+            .map( option => option.value )
+            .find( value => value !== '' );
+        calendarSelect._domElement.value = preset;
+        expect( calendarSelect._domElement.value ).not.toBe( '' );
+
+        let changes = 0;
+        calendarSelect._domElement.addEventListener( 'change', () => { changes++; } );
+
+        chooseRite( riteSelect, Rite.AMBROSIAN );
+
+        const values = [ ...calendarSelect._domElement.options ].map( option => option.value );
+        expect( values ).toContain( 'milano_it' );
+        expect( values ).not.toContain( 'romamo_it' );
+        expect( calendarSelect._domElement.value ).toBe( '' );
+        expect( changes ).toBe( 1 );
+    } );
+
     it( 'hides a nations filtered select for a rite with no national tier, and shows it again', () => {
         const riteSelect = buildRiteSelect();
         const nationSelect = new CalendarSelect( 'en' )

@@ -154,9 +154,17 @@ const romanSelect = new CalendarSelect('en-US').rite(Rite.ROMAN);
 ```
 
 `.rite()` can only be set once per instance; calling it again throws. To change the rite of an
-already-rendered select dynamically, use `RiteSelect` linked through
-[`ApiOptions.linkToCalendarSelect()`](api-options.md#linking-to-calendarselect) — see
-[RiteSelect](rite-select.md).
+already-rendered select dynamically, link it to a `RiteSelect`. There are two routes, and which one
+you want depends on whether the select is part of an `ApiOptions` form:
+
+- **With an `ApiOptions`** — pass the rite select to
+  [`ApiOptions.linkToCalendarSelect()`](api-options.md#linking-to-calendarselect). It links the
+  calendar select for you and also drives the option inputs, the year floor and the request path.
+- **Without one** — call [`linkToRiteSelect()`](#following-a-rite-without-an-apioptions) on the
+  select directly. This is the route for a select used on its own, and the only one that works for a
+  lone `nations` or `dioceses` filtered select.
+
+See also [RiteSelect](rite-select.md).
 
 > **Back-compatibility note:** as of the introduction of rite awareness, a `CalendarSelect` that never
 > sets `rite` still defaults to `Rite.ROMAN`, so its **markup does change** compared to earlier

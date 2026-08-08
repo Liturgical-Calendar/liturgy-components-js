@@ -113,6 +113,16 @@ The nations instance records it in a private list, and the dispatch rule becomes
 unless this select has dependent diocese selects.** This changes nothing for `ApiOptions`, which
 always pairs, and makes a standalone nation select notify its listeners as it should.
 
+> **What implementation changed.** This section is kept as designed, but the dispatch rule gained a
+> second half that only emerged once the code existed. With `ApiOptions` delegating, the rebuild's
+> dispatch fired _before_ `ApiOptions` had updated `#currentEndpoint`, so `PathBuilder` rendered a
+> stale path; adding a second dispatch afterwards then produced two `change` events per rite change
+> and a duplicate fetch. The shipped signature is therefore
+> `linkToRiteSelect( riteSelect, dispatchChange = true )`: a standalone select dispatches for itself,
+> and `ApiOptions` passes `false` to become the sole dispatcher once its own state is current. The
+> rule above still governs _whether_ a select is eligible to be dispatched to; `dispatchChange`
+> governs _who_ does it.
+
 ## ApiOptions refactor
 
 `#handleLinkedRiteSelect` delegates the calendar-side work and keeps its own:
