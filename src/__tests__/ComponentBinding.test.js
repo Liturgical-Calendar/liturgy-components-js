@@ -549,3 +549,33 @@ describe( 'ApiBase.assertSameBase', () => {
     } );
 
 } );
+
+/**
+ * Issue #33. `fromMetadata()` used to register a NEW base for a URL, so a
+ * component built before a re-install and a client built after it held two
+ * different objects that both claimed the same URL — with two different response
+ * caches. `assertSameBase()` compares by identity, which makes the failure vivid:
+ * `listenTo()` refusing to connect them while naming the same URL twice.
+ */
+describe( 're-installing a fixture does not fork the base', () => {
+
+    it( 'leaves a select and a client built either side of the re-install on one base', () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const select = new CalendarSelect( { locale: 'en' } );
+        ApiBase.fromMetadata( DEV, OTHER_METADATA );
+        const client = new ApiClient( ApiBase.resolve( DEV ) );
+
+        expect( select._base ).toBe( client.base );
+        expect( () => client.listenTo( select ) ).not.toThrow();
+    } );
+
+    it( 'leaves one shared response cache rather than two', () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const select = new CalendarSelect( { locale: 'en' } );
+        ApiBase.fromMetadata( DEV, OTHER_METADATA );
+
+        ApiBase.resolve( DEV ).setCached( 'a-cache-key', { litcal: [] } );
+        expect( select._base.getCached( 'a-cache-key' ) ).not.toBeNull();
+    } );
+
+} );
