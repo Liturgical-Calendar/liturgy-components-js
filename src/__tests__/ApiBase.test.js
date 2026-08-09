@@ -203,6 +203,62 @@ describe( 'ApiBase.fromMetadata', () => {
 } );
 
 /**
+ * With the registry replacing objects, a `load()` in flight belonged to the base
+ * being orphaned and could not reach a fixture installed meanwhile. Hydrating in
+ * place puts both writes on one object, and the fetch lands second — so the rule
+ * has to be stated rather than inherited: an explicit install outranks a
+ * background fetch.
+ */
+describe( 'ApiBase.load yields to an index installed while it was in flight', () => {
+
+    /** Resolves the pending `fetch` on demand, so the fixture can land mid-request. */
+    const deferredFetch = () => {
+        let settle;
+        global.fetch = jest.fn( () => new Promise( resolve => { settle = resolve; } ) );
+        return ( response ) => settle( response );
+    };
+
+    it( 'keeps the installed index rather than the fetched one', async () => {
+        const respondWith = deferredFetch();
+        const base    = ApiBase.resolve( 'http://localhost:8000' );
+        const loading = base.load();
+
+        ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        respondWith( okResponse( OTHER_METADATA ) );
+
+        await expect( loading ).resolves.toBe( base );
+        expect( base.metadata ).toBe( FULL_METADATA );
+    } );
+
+    it( 'resolves rather than rejecting when the overtaken response is unusable', async () => {
+        const { national_calendars, ...NO_NATIONS } = FULL_METADATA;
+        const respondWith = deferredFetch();
+        const base    = ApiBase.resolve( 'http://localhost:8000' );
+        const loading = base.load();
+
+        ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        respondWith( okResponse( NO_NATIONS ) );
+
+        await expect( loading ).resolves.toBe( base );
+        expect( base.metadata ).toBe( FULL_METADATA );
+    } );
+
+    it( 'clears the in-flight promise, so a later load neither refetches nor hangs', async () => {
+        const respondWith = deferredFetch();
+        const base    = ApiBase.resolve( 'http://localhost:8000' );
+        const loading = base.load();
+
+        ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        respondWith( okResponse( OTHER_METADATA ) );
+        await loading;
+
+        await expect( base.load() ).resolves.toBe( base );
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+    } );
+
+} );
+
+/**
  * An index missing these fields used to be caught by `CalendarSelect.#init()`.
  * With per-base binding that method is gone, so the check belongs here, where
  * every component benefits from it: unvalidated, an incomplete index surfaces

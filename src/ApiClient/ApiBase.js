@@ -392,6 +392,17 @@ export default class ApiBase {
             // A plain Error here is deliberate: the `catch` below wraps anything
             // that is not already an ApiClientError, so the message survives and
             // callers still see the ApiClientError that `load()` promises.
+
+            // An index may have been installed by `fromMetadata()` — a fixture, or a
+            // server-rendered payload — while this request was in flight. It wins: an
+            // explicit call outranks a background fetch. The response is dropped
+            // without being validated, because it is no longer what anyone will read,
+            // and rejecting here would fail a `load()` on a base that is loaded.
+            if ( this.#metadata !== null ) {
+                this.#loadPromise = null;
+                return this;
+            }
+
             ApiBase.#assertValidIndex( data.litcal_metadata, this.#url );
             this.#metadata    = data.litcal_metadata;
             this.#loadPromise = null;
