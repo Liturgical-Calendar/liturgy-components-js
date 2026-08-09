@@ -78,10 +78,12 @@ builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings 
   was never made. A promise
   you hold is yours: the library does not log it on your behalf. Its `console.error` fallback covers only its
   own fire-and-forget calls — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year handling — which
-  have no caller to hand a promise back to, and even those are silenced once anything is subscribed to
-  `calendarFetchFailed`. Subscribing is therefore the intended way to take over reporting entirely. A throw from
-  a `calendarFetched` listener is **not** a fetch failure: it propagates to the returned promise unwrapped, and
-  emits no `calendarFetchFailed`.
+  have no caller to hand a promise back to, and one of those is silenced when the error it caught was itself
+  delivered to a `calendarFetchFailed` listener. Subscribing is therefore the intended way to take over
+  reporting of request failures — but only of those: an error that never emits is still logged, because no
+  subscriber could have received it. Two never emit. An argument or state rejection reports a request that was
+  never made, and a throw from a `calendarFetched` listener is **not** a fetch failure — it propagates to the
+  returned promise unwrapped.
 
 Three narrower breaks, listed for completeness:
 
@@ -380,3 +382,11 @@ And one entry that breaks no code, because it changes none — what narrows is w
   `yarn lint:dts` errors (an accessor overriding a base method). Reading `MonthInput#value()` now returns the
   raw string, exactly as it does for `DayInput` and `YearInput`; a caller wanting the integer should
   `parseInt( input.value(), 10 )`, which is what the only in-library caller already did.
+- `ApiClient`'s fire-and-forget calls — the `listenTo()` handlers, `LiturgyOfAnyDay`'s year handling — no longer
+  suppress an error just because _something_ is subscribed to `calendarFetchFailed`, when that error was never
+  emitted for the subscriber to receive. A throwing `calendarFetched` listener, and an argument/state rejection
+  such as an unserviceable rite, both reject without emitting: the first because a listener's throw is its own
+  bug and not a fetch failure, the second because no request was ever made. On any page following the documented
+  `apiClient.on( 'calendarFetchFailed', … )` wiring, both used to vanish completely — no event, no console
+  output. `#discardRequest` now checks whether the specific error it caught was actually delivered to a
+  listener, recorded at the point of emission, rather than whether a listener merely exists at catch time.
