@@ -118,7 +118,14 @@ describe( 'ApiClient national tier guard', () => {
         const onFailure = jest.fn();
         apiClient.on( 'calendarFetchFailed', onFailure );
         apiClient.rite( Rite.AMBROSIAN );
-        await expect( apiClient.fetchNationalCalendar( 'IT' ) ).rejects.not.toBeInstanceOf( ApiClientError );
+        let caught;
+        try {
+            await apiClient.fetchNationalCalendar( 'IT' );
+        } catch ( error ) {
+            caught = error;
+        }
+        expect( caught ).toBeInstanceOf( Error );
+        expect( caught ).not.toBeInstanceOf( ApiClientError );
         expect( onFailure ).not.toHaveBeenCalled();
     } );
 

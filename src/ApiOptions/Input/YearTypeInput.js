@@ -22,7 +22,6 @@ export default class YearTypeInput extends SelectInput {
         this._domElement.name = 'year_type';
         this._claimDefaultId('year_type');
         this._labelElement.textContent = 'year_type';
-        this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }

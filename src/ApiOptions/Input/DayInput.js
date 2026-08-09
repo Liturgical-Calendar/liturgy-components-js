@@ -17,7 +17,6 @@ export default class DayInput extends NumberInput {
         this._domElement.name = 'day';
         this._claimDefaultId('day');
         this._labelElement.textContent = 'day';
-        this._labelElement.htmlFor = this._domElement.id;
         this._domElement.min = 1;
         this._domElement.max = 31;
         this._domElement.step = 1;

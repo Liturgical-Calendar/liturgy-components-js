@@ -68,7 +68,14 @@ describe( 'ApiClient against metadata with no ambrosian_calendars (live v5 API)'
         const onFailure = jest.fn();
         apiClient.on( 'calendarFetchFailed', onFailure );
         apiClient.rite( Rite.AMBROSIAN );
-        await expect( apiClient.fetchCalendar() ).rejects.not.toBeInstanceOf( ApiClientError );
+        let caught;
+        try {
+            await apiClient.fetchCalendar();
+        } catch ( error ) {
+            caught = error;
+        }
+        expect( caught ).toBeInstanceOf( Error );
+        expect( caught ).not.toBeInstanceOf( ApiClientError );
         expect( onFailure ).not.toHaveBeenCalled();
         expect( global.fetch ).not.toHaveBeenCalled();
     } );

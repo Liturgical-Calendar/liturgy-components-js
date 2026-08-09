@@ -17,7 +17,6 @@ export default class YearInput extends NumberInput {
         this._domElement.name = 'year';
         this._claimDefaultId('year');
         this._labelElement.textContent = 'year';
-        this._labelElement.htmlFor = this._domElement.id;
         this._domElement.min = 1970;
         this._domElement.max = 9999;
         this._domElement.step = 1;

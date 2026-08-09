@@ -21,7 +21,6 @@ export default class EpiphanyInput extends SelectInput {
         this._domElement.name = 'epiphany';
         this._claimDefaultId('epiphany');
         this._labelElement.textContent = 'epiphany';
-        this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }

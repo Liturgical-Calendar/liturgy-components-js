@@ -47,7 +47,6 @@ export default class LocaleInput extends SelectInput {
         this._domElement.name = 'locale';
         this._claimDefaultId('locale');
         this._labelElement.textContent = 'locale';
-        this._labelElement.htmlFor = this._domElement.id;
         if ( null === base ) {
             throw new Error( 'LocaleInput requires an ApiBase. It is constructed by ApiOptions, which supplies one; construct an ApiOptions rather than a LocaleInput directly, or pass the base of a client explicitly as `new LocaleInput( locale, apiClient.base )`.' );
         }

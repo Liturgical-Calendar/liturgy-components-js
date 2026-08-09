@@ -19,37 +19,56 @@ const DEV = 'http://localhost:8000';
 
 let apiClient;
 
+/**
+ * Snapshots of the `headers` object passed to `fetch` on each call, captured at
+ * call time rather than read later off `fetch.mock.calls`.
+ *
+ * `ApiClient` passes `headers: this.#fetchCalendarHeaders` — the SAME object by
+ * reference on every request — so `fetch.mock.calls[i][1].headers` for every `i`
+ * all point at that one mutable object. Reading call 0's headers after call 1 has
+ * run would therefore return call 1's (mutated) state. Capturing a shallow copy
+ * inside the mock implementation, at the moment each call happens, is the only
+ * way to observe what a given call actually sent.
+ *
+ * @type {object[]}
+ */
+let fetchHeaderSnapshots;
+
 beforeEach( async () => {
     ApiBase.reset();
     ApiBase.fromMetadata( DEV, FULL_METADATA );
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {}, messages: [] } )
+    fetchHeaderSnapshots = [];
+    global.fetch = jest.fn( ( url, init ) => {
+        fetchHeaderSnapshots.push( { ...init?.headers } );
+        return Promise.resolve( {
+            ok: true,
+            json: () => Promise.resolve( { litcal: [], settings: {}, metadata: {}, messages: [] } )
+        } );
     } );
     apiClient = await ApiClient.init( DEV );
 } );
 
-const headersOf = ( callIndex = 0 ) => global.fetch.mock.calls[ callIndex ][ 1 ].headers;
+const headersOf = ( callIndex = 0 ) => fetchHeaderSnapshots[ callIndex ];
 
 describe( 'ApiClient national/diocesan locale resolution', () => {
 
-    it( 'accepts a locale the national calendar supports and sets Accept-Language', () => {
-        apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
+    it( 'accepts a locale the national calendar supports and sets Accept-Language', async () => {
+        await apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
         expect( headersOf()[ 'Accept-Language' ] ).toBe( 'it-IT' );
     } );
 
-    it( 'accepts an Intl.Locale for a national calendar the same way as its string tag', () => {
-        apiClient.fetchNationalCalendar( 'IT', new Intl.Locale( 'it-IT' ) );
+    it( 'accepts an Intl.Locale for a national calendar the same way as its string tag', async () => {
+        await apiClient.fetchNationalCalendar( 'IT', new Intl.Locale( 'it-IT' ) );
         expect( headersOf()[ 'Accept-Language' ] ).toBe( 'it-IT' );
     } );
 
-    it( 'falls back rather than setting a locale the national calendar does not support', () => {
-        apiClient.fetchNationalCalendar( 'US', 'it-IT' );
+    it( 'falls back rather than setting a locale the national calendar does not support', async () => {
+        await apiClient.fetchNationalCalendar( 'US', 'it-IT' );
         expect( headersOf()[ 'Accept-Language' ] ).not.toBe( 'it-IT' );
     } );
 
-    it( 'accepts a locale the diocesan calendar supports and sets Accept-Language', () => {
-        apiClient.fetchDiocesanCalendar( 'romamo_it', 'it-IT' );
+    it( 'accepts a locale the diocesan calendar supports and sets Accept-Language', async () => {
+        await apiClient.fetchDiocesanCalendar( 'romamo_it', 'it-IT' );
         expect( headersOf()[ 'Accept-Language' ] ).toBe( 'it-IT' );
     } );
 
@@ -64,8 +83,8 @@ describe( 'ApiClient national/diocesan locale resolution', () => {
  */
 describe( 'ApiClient does not leak a stale Accept-Language to a later request', () => {
 
-    it( 'sends no Accept-Language when a later request for a different calendar cannot use the requested locale', () => {
-        apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
+    it( 'sends no Accept-Language when a later request for a different calendar cannot use the requested locale', async () => {
+        await apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
         expect( headersOf( 0 )[ 'Accept-Language' ] ).toBe( 'it-IT' );
 
         // The response cache lives on the shared ApiBase, not on the ApiClient
@@ -74,7 +93,7 @@ describe( 'ApiClient does not leak a stale Accept-Language to a later request', 
         ApiBase.resolve( DEV ).clearCache();
 
         // US only supports en_US; 'zz-!' is neither parseable nor supported.
-        apiClient.fetchNationalCalendar( 'US', 'zz-!' );
+        await apiClient.fetchNationalCalendar( 'US', 'zz-!' );
         expect( headersOf( 1 )[ 'Accept-Language' ] ).toBeUndefined();
     } );
 

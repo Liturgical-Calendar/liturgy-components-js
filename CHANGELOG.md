@@ -185,9 +185,9 @@ And one entry that breaks no code, because it changes none — what narrows is w
   in place of the deprecated statics.
 - `ApiBase.fromMetadata( url, metadata )` registers a loaded base with no network request — the supported way to
   exercise components in tests without mocking `fetch`. It hydrates the base for a URL in place and returns the
-  same object on every call, so re-installing a fixture replaces that base's calendar index and empties its
-  response cache (a calendar request already in flight still caches its own response) without replacing the
-  base itself. `ApiBase.reset()` empties the registry between tests.
+  same object on every call — until `ApiBase.reset()` clears the registry — so re-installing a fixture replaces
+  that base's calendar index and empties its response cache (a calendar request already in flight still caches
+  its own response) without replacing the base itself. `ApiBase.reset()` empties the registry between tests.
 - `ApiBase` metadata queries: `locales()`, `nationalCalendars()`, `diocesanCalendars( rite )`,
   `riteCalendars( rite )`, `isValidDioceseForNation( dioceseId, nation )`, and the `supportsRite` getter. The
   methods throw, rather than answering emptily, when the base has not been loaded — an empty calendar list is
@@ -374,3 +374,9 @@ And one entry that breaks no code, because it changes none — what narrows is w
 - `new LiturgyOfTheDay()` — the no-argument form its own default parameter advertises — no longer throws
   `TypeError: Cannot read properties of null`. `typeof null === 'object'` carried it past the object branch and
   into a property read on `null`; it now falls back to the default locale, as `LiturgyOfAnyDay` does.
+- `MonthInput.value` no longer overrides the inherited `value( val )` method with a getter. The getter made
+  `monthInput.value( '7' )` throw `TypeError: monthInput.value is not a function` while `DayInput` and
+  `YearInput` could still be set through their own inherited `value()`, and it was the sole cause of two
+  `yarn lint:dts` errors (an accessor overriding a base method). Reading `MonthInput#value()` now returns the
+  raw string, exactly as it does for `DayInput` and `YearInput`; a caller wanting the integer should
+  `parseInt( input.value(), 10 )`, which is what the only in-library caller already did.

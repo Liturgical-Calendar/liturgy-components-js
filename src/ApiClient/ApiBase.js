@@ -262,8 +262,9 @@ export default class ApiBase {
      * request.
      *
      * Hydrates the base **in place**. The object registered for a URL is created
-     * once and never replaced, so a component that resolved the base earlier reads
-     * an index installed later. Registering a fresh object instead would leave every
+     * once and never replaced — until {@link ApiBase.reset} clears the registry — so
+     * a component that resolved the base earlier reads an index installed later.
+     * Registering a fresh object instead would leave every
      * earlier reference holding an orphan — same URL, its own metadata, its own
      * response cache — which is precisely the divergence the registry exists to
      * prevent.
@@ -280,7 +281,8 @@ export default class ApiBase {
      *
      * @param {string} url - The base URL.
      * @param {import('../typedefs.js').CalendarIndex} metadata - The calendar index.
-     * @returns {ApiBase} The base registered for the URL — the same object on every call for a given URL.
+     * @returns {ApiBase} The base registered for the URL — the same object on every call for a given URL,
+     *          until {@link ApiBase.reset} clears the registry.
      * @throws {Error} If the metadata is not an object, or omits `national_calendars`, `diocesan_calendars` or `locales`, or carries any of the three as something other than an array.
      */
     static fromMetadata( url, metadata ) {

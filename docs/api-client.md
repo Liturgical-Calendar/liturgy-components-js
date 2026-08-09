@@ -362,7 +362,8 @@ an array; anything else is rejected with a message naming the field, the type ac
 A field that is present but not an array is refused just as an absent one is — `locales: {}` would otherwise
 pass here and fail later, on the request path, as a bare `TypeError`.
 
-The base registered for a URL is the same object on every call. Installing a fixture on a URL that already
+The base registered for a URL is the same object on every call, until `ApiBase.reset()` clears the registry.
+Installing a fixture on a URL that already
 has one replaces that base's calendar index and empties its response cache (a calendar request already in
 flight still caches its own response) **without replacing the base**, so a component constructed before the
 re-install and one constructed after it remain on a single base, sharing a single cache. A `/calendars`
