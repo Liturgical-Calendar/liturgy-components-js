@@ -252,6 +252,11 @@ export default class ApiClient {
    * about why. The Roman rite is always allowed, since it is served by every API
    * version — on v5 simply without the segment.
    *
+   * Throws, rather than returning a rejected promise, because it is a guard and not
+   * a request: the three fetch methods call it inside the `try` that turns every
+   * synchronous throw of theirs into a rejection, so no caller of theirs ever sees
+   * this leave the call site.
+   *
    * @throws {Error} If a non-Roman rite is selected and the API is not rite-aware.
    * @private
    */
@@ -351,6 +356,16 @@ export default class ApiClient {
    *   which is what these methods did unconditionally before they learned to reject.
    *   Silence here would be a regression for anyone upgrading without subscribing.
    *
+   * Two kinds of error reach here without ever having been emitted, so for them the
+   * first branch suppresses on a premise that does not hold: a throw from a
+   * `calendarFetched` listener, and — since the fetch methods stopped throwing
+   * synchronously — an argument or state error such as an unserviceable rite. Both
+   * used to escape this method entirely, the first as an uncaught throw out of the
+   * emit and the second as an uncaught throw out of the DOM change handler that
+   * started the request. Routing them here at least keeps them from surfacing as
+   * unhandled rejections; a subscriber that wants to see them should not assume
+   * `calendarFetchFailed` is the whole story.
+   *
    * @param {Promise<*>} request - The request whose outcome is being discarded.
    * @returns {void}
    */
@@ -405,7 +420,12 @@ export default class ApiClient {
    *                                                           `calendarFetchFailed`. A caller that
    *                                                           discards it must attach a handler,
    *                                                           since the rejection would otherwise
-   *                                                           go unhandled.
+   *                                                           go unhandled. Nothing is thrown
+   *                                                           synchronously, because none of the
+   *                                                           three throws synchronously: the
+   *                                                           argument and state errors that used to
+   *                                                           escape this method at the call site now
+   *                                                           reject the promise it hands back.
    */
   refetchCalendarData() {
     if ( this.#currentCategory === 'national' ) {
@@ -442,106 +462,134 @@ export default class ApiClient {
    *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
-   *                                                           `calendarFetchFailed`.
-   * @throws {Error} Synchronously, when the API cannot serve the current rite, or when `locale` is
-   *                 given as anything other than a parseable locale tag or an `Intl.Locale` — a value
-   *                 that is neither, an empty or blank string, or an unparseable one. Nothing is thrown for a well-formed locale
-   *                 the calendar does not support: the request is made with the locale already in
-   *                 force.
+   *                                                           `calendarFetchFailed`. Rejects with a
+   *                                                           plain `Error`, and emits nothing, when
+   *                                                           the API cannot serve the current rite,
+   *                                                           or when `locale` is given as anything
+   *                                                           other than a parseable locale tag or an
+   *                                                           `Intl.Locale` — a value that is
+   *                                                           neither, an empty or blank string, or
+   *                                                           an unparseable one. A well-formed
+   *                                                           locale the calendar does not support is
+   *                                                           not an error at all: the request is
+   *                                                           made with the locale already in force.
+   *                                                           NOTHING is thrown synchronously, so one
+   *                                                           `.catch()` covers every failure mode.
    */
   fetchCalendar(locale = null) {
-    this.#assertRiteSupported();
-    // Pin the rite for THIS request. `#currentRite` can change while the
-    // request is in flight — a rite change fires one fetch through the calendar
-    // select and another through the rite listener — so a listener reading the
-    // client's current rite when the response lands could pair one rite's data
-    // with the other rite's name.
-    const requestRite = this.#currentRite;
-    const requestRevision = ++this.#requestRevision;
-    // Since the year parameter will be placed in the path, we extract it from the body params.
-    const { year, ...params } = this.#params;
-    let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
+    // Every failure of this method is reported by rejecting the returned promise,
+    // never by throwing synchronously. It is the contract `init()` already states,
+    // extended to the rest of the class for the same reason: a caller who wrote
+    // `fetchCalendar( userLocale ).catch( handler )` must have `handler` run for an
+    // unusable argument or an unserviceable rite too, not only for a failed request.
+    // An error raised before any request goes out rejects with exactly the value it
+    // threw — a plain `Error`, never wrapped in an `ApiClientError`, which carries
+    // request context there is none of — and emits no `calendarFetchFailed`, which
+    // reports a request that failed and not one that was never made.
+    //
+    // The whole body is enclosed rather than the guards alone, so that a synchronous
+    // throw added to this method later cannot escape the contract by sitting outside
+    // a narrower `try`.
+    try {
+      this.#assertRiteSupported();
+      // Pin the rite for THIS request. `#currentRite` can change while the
+      // request is in flight — a rite change fires one fetch through the calendar
+      // select and another through the rite listener — so a listener reading the
+      // client's current rite when the response lands could pair one rite's data
+      // with the other rite's name.
+      const requestRite = this.#currentRite;
+      const requestRevision = ++this.#requestRevision;
+      // Since the year parameter will be placed in the path, we extract it from the body params.
+      const { year, ...params } = this.#params;
+      let resolvedLocale = this.#fetchCalendarHeaders['Accept-Language'] || '';
 
-    if (locale !== null) {
-      // The same shared guard the six components use, rather than a hand-rolled
-      // type check, a hand-rolled empty-string check and a hand-rolled `_` to `-`
-      // normalization: it rejects a non-string, an empty or blank tag and an
-      // unparseable one, naming this method in every message. A tag that parses
-      // but names a language the API does not serve is NOT an error — the request
-      // simply goes out with the locale already in force, as it always has.
-      const canonicalLocale = canonicalizeLocale(locale, 'ApiClient.fetchCalendar');
-      if (this.#base.locales().includes(new Intl.Locale(canonicalLocale).language)) {
-        this.#fetchCalendarHeaders['Accept-Language'] = canonicalLocale;
-        resolvedLocale = canonicalLocale;
+      if (locale !== null) {
+        // The same shared guard the six components use, rather than a hand-rolled
+        // type check, a hand-rolled empty-string check and a hand-rolled `_` to `-`
+        // normalization: it rejects a non-string, an empty or blank tag and an
+        // unparseable one, naming this method in every message. A tag that parses
+        // but names a language the API does not serve is NOT an error — the request
+        // simply goes out with the locale already in force, as it always has.
+        const canonicalLocale = canonicalizeLocale(locale, 'ApiClient.fetchCalendar');
+        if (this.#base.locales().includes(new Intl.Locale(canonicalLocale).language)) {
+          this.#fetchCalendarHeaders['Accept-Language'] = canonicalLocale;
+          resolvedLocale = canonicalLocale;
+        }
       }
-    }
 
-    // Check cache first
-    const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params, requestRite);
-    const cachedData = this.#getCachedData(cacheKey);
-    if (cachedData) {
-      this.#calendarData = cachedData;
-      // The emit stays synchronous, exactly as before: on a hit, listeners have
-      // always run before this statement returns, and callers may depend on that.
-      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to throw straight out of the
-      // fetch method, before any promise existed, and `.catch()` on the call could
-      // never see it. On a cache MISS the same throw reaches the caller as a
-      // rejection, because the `.catch` below sits above the emit stage. A
-      // listener's throw is the listener's bug, but it must reach the caller the
-      // same way on a hit as on a miss: cache state is not something a caller
-      // controls or can even observe. Do not "simplify" this `try` away.
-      try {
-        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      } catch ( error ) {
-        return Promise.reject( error );
+      // Check cache first
+      const cacheKey = this.#generateCacheKey('', '', year, params.year_type, resolvedLocale, params, requestRite);
+      const cachedData = this.#getCachedData(cacheKey);
+      if (cachedData) {
+        this.#calendarData = cachedData;
+        // The emit stays synchronous, exactly as before: on a hit, listeners have
+        // always run before this statement returns, and callers may depend on that.
+        // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to throw straight out of the
+        // fetch method, before any promise existed, and `.catch()` on the call could
+        // never see it. On a cache MISS the same throw reaches the caller as a
+        // rejection, because the `.catch` below sits above the emit stage. A
+        // listener's throw is the listener's bug, but it must reach the caller the
+        // same way on a hit as on a miss: cache state is not something a caller
+        // controls or can even observe. Do not "simplify" this `try` away — not even
+      // now that it sits inside the method-wide `try` above, which would catch the
+      // same throw and reject with it identically. This one is what states, at the
+      // emit itself, that a listener's throw on a hit is a rejection; it is also
+      // what keeps that true if the outer `try` is ever narrowed.
+        try {
+          this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+        } catch ( error ) {
+          return Promise.reject( error );
+        }
+        return Promise.resolve( cachedData );
       }
-      return Promise.resolve( cachedData );
-    }
 
-    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`;
-    return fetch( requestUrl, {
-      method: 'POST',
-      headers: this.#fetchCalendarHeaders,
-      body: JSON.stringify( params )
-    }).then( response => {
-      if ( false === response.ok ) {
-        return response.text()
-          .catch( () => null )
-          .then( body => {
-            throw new ApiClientError(
-              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
-              { url: requestUrl, status: response.status, statusText: response.statusText, body }
-            );
-          } );
-      }
-      return response.json();
-    }).catch( error => {
-      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to land in this catch, get
-      // relabelled `POST <url> failed: …`, and be re-emitted as
-      // `calendarFetchFailed`, handing subscribers both events for one request
-      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
-      // it now propagates to the returned promise unwrapped and emits nothing.
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
-    }).then( data => {
-      // Cache regardless: the response is valid for its own key even if a newer
-      // request has superseded it, and caching it saves refetching later.
-      this.#setCachedData(cacheKey, data);
-      if ( requestRevision !== this.#requestRevision ) {
+      const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+      const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}${year ? `/${year}` : ''}`;
+      return fetch( requestUrl, {
+        method: 'POST',
+        headers: this.#fetchCalendarHeaders,
+        body: JSON.stringify( params )
+      }).then( response => {
+        if ( false === response.ok ) {
+          return response.text()
+            .catch( () => null )
+            .then( body => {
+              throw new ApiClientError(
+                `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+                { url: requestUrl, status: response.status, statusText: response.statusText, body }
+              );
+            } );
+        }
+        return response.json();
+      }).catch( error => {
+        // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to land in this catch, get
+        // relabelled `POST <url> failed: …`, and be re-emitted as
+        // `calendarFetchFailed`, handing subscribers both events for one request
+        // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+        // it now propagates to the returned promise unwrapped and emits nothing.
+        const apiError = error instanceof ApiClientError
+          ? error
+          : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        throw apiError;
+      }).then( data => {
+        // Cache regardless: the response is valid for its own key even if a newer
+        // request has superseded it, and caching it saves refetching later.
+        this.#setCachedData(cacheKey, data);
+        if ( requestRevision !== this.#requestRevision ) {
+          return this.#calendarData;
+        }
+        this.#calendarData = data;
+        this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
         return this.#calendarData;
-      }
-      this.#calendarData = data;
-      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
-      return this.#calendarData;
-    });
+      });
+    } catch ( error ) {
+      return Promise.reject( error );
+    }
   }
 
   /**
@@ -561,9 +609,13 @@ export default class ApiClient {
    *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
-   *                                                           `calendarFetchFailed`.
-   * @throws {Error} Synchronously, when the current rite has no national tier, or when the
-   *                 API cannot serve the current rite.
+   *                                                           `calendarFetchFailed`. Rejects with a
+   *                                                           plain `Error`, and emits nothing, when
+   *                                                           the current rite has no national tier,
+   *                                                           or when the API cannot serve the
+   *                                                           current rite. NOTHING is thrown
+   *                                                           synchronously, so one `.catch()` covers
+   *                                                           every failure mode.
    * @description This method fetches a national liturgical calendar by its ID, and optionally a supported locale. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
@@ -573,87 +625,108 @@ export default class ApiClient {
    * is returned without making a new API request.
    */
   fetchNationalCalendar( calendar_id, locale = '' ) {
-    this.#assertRiteSupported();
-    if ( false === RiteProperties[ this.#currentRite ].hasNationalTier ) {
-      throw new Error( `ApiClient.fetchNationalCalendar: the ${this.#currentRite} rite has no national calendars, so there is no route to request. Use fetchCalendar() for the rite-level calendar, or fetchDiocesanCalendar() for one of its dioceses.` );
-    }
-    // Pin the rite for THIS request — see fetchCalendar() for why.
-    const requestRite = this.#currentRite;
-    const requestRevision = ++this.#requestRevision;
-    // Since the year parameter will be placed in the path, we extract it from the body params.
-    // However, the only body param we need in this case is year_type,
-    // so we also extract out all other params in order to discard them.
-    const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
-    this.#currentCategory   = 'national';
-    this.#currentCalendarId = calendar_id;
-    const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
-
-    // Check cache first
-    const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
-    const cachedData = this.#getCachedData(cacheKey);
-    if (cachedData) {
-      this.#calendarData = cachedData;
-      // The emit stays synchronous, exactly as before: on a hit, listeners have
-      // always run before this statement returns, and callers may depend on that.
-      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to throw straight out of the
-      // fetch method, before any promise existed, and `.catch()` on the call could
-      // never see it. On a cache MISS the same throw reaches the caller as a
-      // rejection, because the `.catch` below sits above the emit stage. A
-      // listener's throw is the listener's bug, but it must reach the caller the
-      // same way on a hit as on a miss: cache state is not something a caller
-      // controls or can even observe. Do not "simplify" this `try` away.
-      try {
-        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      } catch ( error ) {
-        return Promise.reject( error );
+    // Every failure of this method is reported by rejecting the returned promise,
+    // never by throwing synchronously. It is the contract `init()` already states,
+    // extended to the rest of the class for the same reason: a caller who wrote
+    // `fetchCalendar( userLocale ).catch( handler )` must have `handler` run for an
+    // unusable argument or an unserviceable rite too, not only for a failed request.
+    // An error raised before any request goes out rejects with exactly the value it
+    // threw — a plain `Error`, never wrapped in an `ApiClientError`, which carries
+    // request context there is none of — and emits no `calendarFetchFailed`, which
+    // reports a request that failed and not one that was never made.
+    //
+    // The whole body is enclosed rather than the guards alone, so that a synchronous
+    // throw added to this method later cannot escape the contract by sitting outside
+    // a narrower `try`.
+    try {
+      this.#assertRiteSupported();
+      if ( false === RiteProperties[ this.#currentRite ].hasNationalTier ) {
+        throw new Error( `ApiClient.fetchNationalCalendar: the ${this.#currentRite} rite has no national calendars, so there is no route to request. Use fetchCalendar() for the rite-level calendar, or fetchDiocesanCalendar() for one of its dioceses.` );
       }
-      return Promise.resolve( cachedData );
-    }
+      // Pin the rite for THIS request — see fetchCalendar() for why.
+      const requestRite = this.#currentRite;
+      const requestRevision = ++this.#requestRevision;
+      // Since the year parameter will be placed in the path, we extract it from the body params.
+      // However, the only body param we need in this case is year_type,
+      // so we also extract out all other params in order to discard them.
+      const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
+      this.#currentCategory   = 'national';
+      this.#currentCalendarId = calendar_id;
+      const resolvedLocale = this.#resolveCalendarLocale('national', calendar_id, locale);
 
-    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`;
-    return fetch( requestUrl, {
-      method: 'POST',
-      headers: this.#fetchCalendarHeaders,
-      body: JSON.stringify( params )
-    }).then( response => {
-      if ( false === response.ok ) {
-        return response.text()
-          .catch( () => null )
-          .then( body => {
-            throw new ApiClientError(
-              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
-              { url: requestUrl, status: response.status, statusText: response.statusText, body }
-            );
-          } );
+      // Check cache first
+      const cacheKey = this.#generateCacheKey('national', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
+      const cachedData = this.#getCachedData(cacheKey);
+      if (cachedData) {
+        this.#calendarData = cachedData;
+        // The emit stays synchronous, exactly as before: on a hit, listeners have
+        // always run before this statement returns, and callers may depend on that.
+        // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to throw straight out of the
+        // fetch method, before any promise existed, and `.catch()` on the call could
+        // never see it. On a cache MISS the same throw reaches the caller as a
+        // rejection, because the `.catch` below sits above the emit stage. A
+        // listener's throw is the listener's bug, but it must reach the caller the
+        // same way on a hit as on a miss: cache state is not something a caller
+        // controls or can even observe. Do not "simplify" this `try` away — not even
+      // now that it sits inside the method-wide `try` above, which would catch the
+      // same throw and reject with it identically. This one is what states, at the
+      // emit itself, that a listener's throw on a hit is a rejection; it is also
+      // what keeps that true if the outer `try` is ever narrowed.
+        try {
+          this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+        } catch ( error ) {
+          return Promise.reject( error );
+        }
+        return Promise.resolve( cachedData );
       }
-      return response.json();
-    }).catch( error => {
-      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to land in this catch, get
-      // relabelled `POST <url> failed: …`, and be re-emitted as
-      // `calendarFetchFailed`, handing subscribers both events for one request
-      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
-      // it now propagates to the returned promise unwrapped and emits nothing.
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
-    }).then( data => {
-      // Cache regardless: the response is valid for its own key even if a newer
-      // request has superseded it, and caching it saves refetching later.
-      this.#setCachedData(cacheKey, data);
-      if ( requestRevision !== this.#requestRevision ) {
+
+      const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+      const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/nation/${calendar_id}${year ? `/${year}` : ''}`;
+      return fetch( requestUrl, {
+        method: 'POST',
+        headers: this.#fetchCalendarHeaders,
+        body: JSON.stringify( params )
+      }).then( response => {
+        if ( false === response.ok ) {
+          return response.text()
+            .catch( () => null )
+            .then( body => {
+              throw new ApiClientError(
+                `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+                { url: requestUrl, status: response.status, statusText: response.statusText, body }
+              );
+            } );
+        }
+        return response.json();
+      }).catch( error => {
+        // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to land in this catch, get
+        // relabelled `POST <url> failed: …`, and be re-emitted as
+        // `calendarFetchFailed`, handing subscribers both events for one request
+        // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+        // it now propagates to the returned promise unwrapped and emits nothing.
+        const apiError = error instanceof ApiClientError
+          ? error
+          : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        throw apiError;
+      }).then( data => {
+        // Cache regardless: the response is valid for its own key even if a newer
+        // request has superseded it, and caching it saves refetching later.
+        this.#setCachedData(cacheKey, data);
+        if ( requestRevision !== this.#requestRevision ) {
+          return this.#calendarData;
+        }
+        this.#calendarData = data;
+        this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
         return this.#calendarData;
-      }
-      this.#calendarData = data;
-      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
-      return this.#calendarData;
-    });
+      });
+    } catch ( error ) {
+      return Promise.reject( error );
+    }
   }
 
   /**
@@ -673,8 +746,11 @@ export default class ApiClient {
    *                                                           `calendarFetched` is emitted for it.
    *                                                           Rejects with an `ApiClientError` if
    *                                                           the request fails, after emitting
-   *                                                           `calendarFetchFailed`.
-   * @throws {Error} Synchronously, when the API cannot serve the current rite.
+   *                                                           `calendarFetchFailed`. Rejects with a
+   *                                                           plain `Error`, and emits nothing, when
+   *                                                           the API cannot serve the current rite.
+   *                                                           NOTHING is thrown synchronously, so one
+   *                                                           `.catch()` covers every failure mode.
    * @description This method fetches a diocesan liturgical calendar by its ID, and optionally a supported locale. It extracts the year from params
    * to use in the URL path and sends other relevant parameters in the request body. Parameters that determine the dates for
    * epiphany, ascension, corpus_christi, eternal_high_priest are excluded from the request parameters,
@@ -684,88 +760,109 @@ export default class ApiClient {
    * is returned without making a new API request.
    */
   fetchDiocesanCalendar( calendar_id, locale = '' ) {
-    this.#assertRiteSupported();
-    // Pin the rite for THIS request. `#currentRite` can change while the
-    // request is in flight — a rite change fires one fetch through the calendar
-    // select and another through the rite listener — so a listener reading the
-    // client's current rite when the response lands could pair one rite's data
-    // with the other rite's name.
-    const requestRite = this.#currentRite;
-    const requestRevision = ++this.#requestRevision;
-    // Since the year parameter will be placed in the path, we extract it from the body params.
-    // However, the only body param we need in this case is year_type,
-    // so we also extract out all other params in order to discard them.
-    const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
-    this.#currentCategory = 'diocesan';
-    this.#currentCalendarId = calendar_id;
-    const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
+    // Every failure of this method is reported by rejecting the returned promise,
+    // never by throwing synchronously. It is the contract `init()` already states,
+    // extended to the rest of the class for the same reason: a caller who wrote
+    // `fetchCalendar( userLocale ).catch( handler )` must have `handler` run for an
+    // unusable argument or an unserviceable rite too, not only for a failed request.
+    // An error raised before any request goes out rejects with exactly the value it
+    // threw — a plain `Error`, never wrapped in an `ApiClientError`, which carries
+    // request context there is none of — and emits no `calendarFetchFailed`, which
+    // reports a request that failed and not one that was never made.
+    //
+    // The whole body is enclosed rather than the guards alone, so that a synchronous
+    // throw added to this method later cannot escape the contract by sitting outside
+    // a narrower `try`.
+    try {
+      this.#assertRiteSupported();
+      // Pin the rite for THIS request. `#currentRite` can change while the
+      // request is in flight — a rite change fires one fetch through the calendar
+      // select and another through the rite listener — so a listener reading the
+      // client's current rite when the response lands could pair one rite's data
+      // with the other rite's name.
+      const requestRite = this.#currentRite;
+      const requestRevision = ++this.#requestRevision;
+      // Since the year parameter will be placed in the path, we extract it from the body params.
+      // However, the only body param we need in this case is year_type,
+      // so we also extract out all other params in order to discard them.
+      const { year, epiphany, ascension, corpus_christi, eternal_high_priest, holydays_of_obligation, ...params } = this.#params;
+      this.#currentCategory = 'diocesan';
+      this.#currentCalendarId = calendar_id;
+      const resolvedLocale = this.#resolveCalendarLocale('diocesan', calendar_id, locale);
 
-    // Check cache first
-    const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
-    const cachedData = this.#getCachedData(cacheKey);
-    if (cachedData) {
-      this.#calendarData = cachedData;
-      // The emit stays synchronous, exactly as before: on a hit, listeners have
-      // always run before this statement returns, and callers may depend on that.
-      // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to throw straight out of the
-      // fetch method, before any promise existed, and `.catch()` on the call could
-      // never see it. On a cache MISS the same throw reaches the caller as a
-      // rejection, because the `.catch` below sits above the emit stage. A
-      // listener's throw is the listener's bug, but it must reach the caller the
-      // same way on a hit as on a miss: cache state is not something a caller
-      // controls or can even observe. Do not "simplify" this `try` away.
-      try {
-        this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
-      } catch ( error ) {
-        return Promise.reject( error );
+      // Check cache first
+      const cacheKey = this.#generateCacheKey('diocesan', calendar_id, year, params.year_type, resolvedLocale, {}, requestRite);
+      const cachedData = this.#getCachedData(cacheKey);
+      if (cachedData) {
+        this.#calendarData = cachedData;
+        // The emit stays synchronous, exactly as before: on a hit, listeners have
+        // always run before this statement returns, and callers may depend on that.
+        // The `try` changes only what the RETURNED PROMISE does. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to throw straight out of the
+        // fetch method, before any promise existed, and `.catch()` on the call could
+        // never see it. On a cache MISS the same throw reaches the caller as a
+        // rejection, because the `.catch` below sits above the emit stage. A
+        // listener's throw is the listener's bug, but it must reach the caller the
+        // same way on a hit as on a miss: cache state is not something a caller
+        // controls or can even observe. Do not "simplify" this `try` away — not even
+      // now that it sits inside the method-wide `try` above, which would catch the
+      // same throw and reject with it identically. This one is what states, at the
+      // emit itself, that a listener's throw on a hit is a rejection; it is also
+      // what keeps that true if the outer `try` is ever narrowed.
+        try {
+          this.#eventBus.emit('calendarFetched', cachedData, { rite: requestRite });
+        } catch ( error ) {
+          return Promise.reject( error );
+        }
+        return Promise.resolve( cachedData );
       }
-      return Promise.resolve( cachedData );
-    }
 
-    const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
-    const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`;
-    return fetch( requestUrl, {
-      method: 'POST',
-      headers: this.#fetchCalendarHeaders,
-      body: JSON.stringify( params )
-    }).then( response => {
-      if ( false === response.ok ) {
-        return response.text()
-          .catch( () => null )
-          .then( body => {
-            throw new ApiClientError(
-              `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
-              { url: requestUrl, status: response.status, statusText: response.statusText, body }
-            );
-          } );
-      }
-      return response.json();
-    }).catch( error => {
-      // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
-      // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
-      // WebCalendar does, on malformed data — used to land in this catch, get
-      // relabelled `POST <url> failed: …`, and be re-emitted as
-      // `calendarFetchFailed`, handing subscribers both events for one request
-      // whose HTTP call had succeeded. A listener's throw is the listener's bug;
-      // it now propagates to the returned promise unwrapped and emits nothing.
-      const apiError = error instanceof ApiClientError
-        ? error
-        : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-      this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-      throw apiError;
-    }).then( data => {
-      // Cache regardless: the response is valid for its own key even if a newer
-      // request has superseded it, and caching it saves refetching later.
-      this.#setCachedData(cacheKey, data);
-      if ( requestRevision !== this.#requestRevision ) {
+      const riteSegment = this.#base.supportsRite ? `/${requestRite}` : '';
+      const requestUrl  = `${this.#base.url}${ApiClient.#paths.calendar}${riteSegment}/diocese/${calendar_id}${year ? `/${year}` : ''}`;
+      return fetch( requestUrl, {
+        method: 'POST',
+        headers: this.#fetchCalendarHeaders,
+        body: JSON.stringify( params )
+      }).then( response => {
+        if ( false === response.ok ) {
+          return response.text()
+            .catch( () => null )
+            .then( body => {
+              throw new ApiClientError(
+                `POST ${requestUrl} failed: ${response.status} ${response.statusText}`,
+                { url: requestUrl, status: response.status, statusText: response.statusText, body }
+              );
+            } );
+        }
+        return response.json();
+      }).catch( error => {
+        // Deliberately BEFORE the cache/emit stage, not after it. `EventEmitter.emit`
+        // is a synchronous `forEach`, so a `calendarFetched` listener that throws —
+        // WebCalendar does, on malformed data — used to land in this catch, get
+        // relabelled `POST <url> failed: …`, and be re-emitted as
+        // `calendarFetchFailed`, handing subscribers both events for one request
+        // whose HTTP call had succeeded. A listener's throw is the listener's bug;
+        // it now propagates to the returned promise unwrapped and emits nothing.
+        const apiError = error instanceof ApiClientError
+          ? error
+          : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
+        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        throw apiError;
+      }).then( data => {
+        // Cache regardless: the response is valid for its own key even if a newer
+        // request has superseded it, and caching it saves refetching later.
+        this.#setCachedData(cacheKey, data);
+        if ( requestRevision !== this.#requestRevision ) {
+          return this.#calendarData;
+        }
+        this.#calendarData = data;
+        this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
         return this.#calendarData;
-      }
-      this.#calendarData = data;
-      this.#eventBus.emit( 'calendarFetched', data, { rite: requestRite } );
-      return this.#calendarData;
-    });
+      });
+    } catch ( error ) {
+      return Promise.reject( error );
+    }
   }
 
   /**

@@ -27,6 +27,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import ApiClientError from '../ApiClient/ApiClientError.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
@@ -313,6 +314,13 @@ describe.each( [
  * own sentinels are unchanged: `null` means "no locale given, keep the one in
  * force", and a well-formed tag the API does not serve is silently kept out of
  * the header rather than rejected.
+ *
+ * An unusable locale REJECTS the returned promise; it does not throw at the call
+ * site. Each assertion below therefore calls `fetchCalendar()` OUTSIDE any `try`,
+ * as the argument to `expect()`, so that a synchronous throw fails the test at
+ * the call rather than being caught by the assertion — the same shape
+ * `ApiClientErrors.test.js` uses for the cache-hit contract, and the only shape
+ * that tells the fix apart from the bug.
  */
 describe( 'ApiClient.fetchCalendar locale argument', () => {
 
@@ -326,21 +334,35 @@ describe( 'ApiClient.fetchCalendar locale argument', () => {
         apiClient = await ApiClient.init( API_URL );
     } );
 
-    it( 'rejects an empty or blank locale, naming the method', () => {
-        expect( () => apiClient.fetchCalendar( '' ) )
-            .toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
-        expect( () => apiClient.fetchCalendar( '   ' ) )
-            .toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
+    it( 'rejects an empty or blank locale, naming the method', async () => {
+        await expect( apiClient.fetchCalendar( '' ) )
+            .rejects.toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
+        await expect( apiClient.fetchCalendar( '   ' ) )
+            .rejects.toThrow( 'ApiClient.fetchCalendar: Invalid locale, cannot be an empty or blank string' );
+        // `init()` issues no request — the outer `beforeEach` has already loaded the
+        // base from the fixture — so every call counted here is a calendar request,
+        // and there must be none of them.
         expect( global.fetch ).not.toHaveBeenCalled();
     } );
 
-    it( 'rejects a non-string locale, naming the method and the type', () => {
-        expect( () => apiClient.fetchCalendar( 123 ) )
-            .toThrow( 'ApiClient.fetchCalendar: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
+    it( 'rejects a non-string locale, naming the method and the type', async () => {
+        await expect( apiClient.fetchCalendar( 123 ) )
+            .rejects.toThrow( 'ApiClient.fetchCalendar: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
-    it( 'still treats null as "no locale given"', () => {
-        expect( () => apiClient.fetchCalendar( null ) ).not.toThrow();
+    it( 'emits no calendarFetchFailed for an unusable locale', async () => {
+        // `calendarFetchFailed` reports a request that failed. No request was made,
+        // so a subscriber must hear nothing — and the rejection must still be a
+        // plain `Error`, not an `ApiClientError` with no request context to carry.
+        const onFailure = jest.fn();
+        apiClient.on( 'calendarFetchFailed', onFailure );
+        await expect( apiClient.fetchCalendar( '' ) ).rejects.not.toBeInstanceOf( ApiClientError );
+        expect( onFailure ).not.toHaveBeenCalled();
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
+
+    it( 'still treats null as "no locale given"', async () => {
+        await expect( apiClient.fetchCalendar( null ) ).resolves.toBeDefined();
         expect( global.fetch ).toHaveBeenCalled();
     } );
 

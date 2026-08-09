@@ -67,7 +67,14 @@ builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings 
   ```
 
   The promise resolves to this request's calendar data — or, if a newer request superseded it in flight, to the
-  client's current data — and rejects with an `ApiClientError` after emitting `calendarFetchFailed`. A promise
+  client's current data — and rejects with an `ApiClientError` after emitting `calendarFetchFailed`. Nothing is
+  thrown synchronously, so — as with `init()` — a single `.catch()` covers every failure mode, including the
+  ones that never get as far as a request. An API that cannot serve the current rite, a
+  `fetchNationalCalendar()` under a rite with no national tier, and a `locale` that is neither a parseable tag
+  nor an `Intl.Locale` used to throw at the call site, past any `.catch()` written around it; they now reject
+  too, with exactly the plain `Error` they threw rather than an `ApiClientError`, since there is no request
+  context for one to carry. They emit no `calendarFetchFailed`: it reports a request that failed, not one that
+  was never made. A promise
   you hold is yours: the library does not log it on your behalf. Its `console.error` fallback covers only its
   own fire-and-forget calls — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year handling — which
   have no caller to hand a promise back to, and even those are silenced once anything is subscribed to
@@ -79,7 +86,8 @@ Three narrower breaks, listed for completeness:
 
 - The `ApiClient` constructor now takes the `ApiBase` it is bound to: `new ApiClient( base )`. It previously
   took no arguments and worked standalone, because the URL and metadata were statics. `new ApiClient()` now
-  leaves the client with no base, and the first fetch fails with a bare `TypeError`. `ApiClient.init()` was
+  leaves the client with no base, and the first fetch fails with a bare `TypeError` — delivered, like every
+  other failure of those methods, as a rejection rather than a throw. `ApiClient.init()` was
   always the documented way to obtain a client and is unaffected; the constructor is worth knowing about
   because it is how a test builds a client on a base from `ApiBase.fromMetadata()`.
 - `LocaleInput` now requires an `ApiBase` as its second constructor argument and throws without one. It is not
@@ -267,8 +275,9 @@ And one entry that breaks no code, because it changes none — what narrows is w
   `WebCalendar.locale: Invalid locale, cannot be an empty or blank string`, and a tag that is only whitespace
   is treated as the same mistake. `ApiClient.fetchCalendar( locale )` joins them: it hand-rolled the same
   type check, the same empty-string check and the same `_` to `-` normalization, and now calls the shared
-  guard, so a malformed tag passed to it throws with the method named rather than being logged to the console
-  and ignored, and the tag it puts in `Accept-Language` is the canonical one. Its own sentinels are unchanged —
+  guard, so a malformed tag passed to it is reported with the method named — as a rejection of the promise it
+  returns, per **Breaking** above — rather than being logged to the console and ignored, and the tag it puts in
+  `Accept-Language` is the canonical one. Its own sentinels are unchanged —
   `null` still means "no locale given", and a well-formed locale the calendar does not serve is still no error.
 
 - `WebCalendar.locale()` stores the canonical tag rather than the argument as written, so the `_locale` getter

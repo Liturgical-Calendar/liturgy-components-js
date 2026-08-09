@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiClient from '../ApiClient/ApiClient.js';
 import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClientError from '../ApiClient/ApiClientError.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite } from '../Enums.js';
 
@@ -97,18 +98,33 @@ describe( 'ApiClient rite path composition', () => {
 
 describe( 'ApiClient national tier guard', () => {
 
-    it( 'refuses a national calendar under a rite that has no national tier', () => {
+    it( 'refuses a national calendar under a rite that has no national tier', async () => {
         // There is no /calendar/ambrosian/nation/... route: the API's
         // CalendarParams::validateRiteCompatibility() rejects a non-null
         // NationalCalendar for Ambrosian. Pre-empt it rather than emit a 400.
+        //
+        // The refusal REJECTS the returned promise rather than throwing at the call
+        // site, so the call is made OUTSIDE any `try`, as the argument to `expect()`:
+        // a synchronous throw would fail the test at the call rather than satisfy the
+        // assertion.
         apiClient.rite( Rite.AMBROSIAN );
-        expect( () => apiClient.fetchNationalCalendar( 'IT' ) ).toThrow( /has no national calendars/ );
+        await expect( apiClient.fetchNationalCalendar( 'IT' ) ).rejects.toThrow( /has no national calendars/ );
         expect( global.fetch ).not.toHaveBeenCalled();
     } );
 
-    it( 'still allows a national calendar under the Roman rite', () => {
+    it( 'rejects with a plain Error and emits no calendarFetchFailed', async () => {
+        // No request was made, so there is no request context for an ApiClientError
+        // to carry and nothing for the failed-request event to report.
+        const onFailure = jest.fn();
+        apiClient.on( 'calendarFetchFailed', onFailure );
+        apiClient.rite( Rite.AMBROSIAN );
+        await expect( apiClient.fetchNationalCalendar( 'IT' ) ).rejects.not.toBeInstanceOf( ApiClientError );
+        expect( onFailure ).not.toHaveBeenCalled();
+    } );
+
+    it( 'still allows a national calendar under the Roman rite', async () => {
         apiClient.rite( Rite.ROMAN );
-        expect( () => apiClient.fetchNationalCalendar( 'IT' ) ).not.toThrow();
+        await expect( apiClient.fetchNationalCalendar( 'IT' ) ).resolves.toBeDefined();
         expect( global.fetch ).toHaveBeenCalledTimes( 1 );
     } );
 } );

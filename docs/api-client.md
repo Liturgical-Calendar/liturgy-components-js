@@ -103,6 +103,21 @@ try {
 }
 ```
 
+Nothing is thrown synchronously, so — as with `init()` — one `.catch()`, or one `try`/`catch` around the
+`await`, covers every failure mode. The failures that never got as far as a request reject too:
+
+| Failure                                                      | Rejects with                          | Emits `calendarFetchFailed` |
+| ------------------------------------------------------------ | ------------------------------------- | --------------------------- |
+| The request fails, or the API answers with a non-2xx status  | `ApiClientError` with request context | yes                         |
+| The API cannot serve the current rite                        | plain `Error`                         | no                          |
+| `fetchNationalCalendar()` under a rite with no national tier | plain `Error`                         | no                          |
+| `locale` is not a parseable tag or an `Intl.Locale`          | plain `Error`                         | no                          |
+| A `calendarFetched` listener throws                          | the listener's own error, unwrapped   | no                          |
+
+The three that never reach the network reject with exactly the `Error` they describe rather than an
+`ApiClientError`: there is no request context for one to carry. And `calendarFetchFailed` stays silent for
+them, because it reports a request that failed and not one that was never made.
+
 **This is a breaking change in 2.0.0.** Before it, these methods returned `undefined` and logged any failure
 with `console.error` themselves, so the bare-statement calls shown above could not fail visibly. They now
 reject, and a bare statement leaves that rejection unhandled. Either handle the promise, or report failures
@@ -147,6 +162,12 @@ Only the ones nobody could have handled:
   suppressed if anything is subscribed to that event, or logged with `console.error` if nothing is.
 
 Subscribing to `calendarFetchFailed` therefore takes over reporting entirely, and silences the console.
+
+Two of the errors in the table above emit no `calendarFetchFailed` and yet still reach that same
+suppression when the library issued the request for itself: an unserviceable rite, and a throw from a
+`calendarFetched` listener. With a subscriber attached, neither is announced anywhere. Both used to escape
+as an uncaught throw instead, so nothing is lost that was previously handled — but do not read a silent
+`calendarFetchFailed` as proof that a selection change succeeded.
 
 ## Configuration Methods
 
@@ -198,9 +219,8 @@ refused — see [API version support](#api-version-support) below.
 current calendar selection and re-targets the request at the rite-level calendar, because a `calendar_id`
 from one rite is never valid under another — in either direction.
 
-`fetchNationalCalendar()` throws under a rite with no national tier: there is no
-`/calendar/ambrosian/nation/...` route, so the client refuses rather than emitting a request that cannot
-succeed.
+`fetchNationalCalendar()` refuses a rite with no national tier: there is no `/calendar/ambrosian/nation/...`
+route, so the client rejects the returned promise rather than emitting a request that cannot succeed.
 
 The rite participates in the cache key, so switching rite at the same year, locale and calendar id
 issues a fresh request rather than returning the previous rite's calendar.
@@ -213,8 +233,8 @@ option to configure.
 
 Against a v5-era API the segment is omitted entirely, so this release keeps working for everything v5
 supports — v5 rejects the segment on every route, not only Ambrosian ones. Requesting a non-Roman rite
-there throws an error naming the version requirement, rather than emitting a request the API answers with
-a bare 400.
+there rejects with an error naming the version requirement, rather than emitting a request the API answers
+with a bare 400.
 
 ## Caching
 

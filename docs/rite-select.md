@@ -210,8 +210,8 @@ and no `apiVersion` option to set.
 - Against **v5**, `ApiClient` omits the rite segment entirely, so this release keeps working for
   everything v5 supports. v5 rejects the segment on _every_ route, not only Ambrosian ones, so emitting
   it unconditionally would break even a plain Roman national calendar. Requesting the Ambrosian rite
-  there throws an explicit error naming the version requirement, rather than emitting a request the API
-  answers with a bare 400.
+  there rejects the fetch method's promise with an explicit error naming the version requirement, rather
+  than emitting a request the API answers with a bare 400.
 - Against **v6 or `dev`**, the segment is always emitted and the Ambrosian rite is available.
 
 ## ApiClient
@@ -240,10 +240,12 @@ Two behaviours are worth knowing:
 - **A rite change drops the current calendar selection** and re-targets the request at the rite-level
   calendar. A `calendar_id` from one rite is never valid under another, in either direction —
   `/calendar/ambrosian/diocese/romamo_it` and `/calendar/roman/diocese/lugano_ch` are both rejected.
-- **`fetchNationalCalendar()` throws under a rite with no national tier.** There is no
-  `/calendar/ambrosian/nation/...` route, so the client refuses rather than emitting a request that
-  cannot succeed. Use `fetchCalendar()` for the rite-level calendar, or `fetchDiocesanCalendar()` for one
-  of its dioceses.
+- **`fetchNationalCalendar()` refuses a rite with no national tier.** There is no
+  `/calendar/ambrosian/nation/...` route, so the client rejects the promise it returns rather than
+  emitting a request that cannot succeed. Use `fetchCalendar()` for the rite-level calendar, or
+  `fetchDiocesanCalendar()` for one of its dioceses. Like every other failure of the three fetch methods
+  this arrives as a rejection, never as a synchronous throw, so the `try`/`catch` around the `await`
+  above catches it.
 
 The rite also participates in `ApiClient`'s cache key, so switching rite at the same year, locale and
 calendar id issues a fresh request instead of returning the previous rite's calendar.

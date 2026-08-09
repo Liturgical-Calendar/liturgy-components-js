@@ -261,7 +261,7 @@ The full stack through to rendered Ambrosian data: `RiteSelect` → `CalendarSel
 
 Requires the API on `localhost:8000`, **and that API must be v6 or the `dev` deployment**. Rite support
 is detected from the `/calendars` metadata: against v5 the rite segment is omitted and requesting the
-Ambrosian rite throws an explicit error rather than producing a bare 400.
+Ambrosian rite rejects the fetch method's promise with an explicit error rather than producing a bare 400.
 
 Wiring both `ApiOptions` and `ApiClient` to the same `RiteSelect` issues two requests per rite change.
 `ApiOptions` resets the calendar selection and dispatches `change` on it before `ApiClient`'s own rite
