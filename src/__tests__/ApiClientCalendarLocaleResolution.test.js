@@ -54,3 +54,42 @@ describe( 'ApiClient national/diocesan locale resolution', () => {
     } );
 
 } );
+
+/**
+ * Covers `ApiClient#resolveCalendarLocale`'s stale-header fix: a locale set by one
+ * request must not leak into a later request for a different calendar that cannot
+ * serve it. Before the fix, an unusable locale left the previous `Accept-Language`
+ * value in place instead of clearing it, so the SECOND calendar was silently
+ * requested in the FIRST calendar's language.
+ */
+describe( 'ApiClient does not leak a stale Accept-Language to a later request', () => {
+
+    it( 'sends no Accept-Language when a later request for a different calendar cannot use the requested locale', () => {
+        apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
+        expect( headersOf( 0 )[ 'Accept-Language' ] ).toBe( 'it-IT' );
+
+        // The response cache lives on the shared ApiBase, not on the ApiClient
+        // instance — without clearing it, the second call below would be served
+        // from cache and issue no request at all, observing nothing.
+        ApiBase.resolve( DEV ).clearCache();
+
+        // US only supports en_US; 'zz-!' is neither parseable nor supported.
+        apiClient.fetchNationalCalendar( 'US', 'zz-!' );
+        expect( headersOf( 1 )[ 'Accept-Language' ] ).toBeUndefined();
+    } );
+
+    it( 'keys the cache entry by the locale actually sent, not the stale requested one', async () => {
+        await apiClient.fetchNationalCalendar( 'IT', 'it-IT' );
+        ApiBase.resolve( DEV ).clearCache();
+
+        // First request populates the cache under whatever key was actually sent.
+        await apiClient.fetchNationalCalendar( 'US', 'zz-!' );
+        // A second call with the same (unusable) arguments must be a cache HIT —
+        // i.e. no second fetch — which is only possible if both calls generated
+        // the same cache key from what was actually sent ('', not 'it-IT' and not
+        // 'zz-!').
+        await apiClient.fetchNationalCalendar( 'US', 'zz-!' );
+        expect( global.fetch ).toHaveBeenCalledTimes( 2 );
+    } );
+
+} );

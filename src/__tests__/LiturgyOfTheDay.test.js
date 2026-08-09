@@ -379,18 +379,7 @@ describe( 'LiturgyOfTheDay.listenTo configures ApiClient year_type for December 
         expect( year_type ).toBe( 'LITURGICAL' );
     } );
 
-    /**
-     * BUG: the JSDoc on `LiturgyOfTheDay.listenTo` promises "CIVIL otherwise" —
-     * mirroring what `LiturgyOfAnyDay.listenTo` actually does, whose `else` branch
-     * explicitly calls `apiClient.yearType( YearType.CIVIL ).year( year )`. The
-     * `isDec31` branch in `LiturgyOfTheDay.listenTo` has no `else`: on any day
-     * other than December 31st it configures nothing at all, leaving whatever
-     * year_type the ApiClient already carried — which defaults to LITURGICAL, not
-     * CIVIL, in `ApiClient`'s own `#params`. So on an ordinary day this requests
-     * LITURGICAL, not the CIVIL the documentation promises. Filed as a bug rather
-     * than fixed, per instructions not to touch `src/LiturgyOfTheDay/`.
-     */
-    it.failing( 'requests CIVIL year_type and the current year when constructed on any other date', async () => {
+    it( 'requests CIVIL year_type and the current year when constructed on any other date', async () => {
         jest.useFakeTimers().setSystemTime( new Date( TODAY ) );
         const apiClient = await ApiClient.init( DEV );
         new LiturgyOfTheDay( 'en' ).listenTo( apiClient );

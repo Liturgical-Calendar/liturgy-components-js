@@ -594,6 +594,9 @@ export default class LiturgyOfTheDay {
         if (isDec31) {
             // Use LITURGICAL year type with year+1 to get vigil masses for January 1st
             apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1);
+        } else {
+            // Use CIVIL year type with the current year
+            apiClient.yearType(YearType.CIVIL).year(now.getFullYear());
         }
 
         apiClient._eventBus.on('calendarFetched', async (data) => {

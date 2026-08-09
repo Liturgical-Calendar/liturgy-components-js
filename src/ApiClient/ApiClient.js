@@ -308,12 +308,17 @@ export default class ApiClient {
 
   /**
    * Resolves and validates a locale for a national or diocesan calendar.
-   * Updates the Accept-Language header if the locale is valid.
+   * Sets the Accept-Language header when the requested locale is one the calendar
+   * supports; clears it when a locale was requested but cannot be used, so a locale
+   * left over from an earlier request never leaks into this one.
    *
    * @param {'national'|'diocesan'} category - The calendar category
    * @param {string} calendar_id - The calendar identifier
    * @param {string|Intl.Locale} locale - The locale to resolve
-   * @returns {string} The resolved locale (JS format with hyphen) or the current Accept-Language header value
+   * @returns {string} The JS-format (hyphenated) locale that was set as Accept-Language;
+   *          the current Accept-Language header value, unchanged, when no locale was
+   *          requested for this call; or `''` when a requested locale could not be used
+   *          for this calendar and the header was cleared.
    * @private
    */
   #resolveCalendarLocale(category, calendar_id, locale) {
@@ -326,31 +331,40 @@ export default class ApiClient {
 
     // An `Intl.Locale` is accepted here as everywhere else a locale is (issue #32).
     // Unwrapped rather than run through `canonicalizeLocale`: unlike `fetchCalendar`,
-    // this resolver does not THROW on a locale it cannot use — an unusable one simply
-    // leaves the header as it was — and routing it through the throwing helper would
-    // change that contract for strings too.
+    // this resolver does not THROW on a locale it cannot use — routing it through
+    // the throwing helper would change that contract for strings too.
     const tag = locale instanceof Intl.Locale ? locale.toString() : locale;
-    if (typeof tag === 'string' && tag !== '') {
-      const phpLocale = tag.replace(/-/g, '_');
-      const jsLocale = phpLocale.replace(/_/g, '-');
-      const metadataArray = category === 'national'
-        ? this.#base.metadata.national_calendars
-        : this.#base.metadata.diocesan_calendars;
 
-      if (!metadataArray) {
-        return resolvedLocale;
-      }
-
-      const calendarMetadata = metadataArray.find(
-        calendar => calendar.calendar_id === calendar_id
-      );
-      if (calendarMetadata?.locales?.includes(phpLocale)) {
-        this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
-        return jsLocale;
-      }
+    // No tag at all means no locale was requested for THIS call — e.g. an internal
+    // refetch triggered by a year or year_type change, which passes no locale — so
+    // whatever Accept-Language is already in force is left exactly as it is.
+    if (typeof tag !== 'string' || tag === '') {
+      return resolvedLocale;
     }
 
-    return resolvedLocale;
+    const phpLocale = tag.replace(/-/g, '_');
+    const jsLocale = phpLocale.replace(/_/g, '-');
+    const metadataArray = category === 'national'
+      ? this.#base.metadata.national_calendars
+      : this.#base.metadata.diocesan_calendars;
+
+    const calendarMetadata = metadataArray?.find(
+      calendar => calendar.calendar_id === calendar_id
+    );
+    if (calendarMetadata?.locales?.includes(phpLocale)) {
+      this.#fetchCalendarHeaders['Accept-Language'] = jsLocale;
+      return jsLocale;
+    }
+
+    // A locale WAS requested but this calendar cannot serve it — unparseable, or
+    // valid but not among the calendar's own supported locales. Clear any
+    // Accept-Language left by a previous request rather than leaving it in place:
+    // sending it would both ask the API for a locale this request never asked for,
+    // and key the cache entry by a locale that was not actually sent. Sending no
+    // Accept-Language makes the API fall back to the calendar's own first supported
+    // locale, so no client-side fallback is computed here.
+    delete this.#fetchCalendarHeaders['Accept-Language'];
+    return '';
   }
 
   /**

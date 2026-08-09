@@ -358,9 +358,12 @@ export default class ApiBase {
      * can retry.
      *
      * @returns {Promise<ApiBase>} Resolves to this base once its metadata is loaded.
-     * @throws {ApiClientError} If the request fails or the response carries no `litcal_metadata` — unless
-     *         an index was installed by {@link ApiBase.fromMetadata} while the request was open, in which
-     *         case the promise resolves to the loaded base.
+     * @throws {ApiClientError} If the request fails, the response carries no `litcal_metadata`, or the
+     *         `litcal_metadata` it does carry is structurally invalid — not an object, or missing
+     *         `national_calendars`, `diocesan_calendars` or `locales`, or carrying one of them as
+     *         something other than an array (see {@link ApiBase.#assertValidIndex}) — unless an index was
+     *         installed by {@link ApiBase.fromMetadata} while the request was open, in which case the
+     *         promise resolves to the loaded base.
      */
     load() {
         if ( this.#metadata !== null ) {
