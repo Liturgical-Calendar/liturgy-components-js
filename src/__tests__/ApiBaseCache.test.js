@@ -97,4 +97,36 @@ describe( 'ApiBase cache', () => {
         expect( () => ApiBase.cacheLimits( { ttl: -1 } ) ).toThrow( /ttl/ );
     } );
 
+    it( 'rejects NaN and Infinity as ttl', () => {
+        expect( () => ApiBase.cacheLimits( { ttl: NaN } ) ).toThrow( /ttl/ );
+        expect( () => ApiBase.cacheLimits( { ttl: Infinity } ) ).toThrow( /ttl/ );
+        expect( () => ApiBase.cacheLimits( { ttl: -Infinity } ) ).toThrow( /ttl/ );
+    } );
+
+    it( 'still accepts null and a finite positive ttl', () => {
+        expect( () => ApiBase.cacheLimits( { ttl: null } ) ).not.toThrow();
+        expect( () => ApiBase.cacheLimits( { ttl: 5000 } ) ).not.toThrow();
+    } );
+
+    it( 'trims an already-oversized cache immediately when maxEntries is lowered', () => {
+        ApiBase.cacheLimits( { maxEntries: 5 } );
+        const base = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        base.setCached( 'a', { n: 1 } );
+        base.setCached( 'b', { n: 2 } );
+        base.setCached( 'c', { n: 3 } );
+        base.setCached( 'd', { n: 4 } );
+        base.setCached( 'e', { n: 5 } );
+        base.getCached( 'a' );          // 'a' becomes most recently read
+        base.getCached( 'b' );          // 'b' becomes most recently read
+        // Read order (least to most recently read) is now: c, d, e, a, b
+
+        ApiBase.cacheLimits( { maxEntries: 2 } );
+
+        expect( base.getCached( 'c' ) ).toBeNull();
+        expect( base.getCached( 'd' ) ).toBeNull();
+        expect( base.getCached( 'e' ) ).toBeNull();
+        expect( base.getCached( 'a' ) ).toEqual( { n: 1 } );
+        expect( base.getCached( 'b' ) ).toEqual( { n: 2 } );
+    } );
+
 } );

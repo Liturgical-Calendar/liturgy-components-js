@@ -300,6 +300,7 @@ export default class ApiClient {
    * Clears all cached calendar data.
    * Useful when you want to force fresh data from the API.
    * @static
+   * @returns {void}
    */
   static clearCache() {
     ApiBase.clearAllCaches();

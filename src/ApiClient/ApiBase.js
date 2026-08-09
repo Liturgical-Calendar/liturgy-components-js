@@ -450,12 +450,36 @@ export default class ApiBase {
                 throw new Error( 'ApiBase.cacheLimits: maxEntries must be a positive integer, but found: ' + String( maxEntries ) );
             }
             ApiBase.#maxEntries = maxEntries;
+            // A lowered limit must apply immediately: a base that is never written to
+            // again would otherwise stay over the new limit indefinitely, since
+            // `setCached()` is the only other place trimming happens.
+            ApiBase.#registry.forEach( base => base.#trimCache() );
         }
         if ( ttl !== undefined ) {
-            if ( ttl !== null && ( typeof ttl !== 'number' || ttl <= 0 ) ) {
+            if ( ttl !== null && ( false === Number.isFinite( ttl ) || ttl <= 0 ) ) {
                 throw new Error( 'ApiBase.cacheLimits: ttl must be null or a positive number of milliseconds, but found: ' + String( ttl ) );
             }
             ApiBase.#ttl = ttl;
+        }
+    }
+
+    /**
+     * Evicts the least recently read entries beyond the current `maxEntries` limit.
+     *
+     * Shared by {@link ApiBase#setCached}, which trims as it writes, and
+     * {@link ApiBase.cacheLimits}, which must trim every registered base immediately
+     * when `maxEntries` is lowered — otherwise a base that is never written to again
+     * stays over the new limit indefinitely. The cache `Map` is kept in
+     * least-recently-read order by {@link ApiBase#getCached} and
+     * {@link ApiBase#setCached}, so eviction is always from the front.
+     *
+     * @returns {void}
+     * @private
+     */
+    #trimCache() {
+        while ( this.#cache.size > ApiBase.#maxEntries ) {
+            const oldest = this.#cache.keys().next().value;
+            this.#cache.delete( oldest );
         }
     }
 
