@@ -362,6 +362,11 @@ an array; anything else is rejected with a message naming the field, the type ac
 A field that is present but not an array is refused just as an absent one is — `locales: {}` would otherwise
 pass here and fail later, on the request path, as a bare `TypeError`.
 
+The base registered for a URL is the same object on every call. Installing a fixture on a URL that already
+has one replaces that base's calendar index and empties its response cache **without replacing the base**, so
+a component constructed before the re-install and one constructed after it remain on a single base, sharing a
+single cache. A `/calendars` request still in flight when a fixture lands does not overwrite it.
+
 ## Static Properties
 
 ```javascript

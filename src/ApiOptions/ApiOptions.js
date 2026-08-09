@@ -73,9 +73,10 @@ export default class ApiOptions {
     /**
      * The API base this form reads its metadata from.
      *
-     * Resolved ONCE, in the constructor, and held: `ApiBase.fromMetadata()`
-     * replaces a registry entry rather than mutating it, so re-resolving by URL
-     * later could silently swap the API under a form that is already on screen.
+     * Resolved ONCE, in the constructor, and held because the binding belongs to
+     * this form and is settled there: whichever base the `apiClient` option named —
+     * or the default in force at the time — is the one it keeps for its lifetime,
+     * whatever is registered later.
      *
      * @type {ApiBase}
      */

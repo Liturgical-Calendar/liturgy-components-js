@@ -184,7 +184,9 @@ And one entry that breaks no code, because it changes none — what narrows is w
 - `apiClient.base`, the `ApiBase` a client is bound to. Read `apiClient.base.url` and `apiClient.base.metadata`
   in place of the deprecated statics.
 - `ApiBase.fromMetadata( url, metadata )` registers a loaded base with no network request — the supported way to
-  exercise components in tests without mocking `fetch`. `ApiBase.reset()` empties the registry between tests.
+  exercise components in tests without mocking `fetch`. It hydrates the base for a URL in place and returns the
+  same object on every call, so re-installing a fixture replaces that base's calendar index and empties its
+  response cache without replacing the base itself. `ApiBase.reset()` empties the registry between tests.
 - `ApiBase` metadata queries: `locales()`, `nationalCalendars()`, `diocesanCalendars( rite )`,
   `riteCalendars( rite )`, `isValidDioceseForNation( dioceseId, nation )`, and the `supportsRite` getter. The
   methods throw, rather than answering emptily, when the base has not been loaded — an empty calendar list is

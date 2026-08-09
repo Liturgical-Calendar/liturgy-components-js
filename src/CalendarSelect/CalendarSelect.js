@@ -172,9 +172,10 @@ export default class CalendarSelect {
 
         // Must stay ahead of `#buildAllOptions()`, which reads both the base and the
         // national list, and after the `rite` handling above, which sets `this.#rite`.
-        // The base is resolved ONCE and held: `ApiBase.fromMetadata()` replaces a
-        // registry entry rather than mutating it, so re-resolving by URL later could
-        // silently swap the API under a select that is already on screen.
+        // The base is resolved ONCE and held because the binding belongs to this
+        // select and is settled here, at construction: whichever base the `apiClient`
+        // option named — or the default in force at the time — is the one it keeps for
+        // its lifetime, whatever is registered later.
         this.#base              = resolveBase( apiClient, 'CalendarSelect' );
         this.#nationalCalendars = [ ...this.#base.nationalCalendars() ];
         this.#buildAllOptions();
