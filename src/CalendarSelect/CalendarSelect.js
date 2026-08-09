@@ -577,7 +577,6 @@ export default class CalendarSelect {
      * Gets the liturgical rite this CalendarSelect instance is built for.
      *
      * @returns {string} A value from the `Rite` enum (`Rite.ROMAN` by default).
-     * @readonly
      */
     get _rite() {
         return this.#rite;
@@ -1178,7 +1177,6 @@ export default class CalendarSelect {
      * Gets the underlying DOM element of the CalendarSelect instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the CalendarSelect instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -1193,7 +1191,6 @@ export default class CalendarSelect {
      * - `CalendarSelectFilter.NONE` will show all options, that is, both nation and diocese options.
      *
      * @returns {string} The current filter of the CalendarSelect instance.
-     * @readonly
      */
     get _filter() {
         return this.#filter;
@@ -1203,7 +1200,6 @@ export default class CalendarSelect {
      * Retrieves the status of whether a wrapper element has been set for the CalendarSelect instance.
      *
      * @returns {boolean} True if a wrapper element has been set; otherwise, false.
-     * @readonly
      */
     get _hasWrapper() {
         return this.#hasWrapper;
@@ -1219,7 +1215,6 @@ export default class CalendarSelect {
      * this will be `null`.
      *
      * @returns {HTMLElement|null} The wrapper element for the CalendarSelect instance, or `null` if no wrapper element was set.
-     * @readonly
      */
     get _wrapperElement() {
         return this.#wrapperElement;
@@ -1235,7 +1230,6 @@ export default class CalendarSelect {
      * will return an empty string when no option is selected.
      *
      * @returns {boolean} True if the current CalendarSelect instance allows a null selected value; otherwise, false.
-     * @readonly
      */
     get _allowNull() {
         return this.#allowNull;

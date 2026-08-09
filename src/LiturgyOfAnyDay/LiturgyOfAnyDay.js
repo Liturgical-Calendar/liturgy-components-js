@@ -865,7 +865,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the underlying DOM element.
      *
      * @returns {HTMLElement} The DOM element.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -875,7 +874,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the title element.
      *
      * @returns {HTMLElement} The title element.
-     * @readonly
      */
     get _titleElement() {
         return this.#titleElement;
@@ -885,7 +883,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the date element.
      *
      * @returns {HTMLElement} The date element.
-     * @readonly
      */
     get _dateElement() {
         return this.#dateElement;
@@ -895,7 +892,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the date controls wrapper element.
      *
      * @returns {HTMLElement} The date controls wrapper element.
-     * @readonly
      */
     get _dateControlsWrapper() {
         return this.#dateControlsWrapper;
@@ -905,7 +901,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the events wrapper element.
      *
      * @returns {HTMLElement} The events wrapper element.
-     * @readonly
      */
     get _eventsElementsWrapper() {
         return this.#eventsElementsWrapper;
@@ -915,7 +910,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the day input component.
      *
      * @returns {DayInput} The day input component.
-     * @readonly
      */
     get _dayInput() {
         return this.#dayInput;
@@ -925,7 +919,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the month input component.
      *
      * @returns {MonthInput} The month input component.
-     * @readonly
      */
     get _monthInput() {
         return this.#monthInput;
@@ -935,7 +928,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the year input component.
      *
      * @returns {YearInput} The year input component.
-     * @readonly
      */
     get _yearInput() {
         return this.#yearInput;

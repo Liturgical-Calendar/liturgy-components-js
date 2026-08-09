@@ -110,7 +110,7 @@ export default class HolydaysOfObligationInput extends SelectInput {
      * If no parameter is provided, defaults to true.
      *
      * @param {boolean} [boolValue=true] - Whether the input element should be disabled.
-     * @returns {Input} The current instance for method chaining.
+     * @returns {import('./Input.js').default} The current instance for method chaining.
      * @throws {Error} If the type of boolValue is not a boolean.
      */
     disabled( boolValue = true ) {

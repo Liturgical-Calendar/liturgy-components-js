@@ -268,7 +268,6 @@ export default class RiteSelect {
      * Gets the underlying DOM element of the RiteSelect instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the RiteSelect instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -278,7 +277,6 @@ export default class RiteSelect {
      * Gets the locale that was used to build this RiteSelect instance's option labels.
      *
      * @returns {string}
-     * @readonly
      */
     get _locale() {
         return this.#locale;

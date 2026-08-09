@@ -25,6 +25,7 @@
     "test": "node --experimental-vm-modules $(yarn bin jest)",
     "compile": "tsc",
     "compile:watch": "tsc --watch",
+    "lint:dts": "tsc -p tsconfig.dts-check.json",
     "storybook": "storybook dev",
     "storybook:ci": "storybook dev -p 6006 --ci",
     "storybook:build": "storybook build",

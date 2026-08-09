@@ -1222,7 +1222,6 @@ export default class ApiClient {
    * The liturgical rite the current request is computed under.
    *
    * @type {'roman' | 'ambrosian'}
-   * @readonly
    */
   get _currentRite() {
     return this.#currentRite;

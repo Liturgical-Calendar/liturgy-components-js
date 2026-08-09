@@ -846,7 +846,6 @@ export default class ApiOptions {
      * Gets the Epiphany input element.
      *
      * @returns {EpiphanyInput} The Epiphany input element.
-     * @readonly
      */
     get _epiphanyInput() {
         return this.#inputs.epiphanyInput;
@@ -856,7 +855,6 @@ export default class ApiOptions {
      * Gets the Ascension input element.
      *
      * @returns {AscensionInput} The Ascension input element.
-     * @readonly
      */
     get _ascensionInput() {
         return this.#inputs.ascensionInput;
@@ -866,7 +864,6 @@ export default class ApiOptions {
      * Gets the Corpus Christi input element.
      *
      * @returns {CorpusChristiInput} The Corpus Christi input element.
-     * @readonly
      */
     get _corpusChristiInput() {
         return this.#inputs.corpusChristiInput;
@@ -876,7 +873,6 @@ export default class ApiOptions {
      * Gets the Eternal High Priest input element.
      *
      * @returns {EternalHighPriestInput} The Eternal High Priest input element.
-     * @readonly
      */
     get _eternalHighPriestInput() {
         return this.#inputs.eternalHighPriestInput;
@@ -886,7 +882,6 @@ export default class ApiOptions {
      * Gets the Holydays of Obligation input element.
      *
      * @returns {HolydaysOfObligationInput} The Holydays of Obligation input element.
-     * @readonly
      */
     get _holydaysOfObligationInput() {
         return this.#inputs.holydaysOfObligationInput;
@@ -896,7 +891,6 @@ export default class ApiOptions {
      * Gets the locale input element.
      *
      * @returns {LocaleInput} The locale input element.
-     * @readonly
      */
     get _localeInput() {
         return this.#inputs.localeInput;
@@ -906,7 +900,6 @@ export default class ApiOptions {
      * Gets the year type input element.
      *
      * @returns {YearTypeInput} The year type input element.
-     * @readonly
      */
     get _yearTypeInput() {
         return this.#inputs.yearTypeInput;
@@ -916,7 +909,6 @@ export default class ApiOptions {
      * Gets the year input element.
      *
      * @returns {YearInput} The year input element.
-     * @readonly
      */
     get _yearInput() {
         return this.#inputs.yearInput;
@@ -926,7 +918,6 @@ export default class ApiOptions {
      * Gets the Accept header input element.
      *
      * @returns {AcceptHeaderInput} The Accept header input element.
-     * @readonly
      */
     get _acceptHeaderInput() {
         return this.#inputs.acceptHeaderInput;
@@ -936,7 +927,6 @@ export default class ApiOptions {
      * Gets the calendar path input element.
      *
      * @returns {CalendarPathInput} The calendar path input element.
-     * @readonly
      */
     get _calendarPathInput() {
         return this.#inputs.calendarPathInput;
@@ -955,7 +945,6 @@ export default class ApiOptions {
      * - `ApiOptionsFilter.NONE` will show all possible form controls.
      *
      * @returns {string} The current filter of the ApiOptions instance.
-     * @readonly
      */
     get _filter() {
         return this.#filter;
@@ -968,7 +957,6 @@ export default class ApiOptions {
      * entries if filters have been set in succession.
      *
      * @returns {Array<string>} An array of filter values applied to the ApiOptions instance.
-     * @readonly
      */
     get _filtersSet() {
         return this.#filtersSet;
@@ -984,7 +972,6 @@ export default class ApiOptions {
      * module-level one shared with other embeds on the page.
      *
      * @returns {CurrentEndpoint} This instance's CurrentEndpoint.
-     * @readonly
      */
     get _currentEndpoint() {
         return this.#currentEndpoint;

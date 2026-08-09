@@ -87,17 +87,17 @@
 /**
  * @typedef {Object} CalendarEvent
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
- * @prop {int} event_idx - The progressive index, one for each liturgical event
+ * @prop {number} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
  * @prop {Date|string} date - The date of the liturgical event, either as a Date object or an RFC 3339 (ISO-8601) formatted string `YYYY-MM-DD`
- * @prop {int} month - The month of the liturgical event
+ * @prop {number} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
- * @prop {int} day - The day of the liturgical event
+ * @prop {number} day - The day of the liturgical event
  * @prop {string} day_of_the_week_iso8601 - The day of the liturgical event according to the ISO 8601 standard
  * @prop {string} day_of_the_week_long - The day of the liturgical event in the requested locale
  * @prop {string} day_of_the_week_short - The day of the liturgical event in the requested locale
- * @prop {int} grade - The liturgical grade of the liturgical event
+ * @prop {number} grade - The liturgical grade of the liturgical event
  * @prop {string[]} common - An array of the liturgical commons of the liturgical event
  * @prop {string} common_lcl - The liturgical commons of the liturgical event in the requested locale
  * @prop {string[]} color - An array of the liturgical colors of the liturgical event
@@ -138,7 +138,7 @@
 /**
  * @typedef {Object} CalendarMetadata
  * @prop {string} version - The version of the API
- * @prop {int} timestamp - The timestamp for when the API response was generated / cached
+ * @prop {number} timestamp - The timestamp for when the API response was generated / cached
  * @prop {string} date_time - The ISO-8601 formatted date and time for when the API response was generated / cached
  * @prop {{Accept: string, 'Accept-Language': string}} request_headers - The headers received in the request
  * @prop {{event_key: string, date: string, timezone_type: number, timezone: string}[]} solemnities - An array of solemnities keys and dates in the current calendar calculation

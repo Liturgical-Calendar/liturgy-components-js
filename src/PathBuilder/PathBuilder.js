@@ -201,7 +201,6 @@ export default class PathBuilder {
      * Gets the underlying DOM element of the PathBuilder instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the PathBuilder instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;

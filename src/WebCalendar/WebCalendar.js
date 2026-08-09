@@ -1495,7 +1495,6 @@ export default class WebCalendar {
     /**
      * The locale used by the WebCalendar instance.
      * @type {string}
-     * @readonly
      */
     get _locale() {
         return this.#locale;

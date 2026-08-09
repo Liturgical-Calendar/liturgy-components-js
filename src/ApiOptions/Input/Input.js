@@ -675,7 +675,6 @@ export default class Input {
      * Retrieves the underlying DOM element of the input instance.
      *
      * @returns {HTMLElement} The DOM element associated with the input instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -685,7 +684,6 @@ export default class Input {
      * Whether or not the class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _classSet() {
         return this.#classSet;
@@ -695,7 +693,6 @@ export default class Input {
      * The label element.
      *
      * @returns {HTMLLabelElement}
-     * @readonly
      */
     get _labelElement() {
         return this.#labelElement;
@@ -705,7 +702,6 @@ export default class Input {
      * Whether or not the label class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _labelClassSet() {
         return this.#labelClassSet;
@@ -715,7 +711,6 @@ export default class Input {
      * The element to insert after the label element.
      *
      * @returns {DocumentFragment|null}
-     * @readonly
      */
     get _labelAfter() {
         return this.#labelAfter;
@@ -725,7 +720,6 @@ export default class Input {
      * The wrapper element.
      *
      * @returns {HTMLElement|null}
-     * @readonly
      */
     get _wrapperElement() {
         return this.#wrapperElement;
@@ -735,7 +729,6 @@ export default class Input {
      * Whether or not the wrapper class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _wrapperClassSet() {
         return this.#wrapperClassSet;
@@ -745,7 +738,6 @@ export default class Input {
      * The default value of the input element, set with the defaultValue() method.
      *
      * @returns {string}
-     * @readonly
      */
     get _defaultValue() {
         return this.#defaultValue;
@@ -755,7 +747,6 @@ export default class Input {
      * Whether a wrapper element has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _hasWrapper() {
         return this.#hasWrapper;

@@ -57,7 +57,6 @@ export default class EventEmitter {
      *
      * @type {Object<string, Array<function>>}
      * @returns {Object<string, Array<function>>} The emitter's own map of registered events to their listeners.
-     * @readonly
      */
     get _events() {
         return this.#events;

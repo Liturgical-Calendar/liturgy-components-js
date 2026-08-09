@@ -665,7 +665,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying DOM element of the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The DOM element associated with the LiturgyOfTheDay instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -675,7 +674,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying title element associated with the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The title element.
-     * @readonly
      */
     get _titleElement() {
         return this.#titleElement;
@@ -685,7 +683,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying date element associated with the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The date element.
-     * @readonly
      */
     get _dateElement() {
         return this.#dateElement;
@@ -695,7 +692,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying wrapper element for the liturgical events list.
      *
      * @returns {HTMLElement} The wrapper element for the liturgical events list.
-     * @readonly
      */
     get _eventsElementsWrapper() {
         return this.#eventsElementsWrapper;

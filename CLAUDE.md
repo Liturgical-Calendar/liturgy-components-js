@@ -75,6 +75,7 @@ liturgy-components-js/
 # Compilation
 yarn compile              # Compile TypeScript to JavaScript
 yarn compile:watch        # Watch mode for continuous compilation
+yarn lint:dts             # Type-check dist/*.d.ts under --strict, as a downstream consumer would
 
 # Testing
 yarn test                 # Run Jest unit tests
@@ -120,6 +121,16 @@ postdates the target. The project compiles clean at ES2020 and ES2022 alike — 
 ES2020 claim survived unnoticed. Any change to the ECMAScript floor must be verified by reading the
 emitted `dist/`, not by trusting a green `yarn compile`. (Turning `checkJs` on is a much larger change
 and deliberately out of scope.)
+
+**`checkJs` being off also means a green `yarn compile` says nothing about whether the emitted `.d.ts`
+files are themselves valid TypeScript.** JSDoc mistakes in `src/` — a `@readonly` tag on a getter (which
+`tsc` emits as the syntactically invalid `readonly get foo(): T;`), a type name that never resolves in the
+declaration file's own scope — compile cleanly as JS but break every downstream TypeScript consumer.
+`yarn lint:dts` is the check that catches this class of bug: it runs `tsc -p tsconfig.dts-check.json`,
+a config isolated from `tsconfig.json` that starts from `dist/index.d.ts` and sets its own `target`/`lib`
+under `strict`, i.e. it checks the declarations the way a consumer's own `tsconfig.json` would, not the
+way this package's build does. Run `yarn compile` first — `lint:dts` checks whatever is already in `dist/`,
+it does not rebuild it.
 
 **Key Patterns:**
 
