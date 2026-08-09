@@ -6,7 +6,6 @@ import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfTheDay {
-
     /**
      * @type {RegExp[]}
      * @static
@@ -17,7 +16,7 @@ export default class LiturgyOfTheDay {
         /OrdSunday[0-9]{1,2}(_vigil){0,1}/,
         /Advent[1-4](_vigil){0,1}/,
         /Lent[1-5](_vigil){0,1}/,
-        /Easter[1-7](_vigil){0,1}/
+        /Easter[1-7](_vigil){0,1}/,
     ]);
 
     /**
@@ -26,7 +25,7 @@ export default class LiturgyOfTheDay {
      * @private
      * @readonly
      */
-    static #highContrast = Object.freeze([ 'green', 'red', 'purple' ]);
+    static #highContrast = Object.freeze(['green', 'red', 'purple']);
 
     /** @type {Date} */
     #date = null;
@@ -75,7 +74,7 @@ export default class LiturgyOfTheDay {
      * @static
      * @private
      */
-    static #isValidClassName( className ) {
+    static #isValidClassName(className) {
         /**
          * The regex pattern used to validate class names:
          *   - `^` asserts the start of a line
@@ -100,7 +99,7 @@ export default class LiturgyOfTheDay {
      * @static
      * @private
      */
-    static #isValidId( id ) {
+    static #isValidId(id) {
         /**
          * The regex pattern used to validate IDs:
          *   - `^` asserts the start of a line
@@ -117,7 +116,8 @@ export default class LiturgyOfTheDay {
          * >>  or in CSS stylesheets, ID attribute values must be valid CSS identifiers.
          * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
          */
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
+        const pattern =
+            /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
         return pattern.test(id);
     }
 
@@ -130,12 +130,15 @@ export default class LiturgyOfTheDay {
      * @static
      * @private
      */
-    static #validateElementSelector( element ) {
+    static #validateElementSelector(element) {
         if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
+            throw new Error(
+                'Invalid type for element selector, must be of type string but found type: ' +
+                    typeof element,
+            );
         }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
+        const domNode = document.querySelector(element);
+        if (null === domNode) {
             throw new Error('Invalid element selector: ' + element);
         }
         return domNode;
@@ -160,15 +163,29 @@ export default class LiturgyOfTheDay {
         // with an unset `locale` — ordinary JavaScript — used to throw here. Issue #32.
         this.#validateLocale(options.locale ?? 'en');
         const now = new Date();
-        this.#date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
+        this.#date = new Date(
+            Date.UTC(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                0,
+                0,
+                0,
+                0,
+            ),
+        );
         this.#domElement = document.createElement('div');
 
         this.#titleElement = document.createElement('h1');
-        this.#titleElement.textContent = Messages[this.#locale.language]['LITURGY_OF_THE_DAY'];
+        this.#titleElement.textContent =
+            Messages[this.#locale.language]['LITURGY_OF_THE_DAY'];
         this.#domElement.appendChild(this.#titleElement);
 
         this.#dateElement = document.createElement('div');
-        this.#dateElement.textContent = new Intl.DateTimeFormat(this.#locale.baseName, {dateStyle: 'full'}).format(this.#date);
+        this.#dateElement.textContent = new Intl.DateTimeFormat(
+            this.#locale.baseName,
+            { dateStyle: 'full' },
+        ).format(this.#date);
         this.#domElement.appendChild(this.#dateElement);
 
         this.#eventsElementsWrapper = document.createElement('div');
@@ -240,18 +257,30 @@ export default class LiturgyOfTheDay {
      */
     #updateEventDetails(todaysEvents) {
         todaysEvents.forEach((celebration) => {
-            const lclzdGrade = celebration.grade < 7 ? celebration.grade_lcl : '';
-            const isSundayOrdAdvLentEaster = LiturgyOfTheDay.#filterTagsDisplayGrade.some(pattern => pattern.test(celebration.event_key));
-            const celebrationGrade = celebration.grade_display !== null
-                ? celebration.grade_display
-                : (!isSundayOrdAdvLentEaster && celebration.grade !== 0 ? lclzdGrade : '');
+            const lclzdGrade =
+                celebration.grade < 7 ? celebration.grade_lcl : '';
+            const isSundayOrdAdvLentEaster =
+                LiturgyOfTheDay.#filterTagsDisplayGrade.some((pattern) =>
+                    pattern.test(celebration.event_key),
+                );
+            const celebrationGrade =
+                celebration.grade_display !== null
+                    ? celebration.grade_display
+                    : !isSundayOrdAdvLentEaster && celebration.grade !== 0
+                      ? lclzdGrade
+                      : '';
             const celebrationColor = celebration.color;
             const litEventElement = document.createElement('div');
             if (this.#eventClassName !== '') {
-                litEventElement.classList.add(...this.#eventClassName.split(' '));
+                litEventElement.classList.add(
+                    ...this.#eventClassName.split(' '),
+                );
             }
             litEventElement.style.backgroundColor = celebrationColor[0];
-            litEventElement.style.color = LiturgyOfTheDay.#highContrast.includes(celebrationColor[0]) ? "white" : "black";
+            litEventElement.style.color =
+                LiturgyOfTheDay.#highContrast.includes(celebrationColor[0])
+                    ? 'white'
+                    : 'black';
 
             const eventNameElement = document.createElement('h3');
             eventNameElement.textContent = celebration.name;
@@ -260,9 +289,13 @@ export default class LiturgyOfTheDay {
             if (celebrationGrade !== '') {
                 const celebrationGradeElement = document.createElement('div');
                 if (this.#eventGradeClassName !== '') {
-                    celebrationGradeElement.classList.add(...this.#eventGradeClassName.split(' '));
+                    celebrationGradeElement.classList.add(
+                        ...this.#eventGradeClassName.split(' '),
+                    );
                 }
-                celebrationGradeElement.classList.add(`grade-${celebration.grade}`);
+                celebrationGradeElement.classList.add(
+                    `grade-${celebration.grade}`,
+                );
                 celebrationGradeElement.textContent = celebrationGrade;
                 litEventElement.appendChild(celebrationGradeElement);
             }
@@ -270,24 +303,36 @@ export default class LiturgyOfTheDay {
             if (celebration.common.length) {
                 const celebrationCommonElement = document.createElement('div');
                 if (this.#eventCommonClassName !== '') {
-                    celebrationCommonElement.classList.add(...this.#eventCommonClassName.split(' '));
+                    celebrationCommonElement.classList.add(
+                        ...this.#eventCommonClassName.split(' '),
+                    );
                 }
                 celebrationCommonElement.textContent = celebration.common_lcl;
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
             if (Object.hasOwn(celebration, 'liturgical_year')) {
-                const celebrationLiturgicalYearElement = document.createElement('div');
+                const celebrationLiturgicalYearElement =
+                    document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
-                    celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
+                    celebrationLiturgicalYearElement.classList.add(
+                        ...this.#eventYearCycleClassName.split(' '),
+                    );
                 }
-                celebrationLiturgicalYearElement.textContent = celebration.liturgical_year;
+                celebrationLiturgicalYearElement.textContent =
+                    celebration.liturgical_year;
                 litEventElement.appendChild(celebrationLiturgicalYearElement);
             }
 
             // Render lectionary readings if enabled and available
-            if (this.#showReadings && Object.prototype.hasOwnProperty.call(celebration, 'readings')) {
-                this.#readingsRenderer.renderReadings(celebration.readings, litEventElement);
+            if (
+                this.#showReadings &&
+                Object.prototype.hasOwnProperty.call(celebration, 'readings')
+            ) {
+                this.#readingsRenderer.renderReadings(
+                    celebration.readings,
+                    litEventElement,
+                );
             }
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
@@ -304,10 +349,15 @@ export default class LiturgyOfTheDay {
      */
     id(id) {
         if (typeof id !== 'string') {
-            throw new Error('LiturgyOfTheDay: Invalid type for id, must be of type string but found type: ' + typeof id);
+            throw new Error(
+                'LiturgyOfTheDay: Invalid type for id, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
         if (false === LiturgyOfTheDay.#isValidId(id)) {
-            throw new Error(`LiturgyOfTheDay: Invalid id ${id}, must be a valid CSS selector`);
+            throw new Error(
+                `LiturgyOfTheDay: Invalid id ${id}, must be a valid CSS selector`,
+            );
         }
         this.#domElement.id = id;
         return this;
@@ -328,12 +378,17 @@ export default class LiturgyOfTheDay {
      */
     class(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#domElement.classList.add(...classNames);
@@ -355,12 +410,17 @@ export default class LiturgyOfTheDay {
      */
     titleClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.titleClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.titleClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#titleElement.classList.add(...classNames);
@@ -382,12 +442,17 @@ export default class LiturgyOfTheDay {
      */
     dateClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.dateClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.dateClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#dateElement.classList.add(...classNames);
@@ -409,12 +474,17 @@ export default class LiturgyOfTheDay {
      */
     eventsWrapperClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.eventsWrapperClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.eventsWrapperClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventsElementsWrapper.classList.add(...classNames);
@@ -436,12 +506,17 @@ export default class LiturgyOfTheDay {
      */
     eventClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.eventsClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.eventsClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventClassName = classNames.join(' ');
@@ -450,12 +525,17 @@ export default class LiturgyOfTheDay {
 
     eventGradeClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.eventGradeClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.eventGradeClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventGradeClassName = classNames.join(' ');
@@ -464,12 +544,17 @@ export default class LiturgyOfTheDay {
 
     eventCommonClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.eventCommonClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.eventCommonClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventCommonClassName = classNames.join(' ');
@@ -478,12 +563,17 @@ export default class LiturgyOfTheDay {
 
     eventYearCycleClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.eventYearCycleClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.eventYearCycleClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventYearCycleClassName = classNames.join(' ');
@@ -498,15 +588,22 @@ export default class LiturgyOfTheDay {
      */
     readingsWrapperClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.readingsWrapperClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.readingsWrapperClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
-        this.#readingsRenderer.setReadingsWrapperClassName(classNames.join(' '));
+        this.#readingsRenderer.setReadingsWrapperClassName(
+            classNames.join(' '),
+        );
         return this;
     }
 
@@ -518,12 +615,17 @@ export default class LiturgyOfTheDay {
      */
     readingsLabelClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.readingsLabelClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.readingsLabelClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#readingsRenderer.setReadingsLabelClassName(classNames.join(' '));
@@ -538,12 +640,17 @@ export default class LiturgyOfTheDay {
      */
     readingClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfTheDay.readingClass: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfTheDay.readingClass: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfTheDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfTheDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#readingsRenderer.setReadingClassName(classNames.join(' '));
@@ -558,7 +665,10 @@ export default class LiturgyOfTheDay {
      */
     showReadings(show = true) {
         if (typeof show !== 'boolean') {
-            throw new Error('LiturgyOfTheDay.showReadings: Invalid type for show, must be of type boolean but found type: ' + typeof show);
+            throw new Error(
+                'LiturgyOfTheDay.showReadings: Invalid type for show, must be of type boolean but found type: ' +
+                    typeof show,
+            );
         }
         this.#showReadings = show;
         return this;
@@ -584,13 +694,17 @@ export default class LiturgyOfTheDay {
      */
     listenTo(apiClient) {
         if (false === apiClient instanceof ApiClient) {
-            throw new Error('LiturgyOfTheDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.');
+            throw new Error(
+                'LiturgyOfTheDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' +
+                    typeof apiClient +
+                    '.',
+            );
         }
 
         // Configure ApiClient with the correct year_type based on the current date
         // This ensures the first fetch includes vigil masses if needed (December 31st)
         const now = new Date();
-        const isDec31 = (now.getMonth() === 11 && now.getDate() === 31);
+        const isDec31 = now.getMonth() === 11 && now.getDate() === 31;
         if (isDec31) {
             // Use LITURGICAL year type with year+1 to get vigil masses for January 1st
             apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1);
@@ -601,16 +715,31 @@ export default class LiturgyOfTheDay {
 
         apiClient._eventBus.on('calendarFetched', (data) => {
             if (typeof data !== 'object') {
-                throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' +
+                        typeof data,
+                );
             }
-            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
-                throw new Error('LiturgyOfTheDay: Invalid liturgical calendar data received in `calendarFetched` event');
+            if (
+                !Object.hasOwn(data, 'litcal') ||
+                !Array.isArray(data.litcal) ||
+                data.litcal.length === 0
+            ) {
+                throw new Error(
+                    'LiturgyOfTheDay: Invalid liturgical calendar data received in `calendarFetched` event',
+                );
             }
-            if (!Object.hasOwn(data, 'settings') || !Object.hasOwn(data, 'metadata') || !Object.hasOwn(data, 'messages')) {
-                throw new Error('LiturgyOfTheDay: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
+            if (
+                !Object.hasOwn(data, 'settings') ||
+                !Object.hasOwn(data, 'metadata') ||
+                !Object.hasOwn(data, 'messages')
+            ) {
+                throw new Error(
+                    'LiturgyOfTheDay: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties',
+                );
             }
             const todaysTimestamp = this.#date.getTime();
-            const todaysEvents = data.litcal.filter(event => {
+            const todaysEvents = data.litcal.filter((event) => {
                 return new Date(event.date).getTime() === todaysTimestamp;
             });
             console.log('todaysEvents: ', todaysEvents);
@@ -631,12 +760,14 @@ export default class LiturgyOfTheDay {
     appendTo(elementSelector) {
         if (elementSelector instanceof HTMLElement) {
             elementSelector.appendChild(this.#domElement);
-        }
-        else if (typeof elementSelector === 'string') {
-            const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
+        } else if (typeof elementSelector === 'string') {
+            const element =
+                LiturgyOfTheDay.#validateElementSelector(elementSelector);
             element.appendChild(this.#domElement);
         } else {
-            throw new Error('LiturgyOfTheDay.appendTo(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector');
+            throw new Error(
+                'LiturgyOfTheDay.appendTo(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector',
+            );
         }
     }
 
@@ -652,12 +783,14 @@ export default class LiturgyOfTheDay {
     replace(elementSelector) {
         if (elementSelector instanceof HTMLElement) {
             elementSelector.replaceWith(this.#domElement);
-        }
-        else if (typeof elementSelector === 'string') {
-            const element = LiturgyOfTheDay.#validateElementSelector(elementSelector);
+        } else if (typeof elementSelector === 'string') {
+            const element =
+                LiturgyOfTheDay.#validateElementSelector(elementSelector);
             element.replaceWith(this.#domElement);
         } else {
-            throw new Error('LiturgyOfTheDay.replaceWith(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector');
+            throw new Error(
+                'LiturgyOfTheDay.replaceWith(): invalid type for parameter, must be an instance of HTMLElement or a valid CSS selector',
+            );
         }
     }
 

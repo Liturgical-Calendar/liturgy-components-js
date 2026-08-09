@@ -1,7 +1,6 @@
-import NumberInput from "./NumberInput.js";
+import NumberInput from './NumberInput.js';
 
 export default class YearInput extends NumberInput {
-
     /**
      * Constructor for YearInput class.
      *
@@ -34,7 +33,7 @@ export default class YearInput extends NumberInput {
      * @param {number} year
      * @returns {YearInput} The current instance for method chaining.
      */
-    min( year ) {
+    min(year) {
         this._domElement.min = year;
         return this;
     }

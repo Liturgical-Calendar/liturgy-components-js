@@ -84,23 +84,29 @@ import { describeType } from './OptionsValidation.js';
  * @returns {string} The canonical BCP 47 tag, e.g. `'it-IT'` for `'it_IT'` or `'EN-us'`.
  * @throws {Error} If `locale` is neither a string nor an `Intl.Locale`, is empty or blank, or is not a parseable locale tag.
  */
-export function canonicalizeLocale( locale, componentName ) {
+export function canonicalizeLocale(locale, componentName) {
     // `describeType( locale )` below reports the ORIGINAL argument, not the
     // unwrapped tag: a caller who passed a number needs to hear `number`.
     const tag = locale instanceof Intl.Locale ? locale.toString() : locale;
-    if ( typeof tag !== 'string' ) {
-        throw new Error( `${componentName}: Invalid type for locale, must be of type \`string\` or \`Intl.Locale\` but found type: ${describeType( locale )}` );
+    if (typeof tag !== 'string') {
+        throw new Error(
+            `${componentName}: Invalid type for locale, must be of type \`string\` or \`Intl.Locale\` but found type: ${describeType(locale)}`,
+        );
     }
-    if ( tag.trim() === '' ) {
-        throw new Error( `${componentName}: Invalid locale, cannot be an empty or blank string` );
+    if (tag.trim() === '') {
+        throw new Error(
+            `${componentName}: Invalid locale, cannot be an empty or blank string`,
+        );
     }
-    const normalizedLocale = tag.replaceAll( '_', '-' );
+    const normalizedLocale = tag.replaceAll('_', '-');
     try {
-        return Intl.getCanonicalLocales( normalizedLocale )[ 0 ];
+        return Intl.getCanonicalLocales(normalizedLocale)[0];
     } catch {
         // The normalised tag, not the raw one: it is what was actually rejected,
         // and `ApiOptions` has reported it that way from the start.
-        throw new Error( `${componentName}: Invalid locale: ${normalizedLocale}` );
+        throw new Error(
+            `${componentName}: Invalid locale: ${normalizedLocale}`,
+        );
     }
 }
 
@@ -131,6 +137,6 @@ export function canonicalizeLocale( locale, componentName ) {
  * @returns {Intl.Locale} The parsed locale.
  * @throws {Error} If `locale` is neither a string nor an `Intl.Locale`, is empty or blank, or is not a parseable locale tag.
  */
-export function toIntlLocale( locale, componentName ) {
-    return new Intl.Locale( canonicalizeLocale( locale, componentName ) );
+export function toIntlLocale(locale, componentName) {
+    return new Intl.Locale(canonicalizeLocale(locale, componentName));
 }

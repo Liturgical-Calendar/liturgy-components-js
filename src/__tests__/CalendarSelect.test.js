@@ -15,79 +15,93 @@ import { Rite, CalendarSelectFilter } from '../Enums.js';
  * self-consistent index — deliberately does not contain.
  */
 const METADATA = {
-    locales: [ 'en', 'it', 'la' ],
+    locales: ['en', 'it', 'la'],
     national_calendars: [
-        { calendar_id: 'IT', locales: [ 'it-IT' ] },
-        { calendar_id: 'VA', locales: [ 'la', 'it-IT' ] }
+        { calendar_id: 'IT', locales: ['it-IT'] },
+        { calendar_id: 'VA', locales: ['la', 'it-IT'] },
     ],
     diocesan_calendars: [
-        { calendar_id: 'romamo_it',   nation: 'IT', diocese: 'Diocesi di Roma',    rite: 'roman' },
-        { calendar_id: 'milano_it', nation: 'IT', diocese: 'Diocesi di Milano',  rite: 'ambrosian' },
-        { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano',  rite: 'ambrosian' }
+        {
+            calendar_id: 'romamo_it',
+            nation: 'IT',
+            diocese: 'Diocesi di Roma',
+            rite: 'roman',
+        },
+        {
+            calendar_id: 'milano_it',
+            nation: 'IT',
+            diocese: 'Diocesi di Milano',
+            rite: 'ambrosian',
+        },
+        {
+            calendar_id: 'lugano_ch',
+            nation: 'CH',
+            diocese: 'Diocesi di Lugano',
+            rite: 'ambrosian',
+        },
     ],
-    ambrosian_calendars: [ { calendar_id: 'ambrosian' } ]
+    ambrosian_calendars: [{ calendar_id: 'ambrosian' }],
 };
 
 global.document = {
-    createElement: () => ( {} )
+    createElement: () => ({}),
 };
 
 const API_URL = 'http://localhost:8000';
 
-beforeEach( () => {
+beforeEach(() => {
     ApiBase.reset();
-    ApiBase.fromMetadata( API_URL, METADATA );
-} );
+    ApiBase.fromMetadata(API_URL, METADATA);
+});
 
-describe( 'CalendarSelect rite filtering — Roman (default)', () => {
+describe('CalendarSelect rite filtering — Roman (default)', () => {
+    it('does not crash on an Ambrosian diocese whose nation has no Roman national calendar', () => {
+        expect(() => new CalendarSelect()).not.toThrow();
+    });
 
-    it( 'does not crash on an Ambrosian diocese whose nation has no Roman national calendar', () => {
-        expect( () => new CalendarSelect() ).not.toThrow();
-    } );
-
-    it( 'excludes Ambrosian dioceses entirely', () => {
+    it('excludes Ambrosian dioceses entirely', () => {
         const cs = new CalendarSelect();
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="lugano_ch"' );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="milano_it"' );
-    } );
+        expect(cs.diocesesInnerHtml).not.toContain('value="lugano_ch"');
+        expect(cs.diocesesInnerHtml).not.toContain('value="milano_it"');
+    });
 
-    it( 'never fabricates a CH nation', () => {
+    it('never fabricates a CH nation', () => {
         const cs = new CalendarSelect();
-        expect( cs.nationsInnerHtml ).not.toContain( 'value="CH"' );
-    } );
+        expect(cs.nationsInnerHtml).not.toContain('value="CH"');
+    });
 
-    it( 'keeps Roman dioceses grouped under their nation', () => {
+    it('keeps Roman dioceses grouped under their nation', () => {
         const cs = new CalendarSelect();
-        expect( cs.diocesesInnerHtml ).toContain( 'value="romamo_it"' );
-        expect( cs.nationsInnerHtml ).toContain( 'value="IT"' );
-        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/ );
-    } );
-} );
+        expect(cs.diocesesInnerHtml).toContain('value="romamo_it"');
+        expect(cs.nationsInnerHtml).toContain('value="IT"');
+        expect(cs.diocesesInnerHtml).toMatch(
+            /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/,
+        );
+    });
+});
 
-describe( 'CalendarSelect rite filtering — Ambrosian', () => {
+describe('CalendarSelect rite filtering — Ambrosian', () => {
+    it('includes only Ambrosian dioceses', () => {
+        const cs = new CalendarSelect().rite(Rite.AMBROSIAN);
+        expect(cs.diocesesInnerHtml).toContain('value="lugano_ch"');
+        expect(cs.diocesesInnerHtml).toContain('value="milano_it"');
+        expect(cs.diocesesInnerHtml).not.toContain('value="romamo_it"');
+    });
 
-    it( 'includes only Ambrosian dioceses', () => {
-        const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
-        expect( cs.diocesesInnerHtml ).toContain( 'value="lugano_ch"' );
-        expect( cs.diocesesInnerHtml ).toContain( 'value="milano_it"' );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="romamo_it"' );
-    } );
+    it('produces no nation options at all', () => {
+        const cs = new CalendarSelect().rite(Rite.AMBROSIAN);
+        expect(cs.nationsInnerHtml).not.toContain('value="IT"');
+        expect(cs.nationsInnerHtml).not.toContain('value="CH"');
+        expect(cs.nationsInnerHtml).not.toContain('value="VA"');
+    });
 
-    it( 'produces no nation options at all', () => {
-        const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
-        expect( cs.nationsInnerHtml ).not.toContain( 'value="IT"' );
-        expect( cs.nationsInnerHtml ).not.toContain( 'value="CH"' );
-        expect( cs.nationsInnerHtml ).not.toContain( 'value="VA"' );
-    } );
+    it('lists dioceses flat, with no nation optgroup', () => {
+        const cs = new CalendarSelect().rite(Rite.AMBROSIAN);
+        expect(cs.diocesesInnerHtml).not.toContain('<optgroup');
+    });
+});
 
-    it( 'lists dioceses flat, with no nation optgroup', () => {
-        const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
-        expect( cs.diocesesInnerHtml ).not.toContain( '<optgroup' );
-    } );
-} );
-
-describe( 'CalendarSelect rite isolation and rebuild hygiene', () => {
-
+describe('CalendarSelect rite isolation and rebuild hygiene', () => {
     /**
      * What actually prevents cross-build leaks is that `#buildAllOptions()`
      * resets its derived arrays (`#nationalCalendarsWithDioceses`,
@@ -102,14 +116,14 @@ describe( 'CalendarSelect rite isolation and rebuild hygiene', () => {
      * the previous build's arrays instead of starting clean, duplicating
      * every option.
      */
-    it( 'does not duplicate nation options when the same instance is rebuilt for the same rite', () => {
-        const cs     = new CalendarSelect();
+    it('does not duplicate nation options when the same instance is rebuilt for the same rite', () => {
+        const cs = new CalendarSelect();
         const before = cs.nationsInnerHtml;
 
-        cs._applyRite( Rite.ROMAN );
+        cs._applyRite(Rite.ROMAN);
 
-        expect( cs.nationsInnerHtml ).toBe( before );
-    } );
+        expect(cs.nationsInnerHtml).toBe(before);
+    });
 
     /**
      * NON-DISCRIMINATING BY CONSTRUCTION, kept as documentation only.
@@ -121,25 +135,25 @@ describe( 'CalendarSelect rite isolation and rebuild hygiene', () => {
      * says so out loud rather than leaving a future reader to trust a test that
      * has no failing mode.
      */
-    it( 'keeps an existing Roman select unaffected by constructing an Ambrosian instance afterward (non-discriminating: passes with static storage too — the per-build reset, pinned above, is what protects)', () => {
-        const roman  = new CalendarSelect();
+    it('keeps an existing Roman select unaffected by constructing an Ambrosian instance afterward (non-discriminating: passes with static storage too — the per-build reset, pinned above, is what protects)', () => {
+        const roman = new CalendarSelect();
         const before = roman.nationsInnerHtml;
 
-        new CalendarSelect().rite( Rite.AMBROSIAN );
+        new CalendarSelect().rite(Rite.AMBROSIAN);
 
-        expect( roman.nationsInnerHtml ).toBe( before );
-    } );
-} );
+        expect(roman.nationsInnerHtml).toBe(before);
+    });
+});
 
-describe( 'CalendarSelect rite validation', () => {
+describe('CalendarSelect rite validation', () => {
+    it('throws on an unknown rite', () => {
+        expect(() => new CalendarSelect().rite('byzantine')).toThrow(
+            /Invalid rite/,
+        );
+    });
+});
 
-    it( 'throws on an unknown rite', () => {
-        expect( () => new CalendarSelect().rite( 'byzantine' ) ).toThrow( /Invalid rite/ );
-    } );
-} );
-
-describe( 'CalendarSelect filter() duplicate guard', () => {
-
+describe('CalendarSelect filter() duplicate guard', () => {
     /**
      * Pins the fix to the dead-code guard in `filter()`: it used to compare
      * `filter !== this.#filter` AFTER already assigning `this.#filter = filter`,
@@ -148,13 +162,21 @@ describe( 'CalendarSelect filter() duplicate guard', () => {
      * no error at all. Comparing BEFORE assigning is what makes a second,
      * different call actually throw.
      */
-    it( 'throws when filter() is called a second time with a different value', () => {
-        const cs = new CalendarSelect().filter( CalendarSelectFilter.NATIONAL_CALENDARS );
-        expect( () => cs.filter( CalendarSelectFilter.DIOCESAN_CALENDARS ) ).toThrow( /Filter has already been set/ );
-    } );
+    it('throws when filter() is called a second time with a different value', () => {
+        const cs = new CalendarSelect().filter(
+            CalendarSelectFilter.NATIONAL_CALENDARS,
+        );
+        expect(() =>
+            cs.filter(CalendarSelectFilter.DIOCESAN_CALENDARS),
+        ).toThrow(/Filter has already been set/);
+    });
 
-    it( 'does not throw when filter() is called again with the SAME value', () => {
-        const cs = new CalendarSelect().filter( CalendarSelectFilter.NATIONAL_CALENDARS );
-        expect( () => cs.filter( CalendarSelectFilter.NATIONAL_CALENDARS ) ).not.toThrow();
-    } );
-} );
+    it('does not throw when filter() is called again with the SAME value', () => {
+        const cs = new CalendarSelect().filter(
+            CalendarSelectFilter.NATIONAL_CALENDARS,
+        );
+        expect(() =>
+            cs.filter(CalendarSelectFilter.NATIONAL_CALENDARS),
+        ).not.toThrow();
+    });
+});

@@ -1,7 +1,6 @@
-import NumberInput from "./NumberInput.js";
+import NumberInput from './NumberInput.js';
 
 export default class DayInput extends NumberInput {
-
     /**
      * Constructor for DayInput class.
      *

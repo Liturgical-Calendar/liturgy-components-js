@@ -1,9 +1,12 @@
-import SelectInput from "./SelectInput.js";
-import Messages from "../../Messages.js";
+import SelectInput from './SelectInput.js';
+import Messages from '../../Messages.js';
 
 export default class CalendarPathInput extends SelectInput {
-
-    static #CALENDAR_PATHS = Object.freeze(['/calendar', '/calendar/nation/', '/calendar/diocese/']);
+    static #CALENDAR_PATHS = Object.freeze([
+        '/calendar',
+        '/calendar/nation/',
+        '/calendar/diocese/',
+    ]);
 
     /**
      * Constructor.
@@ -16,17 +19,23 @@ export default class CalendarPathInput extends SelectInput {
     constructor(locale) {
         super();
         if (locale && false === locale instanceof Intl.Locale) {
-            throw new Error('CalendarPathInput: Invalid type for locale, must be of type Intl.Locale but found type: ' + typeof locale);
+            throw new Error(
+                'CalendarPathInput: Invalid type for locale, must be of type Intl.Locale but found type: ' +
+                    typeof locale,
+            );
         }
         this._domElement.name = 'calendar_path';
         this._claimDefaultId('calendar_path');
-        this._labelElement.textContent = Messages[locale.language]['SELECT_ROUTE'] ?? 'Select route';
-        this._domElement.append(...CalendarPathInput.#CALENDAR_PATHS.map(path => {
-            const option = document.createElement('option');
-            option.textContent = path;
-            option.value = path;
-            option.selected = this._selectedValue === path;
-            return option;
-        }));
+        this._labelElement.textContent =
+            Messages[locale.language]['SELECT_ROUTE'] ?? 'Select route';
+        this._domElement.append(
+            ...CalendarPathInput.#CALENDAR_PATHS.map((path) => {
+                const option = document.createElement('option');
+                option.textContent = path;
+                option.value = path;
+                option.selected = this._selectedValue === path;
+                return option;
+            }),
+        );
     }
 }

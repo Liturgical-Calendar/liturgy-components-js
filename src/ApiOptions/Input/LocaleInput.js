@@ -1,7 +1,6 @@
-import SelectInput from "./SelectInput.js";
+import SelectInput from './SelectInput.js';
 
 export default class LocaleInput extends SelectInput {
-
     /**
      * The API base whose supported locales this input offers.
      *
@@ -12,7 +11,7 @@ export default class LocaleInput extends SelectInput {
      *
      * @type {import('../../ApiClient/ApiBase.js').default}
      */
-    #base                     = null;
+    #base = null;
 
     /**
      * The locales of the bound base, cached per instance.
@@ -21,14 +20,14 @@ export default class LocaleInput extends SelectInput {
      *
      * @type {string[]}
      */
-    #apiLocales               = null;
+    #apiLocales = null;
 
     /** @type {Object<string, Map<string, string>>} */
-    #apiLocalesDisplay        = {};
+    #apiLocalesDisplay = {};
     //#regionNames              = null;
-    #languageNames            = null;
+    #languageNames = null;
     /** @type {HTMLOptionElement[]} */
-    #options                  = null;
+    #options = null;
 
     /**
      * Constructs a LocaleInput object.
@@ -42,36 +41,50 @@ export default class LocaleInput extends SelectInput {
      *
      * @throws {Error} If the locale is invalid, or the base has not been loaded.
      */
-    constructor( locale = null, base = null ) {
+    constructor(locale = null, base = null) {
         super();
         this._domElement.name = 'locale';
         this._claimDefaultId('locale');
         this._labelElement.textContent = 'locale';
-        if ( null === base ) {
-            throw new Error( 'LocaleInput requires an ApiBase. It is constructed by ApiOptions, which supplies one; construct an ApiOptions rather than a LocaleInput directly, or pass the base of a client explicitly as `new LocaleInput( locale, apiClient.base )`.' );
+        if (null === base) {
+            throw new Error(
+                'LocaleInput requires an ApiBase. It is constructed by ApiOptions, which supplies one; construct an ApiOptions rather than a LocaleInput directly, or pass the base of a client explicitly as `new LocaleInput( locale, apiClient.base )`.',
+            );
         }
         this.#base = base;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
         if (false === locale instanceof Intl.Locale) {
-            throw new Error('Invalid type for locale, must be of type `Intl.Locale` but found type: ' + typeof locale);
+            throw new Error(
+                'Invalid type for locale, must be of type `Intl.Locale` but found type: ' +
+                    typeof locale,
+            );
         }
         //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
-        this.#languageNames = new Intl.DisplayNames([locale.language], { type: 'language' });
+        this.#languageNames = new Intl.DisplayNames([locale.language], {
+            type: 'language',
+        });
         if (this.#apiLocales === null) {
             this.#apiLocales = this.#base.locales();
         }
         if (false === this.#apiLocalesDisplay.hasOwnProperty(locale.language)) {
             this.#apiLocalesDisplay[locale.language] = new Map();
             this.#apiLocales.forEach((localeVal) => {
-                this.#apiLocalesDisplay[locale.language].set(localeVal, this.#languageNames.of(localeVal));
+                this.#apiLocalesDisplay[locale.language].set(
+                    localeVal,
+                    this.#languageNames.of(localeVal),
+                );
             });
             this.#apiLocalesDisplay[locale.language] = new Map(
-                [...this.#apiLocalesDisplay[locale.language].entries()].sort((a, b) => a[1].localeCompare(b[1]))
+                [...this.#apiLocalesDisplay[locale.language].entries()].sort(
+                    (a, b) => a[1].localeCompare(b[1]),
+                ),
             );
         }
-        this.#options = Array.from(this.#apiLocalesDisplay[locale.language]).map(([value, label]) => {
+        this.#options = Array.from(
+            this.#apiLocalesDisplay[locale.language],
+        ).map(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
             option.title = value;
@@ -94,15 +107,21 @@ export default class LocaleInput extends SelectInput {
      */
     setOptionsForCalendarLocales(calendarLocales = []) {
         if (calendarLocales.length === 0) {
-            console.error('`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.');
+            console.error(
+                '`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.',
+            );
             console.error(this);
-            throw new Error('`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.');
+            throw new Error(
+                '`calendarLocales` parameter passed to `LocaleInput.setOptionsForCalendarLocales()` cannot be empty.',
+            );
         }
         const newChildren = calendarLocales.map((calendarLocale) => {
             const option = document.createElement('option');
             option.value = calendarLocale;
             option.title = calendarLocale;
-            option.textContent = this.#languageNames.of(calendarLocale.replaceAll('_', '-'));
+            option.textContent = this.#languageNames.of(
+                calendarLocale.replaceAll('_', '-'),
+            );
             return option;
         });
         this._domElement.replaceChildren(...newChildren);
@@ -118,7 +137,7 @@ export default class LocaleInput extends SelectInput {
      */
     resetOptions() {
         this._domElement.replaceChildren(...this.#options);
-        this._domElement.value = this._defaultValue !== '' ? this._defaultValue : 'la';
+        this._domElement.value =
+            this._defaultValue !== '' ? this._defaultValue : 'la';
     }
-
 }

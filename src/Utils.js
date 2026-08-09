@@ -1,6 +1,4 @@
-
 export default class Utils {
-
     /**
      * Validates a given element selector and returns the corresponding DOM element.
      *
@@ -12,12 +10,15 @@ export default class Utils {
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is not found in the DOM.
      */
-    static validateElementSelector( element ) {
+    static validateElementSelector(element) {
         if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
+            throw new Error(
+                'Invalid type for element selector, must be of type string but found type: ' +
+                    typeof element,
+            );
         }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
+        const domNode = document.querySelector(element);
+        if (null === domNode) {
             throw new Error('Invalid element selector: ' + element);
         }
         return domNode;
@@ -36,7 +37,7 @@ export default class Utils {
      * @param {string} className - The class name to be validated.
      * @returns {boolean} `true` if the class name is valid, `false` otherwise.
      */
-    static validateClassName( className ) {
+    static validateClassName(className) {
         /**
          * The regex pattern used to validate class names:
          *   - `^` asserts the start of a line
@@ -61,7 +62,7 @@ export default class Utils {
      * @param {string} className - The class name to validate.
      * @returns {boolean} True if the class name is valid, false otherwise.
      */
-    static validateId( id ) {
+    static validateId(id) {
         /**
          * The regex pattern used to validate IDs:
          *   - `^` asserts the start of a line
@@ -78,7 +79,8 @@ export default class Utils {
          * >>  or in CSS stylesheets, ID attribute values must be valid CSS identifiers.
          * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
          */
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
+        const pattern =
+            /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
         return pattern.test(id);
     }
 
@@ -95,7 +97,7 @@ export default class Utils {
      */
     static sanitizeInput(input) {
         let doc = new DOMParser().parseFromString(input, 'text/html');
-        return doc.body.textContent || "";
+        return doc.body.textContent || '';
     }
 
     /**
@@ -133,14 +135,19 @@ export default class Utils {
     static findBestLocale(userLanguages, availableLocales) {
         for (const userLang of userLanguages) {
             // Try exact match first (e.g., "en-US" matches "en-US")
-            const exactMatch = availableLocales.find(locale => locale.toLowerCase() === userLang.toLowerCase());
+            const exactMatch = availableLocales.find(
+                (locale) => locale.toLowerCase() === userLang.toLowerCase(),
+            );
             if (exactMatch) {
                 return exactMatch;
             }
 
             // Try language prefix match (e.g., "en-US" matches "en" or "en_GB")
             const userLangPrefix = userLang.split(/[-_]/)[0].toLowerCase();
-            const prefixMatch = availableLocales.find(locale => locale.split(/[-_]/)[0].toLowerCase() === userLangPrefix);
+            const prefixMatch = availableLocales.find(
+                (locale) =>
+                    locale.split(/[-_]/)[0].toLowerCase() === userLangPrefix,
+            );
             if (prefixMatch) {
                 return prefixMatch;
             }

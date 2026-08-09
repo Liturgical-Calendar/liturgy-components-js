@@ -1,4 +1,11 @@
-import { ApiOptions, ApiClient, ApiBase, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
+import {
+    ApiOptions,
+    ApiClient,
+    ApiBase,
+    ApiOptionsFilter,
+    Input,
+    CalendarSelect,
+} from '@liturgical-calendar/components-js';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -23,124 +30,136 @@ import 'bootstrap/dist/css/bootstrap.min.css';
  */
 const meta = {
     title: 'Combined Components/CalendarSelect - ApiOptions/Allow Null on CalendarSelect',
-    tags: [ 'autodocs' ],
+    tags: ['autodocs'],
     argTypes: {
         locale: {
             control: 'text',
             description: 'Locale code for UI elements',
-            defaultValue: 'en-US'
+            defaultValue: 'en-US',
         },
         onChange: {
-            action: 'onChange'
+            action: 'onChange',
         },
         apiOptionsfilter: {
             control: { type: 'select' },
-            options: [ ApiOptionsFilter.NONE, ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN ],
+            options: [
+                ApiOptionsFilter.NONE,
+                ApiOptionsFilter.ALL_CALENDARS,
+                ApiOptionsFilter.GENERAL_ROMAN,
+            ],
             labels: {
-                [ ApiOptionsFilter.NONE ]: 'None',
-                [ ApiOptionsFilter.ALL_CALENDARS ]: 'All Calendars',
-                [ ApiOptionsFilter.GENERAL_ROMAN ]: 'General Roman'
+                [ApiOptionsFilter.NONE]: 'None',
+                [ApiOptionsFilter.ALL_CALENDARS]: 'All Calendars',
+                [ApiOptionsFilter.GENERAL_ROMAN]: 'General Roman',
             },
             description: 'Filter for the ApiOptions instance',
-            defaultValue: ApiOptionsFilter.NONE
+            defaultValue: ApiOptionsFilter.NONE,
         },
         calendarSelectClass: {
             control: 'text',
-            description: 'CSS class(es) for the widget\'s underlying HTML element'
+            description:
+                "CSS class(es) for the widget's underlying HTML element",
         },
         calendarSelectLabelClass: {
             control: 'text',
-            description: 'CSS class(es) for the select label\'s underlying HTML element'
+            description:
+                "CSS class(es) for the select label's underlying HTML element",
         },
         calendarSelectLabelText: {
             control: 'text',
-            description: 'Text for the select label\'s underlying HTML element',
-            defaultValue: 'Select a calendar'
+            description: "Text for the select label's underlying HTML element",
+            defaultValue: 'Select a calendar',
         },
         calendarSelectWrapperClass: {
             control: 'text',
-            description: 'CSS class(es) for the select wrapper\'s underlying HTML element'
+            description:
+                "CSS class(es) for the select wrapper's underlying HTML element",
         },
         calendarSelectAfter: {
             control: 'text',
-            description: 'HTML string to append to the select or select wrapper\'s underlying HTML element'
+            description:
+                "HTML string to append to the select or select wrapper's underlying HTML element",
         },
         calendarSelectAllowNull: {
             control: 'boolean',
-            description: 'Allow the select to have an empty value, which corresponds to General Roman Calendar',
-            defaultValue: false
+            description:
+                'Allow the select to have an empty value, which corresponds to General Roman Calendar',
+            defaultValue: false,
         },
         localeInputAfter: {
             control: 'text',
-            description: 'HTML string to show below the ApiOptions locale input'
-        }
+            description:
+                'HTML string to show below the ApiOptions locale input',
+        },
     },
-    render: ( args, { loaded: { apiClient, apiClientError } } ) => {
-        const container = document.createElement( 'div' );
+    render: (args, { loaded: { apiClient, apiClientError } }) => {
+        const container = document.createElement('div');
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
         if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ( apiClientError?.url ?? ApiBase.DEFAULT_URL );
+            container.textContent =
+                'Error initializing the Liturgical Calendar API Client, check that the API is running at ' +
+                (apiClientError?.url ?? ApiBase.DEFAULT_URL);
         } else {
             Input.setGlobalInputClass('form-select');
             Input.setGlobalLabelClass('form-label');
             Input.setGlobalWrapper('div');
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
-            const calendarSelect = new CalendarSelect( args.locale );
-            const apiOptions = new ApiOptions( args.locale );
+            const calendarSelect = new CalendarSelect(args.locale);
+            const apiOptions = new ApiOptions(args.locale);
             apiOptions._yearInput.class('form-control'); // override the global input class for number input
-            apiOptions.linkToCalendarSelect( calendarSelect );
+            apiOptions.linkToCalendarSelect(calendarSelect);
             //apiClient.listenTo(apiOptions);
-            if ( args.apiOptionsFilter ) {
-                apiOptions.filter( args.apiOptionsFilter );
+            if (args.apiOptionsFilter) {
+                apiOptions.filter(args.apiOptionsFilter);
             }
-            if ( args.calendarSelectAllowNull ) {
-                calendarSelect.allowNull( args.calendarSelectAllowNull );
+            if (args.calendarSelectAllowNull) {
+                calendarSelect.allowNull(args.calendarSelectAllowNull);
             }
-            if ( args.calendarSelectLabelText || args.calendarSelectLabelClass ) {
+            if (args.calendarSelectLabelText || args.calendarSelectLabelClass) {
                 const label = {};
-                if ( args.calendarSelectLabelText ) {
+                if (args.calendarSelectLabelText) {
                     label.text = args.calendarSelectLabelText;
                 }
-                if ( args.calendarSelectLabelClass ) {
+                if (args.calendarSelectLabelClass) {
                     label.class = args.calendarSelectLabelClass;
                 }
-                calendarSelect.label( label );
+                calendarSelect.label(label);
             }
-            if ( args.calendarSelectClass ) {
-                calendarSelect.class( args.calendarSelectClass );
+            if (args.calendarSelectClass) {
+                calendarSelect.class(args.calendarSelectClass);
             }
-            if ( args.calendarSelectWrapperClass ) {
+            if (args.calendarSelectWrapperClass) {
                 const wrapper = {};
                 wrapper.class = args.calendarSelectWrapperClass;
-                calendarSelect.wrapper( wrapper );
+                calendarSelect.wrapper(wrapper);
             }
             apiOptions._acceptHeaderInput.hide();
-            calendarSelect.appendTo( container );
-            apiOptions.appendTo( container );
+            calendarSelect.appendTo(container);
+            apiOptions.appendTo(container);
         }
         return container;
     },
     parameters: {
         actions: {
-            handles: [ 'change', 'change #apiOptionsContainer select' ],
+            handles: ['change', 'change #apiOptionsContainer select'],
         },
     },
     args: {
         calendarSelectClass: 'form-select',
         calendarSelectLabelClass: 'form-label d-block mb-1',
         calendarSelectWrapperClass: 'form-group col col-md-3',
-        calendarSelectAllowNull: true
-    }
-}
+        calendarSelectAllowNull: true,
+    },
+};
 
 export default meta;
 
 export const Default = {
-    args: {}
-}
+    args: {},
+};
 
 /**
  * `CalendarSelect` e `ApiOptions` - Permettere un valore Nullo nel `CalendarSelect`
@@ -164,9 +183,9 @@ export const Default = {
 export const Italian = {
     args: {
         locale: 'it-IT',
-        calendarSelectLabelText: 'Seleziona calendario'
-    }
-}
+        calendarSelectLabelText: 'Seleziona calendario',
+    },
+};
 
 /**
  * `CalendarSelect` et `ApiOptions` - Permettre une valeur nulle dans `CalendarSelect`
@@ -190,9 +209,9 @@ export const Italian = {
 export const French = {
     args: {
         locale: 'fr-FR',
-        calendarSelectLabelText: 'Sélectionnez calendrier'
-    }
-}
+        calendarSelectLabelText: 'Sélectionnez calendrier',
+    },
+};
 
 /**
  * `CalendarSelect` y `ApiOptions` - Permitir un valor nulo en `CalendarSelect`
@@ -216,9 +235,9 @@ export const French = {
 export const Spanish = {
     args: {
         locale: 'es-ES',
-        calendarSelectLabelText: 'Seleccione calendario'
-    }
-}
+        calendarSelectLabelText: 'Seleccione calendario',
+    },
+};
 
 /**
  * `CalendarSelect` und `ApiOptions` - Erlauben Sie einen Nullwert in `CalendarSelect`
@@ -242,6 +261,6 @@ export const Spanish = {
 export const German = {
     args: {
         locale: 'de-DE',
-        calendarSelectLabelText: 'Wählen Sie ein Kalender'
-    }
-}
+        calendarSelectLabelText: 'Wählen Sie ein Kalender',
+    },
+};

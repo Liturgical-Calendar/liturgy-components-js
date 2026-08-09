@@ -43,10 +43,9 @@ import { Rite } from '../Enums.js';
  */
 const CalendarType = {
     NATIONAL: 'nation',
-    DIOCESAN: 'diocese'
-}
+    DIOCESAN: 'diocese',
+};
 Object.freeze(CalendarType);
-
 
 /**
  * Describes the URL parameters that can be set on the API /calendar endpoint.
@@ -63,21 +62,20 @@ Object.freeze(CalendarType);
  */
 class RequestPayload {
     /** @type {?Locale} - The locale in which the liturgical calendar should be produced */
-    locale               = null;
+    locale = null;
     /** @type {?Epiphany} - Whether Epiphany is to be celebrated on January 6 or on the Sunday between January 2 and January 8 */
-    epiphany             = null;
+    epiphany = null;
     /** @type {?Ascension} - Whether Ascension is to be celebrated on Thursday or on Sunday */
-    ascension            = null;
+    ascension = null;
     /** @type {?CorpusChristi} - Whether Corpus Christi is to be celebrated on Thursday or on Sunday */
-    corpus_christi       = null;
+    corpus_christi = null;
     /** @type {?EternalHighPriest} - Whether Eternal High Priest is to be celebrated */
-    eternal_high_priest  = null;
+    eternal_high_priest = null;
     /** @type {?YearType} - Whether the liturgical calendar data should be for the liturgical year or the civil year */
-    year_type            = null;
+    year_type = null;
     /** @type {?ReturnType} - The format of the response data */
-    return_type          = null;
-};
-
+    return_type = null;
+}
 
 /**
  * Used to build the full endpoint URL for the API /calendar endpoint
@@ -103,18 +101,17 @@ class RequestPayload {
  * the page.
  */
 class CurrentEndpoint {
-
-    calendarType   = null;
-    calendarId     = null;
-    calendarYear   = null;
-    rite           = Rite.ROMAN;
+    calendarType = null;
+    calendarId = null;
+    calendarYear = null;
+    rite = Rite.ROMAN;
     /**
      * Whether to spell out the rite segment even for Roman. `Router::extractRiteSegment()`
      * accepts `roman` explicitly, so `/calendar/roman/nation/IT` and `/calendar/nation/IT`
      * are the same request. Kept false unless a RiteSelect is linked, so embeds that never
      * opt into rite awareness emit byte-identical paths.
      */
-    explicitRite   = false;
+    explicitRite = false;
 
     /**
      * The query parameters that accompany this endpoint's path.
@@ -141,13 +138,13 @@ class CurrentEndpoint {
      */
     get path() {
         let currentEndpoint = '/calendar';
-        if ( this.rite !== Rite.ROMAN || this.explicitRite ) {
+        if (this.rite !== Rite.ROMAN || this.explicitRite) {
             currentEndpoint += `/${this.rite}`;
         }
-        if ( this.calendarType !== null && this.calendarId !== null ) {
+        if (this.calendarType !== null && this.calendarId !== null) {
             currentEndpoint += `/${this.calendarType}/${this.calendarId}`;
         }
-        if ( this.calendarYear !== null ) {
+        if (this.calendarYear !== null) {
             currentEndpoint += `/${this.calendarYear}`;
         }
         return currentEndpoint;
@@ -167,8 +164,13 @@ class CurrentEndpoint {
     serialize() {
         let parameters = [];
         for (const key in this.requestPayload) {
-            if(this.requestPayload[key] !== null && this.requestPayload[key] !== ''){
-                parameters.push(key + "=" + encodeURIComponent(this.requestPayload[key]));
+            if (
+                this.requestPayload[key] !== null &&
+                this.requestPayload[key] !== ''
+            ) {
+                parameters.push(
+                    key + '=' + encodeURIComponent(this.requestPayload[key]),
+                );
             }
         }
         const urlParams = parameters.length ? `?${parameters.join('&')}` : '';

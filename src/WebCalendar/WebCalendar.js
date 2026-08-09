@@ -1,4 +1,14 @@
-import { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, LatinInterface, Rite, RiteProperties } from '../Enums.js';
+import {
+    Grouping,
+    ColumnOrder,
+    Column,
+    ColorAs,
+    DateFormat,
+    GradeDisplay,
+    LatinInterface,
+    Rite,
+    RiteProperties,
+} from '../Enums.js';
 import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import Messages from '../Messages.js';
@@ -44,7 +54,12 @@ export default class WebCalendar {
      * @type {ColumnSet}
      * @private
      */
-    #seasonColorColumns = new ColumnSet(Column.LITURGICAL_SEASON | Column.MONTH | Column.DATE | Column.PSALTER_WEEK);
+    #seasonColorColumns = new ColumnSet(
+        Column.LITURGICAL_SEASON |
+            Column.MONTH |
+            Column.DATE |
+            Column.PSALTER_WEEK,
+    );
 
     /**
      * @type {ColumnSet}
@@ -117,9 +132,15 @@ export default class WebCalendar {
      */
     #lastPsalterWeekCell = null;
 
-    #monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
+    #monthFmt = new Intl.DateTimeFormat(this.#locale, {
+        month: 'long',
+        timeZone: 'UTC',
+    });
 
-    #dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
+    #dateFmt = new Intl.DateTimeFormat(this.#locale, {
+        dateStyle: this.#dateFormat,
+        timeZone: 'UTC',
+    });
 
     /**
      * @type {['purple', 'red', 'green']}
@@ -128,15 +149,12 @@ export default class WebCalendar {
      */
     static #HIGH_CONTRAST = Object.freeze(['purple', 'red', 'green']);
 
-
     /**
      * @type {['', 'I', 'II', 'III', 'IV']}
      * @private
      * @readonly
      */
-    static #PSALTER_WEEK = Object.freeze([
-        '', 'I', 'II', 'III', 'IV'
-    ]);
+    static #PSALTER_WEEK = Object.freeze(['', 'I', 'II', 'III', 'IV']);
 
     /**
      * Sanitizes the given input string to prevent XSS attacks.
@@ -152,7 +170,7 @@ export default class WebCalendar {
      */
     static #sanitizeInput(input) {
         let doc = new DOMParser().parseFromString(input, 'text/html');
-        return doc.body.textContent || "";
+        return doc.body.textContent || '';
     }
 
     /**
@@ -166,7 +184,7 @@ export default class WebCalendar {
      * @static
      * @private
      */
-    static #isValidClassName( className ) {
+    static #isValidClassName(className) {
         /**
          * The regex pattern used to validate class names:
          *   - `^` asserts the start of a line
@@ -191,7 +209,7 @@ export default class WebCalendar {
      * @static
      * @private
      */
-    static #isValidId( id ) {
+    static #isValidId(id) {
         /**
          * The regex pattern used to validate IDs:
          *   - `^` asserts the start of a line
@@ -208,7 +226,8 @@ export default class WebCalendar {
          * >>  or in CSS stylesheets, ID attribute values must be valid CSS identifiers.
          * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
          */
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
+        const pattern =
+            /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
         return pattern.test(id);
     }
 
@@ -221,12 +240,15 @@ export default class WebCalendar {
      * @static
      * @private
      */
-    static #validateElementSelector( element ) {
+    static #validateElementSelector(element) {
         if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
+            throw new Error(
+                'Invalid type for element selector, must be of type string but found type: ' +
+                    typeof element,
+            );
         }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
+        const domNode = document.querySelector(element);
+        if (null === domNode) {
             throw new Error('Invalid element selector: ' + element);
         }
         return domNode;
@@ -259,7 +281,10 @@ export default class WebCalendar {
     constructor(options = {}) {
         this.#domElement = document.createElement('table');
         if (typeof options !== 'object') {
-            throw new Error('Invalid type for options on WebCalendar instance, must be of type object but found type: ' + typeof options);
+            throw new Error(
+                'Invalid type for options on WebCalendar instance, must be of type object but found type: ' +
+                    typeof options,
+            );
         }
         if (Object.hasOwn(options, 'class')) {
             this.class(options.class);
@@ -322,25 +347,32 @@ export default class WebCalendar {
      * invalid.
      * @returns {WebCalendar} The current WebCalendar instance for chaining.
      */
-    class( className ) {
-        if ( typeof className !== 'string' ) {
-            throw new Error('Invalid type for class name on WebCalendar instance, must be of type string but found type: ' + typeof className);
+    class(className) {
+        if (typeof className !== 'string') {
+            throw new Error(
+                'Invalid type for class name on WebCalendar instance, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
-        if ( this.#domElement === null ) {
-            throw new Error('Cannot set class name before dom element is initialized');
+        if (this.#domElement === null) {
+            throw new Error(
+                'Cannot set class name before dom element is initialized',
+            );
         }
-        let classNames = className.split( /\s+/ );
-        classNames = classNames.map( className => WebCalendar.#sanitizeInput( className ) );
-        for(className of classNames) {
-            if ( false === WebCalendar.#isValidClassName( className ) ) {
+        let classNames = className.split(/\s+/);
+        classNames = classNames.map((className) =>
+            WebCalendar.#sanitizeInput(className),
+        );
+        for (className of classNames) {
+            if (false === WebCalendar.#isValidClassName(className)) {
                 throw new Error('Invalid class name: ' + className);
             }
-        };
-        className = classNames.join( ' ' );
-        if ( className === '' ) {
-            this.#domElement.removeAttribute( 'class' );
+        }
+        className = classNames.join(' ');
+        if (className === '') {
+            this.#domElement.removeAttribute('class');
         } else {
-            this.#domElement.setAttribute( 'class', className );
+            this.#domElement.setAttribute('class', className);
         }
         return this;
     }
@@ -357,16 +389,24 @@ export default class WebCalendar {
      * @throws {Error} If the id is not a string, or if the id is invalid.
      * @returns {WebCalendar} The current WebCalendar instance for chaining.
      */
-    id( id ) {
-        if ( typeof id !== 'string' ) {
-            throw new Error('Invalid type for id, must be of type string but found type: ' + typeof id);
+    id(id) {
+        if (typeof id !== 'string') {
+            throw new Error(
+                'Invalid type for id, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
-        if ( this.#domElement === null ) {
-            throw new Error('Cannot set class name before dom element is initialized');
+        if (this.#domElement === null) {
+            throw new Error(
+                'Cannot set class name before dom element is initialized',
+            );
         }
-        id = WebCalendar.#sanitizeInput( id );
-        if (WebCalendar.#isValidId( id ) === false) {
-            throw new Error('Invalid id, cannot contain any kind of whitespace character: ' + id);
+        id = WebCalendar.#sanitizeInput(id);
+        if (WebCalendar.#isValidId(id) === false) {
+            throw new Error(
+                'Invalid id, cannot contain any kind of whitespace character: ' +
+                    id,
+            );
         }
         this.#domElement.id = id;
         return this;
@@ -390,16 +430,26 @@ export default class WebCalendar {
      */
     dateFormat(dateFormat) {
         if (typeof dateFormat !== 'string') {
-            throw new Error('Invalid type for date format, must be of type string but found type: ' + typeof dateFormat);
+            throw new Error(
+                'Invalid type for date format, must be of type string but found type: ' +
+                    typeof dateFormat,
+            );
         }
         if (!Object.values(DateFormat).includes(dateFormat)) {
             throw new Error('Invalid date format: ' + dateFormat);
         }
         this.#dateFormat = dateFormat;
         if (this.#dateFormat === DateFormat.DAY_ONLY) {
-            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { day: 'numeric', weekday: 'long', timeZone: 'UTC' });
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, {
+                day: 'numeric',
+                weekday: 'long',
+                timeZone: 'UTC',
+            });
         } else {
-            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, {
+                dateStyle: this.#dateFormat,
+                timeZone: 'UTC',
+            });
         }
         return this;
     }
@@ -418,7 +468,10 @@ export default class WebCalendar {
      */
     removeCaption(removeCaption = true) {
         if (typeof removeCaption !== 'boolean') {
-            throw new Error('Invalid type for remove caption, must be of type boolean but found type: ' + typeof removeCaption);
+            throw new Error(
+                'Invalid type for remove caption, must be of type boolean but found type: ' +
+                    typeof removeCaption,
+            );
         }
         this.#removeCaption = removeCaption;
         return this;
@@ -438,7 +491,10 @@ export default class WebCalendar {
      */
     removeHeaderRow(removeHeaderRow = true) {
         if (typeof removeHeaderRow !== 'boolean') {
-            throw new Error('Invalid type for remove header row, must be of type boolean but found type: ' + typeof removeHeaderRow);
+            throw new Error(
+                'Invalid type for remove header row, must be of type boolean but found type: ' +
+                    typeof removeHeaderRow,
+            );
         }
         this.#removeHeaderRow = removeHeaderRow;
         return this;
@@ -460,7 +516,9 @@ export default class WebCalendar {
      */
     firstColumnGrouping(firstColumnGrouping) {
         if (!Object.values(Grouping).includes(firstColumnGrouping)) {
-            throw new Error('Invalid first column grouping: ' + firstColumnGrouping);
+            throw new Error(
+                'Invalid first column grouping: ' + firstColumnGrouping,
+            );
         }
         this.#firstColumnGrouping = firstColumnGrouping;
         return this;
@@ -505,7 +563,10 @@ export default class WebCalendar {
      */
     psalterWeekColumn(boolVal = true) {
         if (typeof boolVal !== 'boolean') {
-            throw new Error('Invalid type for psalter week grouping, must be of type boolean but found type: ' + typeof psalterWeekColumn);
+            throw new Error(
+                'Invalid type for psalter week grouping, must be of type boolean but found type: ' +
+                    typeof psalterWeekColumn,
+            );
         }
         this.#psalterWeekColumn = boolVal;
         return this;
@@ -580,10 +641,15 @@ export default class WebCalendar {
      */
     seasonColorColumns(seasonColorColumns) {
         if (typeof seasonColorColumns !== 'number') {
-            throw new Error('Invalid type for season color columns, must be of type number but found type: ' + typeof seasonColorColumns);
+            throw new Error(
+                'Invalid type for season color columns, must be of type number but found type: ' +
+                    typeof seasonColorColumns,
+            );
         }
         if ((seasonColorColumns & Column.ALL) === 0) {
-            throw new Error('Invalid season color columns: ' + seasonColorColumns);
+            throw new Error(
+                'Invalid season color columns: ' + seasonColorColumns,
+            );
         }
         this.#seasonColorColumns.set(seasonColorColumns);
         return this;
@@ -602,10 +668,15 @@ export default class WebCalendar {
      */
     eventColorColumns(eventColorColumns) {
         if (typeof eventColorColumns !== 'number') {
-            throw new Error('Invalid type for event color columns, must be of type number but found type: ' + typeof eventColorColumns);
+            throw new Error(
+                'Invalid type for event color columns, must be of type number but found type: ' +
+                    typeof eventColorColumns,
+            );
         }
         if ((eventColorColumns & Column.ALL) === 0) {
-            throw new Error('Invalid event color columns: ' + eventColorColumns);
+            throw new Error(
+                'Invalid event color columns: ' + eventColorColumns,
+            );
         }
         this.#eventColorColumns.set(eventColorColumns);
         return this;
@@ -625,7 +696,10 @@ export default class WebCalendar {
      */
     monthHeader(monthHeader = true) {
         if (typeof monthHeader !== 'boolean') {
-            throw new Error('Invalid type for month header, must be of type boolean but found type: ' + typeof monthHeader);
+            throw new Error(
+                'Invalid type for month header, must be of type boolean but found type: ' +
+                    typeof monthHeader,
+            );
         }
         this.#monthHeader = monthHeader;
         return this;
@@ -725,11 +799,21 @@ export default class WebCalendar {
         // invokes by name, so `WebCalendar.locale:` points straight at the call.
         this.#locale = canonicalizeLocale(locale, 'WebCalendar.locale');
         this.#baseLocale = new Intl.Locale(this.#locale).language;
-        this.#monthFmt = new Intl.DateTimeFormat(this.#locale, { month: 'long', timeZone: 'UTC' });
+        this.#monthFmt = new Intl.DateTimeFormat(this.#locale, {
+            month: 'long',
+            timeZone: 'UTC',
+        });
         if (this.#dateFormat === DateFormat.DAY_ONLY) {
-            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { day: 'numeric', weekday: 'long', timeZone: 'UTC' });
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, {
+                day: 'numeric',
+                weekday: 'long',
+                timeZone: 'UTC',
+            });
         } else {
-            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, { dateStyle: this.#dateFormat, timeZone: 'UTC' });
+            this.#dateFmt = new Intl.DateTimeFormat(this.#locale, {
+                dateStyle: this.#dateFormat,
+                timeZone: 'UTC',
+            });
         }
         return this;
     }
@@ -750,7 +834,9 @@ export default class WebCalendar {
                 const nextEvent = this.#calendarData.litcal[nextEventIdx];
                 if (nextEvent.date.getTime() === currentEvent.date.getTime()) {
                     counter.cd++;
-                    this.#countSameDayEvents(nextEventIdx, counter).then(resolve);
+                    this.#countSameDayEvents(nextEventIdx, counter).then(
+                        resolve,
+                    );
                 } else {
                     resolve();
                 }
@@ -774,9 +860,13 @@ export default class WebCalendar {
             const nextEventIdx = eventIdx + 1;
             if (nextEventIdx < this.#calendarData.litcal.length) {
                 const nextEvent = this.#calendarData.litcal[nextEventIdx];
-                if (nextEvent.date.getMonth() === currentEvent.date.getMonth()) {
+                if (
+                    nextEvent.date.getMonth() === currentEvent.date.getMonth()
+                ) {
                     counter.cm++;
-                    this.#countSameMonthEvents(nextEventIdx, counter).then(resolve);
+                    this.#countSameMonthEvents(nextEventIdx, counter).then(
+                        resolve,
+                    );
                 } else {
                     resolve();
                 }
@@ -800,11 +890,19 @@ export default class WebCalendar {
             const nextEventIdx = eventIdx + 1;
             if (nextEventIdx < this.#calendarData.litcal.length) {
                 const nextEvent = this.#calendarData.litcal[nextEventIdx];
-                const currentEventLiturgicalSeason = currentEvent.liturgical_season ?? this.#determineSeason(currentEvent);
-                const nextEventLiturgicalSeason = nextEvent.liturgical_season ?? this.#determineSeason(nextEvent);
-                if (nextEventLiturgicalSeason === currentEventLiturgicalSeason) {
+                const currentEventLiturgicalSeason =
+                    currentEvent.liturgical_season ??
+                    this.#determineSeason(currentEvent);
+                const nextEventLiturgicalSeason =
+                    nextEvent.liturgical_season ??
+                    this.#determineSeason(nextEvent);
+                if (
+                    nextEventLiturgicalSeason === currentEventLiturgicalSeason
+                ) {
                     counter.cs++;
-                    this.#countSameSeasonEvents(nextEventIdx, counter).then(resolve);
+                    this.#countSameSeasonEvents(nextEventIdx, counter).then(
+                        resolve,
+                    );
                 } else {
                     resolve();
                 }
@@ -826,7 +924,7 @@ export default class WebCalendar {
         return new Promise((resolve) => {
             const currentEvent = this.#calendarData.litcal[eventIdx];
             const nextEventIdx = eventIdx + 1;
-            if (nextEventIdx < this.#calendarData.litcal.length ) {
+            if (nextEventIdx < this.#calendarData.litcal.length) {
                 const nextEvent = this.#calendarData.litcal[nextEventIdx];
                 // cepsw = current event psalter week
                 const cepsw = currentEvent.psalter_week;
@@ -839,9 +937,17 @@ export default class WebCalendar {
                 // AND either:
                 //      * the next event's psalter week is within the valid Psalter week values of 1-4 (is not 0)
                 //      * OR the next event is on the same day as the current event
-                if (nepsw === cepsw && (nepsw !== 0 || currentEvent.date.getTime() === nextEvent.date.getTime())) {
+                if (
+                    nepsw === cepsw &&
+                    (nepsw !== 0 ||
+                        currentEvent.date.getTime() ===
+                            nextEvent.date.getTime())
+                ) {
                     counter.cw++;
-                    this.#countSamePsalterWeekEvents(nextEventIdx, counter).then(resolve);
+                    this.#countSamePsalterWeekEvents(
+                        nextEventIdx,
+                        counter,
+                    ).then(resolve);
                 } else {
                     // resolve the promise
                     resolve();
@@ -860,33 +966,59 @@ export default class WebCalendar {
      * @returns
      */
     #determineSeason(litevent) {
-        if (litevent.date >= this.#calendarData.litcal.AshWednesday.date && litevent.date < this.#calendarData.litcal.HolyThurs.date) {
+        if (
+            litevent.date >= this.#calendarData.litcal.AshWednesday.date &&
+            litevent.date < this.#calendarData.litcal.HolyThurs.date
+        ) {
             return 'LENT';
         }
-        if (litevent.date >= this.#calendarData.litcal.HolyThurs.date && litevent.date < this.#calendarData.litcal.Easter.date) {
+        if (
+            litevent.date >= this.#calendarData.litcal.HolyThurs.date &&
+            litevent.date < this.#calendarData.litcal.Easter.date
+        ) {
             return 'EASTER_TRIDUUM';
         }
-        if (litevent.date >= this.#calendarData.litcal.Easter.date && litevent.date < this.#calendarData.litcal.Pentecost.date) {
+        if (
+            litevent.date >= this.#calendarData.litcal.Easter.date &&
+            litevent.date < this.#calendarData.litcal.Pentecost.date
+        ) {
             return 'EASTER';
         }
-        if (litevent.date >= this.#calendarData.litcal.Advent1.date && litevent.date < this.#calendarData.litcal.Christmas.date) {
+        if (
+            litevent.date >= this.#calendarData.litcal.Advent1.date &&
+            litevent.date < this.#calendarData.litcal.Christmas.date
+        ) {
             return 'ADVENT';
         }
-        if (litevent.date > this.#calendarData.litcal.BaptismLord.date && litevent.date < this.#calendarData.litcal.AshWednesday.date) {
+        if (
+            litevent.date > this.#calendarData.litcal.BaptismLord.date &&
+            litevent.date < this.#calendarData.litcal.AshWednesday.date
+        ) {
             return 'ORDINARY_TIME';
         }
 
         // Handle Saturday of 34th week of Ordinary Time
-        let Saturday34thWeekOrdTime = new Date(this.#calendarData.litcal.ChristKing.date);
-        Saturday34thWeekOrdTime.setDate(Saturday34thWeekOrdTime.getDate() + (6 - Saturday34thWeekOrdTime.getDay()));
+        let Saturday34thWeekOrdTime = new Date(
+            this.#calendarData.litcal.ChristKing.date,
+        );
+        Saturday34thWeekOrdTime.setDate(
+            Saturday34thWeekOrdTime.getDate() +
+                (6 - Saturday34thWeekOrdTime.getDay()),
+        );
 
-        if (litevent.date > this.#calendarData.litcal.Pentecost.date && litevent.date <= Saturday34thWeekOrdTime) {
+        if (
+            litevent.date > this.#calendarData.litcal.Pentecost.date &&
+            litevent.date <= Saturday34thWeekOrdTime
+        ) {
             return 'ORDINARY_TIME';
         }
 
         // Handle Liturgical year type edge case
         if (this.#calendarData.settings.year_type === 'LITURGICAL') {
-            if (litevent.date.getTime() === this.#calendarData.litcal.Advent1_vigil.date.getTime()) {
+            if (
+                litevent.date.getTime() ===
+                this.#calendarData.litcal.Advent1_vigil.date.getTime()
+            ) {
                 return 'ADVENT';
             }
         }
@@ -928,7 +1060,7 @@ export default class WebCalendar {
      */
     #handleSeasonColorForColumn(seasonColor, cell, columnFlag) {
         if (this.#seasonColorColumns.has(columnFlag)) {
-            switch(this.#seasonColor) {
+            switch (this.#seasonColor) {
                 case ColorAs.BACKGROUND:
                     cell.style.backgroundColor = seasonColor;
                     if (WebCalendar.#HIGH_CONTRAST.includes(seasonColor)) {
@@ -969,7 +1101,7 @@ export default class WebCalendar {
             eventColor = [eventColor];
         }
         if (this.#eventColorColumns.has(columnFlag)) {
-            switch(this.#eventColor) {
+            switch (this.#eventColor) {
                 case ColorAs.BACKGROUND:
                     cell.style.backgroundColor = eventColor[0];
                     if (WebCalendar.#HIGH_CONTRAST.includes(eventColor[0])) {
@@ -980,7 +1112,7 @@ export default class WebCalendar {
                     cell.classList.add(eventColor[0]);
                     break;
                 case ColorAs.INDICATOR:
-                    for(const color of eventColor) {
+                    for (const color of eventColor) {
                         let colorSpan = document.createElement('span');
                         colorSpan.style.backgroundColor = color;
                         colorSpan.style.width = '10px';
@@ -1016,7 +1148,10 @@ export default class WebCalendar {
 
         // First column in Month or Liturgical Season
         if (newCheck.newMonth || newCheck.newSeason) {
-            if (newCheck.newMonth && this.#firstColumnGrouping === Grouping.BY_MONTH) {
+            if (
+                newCheck.newMonth &&
+                this.#firstColumnGrouping === Grouping.BY_MONTH
+            ) {
                 let firstColRowSpan = counter.cm + 1;
                 if (this.#monthHeader) {
                     firstColRowSpan++;
@@ -1024,16 +1159,31 @@ export default class WebCalendar {
                     const monthHeaderCell = document.createElement('td');
                     monthHeaderCell.setAttribute('colspan', 3);
                     monthHeaderCell.setAttribute('class', 'monthHeader');
-                    monthHeaderCell.appendChild(document.createTextNode(this.#monthFmt.format(litevent.date)));
+                    monthHeaderCell.appendChild(
+                        document.createTextNode(
+                            this.#monthFmt.format(litevent.date),
+                        ),
+                    );
                 }
                 const firstColCell = document.createElement('td');
                 firstColCell.setAttribute('rowspan', firstColRowSpan);
                 firstColCell.setAttribute('class', 'rotate month');
-                this.#handleSeasonColorForColumn(seasonColor, firstColCell, Column.MONTH);
-                this.#handleEventColorForColumn(litevent.color, firstColCell, Column.MONTH);
-                const textNode = this.#baseLocale === 'la'
-                    ? this.#latinInterface.month(litevent.date.getMonth() + 1).toUpperCase()
-                    : this.#monthFmt.format(litevent.date).toUpperCase();
+                this.#handleSeasonColorForColumn(
+                    seasonColor,
+                    firstColCell,
+                    Column.MONTH,
+                );
+                this.#handleEventColorForColumn(
+                    litevent.color,
+                    firstColCell,
+                    Column.MONTH,
+                );
+                const textNode =
+                    this.#baseLocale === 'la'
+                        ? this.#latinInterface
+                              .month(litevent.date.getMonth() + 1)
+                              .toUpperCase()
+                        : this.#monthFmt.format(litevent.date).toUpperCase();
                 const div = document.createElement('div');
                 div.appendChild(document.createTextNode(textNode));
                 firstColCell.appendChild(div);
@@ -1044,18 +1194,36 @@ export default class WebCalendar {
                     tr.appendChild(firstColCell);
                 }
             }
-            if (newCheck.newSeason && this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON) {
+            if (
+                newCheck.newSeason &&
+                this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON
+            ) {
                 let firstColRowSpan = counter.cs + 1;
                 const firstColCell = document.createElement('td');
                 if (this.#monthHeader) {
                     this.#lastSeasonCell = firstColCell;
                 }
                 firstColCell.setAttribute('rowspan', firstColRowSpan);
-                firstColCell.setAttribute('class', `rotate season ${litevent.liturgical_season}`);
-                this.#handleSeasonColorForColumn(seasonColor, firstColCell, Column.LITURGICAL_SEASON);
-                this.#handleEventColorForColumn(litevent.color, firstColCell, Column.LITURGICAL_SEASON);
+                firstColCell.setAttribute(
+                    'class',
+                    `rotate season ${litevent.liturgical_season}`,
+                );
+                this.#handleSeasonColorForColumn(
+                    seasonColor,
+                    firstColCell,
+                    Column.LITURGICAL_SEASON,
+                );
+                this.#handleEventColorForColumn(
+                    litevent.color,
+                    firstColCell,
+                    Column.LITURGICAL_SEASON,
+                );
                 const div = document.createElement('div');
-                div.appendChild(document.createTextNode(litevent.liturgical_season_lcl ?? ''));
+                div.appendChild(
+                    document.createTextNode(
+                        litevent.liturgical_season_lcl ?? '',
+                    ),
+                );
                 firstColCell.appendChild(div);
                 if (this.#monthHeader && newCheck.newMonth) {
                     firstColRowSpan++;
@@ -1064,21 +1232,38 @@ export default class WebCalendar {
                     const monthHeaderCell = document.createElement('td');
                     monthHeaderCell.setAttribute('colspan', 3);
                     monthHeaderCell.setAttribute('class', 'monthHeader');
-                    monthHeaderCell.appendChild(document.createTextNode(this.#monthFmt.format(litevent.date)));
+                    monthHeaderCell.appendChild(
+                        document.createTextNode(
+                            this.#monthFmt.format(litevent.date),
+                        ),
+                    );
                     monthHeaderRow.appendChild(firstColCell);
                     monthHeaderRow.appendChild(monthHeaderCell);
                 } else {
                     tr.appendChild(firstColCell);
                 }
             }
-            if (false === newCheck.newSeason && newCheck.newMonth && this.#monthHeader && this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON) {
-                const firstColCellRowSpan = this.#lastSeasonCell.getAttribute('rowspan');
-                this.#lastSeasonCell.setAttribute('rowspan', parseInt(firstColCellRowSpan) + 1);
+            if (
+                false === newCheck.newSeason &&
+                newCheck.newMonth &&
+                this.#monthHeader &&
+                this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON
+            ) {
+                const firstColCellRowSpan =
+                    this.#lastSeasonCell.getAttribute('rowspan');
+                this.#lastSeasonCell.setAttribute(
+                    'rowspan',
+                    parseInt(firstColCellRowSpan) + 1,
+                );
                 monthHeaderRow = document.createElement('tr');
                 const monthHeaderCell = document.createElement('td');
                 monthHeaderCell.setAttribute('colspan', 3);
                 monthHeaderCell.setAttribute('class', 'monthHeader');
-                monthHeaderCell.appendChild(document.createTextNode(this.#monthFmt.format(litevent.date)));
+                monthHeaderCell.appendChild(
+                    document.createTextNode(
+                        this.#monthFmt.format(litevent.date),
+                    ),
+                );
                 monthHeaderRow.appendChild(monthHeaderCell);
             }
             newCheck.newMonth = false;
@@ -1090,8 +1275,9 @@ export default class WebCalendar {
         switch (this.#baseLocale) {
             case 'la': {
                 const dayOfTheWeek = litevent.date.getDay(); // 0-Sunday to 6-Saturday
-                const dayOfTheWeekLatin = this.#latinInterface.dayOfTheWeek(dayOfTheWeek);
-                const month = (litevent.date.getMonth() + 1); // 0-January to 11-December
+                const dayOfTheWeekLatin =
+                    this.#latinInterface.dayOfTheWeek(dayOfTheWeek);
+                const month = litevent.date.getMonth() + 1; // 0-January to 11-December
                 const monthLatin = this.#latinInterface.month(month);
                 dateStr = `${dayOfTheWeekLatin} ${litevent.date.getDate()} ${monthLatin} ${litevent.date.getFullYear()}`;
                 break;
@@ -1107,8 +1293,16 @@ export default class WebCalendar {
         if (0 === ev || null === ev) {
             const dateCell = document.createElement('td');
             dateCell.setAttribute('class', 'dateEntry');
-            this.#handleSeasonColorForColumn(seasonColor, dateCell, Column.DATE);
-            this.#handleEventColorForColumn(litevent.color, dateCell, Column.DATE);
+            this.#handleSeasonColorForColumn(
+                seasonColor,
+                dateCell,
+                Column.DATE,
+            );
+            this.#handleEventColorForColumn(
+                litevent.color,
+                dateCell,
+                Column.DATE,
+            );
             dateCell.appendChild(document.createTextNode(dateStr));
             if (0 === ev) {
                 dateCell.setAttribute('rowspan', counter.cd + 1);
@@ -1117,26 +1311,58 @@ export default class WebCalendar {
         }
 
         // Third column is Event Details
-        let currentCycle = Object.hasOwn(litevent, 'liturgical_year') && litevent.liturgical_year !== null
-            ? ' (' + litevent.liturgical_year + ')'
-            : '';
+        let currentCycle =
+            Object.hasOwn(litevent, 'liturgical_year') &&
+            litevent.liturgical_year !== null
+                ? ' (' + litevent.liturgical_year + ')'
+                : '';
         const eventDetailsCell = document.createElement('td');
-        eventDetailsCell.setAttribute('class', 'eventDetails liturgicalGrade_' + litevent.grade);
-        this.#handleSeasonColorForColumn(seasonColor, eventDetailsCell, Column.EVENT_DETAILS);
-        this.#handleEventColorForColumn(litevent.color, eventDetailsCell, Column.EVENT_DETAILS);
+        eventDetailsCell.setAttribute(
+            'class',
+            'eventDetails liturgicalGrade_' + litevent.grade,
+        );
+        this.#handleSeasonColorForColumn(
+            seasonColor,
+            eventDetailsCell,
+            Column.EVENT_DETAILS,
+        );
+        this.#handleEventColorForColumn(
+            litevent.color,
+            eventDetailsCell,
+            Column.EVENT_DETAILS,
+        );
         const fragmentContents = `${litevent.name}${currentCycle} - <i>${litevent.color_lcl.join(` ${Messages[this.#baseLocale]['OR']} `)}</i><br><i>${litevent.common_lcl}</i>`;
-        const eventDetailsContents = document.createRange().createContextualFragment(fragmentContents);
+        const eventDetailsContents = document
+            .createRange()
+            .createContextualFragment(fragmentContents);
         eventDetailsCell.appendChild(eventDetailsContents);
 
         // Fourth column is Liturgical Grade
-        let displayGrade = litevent.grade_display !== null ? litevent.grade_display : litevent.grade_lcl;
-        if (this.#gradeDisplay === GradeDisplay.ABBREVIATED && litevent.grade_display !== '') {
+        let displayGrade =
+            litevent.grade_display !== null
+                ? litevent.grade_display
+                : litevent.grade_lcl;
+        if (
+            this.#gradeDisplay === GradeDisplay.ABBREVIATED &&
+            litevent.grade_display !== ''
+        ) {
             displayGrade = litevent.grade_abbr;
         }
         const liturgicalGradeCell = document.createElement('td');
-        liturgicalGradeCell.setAttribute('class', 'liturgicalGrade liturgicalGrade_' + litevent.grade);
-        this.#handleSeasonColorForColumn(seasonColor, liturgicalGradeCell, Column.GRADE);
-        this.#handleEventColorForColumn(litevent.color, liturgicalGradeCell, Column.GRADE);
+        liturgicalGradeCell.setAttribute(
+            'class',
+            'liturgicalGrade liturgicalGrade_' + litevent.grade,
+        );
+        this.#handleSeasonColorForColumn(
+            seasonColor,
+            liturgicalGradeCell,
+            Column.GRADE,
+        );
+        this.#handleEventColorForColumn(
+            litevent.color,
+            liturgicalGradeCell,
+            Column.GRADE,
+        );
         liturgicalGradeCell.appendChild(document.createTextNode(displayGrade));
 
         // Third and fourth column order depends on the column order setting
@@ -1152,19 +1378,38 @@ export default class WebCalendar {
         }
 
         // Fifth column is Psalter Week if Psalter week grouping is enabled
-        if (this.#psalterWeekColumn && false === newCheck.newPsalterWeek && null !== monthHeaderRow) {
-            const psalterWeekCellRowSpan = this.#lastPsalterWeekCell.getAttribute('rowspan');
-            this.#lastPsalterWeekCell.setAttribute('rowspan', parseInt(psalterWeekCellRowSpan) + 1);
+        if (
+            this.#psalterWeekColumn &&
+            false === newCheck.newPsalterWeek &&
+            null !== monthHeaderRow
+        ) {
+            const psalterWeekCellRowSpan =
+                this.#lastPsalterWeekCell.getAttribute('rowspan');
+            this.#lastPsalterWeekCell.setAttribute(
+                'rowspan',
+                parseInt(psalterWeekCellRowSpan) + 1,
+            );
         }
         if (this.#psalterWeekColumn && newCheck.newPsalterWeek) {
             const psalterWeekCell = document.createElement('td');
             psalterWeekCell.setAttribute('class', 'psalterWeek');
             this.#lastPsalterWeekCell = psalterWeekCell;
             /** @type {string} The Roman numeral version of the Psalter week */
-            const romNumPsalterWeek = WebCalendar.#PSALTER_WEEK[litevent.psalter_week];
-            this.#handleSeasonColorForColumn(seasonColor, psalterWeekCell, Column.PSALTER_WEEK);
-            this.#handleEventColorForColumn(litevent.color, psalterWeekCell, Column.PSALTER_WEEK);
-            psalterWeekCell.appendChild(document.createTextNode(romNumPsalterWeek));
+            const romNumPsalterWeek =
+                WebCalendar.#PSALTER_WEEK[litevent.psalter_week];
+            this.#handleSeasonColorForColumn(
+                seasonColor,
+                psalterWeekCell,
+                Column.PSALTER_WEEK,
+            );
+            this.#handleEventColorForColumn(
+                litevent.color,
+                psalterWeekCell,
+                Column.PSALTER_WEEK,
+            );
+            psalterWeekCell.appendChild(
+                document.createTextNode(romNumPsalterWeek),
+            );
             let psalterWeekCellRowspan = counter.cw + 1;
             if (null !== monthHeaderRow) {
                 psalterWeekCellRowspan++;
@@ -1210,21 +1455,31 @@ export default class WebCalendar {
         if (false === this.#removeCaption) {
             const caption = document.createElement('caption');
             let captionText;
-            if (Object.hasOwn(this.#calendarData.settings, 'diocesan_calendar')) {
+            if (
+                Object.hasOwn(this.#calendarData.settings, 'diocesan_calendar')
+            ) {
                 const replacements = {
-                    'diocese': this.#calendarData.metadata.diocese_name,
-                    'year': this.#calendarData.settings.year
+                    diocese: this.#calendarData.metadata.diocese_name,
+                    year: this.#calendarData.settings.year,
                 };
-                captionText = Messages[this.#baseLocale]['DIOCESAN_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
+                captionText = Messages[this.#baseLocale][
+                    'DIOCESAN_CALENDAR_CAPTION'
+                ].replace(/{(.*?)}/g, (match, p1) => {
                     return replacements[p1];
                 });
-            } else if (Object.hasOwn(this.#calendarData.settings, 'national_calendar')) {
-                const nation = new Intl.DisplayNames([this.#locale], { type: 'region' }).of(this.#calendarData.settings.national_calendar);
+            } else if (
+                Object.hasOwn(this.#calendarData.settings, 'national_calendar')
+            ) {
+                const nation = new Intl.DisplayNames([this.#locale], {
+                    type: 'region',
+                }).of(this.#calendarData.settings.national_calendar);
                 const replacements = {
-                    'nation': nation,
-                    'year': this.#calendarData.settings.year
+                    nation: nation,
+                    year: this.#calendarData.settings.year,
                 };
-                captionText = Messages[this.#baseLocale]['NATIONAL_CALENDAR_CAPTION'].replace(/{(.*?)}/g, (match, p1) => {
+                captionText = Messages[this.#baseLocale][
+                    'NATIONAL_CALENDAR_CAPTION'
+                ].replace(/{(.*?)}/g, (match, p1) => {
                     return replacements[p1];
                 });
             } else {
@@ -1240,17 +1495,23 @@ export default class WebCalendar {
                 // only the matching message, no branch here.
                 const captionKey = `${RiteProperties[this.#rite].emptyOptionLabelKey}_CAPTION`;
                 const replacements = {
-                    'year': this.#calendarData.settings.year
+                    year: this.#calendarData.settings.year,
                 };
                 // Rite-specific captions exist only for `en` and `it`, following
                 // the same policy as the other rite messages, so fall back to
                 // English before falling back to the General Roman caption.
-                const captionTemplate = Messages[this.#baseLocale]?.[captionKey]
-                    ?? Messages['en'][captionKey]
-                    ?? Messages[this.#baseLocale]['GENERAL_ROMAN_CALENDAR_CAPTION'];
-                captionText = captionTemplate.replace(/{(.*?)}/g, (match, p1) => {
-                    return replacements[p1];
-                });
+                const captionTemplate =
+                    Messages[this.#baseLocale]?.[captionKey] ??
+                    Messages['en'][captionKey] ??
+                    Messages[this.#baseLocale][
+                        'GENERAL_ROMAN_CALENDAR_CAPTION'
+                    ];
+                captionText = captionTemplate.replace(
+                    /{(.*?)}/g,
+                    (match, p1) => {
+                        return replacements[p1];
+                    },
+                );
             }
             caption.appendChild(document.createTextNode(captionText));
             this.#domElement.appendChild(caption);
@@ -1264,22 +1525,38 @@ export default class WebCalendar {
             const th1 = document.createElement('th');
             let textNode;
             if (this.#firstColumnGrouping === Grouping.BY_MONTH) {
-                textNode = document.createTextNode(Messages[this.#baseLocale]['MONTH']);
-            } else if (this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON) {
-                textNode = document.createTextNode(Messages[this.#baseLocale]['LITURGICAL_SEASON']);
+                textNode = document.createTextNode(
+                    Messages[this.#baseLocale]['MONTH'],
+                );
+            } else if (
+                this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON
+            ) {
+                textNode = document.createTextNode(
+                    Messages[this.#baseLocale]['LITURGICAL_SEASON'],
+                );
             }
             th1.appendChild(textNode);
             theadRow.appendChild(th1);
 
             const th2 = document.createElement('th');
-            th2.appendChild(document.createTextNode(Messages[this.#baseLocale]['DATE']));
+            th2.appendChild(
+                document.createTextNode(Messages[this.#baseLocale]['DATE']),
+            );
             theadRow.appendChild(th2);
 
             const th3 = document.createElement('th');
-            th3.appendChild(document.createTextNode(Messages[this.#baseLocale]['LITURGICAL_CELEBRATION']));
+            th3.appendChild(
+                document.createTextNode(
+                    Messages[this.#baseLocale]['LITURGICAL_CELEBRATION'],
+                ),
+            );
 
             const th4 = document.createElement('th');
-            th4.appendChild(document.createTextNode(Messages[this.#baseLocale]['LITURGICAL_GRADE']));
+            th4.appendChild(
+                document.createTextNode(
+                    Messages[this.#baseLocale]['LITURGICAL_GRADE'],
+                ),
+            );
 
             // Third and fourth column order depends on the column order setting
             switch (this.#columnOrder) {
@@ -1316,7 +1593,7 @@ export default class WebCalendar {
         const newCheck = {
             newMonth: false,
             newSeason: false,
-            newPsalterWeek: false
+            newPsalterWeek: false,
         };
 
         /**
@@ -1326,10 +1603,14 @@ export default class WebCalendar {
             cm: 0,
             cs: 0,
             cw: 0,
-            cd: 0
+            cd: 0,
         };
         (async () => {
-            for (let eventIdx = 0; eventIdx < this.#calendarData.litcal.length; eventIdx++) {
+            for (
+                let eventIdx = 0;
+                eventIdx < this.#calendarData.litcal.length;
+                eventIdx++
+            ) {
                 let litevent = this.#calendarData.litcal[eventIdx];
                 this.#daysCreated++;
 
@@ -1354,7 +1635,10 @@ export default class WebCalendar {
 
                 // Check if we are at the start of a new Psalter week, and if so count how many events we have with the same Psalter week,
                 // so we can display the Psalter week table cell with the correct colspan
-                if (litevent.psalter_week !== currentPsalterWeek || litevent.psalter_week === 0) {
+                if (
+                    litevent.psalter_week !== currentPsalterWeek ||
+                    litevent.psalter_week === 0
+                ) {
                     newCheck.newPsalterWeek = true;
                     counter.cw = 0;
                     currentPsalterWeek = litevent.psalter_week;
@@ -1376,7 +1660,10 @@ export default class WebCalendar {
                             newCheck.newSeason = true;
                             currentSeason = litevent.liturgical_season;
                             counter.cs = 0;
-                            await this.#countSameSeasonEvents(eventIdx, counter);
+                            await this.#countSameSeasonEvents(
+                                eventIdx,
+                                counter,
+                            );
                         }
 
                         // Check if we are at the start of a new Psalter week, and if so count how many events we have with the same Psalter week,
@@ -1385,20 +1672,33 @@ export default class WebCalendar {
                             newCheck.newPsalterWeek = true;
                             counter.cw = 0;
                             currentPsalterWeek = litevent.psalter_week;
-                            await this.#countSamePsalterWeekEvents(eventIdx, counter);
+                            await this.#countSamePsalterWeekEvents(
+                                eventIdx,
+                                counter,
+                            );
                         }
 
-                        let trs = this.#buildTableRow(litevent, newCheck, counter, ev);
-                        for(const tr of trs) {
+                        let trs = this.#buildTableRow(
+                            litevent,
+                            newCheck,
+                            counter,
+                            ev,
+                        );
+                        for (const tr of trs) {
                             tbody.appendChild(tr);
                         }
                         eventIdx++;
                     }
                     eventIdx--;
                 } else {
-                    let trs = this.#buildTableRow(litevent, newCheck, counter, null);
-                    trs.forEach(tr => {
-                        tbody.appendChild(tr)
+                    let trs = this.#buildTableRow(
+                        litevent,
+                        newCheck,
+                        counter,
+                        null,
+                    );
+                    trs.forEach((tr) => {
+                        tbody.appendChild(tr);
                     });
                 }
             }
@@ -1410,18 +1710,24 @@ export default class WebCalendar {
      * Appends the WebCalendar to a given element. If the element does not yet exist in the DOM, the WebCalendar will be appended when the element is inserted.
      * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element, to append the WebCalendar to
      */
-    appendTo( elementSelector = '' ) {
+    appendTo(elementSelector = '') {
         if (this.#attachedElement === null) {
-           if (typeof elementSelector === 'string') {
-               if (elementSelector === '') {
-                   throw new Error('WebCalendar.appendTo: Element selector cannot be empty.');
-               }
-               this.#attachedElement = WebCalendar.#validateElementSelector( elementSelector );
-           } else if (elementSelector instanceof HTMLElement) {
-               this.#attachedElement = elementSelector;
-           } else {
-               throw new Error('WebCalendar.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
-           }
+            if (typeof elementSelector === 'string') {
+                if (elementSelector === '') {
+                    throw new Error(
+                        'WebCalendar.appendTo: Element selector cannot be empty.',
+                    );
+                }
+                this.#attachedElement =
+                    WebCalendar.#validateElementSelector(elementSelector);
+            } else if (elementSelector instanceof HTMLElement) {
+                this.#attachedElement = elementSelector;
+            } else {
+                throw new Error(
+                    'WebCalendar.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' +
+                        typeof elementSelector,
+                );
+            }
         }
     }
 
@@ -1429,8 +1735,10 @@ export default class WebCalendar {
      * @deprecated Use appendTo() instead. This method will be removed in a future version.
      * @param {string|HTMLElement} elementSelector - DOM element, or Element selector for the DOM element
      */
-    attachTo( elementSelector = '' ) {
-        console.warn('WebCalendar.attachTo() is deprecated. Use WebCalendar.appendTo() instead.');
+    attachTo(elementSelector = '') {
+        console.warn(
+            'WebCalendar.attachTo() is deprecated. Use WebCalendar.appendTo() instead.',
+        );
         this.appendTo(elementSelector);
     }
 
@@ -1450,9 +1758,13 @@ export default class WebCalendar {
      * data is invalid or malformed.
      * @return {WebCalendar} - Returns the instance of WebCalendar for method chaining.
      */
-    listenTo( apiClient ) {
-        if ( false === apiClient instanceof ApiClient ) {
-            throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.' );
+    listenTo(apiClient) {
+        if (false === apiClient instanceof ApiClient) {
+            throw new Error(
+                'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' +
+                    typeof apiClient +
+                    '.',
+            );
         }
         apiClient._eventBus.on('calendarFetched', (data, meta) => {
             // Take the rite the REQUEST was made under, not the client's current
@@ -1463,15 +1775,30 @@ export default class WebCalendar {
             // rite for an emitter that supplies no meta.
             this.#rite = meta?.rite ?? apiClient._currentRite;
             if (typeof data !== 'object') {
-                throw new Error('WebCalendar: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
+                throw new Error(
+                    'WebCalendar: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' +
+                        typeof data,
+                );
             }
-            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
-                throw new Error('WebCalendar: Invalid liturgical calendar data received in `calendarFetched` event');
+            if (
+                !Object.hasOwn(data, 'litcal') ||
+                !Array.isArray(data.litcal) ||
+                data.litcal.length === 0
+            ) {
+                throw new Error(
+                    'WebCalendar: Invalid liturgical calendar data received in `calendarFetched` event',
+                );
             }
-            if (!Object.hasOwn(data, 'settings') || !Object.hasOwn(data, 'metadata') || !Object.hasOwn(data, 'messages')) {
-                throw new Error('WebCalendar: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
+            if (
+                !Object.hasOwn(data, 'settings') ||
+                !Object.hasOwn(data, 'metadata') ||
+                !Object.hasOwn(data, 'messages')
+            ) {
+                throw new Error(
+                    'WebCalendar: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties',
+                );
             }
-            data.litcal = data.litcal.map(event => {
+            data.litcal = data.litcal.map((event) => {
                 event.date = new Date(event.date);
                 return event;
             });

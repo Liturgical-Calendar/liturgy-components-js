@@ -31,7 +31,7 @@ import Utils from '../Utils.js';
  */
 export default class CalendarSelect {
     /** @type {ApiBase} The API base this select reads its calendars from. */
-    #base                                 = null;
+    #base = null;
 
     /**
      * @type {import('../typedefs.js').NationalCalendar[]} A per-instance COPY of the
@@ -39,40 +39,39 @@ export default class CalendarSelect {
      * the instance's own locale, and must not reorder the metadata every other
      * client of the same base reads.
      */
-    #nationalCalendars                    = [];
-    #nationalCalendarsWithDioceses        = [];
-    #rite                                 = Rite.ROMAN;
-    #riteSet                              = false;
-    #riteAware                            = false;
-    #nationOptions                        = [];
-    #dioceseOptions                       = {};
-    #dioceseOptionsGrouped                = [];
-    #countryNames                         = null;
-    #locale                               = 'en';
-    #filter                               = CalendarSelectFilter.NONE;
-    #domElement                           = null;
-    #afterElement                         = null;
-    #hasAfter                             = false;
-    #afterSet                             = false;
-    #labelElement                         = null;
-    #hasLabel                             = false;
-    #labelSet                             = false;
-    #wrapperElement                       = null;
-    #hasWrapper                           = false;
-    #wrapperSet                           = false;
-    #filterSet                            = false;
-    #linked                               = false;
-    #idSet                                = false;
-    #nameSet                              = false;
-    #allowNull                            = false;
+    #nationalCalendars = [];
+    #nationalCalendarsWithDioceses = [];
+    #rite = Rite.ROMAN;
+    #riteSet = false;
+    #riteAware = false;
+    #nationOptions = [];
+    #dioceseOptions = {};
+    #dioceseOptionsGrouped = [];
+    #countryNames = null;
+    #locale = 'en';
+    #filter = CalendarSelectFilter.NONE;
+    #domElement = null;
+    #afterElement = null;
+    #hasAfter = false;
+    #afterSet = false;
+    #labelElement = null;
+    #hasLabel = false;
+    #labelSet = false;
+    #wrapperElement = null;
+    #hasWrapper = false;
+    #wrapperSet = false;
+    #filterSet = false;
+    #linked = false;
+    #idSet = false;
+    #nameSet = false;
+    #allowNull = false;
     /** @type {?CalendarSelect} The `nations` filtered select this one is linked to, if any. */
-    #linkedNationsSelect                  = null;
+    #linkedNationsSelect = null;
     /** @type {CalendarSelect[]} Diocese selects that derive their per-nation narrowing from this one. */
-    #dependentDioceseSelects              = [];
-    #riteLinked                           = false;
+    #dependentDioceseSelects = [];
+    #riteLinked = false;
     /** @type {boolean} Whether `#applyLinkedRite` dispatches its own `change`. See `linkToRiteSelect()`. */
-    #riteChangeDispatch                   = true;
-
+    #riteChangeDispatch = true;
 
     /**
      * Returns true if we have already stored a national calendar with dioceses for the given nation,
@@ -82,8 +81,10 @@ export default class CalendarSelect {
      * @returns {boolean} True if we have stored a national calendar with dioceses for the given nation, false otherwise.
      * @private
      */
-    #hasNationalCalendarWithDioceses( nation ) {
-        return this.#nationalCalendarsWithDioceses.some( item => item.calendar_id === nation );
+    #hasNationalCalendarWithDioceses(nation) {
+        return this.#nationalCalendarsWithDioceses.some(
+            (item) => item.calendar_id === nation,
+        );
     }
 
     /**
@@ -105,18 +106,22 @@ export default class CalendarSelect {
      * @throws {Error} If no national calendar exists for `nation` — the metadata is inconsistent.
      * @private
      */
-    #addNationalCalendarWithDioceses( nation ) {
-        const nationalCalendar = this.#nationalCalendars.find( item => item.calendar_id === nation );
-        if ( undefined === nationalCalendar ) {
+    #addNationalCalendarWithDioceses(nation) {
+        const nationalCalendar = this.#nationalCalendars.find(
+            (item) => item.calendar_id === nation,
+        );
+        if (undefined === nationalCalendar) {
             throw new Error(
-                'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `'
-                + this.#rite + '` rite declares nation `' + nation
-                + '`, but no national calendar exists for that nation. Every diocese reaching '
-                + 'this point should belong to a rite with a national calendar for its nation; '
-                + 'this is a metadata defect, not a recoverable runtime condition.'
+                'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `' +
+                    this.#rite +
+                    '` rite declares nation `' +
+                    nation +
+                    '`, but no national calendar exists for that nation. Every diocese reaching ' +
+                    'this point should belong to a rite with a national calendar for its nation; ' +
+                    'this is a metadata defect, not a recoverable runtime condition.',
             );
         }
-        this.#nationalCalendarsWithDioceses.push( nationalCalendar );
+        this.#nationalCalendarsWithDioceses.push(nationalCalendar);
     }
 
     /**
@@ -146,14 +151,30 @@ export default class CalendarSelect {
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarSelect');
-        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
+        const {
+            locale: inputLocale,
+            id,
+            name,
+            filter,
+            after,
+            label,
+            wrapper,
+            allowNull,
+            disabled,
+            rite,
+            apiClient,
+        } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             this.#locale = canonicalizeLocale(inputLocale, 'CalendarSelect');
-            this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+            this.#countryNames = new Intl.DisplayNames([this.#locale], {
+                type: 'region',
+            });
         } else {
             this.#locale = 'en';
             try {
-                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
+                this.#countryNames = new Intl.DisplayNames([this.#locale], {
+                    type: 'region',
+                });
             } catch (e) {
                 throw new Error('Failed to initialize locale: ' + this.#locale);
             }
@@ -165,7 +186,7 @@ export default class CalendarSelect {
             // not exist yet at this point in construction. `#buildAllOptions()`
             // below picks up `this.#rite` on its own, and the constructor's later
             // call to `this.filter(...)` performs the initial DOM population.
-            this.#validateRite( rite );
+            this.#validateRite(rite);
             this.#rite = rite;
             this.#riteSet = true;
         }
@@ -176,8 +197,8 @@ export default class CalendarSelect {
         // select and is settled here, at construction: whichever base the `apiClient`
         // option named — or the default in force at the time — is the one it keeps for
         // its lifetime, whatever is registered later.
-        this.#base              = resolveBase( apiClient, 'CalendarSelect' );
-        this.#nationalCalendars = [ ...this.#base.nationalCalendars() ];
+        this.#base = resolveBase(apiClient, 'CalendarSelect');
+        this.#nationalCalendars = [...this.#base.nationalCalendars()];
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
 
@@ -226,7 +247,8 @@ export default class CalendarSelect {
             this.#domElement.innerHTML = this.#emptyOptionHtml();
         } else {
             const firstElement = this.#allowNull ? this.#emptyOptionHtml() : '';
-            this.#domElement.innerHTML = firstElement + this.#dioceseOptions[nation].join('');
+            this.#domElement.innerHTML =
+                firstElement + this.#dioceseOptions[nation].join('');
         }
     }
 
@@ -244,12 +266,13 @@ export default class CalendarSelect {
      * @private
      */
     #emptyOptionHtml() {
-        if ( false === this.#riteAware ) {
+        if (false === this.#riteAware) {
             return '<option value="">---</option>';
         }
-        const locale = new Intl.Locale( this.#locale );
-        const key = RiteProperties[ this.#rite ].emptyOptionLabelKey;
-        const emptyLabel = Messages[ locale.language ]?.[ key ] ?? Messages[ 'en' ][ key ];
+        const locale = new Intl.Locale(this.#locale);
+        const key = RiteProperties[this.#rite].emptyOptionLabelKey;
+        const emptyLabel =
+            Messages[locale.language]?.[key] ?? Messages['en'][key];
         return `<option value="">${emptyLabel}</option>`;
     }
 
@@ -266,12 +289,13 @@ export default class CalendarSelect {
      */
     #reapplyOptionsToDom() {
         const firstElement = this.#allowNull ? this.#emptyOptionHtml() : '';
-        if ( this.#filter === CalendarSelectFilter.NATIONAL_CALENDARS ) {
+        if (this.#filter === CalendarSelectFilter.NATIONAL_CALENDARS) {
             this.#domElement.innerHTML = firstElement + this.nationsInnerHtml;
-        } else if ( this.#filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) {
+        } else if (this.#filter === CalendarSelectFilter.DIOCESAN_CALENDARS) {
             this.#domElement.innerHTML = firstElement + this.diocesesInnerHtml;
         } else {
-            this.#domElement.innerHTML = firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
+            this.#domElement.innerHTML =
+                firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
         }
     }
 
@@ -284,7 +308,7 @@ export default class CalendarSelect {
      */
     #addNationOption(nationalCalendar, selected = false) {
         const option = `<option data-calendartype="national" value="${nationalCalendar.calendar_id}"${selected ? ' selected' : ''}>${this.#countryNames.of(nationalCalendar.calendar_id)}</option>`;
-        this.#nationOptions.push( option );
+        this.#nationOptions.push(option);
     }
 
     /**
@@ -298,7 +322,7 @@ export default class CalendarSelect {
      */
     #addDioceseOption(item) {
         const option = `<option data-calendartype="diocesan" value="${item.calendar_id}">${item.diocese}</option>`;
-        if ( RiteProperties[ this.#rite ].hasNationalTier ) {
+        if (RiteProperties[this.#rite].hasNationalTier) {
             this.#dioceseOptions[item.nation].push(option);
         } else {
             // Rites with no national tier (e.g. Ambrosian) have no nation to
@@ -317,11 +341,11 @@ export default class CalendarSelect {
      */
     #buildAllOptions() {
         this.#nationalCalendarsWithDioceses = [];
-        this.#nationOptions                 = [];
-        this.#dioceseOptions                = {};
-        this.#dioceseOptionsGrouped         = [];
+        this.#nationOptions = [];
+        this.#dioceseOptions = {};
+        this.#dioceseOptionsGrouped = [];
 
-        const riteProps = RiteProperties[ this.#rite ];
+        const riteProps = RiteProperties[this.#rite];
         // Re-read from the base on EVERY build rather than caching a rite-filtered
         // list at construction: `_applyRite()` calls this method again whenever the
         // rite changes (a linked `RiteSelect` does exactly that), and a snapshot
@@ -334,53 +358,76 @@ export default class CalendarSelect {
         // strict `=== this.#rite` would therefore drop EVERY diocese for a v5-pinned
         // consumer and empty the list with no error and no warning — and bumping the
         // pin is exactly how this release reaches the frontend.
-        const dioceses  = this.#base.diocesanCalendars( this.#rite );
+        const dioceses = this.#base.diocesanCalendars(this.#rite);
 
-        if ( false === riteProps.hasNationalTier ) {
+        if (false === riteProps.hasNationalTier) {
             // A rite with no national tier has no national calendars to group under.
             // Running the nation pass here would make EVERY diocese an orphan, not
             // just the ones whose nation code happens to be absent. Dioceses stand
             // alone, ungrouped, and no nation options are produced.
-            dioceses.forEach( diocesanCalendarObj => {
-                this.#addDioceseOption( diocesanCalendarObj );
-            } );
+            dioceses.forEach((diocesanCalendarObj) => {
+                this.#addDioceseOption(diocesanCalendarObj);
+            });
             return this;
         }
 
-        dioceses.forEach( diocesanCalendarObj => {
-            if ( false === this.#hasNationalCalendarWithDioceses( diocesanCalendarObj.nation ) ) {
+        dioceses.forEach((diocesanCalendarObj) => {
+            if (
+                false ===
+                this.#hasNationalCalendarWithDioceses(
+                    diocesanCalendarObj.nation,
+                )
+            ) {
                 // we add all nations with dioceses to the nations list
-                this.#addNationalCalendarWithDioceses( diocesanCalendarObj.nation );
+                this.#addNationalCalendarWithDioceses(
+                    diocesanCalendarObj.nation,
+                );
             }
-            if ( false === this.#dioceseOptions.hasOwnProperty( diocesanCalendarObj.nation ) ) {
-                this.#dioceseOptions[ diocesanCalendarObj.nation ] = [];
+            if (
+                false ===
+                this.#dioceseOptions.hasOwnProperty(diocesanCalendarObj.nation)
+            ) {
+                this.#dioceseOptions[diocesanCalendarObj.nation] = [];
             }
-            this.#addDioceseOption( diocesanCalendarObj );
-        } );
+            this.#addDioceseOption(diocesanCalendarObj);
+        });
 
-        this.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
-        this.#nationalCalendars.forEach( nationalCalendar => {
-            if ( false === this.#hasNationalCalendarWithDioceses( nationalCalendar.calendar_id ) ) {
+        this.#nationalCalendars.sort((a, b) =>
+            this.#countryNames
+                .of(a.calendar_id)
+                .localeCompare(this.#countryNames.of(b.calendar_id)),
+        );
+        this.#nationalCalendars.forEach((nationalCalendar) => {
+            if (
+                false ===
+                this.#hasNationalCalendarWithDioceses(
+                    nationalCalendar.calendar_id,
+                )
+            ) {
                 // This is the first time we call CalendarSelect.#addNationOption().
                 // This will ensure that the VATICAN (a nation without any diocese) will be added as the first option.
                 // In theory any other nation for whom no dioceses are defined will be added here too,
                 // so we will ensure that the VATICAN is always the default selected option
-                if ( 'VA' === nationalCalendar.calendar_id ) {
-                    this.#addNationOption( nationalCalendar, true );
+                if ('VA' === nationalCalendar.calendar_id) {
+                    this.#addNationOption(nationalCalendar, true);
                 } else {
-                    this.#addNationOption( nationalCalendar );
+                    this.#addNationOption(nationalCalendar);
                 }
             }
-        } );
+        });
 
         // now we can add the options for the nations in the #calendarNationsWithDiocese list
         // that is to say, nations that have dioceses
-        this.#nationalCalendarsWithDioceses.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
-        this.#nationalCalendarsWithDioceses.forEach( nationalCalendar => {
-            this.#addNationOption( nationalCalendar );
-            let optGroup = `<optgroup label="${this.#countryNames.of( nationalCalendar.calendar_id )}">${this.#dioceseOptions[ nationalCalendar.calendar_id ].join( '' )}</optgroup>`;
-            this.#dioceseOptionsGrouped.push( optGroup );
-        } );
+        this.#nationalCalendarsWithDioceses.sort((a, b) =>
+            this.#countryNames
+                .of(a.calendar_id)
+                .localeCompare(this.#countryNames.of(b.calendar_id)),
+        );
+        this.#nationalCalendarsWithDioceses.forEach((nationalCalendar) => {
+            this.#addNationOption(nationalCalendar);
+            let optGroup = `<optgroup label="${this.#countryNames.of(nationalCalendar.calendar_id)}">${this.#dioceseOptions[nationalCalendar.calendar_id].join('')}</optgroup>`;
+            this.#dioceseOptionsGrouped.push(optGroup);
+        });
         return this;
     }
 
@@ -393,7 +440,7 @@ export default class CalendarSelect {
      * @returns {string} A concatenated string of all nation options in HTML format.
      */
     get nationsInnerHtml() {
-        return this.#nationOptions.join( '' );
+        return this.#nationOptions.join('');
     }
 
     /**
@@ -405,7 +452,7 @@ export default class CalendarSelect {
      * @returns {string} A concatenated string of all diocese options grouped by nation in HTML format.
      */
     get diocesesInnerHtml() {
-        return this.#dioceseOptionsGrouped.join( '' );
+        return this.#dioceseOptionsGrouped.join('');
     }
 
     /**
@@ -425,15 +472,21 @@ export default class CalendarSelect {
      * @param {string} [filter=CalendarSelectFilter.NONE] The filter to set.
      * @returns {this}
      */
-    filter( filter = CalendarSelectFilter.NONE ) {
-        if ( this.#filterSet && this.#filter !== filter ) {
-            throw new Error('Filter has already been set to `' + this.#filter + '` on CalendarSelect instance with locale ' + this.#locale + '.');
+    filter(filter = CalendarSelectFilter.NONE) {
+        if (this.#filterSet && this.#filter !== filter) {
+            throw new Error(
+                'Filter has already been set to `' +
+                    this.#filter +
+                    '` on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
         }
-        this.#validateFilter( filter );
-        if ( filter !== this.#filter ) {
+        this.#validateFilter(filter);
+        if (filter !== this.#filter) {
             this.#filterSet = true;
         }
-        return this._applyFilter( filter );
+        return this._applyFilter(filter);
     }
 
     /**
@@ -446,8 +499,12 @@ export default class CalendarSelect {
      * @throws {Error} If the filter is not a value of the `CalendarSelectFilter` enum.
      * @private
      */
-    #validateFilter( filter ) {
-        if ( CalendarSelectFilter.NATIONAL_CALENDARS !== filter && CalendarSelectFilter.DIOCESAN_CALENDARS !== filter && CalendarSelectFilter.NONE !== filter ) {
+    #validateFilter(filter) {
+        if (
+            CalendarSelectFilter.NATIONAL_CALENDARS !== filter &&
+            CalendarSelectFilter.DIOCESAN_CALENDARS !== filter &&
+            CalendarSelectFilter.NONE !== filter
+        ) {
             throw new Error('Invalid filter: ' + filter);
         }
     }
@@ -468,8 +525,8 @@ export default class CalendarSelect {
      * @param {string} filter - A value from the `CalendarSelectFilter` enum.
      * @returns {CalendarSelect} This instance, for chaining.
      */
-    _applyFilter( filter ) {
-        this.#validateFilter( filter );
+    _applyFilter(filter) {
+        this.#validateFilter(filter);
         this.#filter = filter;
         this.#reapplyOptionsToDom();
         return this;
@@ -485,9 +542,15 @@ export default class CalendarSelect {
      * @throws {Error} If the rite is not a value of the `Rite` enum.
      * @private
      */
-    #validateRite( rite ) {
-        if ( false === Object.values( Rite ).includes( rite ) ) {
-            throw new Error( 'Invalid rite: `' + rite + '`. Valid rites are: ' + Object.values( Rite ).join( ', ' ) + '.' );
+    #validateRite(rite) {
+        if (false === Object.values(Rite).includes(rite)) {
+            throw new Error(
+                'Invalid rite: `' +
+                    rite +
+                    '`. Valid rites are: ' +
+                    Object.values(Rite).join(', ') +
+                    '.',
+            );
         }
     }
 
@@ -498,11 +561,13 @@ export default class CalendarSelect {
      * @returns {CalendarSelect} The current instance for method chaining.
      * @throws {Error} If the rite is unknown or has already been set.
      */
-    rite( rite = Rite.ROMAN ) {
-        if ( this.#riteSet ) {
-            throw new Error( 'Rite has already been set on this CalendarSelect instance.' );
+    rite(rite = Rite.ROMAN) {
+        if (this.#riteSet) {
+            throw new Error(
+                'Rite has already been set on this CalendarSelect instance.',
+            );
         }
-        this._applyRite( rite );
+        this._applyRite(rite);
         this.#riteSet = true;
         return this;
     }
@@ -519,9 +584,9 @@ export default class CalendarSelect {
      *        rite's label instead of `---`. Only ApiOptions passes true, and only
      *        when a RiteSelect is linked, so embeds that never opt in keep `---`.
      */
-    _applyRite( rite, riteAware = false ) {
-        this.#validateRite( rite );
-        this.#rite      = rite;
+    _applyRite(rite, riteAware = false) {
+        this.#validateRite(rite);
+        this.#rite = rite;
         this.#riteAware = riteAware;
         this.#buildAllOptions();
         this.#reapplyOptionsToDom();
@@ -531,8 +596,13 @@ export default class CalendarSelect {
         // the next nation change. Skipped for a rite with no national tier:
         // there are no per-nation buckets to filter into, and running the filter
         // would empty a list that is correctly flat.
-        if ( null !== this.#linkedNationsSelect && RiteProperties[ this.#rite ].hasNationalTier ) {
-            this.#filterDioceseOptionsForNation( this.#linkedNationsSelect._domElement.value );
+        if (
+            null !== this.#linkedNationsSelect &&
+            RiteProperties[this.#rite].hasNationalTier
+        ) {
+            this.#filterDioceseOptionsForNation(
+                this.#linkedNationsSelect._domElement.value,
+            );
         }
     }
 
@@ -542,7 +612,7 @@ export default class CalendarSelect {
      *
      * @param {boolean} hidden
      */
-    _setHidden( hidden ) {
+    _setHidden(hidden) {
         const target = this.#wrapperElement ?? this.#domElement;
         target.hidden = hidden;
     }
@@ -558,9 +628,9 @@ export default class CalendarSelect {
      * @param {CalendarSelect} dioceseSelect - The dependent, `dioceses` filtered select.
      * @returns {void}
      */
-    _registerDependentDioceseSelect( dioceseSelect ) {
-        if ( false === this.#dependentDioceseSelects.includes( dioceseSelect ) ) {
-            this.#dependentDioceseSelects.push( dioceseSelect );
+    _registerDependentDioceseSelect(dioceseSelect) {
+        if (false === this.#dependentDioceseSelects.includes(dioceseSelect)) {
+            this.#dependentDioceseSelects.push(dioceseSelect);
         }
     }
 
@@ -606,22 +676,29 @@ export default class CalendarSelect {
      * @throws {Error} If the className is not a string, or if any class name is invalid.
      * @returns {CalendarSelect} The current `CalendarSelect` instance for chaining.
      */
-    class( className ) {
-        if ( typeof className !== 'string' ) {
-            throw new Error('Invalid type for class name on CalendarSelect instance with locale ' + this.#locale + ', must be of type string but found type: ' + typeof className);
+    class(className) {
+        if (typeof className !== 'string') {
+            throw new Error(
+                'Invalid type for class name on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    ', must be of type string but found type: ' +
+                    typeof className,
+            );
         }
-        let classNames = className.split( /\s+/ );
-        classNames = classNames.map( className => Utils.sanitizeInput( className ) );
-        classNames.forEach(className => {
-            if ( false === Utils.validateClassName( className ) ) {
+        let classNames = className.split(/\s+/);
+        classNames = classNames.map((className) =>
+            Utils.sanitizeInput(className),
+        );
+        classNames.forEach((className) => {
+            if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class name: ' + className);
             }
         });
-        className = classNames.join( ' ' );
-        if ( className === '' ) {
-            this.#domElement.removeAttribute( 'class' );
+        className = classNames.join(' ');
+        if (className === '') {
+            this.#domElement.removeAttribute('class');
         } else {
-            this.#domElement.setAttribute( 'class', className );
+            this.#domElement.setAttribute('class', className);
         }
         return this;
     }
@@ -643,22 +720,37 @@ export default class CalendarSelect {
      * @throws {Error} If the id is not a string, or if the id is invalid.
      * @returns {CalendarSelect} The current CalendarSelect instance for chaining.
      */
-    id( id ) {
-        if ( this.#idSet && this.#domElement.id !== id ) {
-            throw new Error('ID has already been set to `' + this.#domElement.id + '` on CalendarSelect instance with locale ' + this.#locale + '.');
+    id(id) {
+        if (this.#idSet && this.#domElement.id !== id) {
+            throw new Error(
+                'ID has already been set to `' +
+                    this.#domElement.id +
+                    '` on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
         }
-        if ( typeof id !== 'string' ) {
-            throw new Error('Invalid type for id, must be of type string but found type: ' + typeof id);
+        if (typeof id !== 'string') {
+            throw new Error(
+                'Invalid type for id, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
-        id = Utils.sanitizeInput( id );
-        if (Utils.validateId( id ) === false) {
-            throw new Error('Invalid id, cannot contain any kind of whitespace character: ' + id);
+        id = Utils.sanitizeInput(id);
+        if (Utils.validateId(id) === false) {
+            throw new Error(
+                'Invalid id, cannot contain any kind of whitespace character: ' +
+                    id,
+            );
         }
         this.#domElement.id = id;
         if (this.#hasLabel) {
-            this.#labelElement.setAttribute( 'for', this.#domElement.id );
-            if (this.#labelElement.hasAttribute( 'id' )) {
-                this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
+            this.#labelElement.setAttribute('for', this.#domElement.id);
+            if (this.#labelElement.hasAttribute('id')) {
+                this.#domElement.setAttribute(
+                    'aria-labelledby',
+                    this.#labelElement.id,
+                );
             }
         }
         this.#idSet = true;
@@ -678,12 +770,21 @@ export default class CalendarSelect {
      * @throws {Error} If the name is not a string, or if the name has already been set.
      * @returns {CalendarSelect} The current CalendarSelect instance for chaining.
      */
-    name( name ) {
-        if ( this.#nameSet && this.#domElement.name !== name ) {
-            throw new Error('Name has already been set to `' + this.#domElement.name + '` on CalendarSelect instance with locale ' + this.#locale + '.');
+    name(name) {
+        if (this.#nameSet && this.#domElement.name !== name) {
+            throw new Error(
+                'Name has already been set to `' +
+                    this.#domElement.name +
+                    '` on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
         }
-        if ( typeof name !== 'string' ) {
-            throw new Error('Invalid type for name, must be of type string but found type: ' + typeof name);
+        if (typeof name !== 'string') {
+            throw new Error(
+                'Invalid type for name, must be of type string but found type: ' +
+                    typeof name,
+            );
         }
         this.#domElement.name = name;
         this.#nameSet = true;
@@ -707,69 +808,105 @@ export default class CalendarSelect {
      *
      * @returns {CalendarSelect} The current CalendarSelect instance for chaining.
      */
-    label( labelOptions = null ) {
-        if ( this.#labelSet ) {
-            throw new Error('Label has already been set on CalendarSelect instance with locale ' + this.#locale + '.');
+    label(labelOptions = null) {
+        if (this.#labelSet) {
+            throw new Error(
+                'Label has already been set on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
         }
-        if ( null === labelOptions ) {
+        if (null === labelOptions) {
             this.#hasLabel = false;
             this.#labelElement = null;
-            this.#domElement.removeAttribute( 'aria-labelledby' );
+            this.#domElement.removeAttribute('aria-labelledby');
             this.#labelSet = true;
             return this;
-        }
-        else if ( typeof labelOptions !== 'object' || Array.isArray(labelOptions) ) {
-            const labelOptionsType = Array.isArray(labelOptions) ? 'array' : typeof labelOptions;
-            throw new Error('Invalid type for label options, must be of type object (not null or array) but found type: ' + labelOptionsType);
-        }
-        else if ( Object.keys( labelOptions ).length === 0 || false === Object.keys( labelOptions ).some( key => ['class', 'id', 'text'].includes( key ) ) ) {
-            throw new Error('Invalid label options, must be an object with at least a `text`, `class` or `id` property');
+        } else if (
+            typeof labelOptions !== 'object' ||
+            Array.isArray(labelOptions)
+        ) {
+            const labelOptionsType = Array.isArray(labelOptions)
+                ? 'array'
+                : typeof labelOptions;
+            throw new Error(
+                'Invalid type for label options, must be of type object (not null or array) but found type: ' +
+                    labelOptionsType,
+            );
+        } else if (
+            Object.keys(labelOptions).length === 0 ||
+            false ===
+                Object.keys(labelOptions).some((key) =>
+                    ['class', 'id', 'text'].includes(key),
+                )
+        ) {
+            throw new Error(
+                'Invalid label options, must be an object with at least a `text`, `class` or `id` property',
+            );
         }
 
-        this.#labelElement = document.createElement( 'label' );
+        this.#labelElement = document.createElement('label');
         this.#hasLabel = true;
         this.#labelSet = true;
 
-        if ( this.#domElement.hasAttribute( 'id' ) ) {
-            this.#labelElement.setAttribute( 'for', this.#domElement.id );
+        if (this.#domElement.hasAttribute('id')) {
+            this.#labelElement.setAttribute('for', this.#domElement.id);
         }
 
-        if ( Object.hasOwn( labelOptions, 'class' ) ) {
-            if ( typeof labelOptions.class !== 'string' ) {
-                throw new Error('Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class);
+        if (Object.hasOwn(labelOptions, 'class')) {
+            if (typeof labelOptions.class !== 'string') {
+                throw new Error(
+                    'Invalid type for label class, must be of type string but found type: ' +
+                        typeof labelOptions.class,
+                );
             }
-            let classNames = labelOptions.class.split( /\s+/ );
-            classNames = classNames.map( className => Utils.sanitizeInput( className ) );
-            classNames.forEach(className => {
-                if ( false === Utils.validateClassName( className ) ) {
+            let classNames = labelOptions.class.split(/\s+/);
+            classNames = classNames.map((className) =>
+                Utils.sanitizeInput(className),
+            );
+            classNames.forEach((className) => {
+                if (false === Utils.validateClassName(className)) {
                     throw new Error('Invalid class name: ' + className);
                 }
             });
-            labelOptions.class = classNames.join( ' ' );
+            labelOptions.class = classNames.join(' ');
             this.#labelElement.className = labelOptions.class;
         }
 
         if (Object.hasOwn(labelOptions, 'id')) {
             if (typeof labelOptions.id !== 'string') {
-                throw new Error('Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id);
+                throw new Error(
+                    'Invalid type for label id, must be of type string but found type: ' +
+                        typeof labelOptions.id,
+                );
             }
-            labelOptions.id = Utils.sanitizeInput( labelOptions.id );
-            if (false === Utils.validateId( labelOptions.id )) {
-                throw new Error('Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' + labelOptions.id);
+            labelOptions.id = Utils.sanitizeInput(labelOptions.id);
+            if (false === Utils.validateId(labelOptions.id)) {
+                throw new Error(
+                    'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
+                        labelOptions.id,
+                );
             }
             this.#labelElement.id = labelOptions.id;
-            this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
+            this.#domElement.setAttribute(
+                'aria-labelledby',
+                this.#labelElement.id,
+            );
         }
 
-        if ( Object.hasOwn( labelOptions, 'text' ) ) {
-            if ( typeof labelOptions.text !== 'string' ) {
-                throw new Error('Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text);
+        if (Object.hasOwn(labelOptions, 'text')) {
+            if (typeof labelOptions.text !== 'string') {
+                throw new Error(
+                    'Invalid type for label text, must be of type string but found type: ' +
+                        typeof labelOptions.text,
+                );
             }
-            labelOptions.text = Utils.sanitizeInput( labelOptions.text );
+            labelOptions.text = Utils.sanitizeInput(labelOptions.text);
             this.#labelElement.textContent = labelOptions.text;
         } else {
-            const locale = new Intl.Locale( this.#locale );
-            this.#labelElement.textContent = Messages[locale.language]['SELECT_A_CALENDAR'];
+            const locale = new Intl.Locale(this.#locale);
+            this.#labelElement.textContent =
+                Messages[locale.language]['SELECT_A_CALENDAR'];
         }
 
         /*
@@ -809,61 +946,96 @@ export default class CalendarSelect {
      * @throws {Error} If the `wrapperOptions.id` property is not a string.
      * @throws {Error} If the `wrapperOptions.id` property is not a valid CSS selector.
      */
-    wrapper( wrapperOptions = null ) {
-        if ( this.#wrapperSet ) {
-            throw new Error('Wrapper has already been set on CalendarSelect instance with locale ' + this.#locale + '.');
+    wrapper(wrapperOptions = null) {
+        if (this.#wrapperSet) {
+            throw new Error(
+                'Wrapper has already been set on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
         }
-        if ( null === wrapperOptions ) {
+        if (null === wrapperOptions) {
             this.#hasWrapper = false;
             this.#wrapperElement = null;
             this.#wrapperSet = true;
             return this;
-        }
-        else if ( typeof wrapperOptions !== 'object' || Array.isArray(wrapperOptions) ) {
-            const wrapperOptionsType = Array.isArray(wrapperOptions) ? 'array' : typeof wrapperOptions;
-            throw new Error('Invalid type for wrapper options, must be of type object (not null or array) but found type: ' + wrapperOptionsType);
-        }
-        else if ( Object.keys( wrapperOptions ).length === 0 || false === Object.keys( wrapperOptions ).some( key => ['as', 'class', 'id'].includes( key ) ) ) {
-            throw new Error('Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property');
+        } else if (
+            typeof wrapperOptions !== 'object' ||
+            Array.isArray(wrapperOptions)
+        ) {
+            const wrapperOptionsType = Array.isArray(wrapperOptions)
+                ? 'array'
+                : typeof wrapperOptions;
+            throw new Error(
+                'Invalid type for wrapper options, must be of type object (not null or array) but found type: ' +
+                    wrapperOptionsType,
+            );
+        } else if (
+            Object.keys(wrapperOptions).length === 0 ||
+            false ===
+                Object.keys(wrapperOptions).some((key) =>
+                    ['as', 'class', 'id'].includes(key),
+                )
+        ) {
+            throw new Error(
+                'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
+            );
         }
 
         if (Object.hasOwn(wrapperOptions, 'as')) {
             if (typeof wrapperOptions.as !== 'string') {
-                throw new Error('Invalid type for wrapper `as` property, must be of type string but found type: ' + typeof wrapperOptions.as);
+                throw new Error(
+                    'Invalid type for wrapper `as` property, must be of type string but found type: ' +
+                        typeof wrapperOptions.as,
+                );
             }
             if (false === ['div', 'td'].includes(wrapperOptions.as)) {
-                throw new Error('Invalid value for wrapper `as` property, must be one of `div` or `td` but found: ' + wrapperOptions.as);
+                throw new Error(
+                    'Invalid value for wrapper `as` property, must be one of `div` or `td` but found: ' +
+                        wrapperOptions.as,
+                );
             }
         } else {
             wrapperOptions.as = 'div';
         }
 
-        this.#wrapperElement = document.createElement( wrapperOptions.as );
+        this.#wrapperElement = document.createElement(wrapperOptions.as);
         this.#hasWrapper = true;
         this.#wrapperSet = true;
 
-        if ( Object.hasOwn( wrapperOptions, 'class' ) ) {
-            if ( typeof wrapperOptions.class !== 'string' ) {
-                throw new Error('Invalid type for wrapper class, must be of type string but found type: ' + typeof wrapperOptions.class);
+        if (Object.hasOwn(wrapperOptions, 'class')) {
+            if (typeof wrapperOptions.class !== 'string') {
+                throw new Error(
+                    'Invalid type for wrapper class, must be of type string but found type: ' +
+                        typeof wrapperOptions.class,
+                );
             }
-            let classNames = wrapperOptions.class.split( /\s+/ );
-            classNames = classNames.map( className => Utils.sanitizeInput( className ) );
-            classNames.forEach(className => {
-                if ( false === Utils.validateClassName( className ) ) {
+            let classNames = wrapperOptions.class.split(/\s+/);
+            classNames = classNames.map((className) =>
+                Utils.sanitizeInput(className),
+            );
+            classNames.forEach((className) => {
+                if (false === Utils.validateClassName(className)) {
                     throw new Error('Invalid class name: ' + className);
                 }
             });
-            wrapperOptions.class = classNames.join( ' ' );
+            wrapperOptions.class = classNames.join(' ');
             this.#wrapperElement.className = wrapperOptions.class;
         }
 
-        if ( Object.hasOwn( wrapperOptions, 'id' ) ) {
-            if ( typeof wrapperOptions.id !== 'string' ) {
-                throw new Error('Invalid type for wrapper id, must be of type string but found type: ' + typeof wrapperOptions.id);
+        if (Object.hasOwn(wrapperOptions, 'id')) {
+            if (typeof wrapperOptions.id !== 'string') {
+                throw new Error(
+                    'Invalid type for wrapper id, must be of type string but found type: ' +
+                        typeof wrapperOptions.id,
+                );
             }
-            wrapperOptions.id = Utils.sanitizeInput( wrapperOptions.id );
-            if (false === Utils.validateId( wrapperOptions.id )) {
-                throw new Error('Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' + wrapperOptions.id);
+            wrapperOptions.id = Utils.sanitizeInput(wrapperOptions.id);
+            if (false === Utils.validateId(wrapperOptions.id)) {
+                throw new Error(
+                    'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
+                        wrapperOptions.id,
+                );
             }
             this.#wrapperElement.id = wrapperOptions.id;
         }
@@ -884,11 +1056,11 @@ export default class CalendarSelect {
      * @throws {Error} If content is attempted to be set more than once.
      * @returns {CalendarSelect} The current instance for method chaining.
      */
-    after( contents = null ) {
-        if ( this.#afterSet ) {
+    after(contents = null) {
+        if (this.#afterSet) {
             throw new Error('After has already been set.');
         }
-        if ( null === contents ) {
+        if (null === contents) {
             this.#hasAfter = false;
             this.#afterElement = null;
             this.#afterSet = true;
@@ -903,10 +1075,14 @@ export default class CalendarSelect {
         //  - `|` is a logical OR operator
         //  - `<script(.*?)>.*?<\/script>` matches the start of a script tag, any attributes, the contents of the script tag, and the end of the script tag
         //  - `g` flag makes the regex replacement global, so it will replace all occurrences of the regex, not just the first one
-        contents = contents.replace(/<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g, '');
+        contents = contents.replace(
+            /<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g,
+            '',
+        );
 
-
-        const fragment = document.createRange().createContextualFragment(contents);
+        const fragment = document
+            .createRange()
+            .createContextualFragment(contents);
         this.#afterElement = fragment;
         this.#hasAfter = true;
         this.#afterSet = true;
@@ -933,12 +1109,17 @@ export default class CalendarSelect {
      * @throws {Error} If allowNull has already been set on the CalendarSelect instance.
      * @throws {Error} If the type of allowNull is not a boolean.
      */
-    allowNull( allowNull = true ) {
-        if ( typeof allowNull !== 'boolean' ) {
-            throw new Error('Invalid type for allowNull on CalendarSelect instance with locale ' + this.#locale + ', must be of type boolean but found type: ' + typeof allowNull);
+    allowNull(allowNull = true) {
+        if (typeof allowNull !== 'boolean') {
+            throw new Error(
+                'Invalid type for allowNull on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    ', must be of type boolean but found type: ' +
+                    typeof allowNull,
+            );
         }
         this.#allowNull = allowNull;
-        this.filter( this.#filter );
+        this.filter(this.#filter);
         return this;
     }
 
@@ -954,9 +1135,12 @@ export default class CalendarSelect {
      * @returns {CalendarSelect} The current instance for method chaining.
      * @throws {Error} If the type of disabled is not a boolean.
      */
-    disabled( disabled = true ) {
+    disabled(disabled = true) {
         if (typeof disabled !== 'boolean') {
-            throw new Error('Invalid type for disabled, must be of type boolean but found type: ' + typeof disabled);
+            throw new Error(
+                'Invalid type for disabled, must be of type boolean but found type: ' +
+                    typeof disabled,
+            );
         }
         this.#domElement.disabled = disabled;
         return this;
@@ -972,12 +1156,15 @@ export default class CalendarSelect {
      * @returns {string|CalendarSelect} The current value when used as getter, or the instance when used as setter.
      * @throws {Error} If the provided value is not a string.
      */
-    value( val ) {
+    value(val) {
         if (typeof val === 'undefined') {
             return this.#domElement.value;
         }
         if (typeof val !== 'string') {
-            throw new Error('Invalid type for value, must be of type string but found type: ' + typeof val);
+            throw new Error(
+                'Invalid type for value, must be of type string but found type: ' +
+                    typeof val,
+            );
         }
         this.#domElement.value = val;
         return this;
@@ -991,9 +1178,12 @@ export default class CalendarSelect {
      * @returns {CalendarSelect} The current instance for method chaining.
      * @throws {Error} If the callback is not a function.
      */
-    onChange( callback ) {
+    onChange(callback) {
         if (typeof callback !== 'function') {
-            throw new Error('Invalid type for onChange callback, must be of type function but found type: ' + typeof callback);
+            throw new Error(
+                'Invalid type for onChange callback, must be of type function but found type: ' +
+                    typeof callback,
+            );
         }
         this.#domElement.addEventListener('change', callback);
         return this;
@@ -1011,28 +1201,35 @@ export default class CalendarSelect {
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
-    replace( element ) {
+    replace(element) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = Utils.validateElementSelector( element );
-        }
-        else if (element instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(element);
+        } else if (element instanceof HTMLElement) {
             domNode = element;
         } else {
-            throw new Error('CalendarSelect.replace: parameter must be a valid CSS selector or an instance of HTMLElement');
+            throw new Error(
+                'CalendarSelect.replace: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
-        if ( this.#hasWrapper ) {
-            domNode.replaceWith( this.#wrapperElement );
-            this.#wrapperElement.appendChild( this.#domElement );
+        if (this.#hasWrapper) {
+            domNode.replaceWith(this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
         } else {
-            domNode.replaceWith( this.#domElement );
+            domNode.replaceWith(this.#domElement);
         }
-        if ( this.#hasLabel ) {
-            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        if (this.#hasLabel) {
+            this.#domElement.insertAdjacentElement(
+                'beforebegin',
+                this.#labelElement,
+            );
         }
-        if ( this.#hasAfter ) {
+        if (this.#hasAfter) {
             if (this.#domElement.parentNode) {
-                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+                this.#domElement.parentNode.insertBefore(
+                    this.#afterElement,
+                    this.#domElement.nextSibling,
+                );
             }
         }
     }
@@ -1049,28 +1246,35 @@ export default class CalendarSelect {
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
-    appendTo( element ) {
+    appendTo(element) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = Utils.validateElementSelector( element );
-        }
-        else if (element instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(element);
+        } else if (element instanceof HTMLElement) {
             domNode = element;
         } else {
-            throw new Error('CalendarSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
+            throw new Error(
+                'CalendarSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
-        if ( this.#hasWrapper ) {
-            domNode.appendChild( this.#wrapperElement );
-            this.#wrapperElement.appendChild( this.#domElement );
+        if (this.#hasWrapper) {
+            domNode.appendChild(this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
         } else {
-            domNode.appendChild( this.#domElement );
+            domNode.appendChild(this.#domElement);
         }
-        if ( this.#hasLabel ) {
-            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        if (this.#hasLabel) {
+            this.#domElement.insertAdjacentElement(
+                'beforebegin',
+                this.#labelElement,
+            );
         }
-        if ( this.#hasAfter ) {
+        if (this.#hasAfter) {
             if (this.#domElement.parentNode) {
-                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+                this.#domElement.parentNode.insertBefore(
+                    this.#afterElement,
+                    this.#domElement.nextSibling,
+                );
             }
         }
     }
@@ -1087,36 +1291,41 @@ export default class CalendarSelect {
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
-    insertBefore( element ) {
+    insertBefore(element) {
         let domNode;
         if (typeof element === 'string') {
-            domNode = Utils.validateElementSelector( element );
-        }
-        else if (element instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(element);
+        } else if (element instanceof HTMLElement) {
             domNode = element;
-        }
-        else if (element instanceof Input) {
+        } else if (element instanceof Input) {
             if (element._hasWrapper) {
                 domNode = element._wrapperElement;
             } else {
                 domNode = element._domElement;
             }
-        }
-        else {
-            throw new Error('CalendarSelect.insertBefore: parameter must be a valid CSS selector or an instance of HTMLElement');
-        }
-        if ( this.#hasWrapper ) {
-            domNode.insertAdjacentElement( 'beforebegin', this.#wrapperElement );
-            this.#wrapperElement.appendChild( this.#domElement );
         } else {
-            domNode.insertAdjacentElement( 'beforebegin', this.#domElement );
+            throw new Error(
+                'CalendarSelect.insertBefore: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
-        if ( this.#hasLabel ) {
-            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        if (this.#hasWrapper) {
+            domNode.insertAdjacentElement('beforebegin', this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
+        } else {
+            domNode.insertAdjacentElement('beforebegin', this.#domElement);
         }
-        if ( this.#hasAfter ) {
+        if (this.#hasLabel) {
+            this.#domElement.insertAdjacentElement(
+                'beforebegin',
+                this.#labelElement,
+            );
+        }
+        if (this.#hasAfter) {
             if (this.#domElement.parentNode) {
-                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+                this.#domElement.parentNode.insertBefore(
+                    this.#afterElement,
+                    this.#domElement.nextSibling,
+                );
             }
         }
     }
@@ -1133,17 +1342,15 @@ export default class CalendarSelect {
      * @throws {Error} If the type of element is not a string.
      * @throws {Error} If the element selector is invalid.
      */
-    insertAfter( element ) {
+    insertAfter(element) {
         let domNode;
         if (typeof element === 'string') {
             //console.log(`element is a CSS selector: ${element}`);
-            domNode = Utils.validateElementSelector( element );
-        }
-        else if (element instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(element);
+        } else if (element instanceof HTMLElement) {
             //console.log(`element is an HTMLElement:`, element);
             domNode = element;
-        }
-        else if (element instanceof Input) {
+        } else if (element instanceof Input) {
             //console.log(`element is an ApiOptions Input:`, element);
             if (element._hasWrapper) {
                 //console.log(`element has a wrapper element:`, element._wrapperElement);
@@ -1151,24 +1358,31 @@ export default class CalendarSelect {
             } else {
                 domNode = element._domElement;
             }
-        }
-        else {
-            throw new Error('CalendarSelect.insertAfter: parameter must be a valid CSS selector or an instance of HTMLElement');
+        } else {
+            throw new Error(
+                'CalendarSelect.insertAfter: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
         //console.log(`domNode:`, domNode);
 
-        if ( this.#hasWrapper ) {
-            domNode.insertAdjacentElement( 'afterend', this.#wrapperElement );
-            this.#wrapperElement.appendChild( this.#domElement );
+        if (this.#hasWrapper) {
+            domNode.insertAdjacentElement('afterend', this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
         } else {
-            domNode.insertAdjacentElement( 'afterend', this.#domElement );
+            domNode.insertAdjacentElement('afterend', this.#domElement);
         }
-        if ( this.#hasLabel ) {
-            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+        if (this.#hasLabel) {
+            this.#domElement.insertAdjacentElement(
+                'beforebegin',
+                this.#labelElement,
+            );
         }
-        if ( this.#hasAfter ) {
+        if (this.#hasAfter) {
             if (this.#domElement.parentNode) {
-                this.#domElement.parentNode.insertBefore( this.#afterElement, this.#domElement.nextSibling );
+                this.#domElement.parentNode.insertBefore(
+                    this.#afterElement,
+                    this.#domElement.nextSibling,
+                );
             }
         }
     }
@@ -1261,17 +1475,24 @@ export default class CalendarSelect {
      * @returns {CalendarSelect} This instance, for chaining.
      * @throws {Error} If already linked to a rite select, or if `riteSelect` is not one.
      */
-    linkToRiteSelect( riteSelect, dispatchChange = true ) {
-        if ( this.#riteLinked ) {
-            throw new Error( 'Current CalendarSelect instance is already linked to a RiteSelect instance. Note that `ApiOptions.linkToCalendarSelect()` links a RiteSelect internally, so this can happen without ever calling `linkToRiteSelect()` yourself.' );
+    linkToRiteSelect(riteSelect, dispatchChange = true) {
+        if (this.#riteLinked) {
+            throw new Error(
+                'Current CalendarSelect instance is already linked to a RiteSelect instance. Note that `ApiOptions.linkToCalendarSelect()` links a RiteSelect internally, so this can happen without ever calling `linkToRiteSelect()` yourself.',
+            );
         }
-        if ( false === riteSelect instanceof RiteSelect ) {
-            throw new Error( 'Invalid type for parameter passed to linkToRiteSelect, must be of type `RiteSelect` but found type: ' + typeof riteSelect );
+        if (false === riteSelect instanceof RiteSelect) {
+            throw new Error(
+                'Invalid type for parameter passed to linkToRiteSelect, must be of type `RiteSelect` but found type: ' +
+                    typeof riteSelect,
+            );
         }
         this.#riteLinked = true;
         this.#riteChangeDispatch = dispatchChange;
-        riteSelect._domElement.addEventListener( 'change', ( ev ) => this.#applyLinkedRite( ev.target.value ) );
-        this.#applyLinkedRite( riteSelect._domElement.value );
+        riteSelect._domElement.addEventListener('change', (ev) =>
+            this.#applyLinkedRite(ev.target.value),
+        );
+        this.#applyLinkedRite(riteSelect._domElement.value);
         return this;
     }
 
@@ -1282,8 +1503,8 @@ export default class CalendarSelect {
      * @returns {void}
      * @private
      */
-    #applyLinkedRite( rite ) {
-        const riteProps = RiteProperties[ rite ];
+    #applyLinkedRite(rite) {
+        const riteProps = RiteProperties[rite];
 
         // Cleared BEFORE the rebuild as well as after: a diocese select linked to a
         // nation select re-derives its per-nation narrowing from that select's
@@ -1291,11 +1512,11 @@ export default class CalendarSelect {
         // reset one rather than the outgoing rite's — otherwise the rebuilt list is
         // filtered for a nation that is no longer selected.
         this.#domElement.value = '';
-        this._applyRite( rite, true );
+        this._applyRite(rite, true);
         this.#domElement.value = '';
 
-        if ( CalendarSelectFilter.NATIONAL_CALENDARS === this.#filter ) {
-            this._setHidden( false === riteProps.hasNationalTier );
+        if (CalendarSelectFilter.NATIONAL_CALENDARS === this.#filter) {
+            this._setHidden(false === riteProps.hasNationalTier);
         }
 
         // A dependent diocese select carries its own `change` listener on this
@@ -1310,8 +1531,11 @@ export default class CalendarSelect {
         // with no dependent would receive two `change` events per rite change: this
         // one immediately (querying `ApiOptions`' endpoint before it has updated
         // its rite), and the caller's once it has.
-        if ( this.#riteChangeDispatch && false === this._hasDependentDioceseSelects ) {
-            this.#domElement.dispatchEvent( new Event( 'change' ) );
+        if (
+            this.#riteChangeDispatch &&
+            false === this._hasDependentDioceseSelects
+        ) {
+            this.#domElement.dispatchEvent(new Event('change'));
         }
     }
 
@@ -1327,23 +1551,38 @@ export default class CalendarSelect {
      * @throws {Error} If the filter of the linked `nations` filtered CalendarSelect instance is not `nations`.
      * @throws {Error} If the two CalendarSelect instances are bound to different API bases.
      */
-    linkToNationsSelect( calendarSelectInstance ) {
+    linkToNationsSelect(calendarSelectInstance) {
         if (this.#linked) {
-            throw new Error('Current `dioceses` filtered CalendarSelect instance already linked to another `nations` filtered CalendarSelect instance');
+            throw new Error(
+                'Current `dioceses` filtered CalendarSelect instance already linked to another `nations` filtered CalendarSelect instance',
+            );
         }
         if (false === calendarSelectInstance instanceof CalendarSelect) {
-            throw new Error('Invalid type for parameter passed to linkToNationsSelect, must be of type `CalendarSelect` but found type: ' + typeof calendarSelectInstance);
+            throw new Error(
+                'Invalid type for parameter passed to linkToNationsSelect, must be of type `CalendarSelect` but found type: ' +
+                    typeof calendarSelectInstance,
+            );
         }
-        if ( this.#filter !== CalendarSelectFilter.DIOCESAN_CALENDARS ) {
-            throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `dioceses` filter, found filter: ' + this.#filter);
+        if (this.#filter !== CalendarSelectFilter.DIOCESAN_CALENDARS) {
+            throw new Error(
+                'Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `dioceses` filter, found filter: ' +
+                    this.#filter,
+            );
         }
-        if ( calendarSelectInstance._filter !== CalendarSelectFilter.NATIONAL_CALENDARS ) {
-            throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
+        if (
+            calendarSelectInstance._filter !==
+            CalendarSelectFilter.NATIONAL_CALENDARS
+        ) {
+            throw new Error(
+                'Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' +
+                    calendarSelectInstance._filter,
+            );
         }
         assertSameBase(
-            this.#base, calendarSelectInstance._base,
+            this.#base,
+            calendarSelectInstance._base,
             'CalendarSelect.linkToNationsSelect: this dioceses CalendarSelect and the nations CalendarSelect passed to it',
-            `Dioceses narrowed by one API's nations and filled from another API's dioceses would describe neither.`
+            `Dioceses narrowed by one API's nations and filled from another API's dioceses would describe neither.`,
         );
         const linkedDomElement = calendarSelectInstance._domElement;
         // Kept as a reference, not just a closure over the DOM element: a rite
@@ -1352,11 +1591,11 @@ export default class CalendarSelect {
         this.#linkedNationsSelect = calendarSelectInstance;
         // Tell the nations select it now has a dependent, so it can decide
         // whether dispatching `change` would disturb one. See `linkToRiteSelect()`.
-        calendarSelectInstance._registerDependentDioceseSelect( this );
-        this.#filterDioceseOptionsForNation( linkedDomElement.value );
-        linkedDomElement.addEventListener( 'change', (ev) => {
+        calendarSelectInstance._registerDependentDioceseSelect(this);
+        this.#filterDioceseOptionsForNation(linkedDomElement.value);
+        linkedDomElement.addEventListener('change', (ev) => {
             const newNationValue = ev.target.value;
-            this.#filterDioceseOptionsForNation( newNationValue );
+            this.#filterDioceseOptionsForNation(newNationValue);
         });
         this.#linked = true;
         return this;

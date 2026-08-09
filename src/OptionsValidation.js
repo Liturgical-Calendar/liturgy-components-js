@@ -39,11 +39,15 @@
  * @param {unknown} options - The candidate options object.
  * @returns {boolean} True only for `{}`-shaped objects and null-prototype objects.
  */
-function isPlainOptionsObject( options ) {
-    if ( null === options || typeof options !== 'object' || Array.isArray( options ) ) {
+function isPlainOptionsObject(options) {
+    if (
+        null === options ||
+        typeof options !== 'object' ||
+        Array.isArray(options)
+    ) {
         return false;
     }
-    const prototype = Object.getPrototypeOf( options );
+    const prototype = Object.getPrototypeOf(options);
     return null === prototype || prototype === Object.prototype;
 }
 
@@ -62,14 +66,14 @@ function isPlainOptionsObject( options ) {
  * @param {unknown} value - The value to describe.
  * @returns {string} A human-readable type name.
  */
-export function describeType( value ) {
-    if ( null === value ) {
+export function describeType(value) {
+    if (null === value) {
         return 'null';
     }
-    if ( Array.isArray( value ) ) {
+    if (Array.isArray(value)) {
         return 'array';
     }
-    if ( typeof value === 'object' ) {
+    if (typeof value === 'object') {
         return value.constructor?.name ?? 'object';
     }
     return typeof value;
@@ -93,9 +97,11 @@ export function describeType( value ) {
  * @returns {void}
  * @throws {Error} If `options` is not a plain object.
  */
-export function assertPlainOptions( options, componentName ) {
-    if ( false === isPlainOptionsObject( options ) ) {
-        throw new Error( `${componentName}: Invalid type for options, must be of type \`object\` but found type: ${describeType( options )}` );
+export function assertPlainOptions(options, componentName) {
+    if (false === isPlainOptionsObject(options)) {
+        throw new Error(
+            `${componentName}: Invalid type for options, must be of type \`object\` but found type: ${describeType(options)}`,
+        );
     }
 }
 
@@ -135,13 +141,13 @@ export function assertPlainOptions( options, componentName ) {
  * @returns {Object} A plain options bag — the caller's own, or one synthesised for a locale or an absent argument.
  * @throws {Error} If `options` is none of the three accepted forms.
  */
-export function normalizeComponentOptions( options, componentName ) {
-    if ( options instanceof Intl.Locale || typeof options === 'string' ) {
+export function normalizeComponentOptions(options, componentName) {
+    if (options instanceof Intl.Locale || typeof options === 'string') {
         return { locale: options };
     }
-    if ( null === options || undefined === options ) {
+    if (null === options || undefined === options) {
         return {};
     }
-    assertPlainOptions( options, componentName );
+    assertPlainOptions(options, componentName);
     return options;
 }
