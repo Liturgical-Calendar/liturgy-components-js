@@ -39,6 +39,75 @@ describe( 'ApiBase.normalizeUrl', () => {
         expect( () => ApiBase.normalizeUrl( '   ' ) ).toThrow( /non-empty string/ );
     } );
 
+    it( 'accepts an absolute http or https url, with or without a port or path', () => {
+        expect( ApiBase.normalizeUrl( 'http://localhost:8000' ) ).toBe( 'http://localhost:8000' );
+        expect( ApiBase.normalizeUrl( 'https://example.org' ) ).toBe( 'https://example.org' );
+        expect( ApiBase.normalizeUrl( 'https://example.org/api/dev' ) ).toBe( 'https://example.org/api/dev' );
+        expect( ApiBase.normalizeUrl( 'http://127.0.0.1:8000/api' ) ).toBe( 'http://127.0.0.1:8000/api' );
+        expect( ApiBase.normalizeUrl( '  https://example.org/api/dev/  ' ) ).toBe( 'https://example.org/api/dev' );
+    } );
+
+    it( 'rejects a scheme that is not http or https, naming the scheme found', () => {
+        expect( () => ApiBase.normalizeUrl( 'javascript:alert(1)' ) ).toThrow( /javascript:/ );
+        expect( () => ApiBase.normalizeUrl( 'javascript:alert(1)' ) ).toThrow( /absolute http: or https: URL/ );
+        expect( () => ApiBase.normalizeUrl( 'data:text/html,x' ) ).toThrow( /data:/ );
+        expect( () => ApiBase.normalizeUrl( 'ftp://example.org/api' ) ).toThrow( /ftp:/ );
+        expect( () => ApiBase.normalizeUrl( 'file:///etc/passwd' ) ).toThrow( /file:/ );
+        expect( () => ApiBase.normalizeUrl( 'ws://example.org/api' ) ).toThrow( /ws:/ );
+        expect( () => ApiBase.normalizeUrl( 'mailto:someone@example.org' ) ).toThrow( /mailto:/ );
+    } );
+
+    it( 'does not mistake a non-http scheme for an omitted one', () => {
+        // `javascript:` and friends must not be told to write `http://javascript:…`:
+        // the caller chose a scheme, they did not forget one.
+        expect( () => ApiBase.normalizeUrl( 'javascript:alert(1)' ) ).not.toThrow( /Did you mean/ );
+        expect( () => ApiBase.normalizeUrl( 'ftp://example.org/api' ) ).not.toThrow( /Did you mean/ );
+    } );
+
+    it( 'rejects a scheme-less host:port, suggesting the http:// form', () => {
+        expect( () => ApiBase.normalizeUrl( 'localhost:8000' ) )
+            .toThrow( /Did you mean http:\/\/localhost:8000\?/ );
+        // The value the caller passed is named, so the message is actionable in a log.
+        expect( () => ApiBase.normalizeUrl( 'localhost:8000' ) ).toThrow( /localhost:8000/ );
+        expect( () => ApiBase.normalizeUrl( 'localhost:8000/' ) )
+            .toThrow( /Did you mean http:\/\/localhost:8000\?/ );
+        expect( () => ApiBase.normalizeUrl( 'example.org:8000/api' ) )
+            .toThrow( /Did you mean http:\/\/example\.org:8000\/api\?/ );
+    } );
+
+    it( 'rejects a scheme-less host, suggesting the http:// form', () => {
+        expect( () => ApiBase.normalizeUrl( 'example.org/api/dev' ) )
+            .toThrow( /Did you mean http:\/\/example\.org\/api\/dev\?/ );
+    } );
+
+    it( 'rejects a protocol-relative url, suggesting the http:// form', () => {
+        expect( () => ApiBase.normalizeUrl( '//example.org/api' ) )
+            .toThrow( /Did you mean http:\/\/example\.org\/api\?/ );
+    } );
+
+    it( 'rejects a same-origin relative path', () => {
+        // Relative bases are not supported: `${url}/calendars` would resolve against
+        // the document and 404 silently. A same-origin deployment passes an absolute URL.
+        expect( () => ApiBase.normalizeUrl( '/api' ) ).toThrow( /absolute http: or https: URL/ );
+        expect( () => ApiBase.normalizeUrl( '/api' ) ).not.toThrow( /Did you mean/ );
+    } );
+
+    it( 'rejects a url that normalizes away to nothing', () => {
+        // `'///'` trimmed and stripped of trailing slashes is `''`, which used to be
+        // registered as a base whose load() fetched a relative `/calendars`.
+        expect( () => ApiBase.normalizeUrl( '///' ) ).toThrow( /absolute http: or https: URL/ );
+    } );
+
+    it( 'rejects a string that is not a url at all', () => {
+        expect( () => ApiBase.normalizeUrl( 'not a url' ) ).toThrow( /absolute http: or https: URL/ );
+    } );
+
+    it( 'refuses to register a base for a url it rejects', () => {
+        expect( () => ApiBase.resolve( 'localhost:8000' ) ).toThrow( /Did you mean/ );
+        expect( () => ApiBase.fromMetadata( '///', FULL_METADATA ) ).toThrow( /absolute http: or https: URL/ );
+        expect( ApiBase.all ).toHaveLength( 0 );
+    } );
+
 } );
 
 describe( 'ApiBase registry', () => {

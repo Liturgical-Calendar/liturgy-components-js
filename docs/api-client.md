@@ -29,7 +29,7 @@ The default API URL is `https://litcal.johnromanodorazio.com/api/dev`.
 
 - with an `ApiClientError` if the base's `/calendars` request fails, carrying `url`, `status`, `statusText`,
   `body` and `cause`
-- with a plain `Error` if the `url` argument is not a non-empty string
+- with a plain `Error` if the `url` argument is not a non-empty string, or is not an absolute `http:`/`https:` URL
 
 Nothing is thrown synchronously, so one `.catch()` — or one `try`/`catch` around the `await` — covers both.
 
@@ -281,6 +281,21 @@ ApiBase.clearAllCaches();                                      // what ApiClient
 An `ApiBase` is one API base URL and everything belonging to it: the `/calendars` index and the response cache.
 Bases are registered in a static registry keyed by normalized URL, so two clients pointed at the same API share
 one metadata fetch and one cache. `apiClient.base` is the base a client is bound to.
+
+A base URL must be an **absolute `http:` or `https:` URL**. Normalizing trims whitespace and strips trailing
+slashes; anything that is not then an absolute HTTP URL is rejected, because the base is interpolated into
+`` `${url}/calendars` `` and any other form resolves against the document and 404s silently. So
+`javascript:`, `data:`, `ftp://…`, `//example.org/api` and `/api` are all refused, and so is a scheme-less
+`localhost:8000` — which `new URL()` accepts as a URL whose _protocol_ is `localhost:`. That last case is
+reported with the URL you almost certainly meant:
+
+```text
+ApiBase: url must be an absolute http: or https: URL, but found: localhost:8000 — which carries no scheme.
+Did you mean http://localhost:8000?
+```
+
+Relative, same-origin bases are not supported. A same-origin deployment should pass an absolute URL, built
+from `location.origin` if need be.
 
 ```javascript
 const dev = await ApiClient.init('http://localhost:8000');

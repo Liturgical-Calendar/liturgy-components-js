@@ -22,7 +22,8 @@ builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings 
 
 - `ApiClient.init()` now **rejects** when the API cannot be reached, instead of logging the error and resolving
   to `false`. It rejects with an `ApiClientError` carrying `url`, `status`, `statusText` and `body` when the
-  `/calendars` request fails, and with a plain `Error` when the `url` argument itself is not a non-empty string.
+  `/calendars` request fails, and with a plain `Error` when the `url` argument itself is not a non-empty string
+  or is not an absolute `http:`/`https:` URL.
   Nothing is thrown synchronously, so a single `.catch()` covers both. Add one — or wrap the `await` in
   `try`/`catch` — at every call site:
 
@@ -292,6 +293,17 @@ And one entry that breaks no code, because it changes none — what narrows is w
   Formatting is unaffected, and always would have been — `Intl` canonicalizes internally — so this is visible
   only to code that reads `_locale` back, and only for an argument that was not already canonical.
 
+- A base URL must now be an absolute `http:` or `https:` URL, and is rejected by `ApiBase.normalizeUrl()` — and
+  so by `ApiBase.resolve()`, `ApiBase.fromMetadata()` and `ApiClient.init()` — when it is not. Nothing that
+  worked stops working: a base that is not an absolute HTTP URL is interpolated into `` `${url}/calendars` ``,
+  where it resolves against the document and 404s, so it could only ever fail — silently, and far from its
+  cause. What is new is that it fails at the call that supplied it, and says why. Parsing alone was not enough
+  to check for: `new URL( 'localhost:8000' )` succeeds, yielding a URL whose _protocol_ is `localhost:`, so a
+  caller who merely omitted the scheme would have passed a `URL.canParse()` test and then got the same silent
+  404 anyway. That case is singled out and answered with the URL they meant — `Did you mean http://localhost:8000?` —
+  while `javascript:`, `data:`, `ftp://…` and the rest are named by the scheme they carry, and `/api` is told
+  that a relative base is not supported. A `'///'` base, which normalized away to `''` and registered a base
+  whose `load()` fetched a relative `/calendars`, is refused along with them.
 - `ApiClient.init( url )` with no argument uses the constant default base rather than the first base already
   registered, so a call meaning "the public API" cannot resolve to a localhost base a comparison page happened
   to register first. An empty string is rejected rather than treated as "unspecified".

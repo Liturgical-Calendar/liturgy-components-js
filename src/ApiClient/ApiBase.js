@@ -81,17 +81,117 @@ export default class ApiBase {
      * Strips trailing slashes and surrounding whitespace, and nothing else: two
      * URLs that differ in host or port are two bases even when they happen to
      * resolve to the same server, because guessing otherwise would be worse than
-     * the duplicate.
+     * the duplicate. In particular the scheme and host are NOT lowercased and the
+     * path is not collapsed, so `HTTP://Example.org` and `http://example.org` stay
+     * two keys.
+     *
+     * The result is then required to be an absolute `http:` or `https:` URL. It is
+     * interpolated straight into `fetch( \`${url}/calendars\` )`, so anything else
+     * resolves relative to the document and 404s — silently, and far from its cause.
+     * Relative bases such as `/api` are deliberately not special-cased: a same-origin
+     * deployment can pass an absolute URL, and admitting a relative form would
+     * reintroduce the very ambiguity this check closes.
      *
      * @param {string} url - The URL to normalize.
      * @returns {string} The normalized URL.
-     * @throws {Error} If the URL is not a non-empty string.
+     * @throws {Error} If the URL is not a non-empty string, or is not an absolute `http:` or `https:` URL.
      */
     static normalizeUrl( url ) {
         if ( typeof url !== 'string' || url.trim() === '' ) {
             throw new Error( 'ApiBase: url must be a non-empty string, but found: ' + String( url ) );
         }
-        return url.trim().replace( /\/+$/, '' );
+        const trimmed    = url.trim();
+        const normalized = trimmed.replace( /\/+$/, '' );
+        ApiBase.#assertAbsoluteHttpUrl( normalized, trimmed );
+        return normalized;
+    }
+
+    /**
+     * Asserts that a normalized base URL is an absolute `http:` or `https:` URL.
+     *
+     * Parsing alone is not enough, and in one case is actively harmful: `new URL()`
+     * happily accepts `localhost:8000`, yielding a URL whose protocol is
+     * `localhost:` and whose host is empty. A caller who omitted the scheme —
+     * a plausible typo, since every example here writes `http://localhost:8000` —
+     * would pass a `URL.canParse()` test and then get a silent 404. `javascript:`,
+     * `data:`, `mailto:` and `ftp://` parse just as happily. So the protocol is
+     * asserted, not merely the parse.
+     *
+     * The rejections are told apart rather than collapsed into one message, because
+     * they call for different corrections. A caller who omitted the scheme is shown
+     * the URL they almost certainly meant; a caller who chose `javascript:` is told
+     * which scheme was found, and must not be advised to write
+     * `http://javascript:alert(1)`.
+     *
+     * @param {string} normalized - The trimmed, trailing-slash-stripped URL.
+     * @param {string} original - The trimmed URL as the caller wrote it, for the message.
+     * @returns {void}
+     * @throws {Error} If the URL is not an absolute `http:` or `https:` URL.
+     * @private
+     */
+    static #assertAbsoluteHttpUrl( normalized, original ) {
+        let parsed = null;
+        try {
+            parsed = new URL( normalized );
+        } catch {
+            parsed = null;
+        }
+
+        if ( null !== parsed && ( 'http:' === parsed.protocol || 'https:' === parsed.protocol ) ) {
+            return;
+        }
+
+        const suggestion = ApiBase.#httpSuggestion( normalized );
+        if ( null !== suggestion ) {
+            throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which carries no scheme. Did you mean ${suggestion}?` );
+        }
+
+        if ( null !== parsed ) {
+            throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — whose scheme is ${parsed.protocol}. The base is fetched over HTTP; no other scheme can serve /calendars.` );
+        }
+
+        throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which is not a URL. A relative base is not supported: it would resolve /calendars against the document and 404 silently.` );
+    }
+
+    /**
+     * The `http://` URL a scheme-less base URL was probably meant to be, if it was
+     * meant to be one at all.
+     *
+     * Recognizes the three shapes that are an omitted scheme rather than a chosen
+     * one: a bare `host:port` (`localhost:8000`), a bare host with an optional path
+     * (`example.org/api`), and a protocol-relative URL (`//example.org/api`). A
+     * value that already carries `scheme://` is excluded, so `ftp://x/y` is reported
+     * as the wrong scheme rather than as a missing one. So is a bare `scheme:`
+     * prefix whose remainder is not a port — `mailto:someone@example.org` is a
+     * scheme the caller chose, whereas `localhost:8000` is a host and a port.
+     *
+     * A single leading slash (`/api`) yields null: it is a relative path, and
+     * neither `http:///api` nor `http://api` is what the caller meant, so there is
+     * nothing honest to suggest.
+     *
+     * @param {string} normalized - The trimmed, trailing-slash-stripped URL.
+     * @returns {string|null} The suggested absolute URL, or null if none can be inferred.
+     * @private
+     */
+    static #httpSuggestion( normalized ) {
+        // Already carries an explicit scheme and authority: the scheme was chosen, not omitted.
+        if ( /^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test( normalized ) ) {
+            return null;
+        }
+        // A bare `something:` prefix is an omitted scheme only when what follows is a port.
+        if ( /^[^/:?#]+:/.test( normalized ) && false === /^[^/:?#]+:\d+(?:[/?#]|$)/.test( normalized ) ) {
+            return null;
+        }
+        // A single leading slash is a relative path, not an authority.
+        if ( normalized.startsWith( '/' ) && false === normalized.startsWith( '//' ) ) {
+            return null;
+        }
+        const candidate = normalized.startsWith( '//' ) ? `http:${normalized}` : `http://${normalized}`;
+        try {
+            return '' === new URL( candidate ).hostname ? null : candidate;
+        } catch {
+            return null;
+        }
     }
 
     /**

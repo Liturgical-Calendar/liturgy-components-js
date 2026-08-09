@@ -240,7 +240,7 @@ The `ApiClient` is the central hub for API communication. It fetches calendar da
 `ApiClient.init()` **rejects** — it never resolves to `false`, and never throws synchronously:
 
 - an `ApiClientError` (with `url`, `status`, `statusText`, `body`, `cause`) when the base's `/calendars` request fails
-- a plain `Error` when the `url` argument is not a non-empty string
+- a plain `Error` when the `url` argument is not a non-empty string, or is not an absolute `http:`/`https:` URL
 
 ```javascript
 const apiClient = await ApiClient.init(BaseUrl); // wrap in try/catch, or use .catch()
