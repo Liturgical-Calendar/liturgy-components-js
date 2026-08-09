@@ -156,9 +156,51 @@ rather than deleted.
 | an in-flight `load()` does not clobber a fixture           | hydrate mid-flight; resolved base carries the fixture, not the response |
 | a `load()` overtaken by a fixture still resolves           | the promise resolves to the base rather than rejecting                  |
 
-Plus the regression the issue is actually about, in `ComponentBinding.test.js`: a `CalendarSelect`
-constructed **before** `fromMetadata()` runs, reading the index installed afterwards through the base it
-already holds. That is the assertion that fails on `main` and passes after the change.
+### The regression test
+
+A component cannot be constructed _before_ any index is installed — `resolveBase()` throws on an empty
+registry (`ApiBase.js:622`) and `nationalCalendars()` throws via `#assertLoaded` on an unloaded base, so
+`CalendarSelect`'s constructor never reaches a divergence. The divergence needs a component on **each
+side** of the re-install.
+
+`assertSameBase()` compares bases by **identity** (`a !== b`, `ApiBase.js:669`), which makes the sharpest
+demonstration a binding failure that names the same URL twice — in `ComponentBinding.test.js`:
+
+```js
+ApiBase.fromMetadata( DEV, FULL_METADATA );
+const select = new CalendarSelect( { locale: 'en' } );   // holds base #1
+ApiBase.fromMetadata( DEV, OTHER_METADATA );             // re-install, same URL
+const client = new ApiClient( ApiBase.resolve( DEV ) );  // holds base #2, today
+
+client.listenTo( select );
+// today: throws "bound to different API bases — http://localhost:8000 and http://localhost:8000"
+// after: connects, because there is only ever one base for that URL
+```
+
+That is the assertion that fails on the branch as it stands and passes after the change. A second one
+covers the consequence the issue calls the more serious of the two: the two objects hold **separate
+caches**, so a response cached through one is invisible to the other despite the shared URL.
+
+## Kept in view: should components re-resolve by URL?
+
+Rewriting those two comments raises the question they were an answer to. Once the registry entry is
+stable, holding the base object and calling `ApiBase.resolve( url )` at each use become equivalent with
+respect to the hazard the comments cite. So: should the components hold a URL instead of a base?
+
+Not changed here, but weighed during implementation, because two things cut against it:
+
+- **`reset()` makes them differ, and not in favour of re-resolving.** A held reference keeps working
+  against its base after `ApiBase.reset()` unregisters it; a re-resolve would mint a _fresh, unloaded_
+  base for the same URL and throw on the next metadata query. Holding is the more forgiving of the two,
+  which matters most in exactly the setting `fromMetadata()` serves.
+- **The base is not the only thing held.** `CalendarSelect` also holds a sorted **copy** of the national
+  list and the option HTML built from it, both produced once in the constructor
+  (`CalendarSelect.js:179-180`). Re-resolving the base alone would not refresh either, so the change only
+  pays for itself alongside rebuilding derived state — a larger question than this issue.
+
+The comments are therefore rewritten to stop citing a hazard that no longer exists, without switching
+the mechanism. If this is revisited, it should be as a deliberate look at derived-state invalidation
+rather than as a follow-on from this fix.
 
 ## Out of scope
 
