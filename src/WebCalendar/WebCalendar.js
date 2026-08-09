@@ -1454,7 +1454,7 @@ export default class WebCalendar {
         if ( false === apiClient instanceof ApiClient ) {
             throw new Error( 'WebCalendar.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.' );
         }
-        apiClient._eventBus.on('calendarFetched', async (data, meta) => {
+        apiClient._eventBus.on('calendarFetched', (data, meta) => {
             // Take the rite the REQUEST was made under, not the client's current
             // rite. A rite change can leave two requests in flight — one through
             // the calendar select, one through the rite listener — and if the

@@ -599,7 +599,7 @@ export default class LiturgyOfTheDay {
             apiClient.yearType(YearType.CIVIL).year(now.getFullYear());
         }
 
-        apiClient._eventBus.on('calendarFetched', async (data) => {
+        apiClient._eventBus.on('calendarFetched', (data) => {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }

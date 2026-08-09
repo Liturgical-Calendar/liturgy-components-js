@@ -265,33 +265,31 @@ describe( 'LiturgyOfAnyDay renders events from a calendarFetched payload', () =>
 
 /**
  * See `LiturgyOfTheDay.test.js`, "LiturgyOfTheDay.listenTo validates the shape of
- * calendarFetched payloads", for why these go through the listener directly
- * rather than through `_eventBus.emit()`: this handler is also `async` with no
- * `await`, so a throw inside it is a promise rejection nothing awaits when routed
- * through `emit()`'s bare `forEach` — verified, while writing that suite, to
- * hard-crash the Node process running the tests rather than merely fail a test.
- * The identical `it.skip` documenting that as a product bug is not repeated here
- * to avoid two live descriptions of one root cause; the finding applies to this
- * component exactly as written there.
+ * calendarFetched payloads", for the full history: this handler used to be
+ * `async` with no `await`, so a throw inside it was a promise rejection nothing
+ * awaited when routed through `emit()`'s bare `forEach` — verified, while writing
+ * that suite, to hard-crash the Node process running the tests rather than
+ * merely fail a test. `async` has since been removed, so a throw here is now a
+ * genuine synchronous exception out of `emit()`, and going through
+ * `_eventBus.emit()` directly is safe again.
  */
 describe( 'LiturgyOfAnyDay.listenTo validates the shape of calendarFetched payloads', () => {
 
     let apiClient;
-    let listener;
 
     beforeEach( async () => {
         apiClient = await ApiClient.init( DEV );
         new LiturgyOfAnyDay( 'en' ).listenTo( apiClient );
-        const listeners = apiClient._eventBus._events.calendarFetched;
-        listener = listeners[ listeners.length - 1 ];
     } );
 
-    it( 'rejects when litcal is missing', async () => {
-        await expect( listener( {} ) ).rejects.toThrow( /Invalid liturgical calendar data/ );
+    it( 'throws synchronously when litcal is missing', () => {
+        expect( () => apiClient._eventBus.emit( 'calendarFetched', {} ) )
+            .toThrow( /Invalid liturgical calendar data/ );
     } );
 
-    it( 'rejects when litcal is empty', async () => {
-        await expect( listener( { litcal: [] } ) ).rejects.toThrow( /Invalid liturgical calendar data/ );
+    it( 'throws synchronously when litcal is empty', () => {
+        expect( () => apiClient._eventBus.emit( 'calendarFetched', { litcal: [] } ) )
+            .toThrow( /Invalid liturgical calendar data/ );
     } );
 
 } );

@@ -277,79 +277,104 @@ describe( 'LiturgyOfTheDay renders events from a calendarFetched payload', () =>
 describe( 'LiturgyOfTheDay.listenTo validates the shape of calendarFetched payloads', () => {
 
     /**
-     * The handler `listenTo()` registers is declared `async ( data ) => { ... }`,
-     * even though nothing in its body ever awaits anything. That matters here: an
-     * `async` function that throws before its first `await` does not throw
-     * synchronously to its caller — it returns an already-rejected promise. So
-     * `expect( () => apiClient._eventBus.emit( 'calendarFetched', badData ) ).toThrow()`
-     * cannot observe the guard at all, and going through `emit()` is actively
-     * dangerous: `EventEmitter.emit()` is a bare `forEach` that neither awaits nor
-     * attaches a `.catch()` to what a listener returns, so the rejection this
-     * throw produces is never handled by anything — an UNHANDLED PROMISE
-     * REJECTION. Verified interactively while writing this suite: routing
-     * malformed data through `_eventBus.emit()` — even inside an async test with a
-     * `process.on( 'unhandledRejection', … )` guard and a microtask flush — still
-     * hard-crashes the Node process running the tests. See the `it.skip` below,
-     * which documents that finding as a product bug rather than reproducing the
-     * crash inside this suite.
+     * FIXED (was a product bug): the handler `listenTo()` registers used to be
+     * declared `async ( data ) => { ... }` even though nothing in its body ever
+     * awaited anything. That mattered: an `async` function that throws before its
+     * first `await` does not throw synchronously to its caller — it returns an
+     * already-rejected promise that `EventEmitter.emit()`'s bare `forEach` neither
+     * awaits nor attaches a `.catch()` to, so the throw became an unhandled
+     * promise rejection instead of a catchable error. Routing malformed data
+     * through `_eventBus.emit()` in that state was verified, while writing this
+     * suite, to hard-crash the Node process running the tests — even inside an
+     * async test with a `process.on( 'unhandledRejection', … )` guard and a
+     * microtask flush.
      *
-     * Retrieving the registered listener and invoking it directly, with a
-     * `.rejects` handler attached in the SAME expression, is what makes it safe:
-     * the returned promise is observed before any microtask boundary passes with
-     * it unhandled. This still pins the validation logic itself — the guard does
-     * correctly reject on each malformed shape below — independently of the
-     * separate bug in how that rejection reaches (or rather does not reach) a
-     * caller.
+     * The handler is no longer `async`, so a throw inside it is now a genuine
+     * synchronous exception out of `emit()`, exactly like any other synchronous
+     * listener. `expect( () => apiClient._eventBus.emit( 'calendarFetched', badData
+     * ) ).toThrow()` is now the direct and safe way to assert it — no separate
+     * listener-retrieval indirection is needed to dodge the old unhandled-rejection
+     * crash.
      */
-    const calendarFetchedListener = ( apiClient ) => {
-        const listeners = apiClient._eventBus._events.calendarFetched;
-        return listeners[ listeners.length - 1 ];
-    };
-
     let apiClient;
-    let listener;
 
     beforeEach( async () => {
         apiClient = await ApiClient.init( DEV );
         new LiturgyOfTheDay( 'en' ).listenTo( apiClient );
-        listener = calendarFetchedListener( apiClient );
     } );
 
-    it( 'rejects when litcal is missing', async () => {
-        await expect( listener( { settings: {}, metadata: {}, messages: [] } ) )
-            .rejects.toThrow( /Invalid liturgical calendar data/ );
+    it( 'throws synchronously when litcal is missing', () => {
+        expect( () => apiClient._eventBus.emit( 'calendarFetched', { settings: {}, metadata: {}, messages: [] } ) )
+            .toThrow( /Invalid liturgical calendar data/ );
     } );
 
-    it( 'rejects when litcal is empty', async () => {
-        await expect( listener( { litcal: [], settings: {}, metadata: {}, messages: [] } ) )
-            .rejects.toThrow( /Invalid liturgical calendar data/ );
+    it( 'throws synchronously when litcal is empty', () => {
+        expect( () => apiClient._eventBus.emit( 'calendarFetched', { litcal: [], settings: {}, metadata: {}, messages: [] } ) )
+            .toThrow( /Invalid liturgical calendar data/ );
     } );
 
-    it( 'rejects when settings, metadata or messages are missing even though litcal is valid', async () => {
-        await expect( listener( { litcal: [ buildEvent() ] } ) )
-            .rejects.toThrow( /should have litcal, settings, metadata and messages properties/ );
+    it( 'throws synchronously when settings, metadata or messages are missing even though litcal is valid', () => {
+        expect( () => apiClient._eventBus.emit( 'calendarFetched', { litcal: [ buildEvent() ] } ) )
+            .toThrow( /should have litcal, settings, metadata and messages properties/ );
     } );
 
     /**
-     * BUG (product code, not a test problem): because the `calendarFetched`
-     * handler is `async` with no `await`, a real malformed response — delivered
-     * the normal way, through `apiClient._eventBus.emit( 'calendarFetched', data )`,
-     * exactly as `ApiClient.fetchCalendar()` does internally — does not raise a
-     * catchable error anywhere. `ApiClient`'s own documentation
-     * (`ApiClient.js` around `fetchCalendar()`) promises that "a listener's throw
-     * … propagates to the returned promise unwrapped", crediting WebCalendar as
-     * the example; but WebCalendar's `calendarFetched` handler is written with
-     * the identical `async ( data, meta ) => { … throw … }` shape (see
-     * `WebCalendar.js` around its `listenTo()`), so it inherits the same defect
-     * rather than being the counterexample the comment implies. The practical
-     * effect for a page: a malformed `/calendar` response makes `fetchCalendar()`
-     * silently resolve — no `calendarFetchFailed`, no rejection a caller's
-     * `.catch()` can see — while separately crashing the process outright via an
-     * unhandled promise rejection the very next tick. `it.skip` rather than
-     * `it.failing`: reproducing the crash live inside this file is what would
-     * actually happen, which would take the rest of the suite down with it.
+     * FIXED (was a product bug, tracked by the comment above): with the handler
+     * async, a real malformed response — delivered the normal way, through
+     * `apiClient.fetchCalendar()`, which itself calls `apiClient._eventBus.emit(
+     * 'calendarFetched', data )` internally — did not raise a catchable error
+     * anywhere. `ApiClient`'s own documentation (`ApiClient.js` around
+     * `fetchCalendar()`) promises that "a listener's throw … propagates to the
+     * returned promise unwrapped", crediting WebCalendar as the example; but
+     * WebCalendar's `calendarFetched` handler was written with the identical
+     * `async ( data, meta ) => { … throw … }` shape (see `WebCalendar.js` around
+     * its `listenTo()`), so it inherited the same defect rather than being the
+     * counterexample the comment implied. The practical effect for a page: a
+     * malformed `/calendar` response made `fetchCalendar()` silently resolve — no
+     * `calendarFetchFailed`, no rejection a caller's `.catch()` could see — while
+     * separately crashing the process outright via an unhandled promise rejection
+     * the very next tick.
+     *
+     * With `async` removed, the throw is a normal synchronous exception raised
+     * from inside `fetchCalendar()`'s own `.then()` callback, so it rejects the
+     * promise `fetchCalendar()` returns exactly like any other error thrown there
+     * — no unhandled rejection, safe to exercise directly.
      */
-    it.skip( 'a malformed calendarFetched payload should surface to fetchCalendar()\'s caller, not crash the process silently later', () => {} );
+    it( 'a malformed calendarFetched payload surfaces to fetchCalendar()\'s caller, not crash the process silently later', async () => {
+        global.fetch = jest.fn().mockResolvedValue( {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => Promise.resolve( { settings: {}, metadata: {}, messages: [] } ) // no litcal
+        } );
+        await expect( apiClient.fetchCalendar() ).rejects.toThrow( /Invalid liturgical calendar data/ );
+    } );
+
+    /**
+     * The cache-hit half of the same contract (see `ApiClient.js` around
+     * `fetchCalendar()`'s cached branch): `ApiClient` caches a response before
+     * emitting `calendarFetched` for it, regardless of whether a listener goes on
+     * to throw, so the malformed payload from the priming call above is what a
+     * second, identical call serves back out of the cache. On that cache-hit
+     * branch the emit is synchronous — the listener has already run by the time
+     * `fetchCalendar()` returns — which this pins by asserting no second network
+     * request happened.
+     */
+    it( 'the same malformed payload surfaces synchronously on a cache hit too', async () => {
+        global.fetch = jest.fn().mockResolvedValue( {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => Promise.resolve( { settings: {}, metadata: {}, messages: [] } ) // no litcal
+        } );
+        // Priming call: cache MISS.
+        await expect( apiClient.fetchCalendar() ).rejects.toThrow( /Invalid liturgical calendar data/ );
+        global.fetch.mockClear();
+
+        // Second, identical call: cache HIT, served without a further request.
+        await expect( apiClient.fetchCalendar() ).rejects.toThrow( /Invalid liturgical calendar data/ );
+        expect( global.fetch ).not.toHaveBeenCalled();
+    } );
 
 } );
 
