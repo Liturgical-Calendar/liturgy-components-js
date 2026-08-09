@@ -207,8 +207,9 @@ In `src/ApiClient/ApiBase.js`, replace the whole doc comment and method at `:260
     }
 ```
 
-Note what is **not** here: `#loadPromise` is deliberately left alone. Task 2 makes clearing it unnecessary, and
-nulling it would let a later `load()` open a second request for one already in flight.
+Note what is **not** here: `#loadPromise` is deliberately left alone. Clearing it is unnecessary: `load()`
+short-circuits on the `#metadata !== null` check before `#loadPromise` is ever read. Nulling it anyway would
+discard the only reference to a request still in flight, without cancelling it.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -654,8 +655,9 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
 Recorded so a reviewer does not read these as oversights:
 
-- **`#loadPromise` is not cleared by `fromMetadata()`.** Task 2 removes the need, and clearing it would let a later
-  `load()` open a duplicate request for one already in flight.
+- **`#loadPromise` is not cleared by `fromMetadata()`.** Clearing it is unnecessary: `load()` short-circuits on
+  the `#metadata !== null` check before `#loadPromise` is ever read. Dropping the handle would also discard the
+  only reference to a request still in flight, without cancelling it.
 - **`ApiBase.resolve()` is otherwise untouched**, as are `load()`'s in-flight deduplication and its early return
   for an already-loaded base.
 - **Components still hold their base rather than re-resolving by URL.** The spec's _Kept in view_ section

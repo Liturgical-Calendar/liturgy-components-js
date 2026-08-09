@@ -250,7 +250,7 @@ describe( 'ApiBase.load yields to an index installed while it was in flight', ()
         expect( base.metadata ).toBe( FULL_METADATA );
     } );
 
-    it( 'clears the in-flight promise, so a later load neither refetches nor hangs', async () => {
+    it( 'lets a later load resolve from the installed index without refetching', async () => {
         const respondWith = deferredFetch();
         const base    = ApiBase.resolve( 'http://localhost:8000' );
         const loading = base.load();

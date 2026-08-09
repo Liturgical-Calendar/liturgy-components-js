@@ -85,8 +85,9 @@ effect of a call that threw. The same ordering gives a second invariant that did
 now matters: a rejected call against an **already registered** base leaves it untouched rather than
 half-hydrated.
 
-**`#loadPromise` is deliberately not cleared.** Change 2 makes clearing unnecessary, and nulling it
-would let a subsequent `load()` start a duplicate request for one already in flight.
+**`#loadPromise` is deliberately not cleared.** Clearing it is unnecessary: `load()` short-circuits on
+the `#metadata !== null` check before `#loadPromise` is ever read. Nulling it anyway would discard the
+only reference to a request still in flight, without cancelling it.
 
 The doc comment is rewritten. The current one explains the replacement (_"Replaces any base already
 registered for the URL"_); the new one states the identity guarantee, names the index-wins rule and the

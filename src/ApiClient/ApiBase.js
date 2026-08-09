@@ -358,7 +358,9 @@ export default class ApiBase {
      * can retry.
      *
      * @returns {Promise<ApiBase>} Resolves to this base once its metadata is loaded.
-     * @throws {ApiClientError} If the request fails or the response carries no `litcal_metadata`.
+     * @throws {ApiClientError} If the request fails or the response carries no `litcal_metadata` — unless
+     *         an index was installed by {@link ApiBase.fromMetadata} while the request was open, in which
+     *         case the promise resolves to the loaded base.
      */
     load() {
         if ( this.#metadata !== null ) {
@@ -395,9 +397,10 @@ export default class ApiBase {
 
             // An index may have been installed by `fromMetadata()` — a fixture, or a
             // server-rendered payload — while this request was in flight. It wins: an
-            // explicit call outranks a background fetch. The response is dropped
-            // without being validated, because it is no longer what anyone will read,
-            // and rejecting here would fail a `load()` on a base that is loaded.
+            // explicit call outranks a background fetch. The response is dropped without
+            // being validated as a calendar index — `#assertValidIndex` below is skipped —
+            // because it is no longer what anyone will read, and rejecting here would fail
+            // a `load()` on a base that is loaded.
             if ( this.#metadata !== null ) {
                 this.#loadPromise = null;
                 return this;
