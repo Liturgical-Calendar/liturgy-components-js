@@ -60,6 +60,13 @@ jobs:
         run: yarn install --immutable
       - name: Compile
         run: yarn compile
+      # Regression guard for the shipped declaration files: checks dist/index.d.ts
+      # under --strict the way a consumer's own tsconfig.json would, which a green
+      # `yarn compile` alone does not catch (checkJs is off — see CLAUDE.md). Added
+      # after `yarn compile`, since it checks whatever is already in dist/ rather
+      # than rebuilding it.
+      - name: Check declaration files
+        run: yarn lint:dts
       - name: Run tests
         run: yarn test
       # Two complementary tools: markdownlint owns the .markdownlint.yml rules,
@@ -69,6 +76,12 @@ jobs:
         run: yarn lint:md
       - name: Check markdown formatting
         run: yarn format:md
+      # Prettier also owns JavaScript formatting (4-space indent, single quotes —
+      # see .prettierrc and the JavaScript section under Code Standards in
+      # CLAUDE.md). This is a check, not a rule-linter, hence `format:js` to match
+      # the `format:md` naming rather than `lint:js`.
+      - name: Check JavaScript formatting
+        run: yarn format:js
       # The storybook build exercises the vite/rollup toolchain that nothing
       # else in this job touches, and catches story-level breakage early.
       - name: Build Storybook

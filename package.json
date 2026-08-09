@@ -33,7 +33,9 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#.yarn\" \"#.superpowers\"",
     "format:md": "prettier --check --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\"",
-    "format:md:fix": "prettier --write --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\""
+    "format:md:fix": "prettier --write --embedded-language-formatting=off --prose-wrap=preserve \"**/*.md\"",
+    "format:js": "prettier --check \"src/**/*.js\" \"examples/**/*.js\"",
+    "format:js:fix": "prettier --write \"src/**/*.js\" \"examples/**/*.js\""
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
