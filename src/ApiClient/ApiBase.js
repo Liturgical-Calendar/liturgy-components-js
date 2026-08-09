@@ -261,21 +261,34 @@ export default class ApiBase {
      * Registers an already loaded base from a metadata object, without any network
      * request.
      *
-     * Replaces any base already registered for the URL. The replacement is
-     * deliberate: fixture setup that had to clear the registry first would be a
-     * trap in a `beforeEach`.
+     * Hydrates the base **in place**. The object registered for a URL is created
+     * once and never replaced, so a component that resolved the base earlier reads
+     * an index installed later. Registering a fresh object instead would leave every
+     * earlier reference holding an orphan — same URL, its own metadata, its own
+     * response cache — which is precisely the divergence the registry exists to
+     * prevent.
+     *
+     * The index supplied wins whether or not the base already carried one, so
+     * fixture setup needs no {@link ApiBase.reset} first: requiring one would be a
+     * trap in a `beforeEach`, where forgetting it once silently reuses the previous
+     * index. The base's response cache is emptied for the same reason it would have
+     * started empty before — a base whose index has just been redefined must not
+     * answer from the one it replaced.
+     *
+     * The index is validated BEFORE the base is resolved, so a rejected call neither
+     * registers a new base nor half-hydrates an existing one.
      *
      * @param {string} url - The base URL.
      * @param {import('../typedefs.js').CalendarIndex} metadata - The calendar index.
-     * @returns {ApiBase}
+     * @returns {ApiBase} The base registered for the URL — the same object on every call for a given URL.
      * @throws {Error} If the metadata is not an object, or omits `national_calendars`, `diocesan_calendars` or `locales`, or carries any of the three as something other than an array.
      */
     static fromMetadata( url, metadata ) {
         const normalized = ApiBase.normalizeUrl( url );
         ApiBase.#assertValidIndex( metadata, normalized );
-        const base = new ApiBase( normalized );
+        const base = ApiBase.resolve( normalized );
         base.#metadata = metadata;
-        ApiBase.#registry.set( base.url, base );
+        base.clearCache();
         return base;
     }
 

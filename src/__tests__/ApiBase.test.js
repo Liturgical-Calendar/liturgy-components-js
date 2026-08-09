@@ -169,12 +169,35 @@ describe( 'ApiBase.fromMetadata', () => {
         expect( ApiBase.resolve( 'http://localhost:8000' ) ).toBe( base );
     } );
 
-    it( 'replaces an existing entry for the same url', () => {
+    it( 'returns the same object when the same url is installed twice', () => {
         const first  = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
         const second = ApiBase.fromMetadata( 'http://localhost:8000', OTHER_METADATA );
-        expect( second ).not.toBe( first );
-        expect( ApiBase.resolve( 'http://localhost:8000' ).metadata ).toBe( OTHER_METADATA );
+        expect( second ).toBe( first );
         expect( ApiBase.all ).toHaveLength( 1 );
+    } );
+
+    it( 'installs the new index onto the base already registered', () => {
+        const first = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        ApiBase.fromMetadata( 'http://localhost:8000', OTHER_METADATA );
+        expect( first.metadata ).toBe( OTHER_METADATA );
+        expect( ApiBase.resolve( 'http://localhost:8000' ).metadata ).toBe( OTHER_METADATA );
+    } );
+
+    it( 'empties the response cache of the base it re-installs', () => {
+        const base = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        base.setCached( 'a-cache-key', { litcal: [] } );
+        expect( base.getCached( 'a-cache-key' ) ).not.toBeNull();
+        ApiBase.fromMetadata( 'http://localhost:8000', OTHER_METADATA );
+        expect( base.getCached( 'a-cache-key' ) ).toBeNull();
+    } );
+
+    it( 'hydrates a base that was resolved but never loaded', () => {
+        const resolved = ApiBase.resolve( 'http://localhost:8000' );
+        expect( resolved.isLoaded ).toBe( false );
+        const hydrated = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        expect( hydrated ).toBe( resolved );
+        expect( resolved.isLoaded ).toBe( true );
+        expect( resolved.metadata ).toBe( FULL_METADATA );
     } );
 
 } );
@@ -233,6 +256,19 @@ describe( 'ApiBase rejects an unusable calendar index', () => {
     it( 'registers nothing when it rejects', () => {
         expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow();
         expect( ApiBase.all ).toHaveLength( 0 );
+    } );
+
+    /**
+     * The sibling of the test above, and new with hydration in place: validating
+     * before `resolve()` is what keeps a rejected call from half-hydrating a base
+     * that was already registered and loaded.
+     */
+    it( 'leaves an already registered base untouched when it rejects', () => {
+        const base = ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        expect( () => ApiBase.fromMetadata( 'http://localhost:8000', NO_NATIONS ) ).toThrow( /national_calendars/ );
+        expect( base.metadata ).toBe( FULL_METADATA );
+        expect( ApiBase.resolve( 'http://localhost:8000' ) ).toBe( base );
+        expect( ApiBase.all ).toHaveLength( 1 );
     } );
 
     it( 'rejects an incomplete index from load, as an ApiClientError', async () => {
