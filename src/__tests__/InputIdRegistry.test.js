@@ -108,6 +108,42 @@ describe( 'Input default id registry', () => {
         expect( anotherYearInput._domElement.id ).toBe( 'year-2' );
     } );
 
+    /**
+     * The suffix search resumes from a per-base-id hint rather than rescanning from
+     * 2, so claiming stays O(1) amortized. The hint is advisory: `id()` registers an
+     * explicitly chosen id WITHOUT moving it, so a later default claim must still
+     * verify before taking a candidate. If it trusted the hint blindly it would hand
+     * out an id the caller had already asked for by name — the collision the whole
+     * registry exists to prevent, reintroduced by the optimisation.
+     */
+    it( 'does not hand a default claim an id an explicit .id() call already took', () => {
+        new YearInput();                       // 'year'
+        const explicit = new YearInput();      // auto-claims 'year-2', advancing the hint to 3
+        explicit.id( 'year-7' );               // registers 'year-7' WITHOUT moving the hint
+
+        // Exhaust 3, 4, 5 and 6, leaving the hint pointing straight at the taken
+        // `year-7`. The next default claim must notice and step over it.
+        const drained = [ 3, 4, 5, 6 ].map( () => new YearInput()._domElement.id );
+        expect( drained ).toEqual( [ 'year-3', 'year-4', 'year-5', 'year-6' ] );
+
+        expect( new YearInput()._domElement.id ).toBe( 'year-8' );
+        expect( document.querySelectorAll( '#year-7' ).length ).toBeLessThanOrEqual( 1 );
+    } );
+
+    /**
+     * Guards the shape of the ids the hint produces: it must stay a dense, ordered
+     * sequence, exactly what the rescanning implementation produced. A hint that
+     * drifted would show up here as a gap.
+     */
+    it( 'issues a dense ordinal sequence across many claims', () => {
+        const claimed = Array.from( { length: 12 }, () => new YearInput()._domElement.id );
+        expect( claimed[ 0 ] ).toBe( 'year' );
+        expect( claimed.slice( 1 ) ).toEqual(
+            Array.from( { length: 11 }, ( _unused, i ) => `year-${ i + 2 }` )
+        );
+        expect( new Set( claimed ).size ).toBe( claimed.length );
+    } );
+
     it( 'restores bare ids for a subsequent construction after Input.reset()', () => {
         const before = new YearInput();
         expect( before._domElement.id ).toBe( 'year' );

@@ -27,6 +27,15 @@ export default class Input {
      * @type {Set<string>}
      */
     static #issuedIds          = new Set();
+    /**
+     * Next suffix to try for each base id — a forward-only hint that keeps
+     * {@link Input#_claimDefaultId} O(1) amortized. Advisory, not authoritative:
+     * the claim still verifies against `#issuedIds`, since {@link Input#id}
+     * registers an explicit id without moving the hint.
+     *
+     * @type {Map<string, number>}
+     */
+    static #nextSuffix         = new Map();
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
     /** @type {HTMLElement|null} */
@@ -148,6 +157,7 @@ export default class Input {
      */
     static reset() {
         Input.#issuedIds.clear();
+        Input.#nextSuffix.clear();
     }
 
     /**
@@ -278,10 +288,23 @@ export default class Input {
      */
     _claimDefaultId( baseId ) {
         let candidate = baseId;
-        let suffix = 2;
-        while (Input.#issuedIds.has(candidate)) {
+        if (Input.#issuedIds.has(candidate)) {
+            // Resume from the highest suffix already handed out for this base id
+            // rather than rescanning from 2. The hint only ever moves forward, so a
+            // claim costs O(1) amortized however many ids have been issued. The
+            // rescan made claim N cost N steps, and so the whole sequence quadratic:
+            // a long-lived SPA remounting one `ApiOptions` 1000 times spent ~4.5M
+            // steps in this loop. A page that mounts once never noticed.
+            let suffix = Input.#nextSuffix.get(baseId) ?? 2;
+            // The hint is a starting point, not an authority. `id()` registers an
+            // explicitly chosen id without moving the hint, so `locale-5` can be
+            // taken even when the hint still says 5 — verify before claiming, or a
+            // default claim could collide with an id the caller asked for by name.
+            while (Input.#issuedIds.has(`${baseId}-${suffix}`)) {
+                suffix++;
+            }
             candidate = `${baseId}-${suffix}`;
-            suffix++;
+            Input.#nextSuffix.set(baseId, suffix + 1);
         }
         Input.#issuedIds.add(candidate);
         this.#domElement.id = candidate;
