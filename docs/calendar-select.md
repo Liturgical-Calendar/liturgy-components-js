@@ -13,6 +13,8 @@ import { ApiClient, CalendarSelect } from '@liturgical-calendar/components-js';
 ApiClient.init('http://localhost:8000').then((apiClient) => {
     const calendarSelect = new CalendarSelect('en-US');
     calendarSelect.appendTo('#calendarOptions');
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 
@@ -285,5 +287,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     apiClient.fetchCalendar('en').catch((error) => {
         console.error(`Could not fetch calendar: ${error.message}`);
     });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```

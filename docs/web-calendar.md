@@ -15,6 +15,8 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     apiClient.fetchCalendar('en').catch((error) => {
         console.error(`Could not fetch calendar: ${error.message}`);
     });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 

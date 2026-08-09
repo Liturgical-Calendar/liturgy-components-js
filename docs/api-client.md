@@ -51,6 +51,8 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     const calendarSelect = new CalendarSelect();
     const apiOptions = new ApiOptions();
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 
@@ -197,16 +199,17 @@ the request body.
 ```javascript
 import { ApiClient, RiteSelect, Rite } from '@liturgical-calendar/components-js';
 
-const apiClient = await ApiClient.init();
-const riteSelect = new RiteSelect('en-US');
-riteSelect.appendTo('#rite');
-
-apiClient.listenTo(riteSelect);   // changing the rite refetches
-apiClient.rite(Rite.AMBROSIAN);   // or set it directly; chainable
+// One try/catch around the awaits covers both the init() and the fetch rejection.
 try {
-    await apiClient.fetchCalendar(); // POST /calendar/ambrosian
+    const apiClient = await ApiClient.init();
+    const riteSelect = new RiteSelect('en-US');
+    riteSelect.appendTo('#rite');
+
+    apiClient.listenTo(riteSelect);    // changing the rite refetches
+    apiClient.rite(Rite.AMBROSIAN);    // or set it directly; chainable
+    await apiClient.fetchCalendar();   // POST /calendar/ambrosian
 } catch (error) {
-    console.error(`Could not fetch calendar: ${error.message}`);
+    console.error(`Could not load the Ambrosian calendar: ${error.message}`);
 }
 ```
 

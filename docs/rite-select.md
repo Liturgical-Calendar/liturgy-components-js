@@ -111,6 +111,8 @@ ApiClient.init().then( () => {
     dioceseSelect.appendTo( '#diocese' );
 
     apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ], riteSelect );
+} ).catch( ( error ) => {
+    console.error( `Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}` );
 } );
 ```
 
@@ -222,16 +224,17 @@ accepts a `CalendarSelect`, and exposes a chainable `rite()` setter:
 ```javascript
 import { ApiClient, RiteSelect, Rite } from '@liturgical-calendar/components-js';
 
-const apiClient = await ApiClient.init();
-const riteSelect = new RiteSelect( 'en-US' );
-riteSelect.appendTo( '#rite' );
-
-apiClient.listenTo( riteSelect ); // changing the rite refetches
-apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
+// One try/catch around the awaits covers both the init() and the fetch rejection.
 try {
+    const apiClient = await ApiClient.init();
+    const riteSelect = new RiteSelect( 'en-US' );
+    riteSelect.appendTo( '#rite' );
+
+    apiClient.listenTo( riteSelect ); // changing the rite refetches
+    apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
     await apiClient.fetchCalendar(); // POST /calendar/ambrosian
 } catch ( error ) {
-    console.error( `Could not fetch calendar: ${error.message}` );
+    console.error( `Could not load the Ambrosian calendar: ${error.message}` );
 }
 ```
 

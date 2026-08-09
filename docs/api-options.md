@@ -226,5 +226,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     apiOptions._acceptHeaderInput.hide();
 
     apiOptions.appendTo('#calendarOptions');
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
