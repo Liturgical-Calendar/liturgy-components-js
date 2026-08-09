@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, jest } from '@jest/globals';
-import ApiClient from '../ApiClient/ApiClient.js';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import { Rite, CalendarSelectFilter } from '../Enums.js';
 
@@ -9,8 +9,13 @@ import { Rite, CalendarSelectFilter } from '../Enums.js';
  * Ambrosian but its nation `IT` DOES have a Roman national calendar, so before
  * rite filtering it was silently grouped under Italy as though it were Roman.
  * `romamo_it` is the Roman control.
+ *
+ * Local rather than the shared `FULL_METADATA`: the crash case needs a diocese
+ * whose nation has no national calendar at all, which the shared fixture — a
+ * self-consistent index — deliberately does not contain.
  */
 const METADATA = {
+    locales: [ 'en', 'it', 'la' ],
     national_calendars: [
         { calendar_id: 'IT', locales: [ 'it-IT' ] },
         { calendar_id: 'VA', locales: [ 'la', 'it-IT' ] }
@@ -27,12 +32,11 @@ global.document = {
     createElement: () => ( {} )
 };
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    await ApiClient.init();
+const API_URL = 'http://localhost:8000';
+
+beforeEach( () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, METADATA );
 } );
 
 describe( 'CalendarSelect rite filtering — Roman (default)', () => {

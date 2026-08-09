@@ -1,8 +1,10 @@
-import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
 
 /**
@@ -28,9 +30,16 @@ import Utils from '../Utils.js';
  * @see https://github.com/Liturgical-Calendar/liturgy-components-js
  */
 export default class CalendarSelect {
-    static #metadata                    = null;
-    static #nationalCalendars             = [];
-    static #diocesanCalendars             = [];
+    /** @type {ApiBase} The API base this select reads its calendars from. */
+    #base                                 = null;
+
+    /**
+     * @type {import('../typedefs.js').NationalCalendar[]} A per-instance COPY of the
+     * base's national calendars: `#buildAllOptions()` sorts this list in place, by
+     * the instance's own locale, and must not reorder the metadata every other
+     * client of the same base reads.
+     */
+    #nationalCalendars                    = [];
     #nationalCalendarsWithDioceses        = [];
     #rite                                 = Rite.ROMAN;
     #riteSet                              = false;
@@ -97,7 +106,7 @@ export default class CalendarSelect {
      * @private
      */
     #addNationalCalendarWithDioceses( nation ) {
-        const nationalCalendar = CalendarSelect.#nationalCalendars.find( item => item.calendar_id === nation );
+        const nationalCalendar = this.#nationalCalendars.find( item => item.calendar_id === nation );
         if ( undefined === nationalCalendar ) {
             throw new Error(
                 'CalendarSelect: inconsistent API metadata — a diocesan calendar under the `'
@@ -111,43 +120,10 @@ export default class CalendarSelect {
     }
 
     /**
-     * Initializes the CalendarSelect class.
-     *
-     * This method initializes the CalendarSelect class by storing the metadata obtained from the ApiClient
-     * class in a private class property. This method must be called before any CalendarSelect instances are created.
-     * If the ApiClient class has not been initialized, or failed to initialize, an error will be thrown.
-     *
-     * @throws {Error} If the ApiClient class has not been initialized.
-     * @throws {Error} If the ApiClient class failed to initialize.
-     * @throws {Error} If the ApiClient class initialized with an invalid object.
-     * @throws {Error} If the ApiClient class initialized with an object that does not contain the expected properties.
-     * @static
-     * @private
-     */
-    static #init() {
-        if ( null === ApiClient._metadata ) {
-            throw new Error('ApiClient has not been initialized. Please initialize with `ApiClient.init().then(() => { ... })`, and handle the CalendarSelect instances within the callback.');
-        } else {
-            if (ApiClient._metadata === false) {
-                throw new Error('The ApiClient class was unable to initialize.');
-            }
-            if (typeof ApiClient._metadata !== 'object') {
-                throw new Error('The ApiClient class was unable to initialize: expected object, found ' + typeof ApiClient._metadata + '.');
-            }
-            if (false === ApiClient._metadata.hasOwnProperty('national_calendars') || false === ApiClient._metadata.hasOwnProperty('diocesan_calendars')) {
-                throw new Error('The ApiClient class was unable to initialize: expected object with `national_calendars` and `diocesan_calendars` properties.');
-            }
-            CalendarSelect.#metadata = ApiClient._metadata;
-            CalendarSelect.#nationalCalendars =  CalendarSelect.#metadata.national_calendars;
-            CalendarSelect.#diocesanCalendars = CalendarSelect.#metadata.diocesan_calendars;
-        }
-    }
-
-    /**
      * Constructor for the CalendarSelect class.
      *
-     * @param {Object|string} [options] - The options object or locale string. An options object can have the following properties:
-     *                                  - `locale`: The locale to use for the `CalendarSelect` UI elements.
+     * @param {Object|string|Intl.Locale} [options] - The options object, a locale string, or an `Intl.Locale`. An options object can have the following properties:
+     *                                  - `locale`: The locale to use for the `CalendarSelect` UI elements, as a string or an `Intl.Locale`.
      *                                  - `id`: The ID of the `CalendarSelect` DOM input.
      *                                  - `class`: The class name for the `CalendarSelect` DOM input.
      *                                  - `name`: The name for the `CalendarSelect` DOM input.
@@ -158,42 +134,22 @@ export default class CalendarSelect {
      *                                  - `disabled`: a boolean to indicate whether the `CalendarSelect` DOM input element should be disabled.
      *                                  - `label`: The label for the `CalendarSelect` DOM input (an object with a `text` property, and optionally `class` and `id` properties).
      *                                  - `wrapper`: The wrapper for the `CalendarSelect` component (an object with an `as` property, and optionally `class` and `id` properties).
-     *                                  If a string is passed, it is expected to be the locale code to use for the `CalendarSelect` UI elements.
-     *                                  The locale should be a valid ISO 639-1 code that can be parsed by the Intl.getCanonicalLocales function.
+     *                                  - `apiClient`: The `ApiClient` whose API base this select should read its calendars from. When omitted, the first registered base is used, and a warning is emitted if more than one base is registered.
+     *                                  If a string or an `Intl.Locale` is passed, it is taken as the locale to use for the `CalendarSelect` UI elements.
+     *                                  A locale string should be a valid tag that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
+     *                                  `null` and `undefined` both mean "no options given": the defaults are used, and the locale falls back to `'en'`.
      *
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish — any
+     *                 OTHER class instance is rejected, not silently destructured to nothing.
      * @throws {Error} If the locale is invalid.
      */
     constructor(options) {
-        if (typeof options === 'string') {
-            options = { locale: options };
-        }
-        else if (null === options || typeof options === 'undefined') {
-            options = { locale: 'en' };
-        }
-        else if (typeof options !== 'object' || Array.isArray(options)) {
-            const optionsType = Array.isArray(options) ? 'array' : typeof options;
-            throw new Error('Invalid type for options, must be of type `object` but found type: ' + optionsType);
-        }
-        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite } = options;
+        options = normalizeComponentOptions(options, 'CalendarSelect');
+        const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
-            if (typeof inputLocale !== 'string') {
-                throw new Error('Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale);
-            }
-            let locale = inputLocale;
-            if (locale.includes('_')) {
-                locale = locale.replaceAll('_', '-');
-            }
-            try {
-                const canonicalLocales = Intl.getCanonicalLocales(locale);
-                if (canonicalLocales.length === 0) {
-                    throw new Error('Invalid locale: ' + locale);
-                }
-                this.#locale = canonicalLocales[0];
-                this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
-            } catch (e) {
-                throw new Error('Invalid locale: ' + locale);
-            }
+            this.#locale = canonicalizeLocale(inputLocale, 'CalendarSelect');
+            this.#countryNames = new Intl.DisplayNames( [ this.#locale ], { type: 'region' } );
         } else {
             this.#locale = 'en';
             try {
@@ -214,13 +170,18 @@ export default class CalendarSelect {
             this.#riteSet = true;
         }
 
-        if (null === CalendarSelect.#metadata) {
-            CalendarSelect.#init();
-        }
+        // Must stay ahead of `#buildAllOptions()`, which reads both the base and the
+        // national list, and after the `rite` handling above, which sets `this.#rite`.
+        // The base is resolved ONCE and held because the binding belongs to this
+        // select and is settled here, at construction: whichever base the `apiClient`
+        // option named — or the default in force at the time — is the one it keeps for
+        // its lifetime, whatever is registered later.
+        this.#base              = resolveBase( apiClient, 'CalendarSelect' );
+        this.#nationalCalendars = [ ...this.#base.nationalCalendars() ];
         this.#buildAllOptions();
         this.#domElement = document.createElement('select');
 
-        if (options.hasOwnProperty('class')) {
+        if (Object.hasOwn(options, 'class')) {
             this.class(options.class);
         }
         if (id) {
@@ -361,16 +322,19 @@ export default class CalendarSelect {
         this.#dioceseOptionsGrouped         = [];
 
         const riteProps = RiteProperties[ this.#rite ];
-        // A diocesan entry with no `rite` field is Roman. The `rite` field is a
-        // v6 addition: the live v5 API (`/api/v5/calendars`) announces no rite
-        // on any diocesan entry, and everything it has ever served is Roman.
-        // Filtering on a strict `=== this.#rite` would therefore drop EVERY
-        // diocese for a v5-pinned consumer and empty the list with no error and
-        // no warning — and bumping the pin is exactly how this release reaches
-        // the frontend.
-        const dioceses  = CalendarSelect.#diocesanCalendars.filter(
-            diocesanCalendarObj => ( diocesanCalendarObj.rite ?? Rite.ROMAN ) === this.#rite
-        );
+        // Re-read from the base on EVERY build rather than caching a rite-filtered
+        // list at construction: `_applyRite()` calls this method again whenever the
+        // rite changes (a linked `RiteSelect` does exactly that), and a snapshot
+        // taken under the construction-time rite would go stale on the first change.
+        //
+        // `ApiBase.diocesanCalendars()` performs the rite filtering, treating a
+        // diocesan entry with no `rite` field as Roman. The `rite` field is a v6
+        // addition: the live v5 API (`/api/v5/calendars`) announces no rite on any
+        // diocesan entry, and everything it has ever served is Roman. Filtering on a
+        // strict `=== this.#rite` would therefore drop EVERY diocese for a v5-pinned
+        // consumer and empty the list with no error and no warning — and bumping the
+        // pin is exactly how this release reaches the frontend.
+        const dioceses  = this.#base.diocesanCalendars( this.#rite );
 
         if ( false === riteProps.hasNationalTier ) {
             // A rite with no national tier has no national calendars to group under.
@@ -394,8 +358,8 @@ export default class CalendarSelect {
             this.#addDioceseOption( diocesanCalendarObj );
         } );
 
-        CalendarSelect.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
-        CalendarSelect.#nationalCalendars.forEach( nationalCalendar => {
+        this.#nationalCalendars.sort( ( a, b ) => this.#countryNames.of( a.calendar_id ).localeCompare( this.#countryNames.of( b.calendar_id ) ) );
+        this.#nationalCalendars.forEach( nationalCalendar => {
             if ( false === this.#hasNationalCalendarWithDioceses( nationalCalendar.calendar_id ) ) {
                 // This is the first time we call CalendarSelect.#addNationOption().
                 // This will ensure that the VATICAN (a nation without any diocese) will be added as the first option.
@@ -613,10 +577,21 @@ export default class CalendarSelect {
      * Gets the liturgical rite this CalendarSelect instance is built for.
      *
      * @returns {string} A value from the `Rite` enum (`Rite.ROMAN` by default).
-     * @readonly
      */
     get _rite() {
         return this.#rite;
+    }
+
+    /**
+     * The API base this select reads its calendars from.
+     *
+     * Package-internal: `PathBuilder` uses it to verify that the select and the
+     * `ApiOptions` it is paired with are bound to the same API.
+     *
+     * @returns {ApiBase} The bound API base.
+     */
+    get _base() {
+        return this.#base;
     }
 
     /**
@@ -759,7 +734,7 @@ export default class CalendarSelect {
             this.#labelElement.setAttribute( 'for', this.#domElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'class') ) {
+        if ( Object.hasOwn( labelOptions, 'class' ) ) {
             if ( typeof labelOptions.class !== 'string' ) {
                 throw new Error('Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class);
             }
@@ -774,7 +749,7 @@ export default class CalendarSelect {
             this.#labelElement.className = labelOptions.class;
         }
 
-        if (labelOptions.hasOwnProperty('id')) {
+        if (Object.hasOwn(labelOptions, 'id')) {
             if (typeof labelOptions.id !== 'string') {
                 throw new Error('Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id);
             }
@@ -786,7 +761,7 @@ export default class CalendarSelect {
             this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'text' ) ) {
+        if ( Object.hasOwn( labelOptions, 'text' ) ) {
             if ( typeof labelOptions.text !== 'string' ) {
                 throw new Error('Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text);
             }
@@ -798,7 +773,7 @@ export default class CalendarSelect {
         }
 
         /*
-        if ( labelOptions.hasOwnProperty( 'after' ) ) {
+        if ( Object.hasOwn( labelOptions, 'after' ) ) {
             if ( typeof labelOptions.after !== 'string' ) {
                 throw new Error('Invalid type for label after, must be of type string but found type: ' + typeof labelOptions.after);
             }
@@ -852,7 +827,7 @@ export default class CalendarSelect {
             throw new Error('Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property');
         }
 
-        if (wrapperOptions.hasOwnProperty('as')) {
+        if (Object.hasOwn(wrapperOptions, 'as')) {
             if (typeof wrapperOptions.as !== 'string') {
                 throw new Error('Invalid type for wrapper `as` property, must be of type string but found type: ' + typeof wrapperOptions.as);
             }
@@ -867,7 +842,7 @@ export default class CalendarSelect {
         this.#hasWrapper = true;
         this.#wrapperSet = true;
 
-        if ( wrapperOptions.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( wrapperOptions, 'class' ) ) {
             if ( typeof wrapperOptions.class !== 'string' ) {
                 throw new Error('Invalid type for wrapper class, must be of type string but found type: ' + typeof wrapperOptions.class);
             }
@@ -882,7 +857,7 @@ export default class CalendarSelect {
             this.#wrapperElement.className = wrapperOptions.class;
         }
 
-        if ( wrapperOptions.hasOwnProperty( 'id' ) ) {
+        if ( Object.hasOwn( wrapperOptions, 'id' ) ) {
             if ( typeof wrapperOptions.id !== 'string' ) {
                 throw new Error('Invalid type for wrapper id, must be of type string but found type: ' + typeof wrapperOptions.id);
             }
@@ -1202,7 +1177,6 @@ export default class CalendarSelect {
      * Gets the underlying DOM element of the CalendarSelect instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the CalendarSelect instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -1217,7 +1191,6 @@ export default class CalendarSelect {
      * - `CalendarSelectFilter.NONE` will show all options, that is, both nation and diocese options.
      *
      * @returns {string} The current filter of the CalendarSelect instance.
-     * @readonly
      */
     get _filter() {
         return this.#filter;
@@ -1227,7 +1200,6 @@ export default class CalendarSelect {
      * Retrieves the status of whether a wrapper element has been set for the CalendarSelect instance.
      *
      * @returns {boolean} True if a wrapper element has been set; otherwise, false.
-     * @readonly
      */
     get _hasWrapper() {
         return this.#hasWrapper;
@@ -1243,7 +1215,6 @@ export default class CalendarSelect {
      * this will be `null`.
      *
      * @returns {HTMLElement|null} The wrapper element for the CalendarSelect instance, or `null` if no wrapper element was set.
-     * @readonly
      */
     get _wrapperElement() {
         return this.#wrapperElement;
@@ -1259,7 +1230,6 @@ export default class CalendarSelect {
      * will return an empty string when no option is selected.
      *
      * @returns {boolean} True if the current CalendarSelect instance allows a null selected value; otherwise, false.
-     * @readonly
      */
     get _allowNull() {
         return this.#allowNull;
@@ -1355,6 +1325,7 @@ export default class CalendarSelect {
      * @throws {Error} If the type of calendarSelectInstance is not a `CalendarSelect`.
      * @throws {Error} If the filter of the current `dioceses` filtered CalendarSelect instance is not `dioceses`.
      * @throws {Error} If the filter of the linked `nations` filtered CalendarSelect instance is not `nations`.
+     * @throws {Error} If the two CalendarSelect instances are bound to different API bases.
      */
     linkToNationsSelect( calendarSelectInstance ) {
         if (this.#linked) {
@@ -1369,6 +1340,11 @@ export default class CalendarSelect {
         if ( calendarSelectInstance._filter !== CalendarSelectFilter.NATIONAL_CALENDARS ) {
             throw new Error('Can only link a `CalendarSelectFilter.DIOCESAN_CALENDARS` filtered CalendarSelect instance to a `CalendarSelectFilter.NATIONAL_CALENDARS` filtered CalendarSelect instance. Instead of expected `nations` filter for the linked CalendarSelect instance, found filter: ' + calendarSelectInstance._filter);
         }
+        assertSameBase(
+            this.#base, calendarSelectInstance._base,
+            'CalendarSelect.linkToNationsSelect: this dioceses CalendarSelect and the nations CalendarSelect passed to it',
+            `Dioceses narrowed by one API's nations and filled from another API's dioceses would describe neither.`
+        );
         const linkedDomElement = calendarSelectInstance._domElement;
         // Kept as a reference, not just a closure over the DOM element: a rite
         // change rebuilds this select's options from scratch, and `_applyRite()`

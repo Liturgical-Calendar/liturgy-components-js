@@ -53,8 +53,6 @@ import {
 } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     // Configure global styling
     Input.setGlobalInputClass('form-select');
     Input.setGlobalLabelClass('form-label');
@@ -83,6 +81,8 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
         .buttonWrapperClass('mt-2')
         .pathWrapperClass('bg-light p-2 rounded');
     pathBuilder.appendTo('#pathBuilderContainer');
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 

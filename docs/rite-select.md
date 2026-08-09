@@ -22,11 +22,14 @@ riteSelect.appendTo('#riteOptions');
 
 ## Constructor Options
 
-The constructor accepts a locale string or an options object:
+The constructor accepts a locale, an options object, or nothing at all:
 
 ```javascript
 // With locale string
 const riteSelect = new RiteSelect('it-IT');
+
+// With an Intl.Locale
+const riteSelect = new RiteSelect(new Intl.Locale('it-IT'));
 
 // With options object
 const riteSelect = new RiteSelect({
@@ -36,6 +39,10 @@ const riteSelect = new RiteSelect({
     name: 'selected_rite'
 });
 ```
+
+A locale may be given as a `string` or as an `Intl.Locale`, interchangeably, both as the bare argument and as
+the `locale` property. `null` and `undefined` both mean "not supplied" in either position and take the default
+of `'en'`; anything else is rejected, naming the type it found.
 
 The select is populated with one `<option>` per value of the `Rite` enum (`roman` and `ambrosian`),
 labeled with the `RITE_ROMAN` / `RITE_AMBROSIAN` message keys for the given locale. It defaults to
@@ -104,6 +111,8 @@ ApiClient.init().then( () => {
     dioceseSelect.appendTo( '#diocese' );
 
     apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ], riteSelect );
+} ).catch( ( error ) => {
+    console.error( `Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}` );
 } );
 ```
 
@@ -203,8 +212,8 @@ and no `apiVersion` option to set.
 - Against **v5**, `ApiClient` omits the rite segment entirely, so this release keeps working for
   everything v5 supports. v5 rejects the segment on _every_ route, not only Ambrosian ones, so emitting
   it unconditionally would break even a plain Roman national calendar. Requesting the Ambrosian rite
-  there throws an explicit error naming the version requirement, rather than emitting a request the API
-  answers with a bare 400.
+  there rejects the fetch method's promise with an explicit error naming the version requirement, rather
+  than emitting a request the API answers with a bare 400.
 - Against **v6 or `dev`**, the segment is always emitted and the Ambrosian rite is available.
 
 ## ApiClient
@@ -215,13 +224,18 @@ accepts a `CalendarSelect`, and exposes a chainable `rite()` setter:
 ```javascript
 import { ApiClient, RiteSelect, Rite } from '@liturgical-calendar/components-js';
 
-const apiClient = await ApiClient.init();
-const riteSelect = new RiteSelect( 'en-US' );
-riteSelect.appendTo( '#rite' );
+// One try/catch around the awaits covers both the init() and the fetch rejection.
+try {
+    const apiClient = await ApiClient.init();
+    const riteSelect = new RiteSelect( 'en-US' );
+    riteSelect.appendTo( '#rite' );
 
-apiClient.listenTo( riteSelect ); // changing the rite refetches
-apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
-apiClient.fetchCalendar();        // GET /calendar/ambrosian
+    apiClient.listenTo( riteSelect ); // changing the rite refetches
+    apiClient.rite( Rite.AMBROSIAN ); // or set it directly; chainable
+    await apiClient.fetchCalendar(); // POST /calendar/ambrosian
+} catch ( error ) {
+    console.error( `Could not load the Ambrosian calendar: ${error.message}` );
+}
 ```
 
 Two behaviours are worth knowing:
@@ -229,10 +243,12 @@ Two behaviours are worth knowing:
 - **A rite change drops the current calendar selection** and re-targets the request at the rite-level
   calendar. A `calendar_id` from one rite is never valid under another, in either direction —
   `/calendar/ambrosian/diocese/romamo_it` and `/calendar/roman/diocese/lugano_ch` are both rejected.
-- **`fetchNationalCalendar()` throws under a rite with no national tier.** There is no
-  `/calendar/ambrosian/nation/...` route, so the client refuses rather than emitting a request that
-  cannot succeed. Use `fetchCalendar()` for the rite-level calendar, or `fetchDiocesanCalendar()` for one
-  of its dioceses.
+- **`fetchNationalCalendar()` refuses a rite with no national tier.** There is no
+  `/calendar/ambrosian/nation/...` route, so the client rejects the promise it returns rather than
+  emitting a request that cannot succeed. Use `fetchCalendar()` for the rite-level calendar, or
+  `fetchDiocesanCalendar()` for one of its dioceses. Like every other failure of the three fetch methods
+  this arrives as a rejection, never as a synchronous throw, so the `try`/`catch` around the `await`
+  above catches it.
 
 The rite also participates in `ApiClient`'s cache key, so switching rite at the same year, locale and
 calendar id issues a fresh request instead of returning the previous rite's calendar.

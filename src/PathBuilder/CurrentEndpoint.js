@@ -138,7 +138,6 @@ class CurrentEndpoint {
      *
      * @returns {string} The request path, e.g. `/calendar`, `/calendar/roman`,
      *          `/calendar/nation/IT`, or `/calendar/ambrosian/diocese/lugano_ch/2026`.
-     * @readonly
      */
     get path() {
         let currentEndpoint = '/calendar';

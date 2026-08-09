@@ -16,8 +16,6 @@ import {
 } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@latest/+esm';
 
 ApiClient.init().then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     const calendarSelect = new CalendarSelect('en-US')
         .class('form-select')
         .allowNull();
@@ -30,7 +28,11 @@ ApiClient.init().then((apiClient) => {
     liturgy.appendTo('#liturgy-container');
 
     apiClient.listenTo(calendarSelect);
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not load the calendar: ${error.message}`);
+    });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url}: ${error.message}`);
 });
 </script>
 ```
@@ -40,6 +42,8 @@ ApiClient.init().then((apiClient) => {
 | Component                                    | Description                                   |
 | -------------------------------------------- | --------------------------------------------- |
 | [ApiClient][api-client]                      | Manages API communication and data fetching   |
+| [ApiBase][api-client]                        | One API base: its URL, index and cache        |
+| [ApiClientError][api-client]                 | Error carrying url, status, statusText, body  |
 | [CalendarSelect][calendar-select]            | Dropdown for selecting liturgical calendars   |
 | [RiteSelect][rite-select]                    | Dropdown for selecting the liturgical rite    |
 | [ApiOptions][api-options]                    | Form controls for API parameters              |
@@ -56,6 +60,41 @@ ApiClient.init().then((apiClient) => {
 [liturgy]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md
 [path-builder]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md
 [utils]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/utils.md
+
+## Using two API bases on one page
+
+Each `ApiClient` is bound to an `ApiBase` — one object per API base URL, owning that base's calendar index and
+its response cache. Passing a client to a component binds the component to that base:
+
+```javascript
+const dev = await ApiClient.init('http://localhost:8000');
+const prod = await ApiClient.init('https://litcal.johnromanodorazio.com/api/dev');
+
+const devSelect = new CalendarSelect({ locale: 'en', apiClient: dev });
+const prodSelect = new CalendarSelect({ locale: 'en', apiClient: prod });
+```
+
+Omitting `apiClient` binds to the first base initialized, so single-base pages need no change. Once more than
+one base is registered, an unbound component warns and names the base it chose.
+
+`PathBuilder` takes no `apiClient`: it reads the base of the `ApiOptions` and `CalendarSelect` handed to it, and
+throws if those two disagree. `CalendarSelect.linkToNationsSelect()` throws on the same mismatch.
+
+`ApiClient.init()` returns a **new** client on every call, including for a base already registered — only the
+metadata and cache are shared. That is what allows two clients on one API to hold different rites:
+
+```javascript
+import { ApiClient, Rite } from '@liturgical-calendar/components-js';
+
+const BASE = 'https://litcal.johnromanodorazio.com/api/dev';
+
+const roman = await ApiClient.init(BASE);
+const ambrosian = await ApiClient.init(BASE);
+ambrosian.rite(Rite.AMBROSIAN);
+```
+
+See [`examples/CompareBases/`](https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/CompareBases)
+for a complete two-pane page, and [the ApiClient documentation][api-client] for error handling and caching.
 
 ## Documentation
 
@@ -77,6 +116,7 @@ The `examples/` folder contains complete working examples:
 | [RiteSelectChain][ex-rite-chain]        | Rite to nation to diocese chain                |
 | [RiteSelectPathBuilder][ex-rite-path]   | The rite as an API path segment                |
 | [RiteSelectWebCalendar][ex-rite-webcal] | A rendered Ambrosian calendar                  |
+| [CompareBases][ex-compare-bases]        | Two API bases side by side on one page         |
 
 [ex-liturgy-day]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfTheDay
 [ex-liturgy-any]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/LiturgyOfAnyDay
@@ -85,6 +125,7 @@ The `examples/` folder contains complete working examples:
 [ex-rite-chain]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectChain
 [ex-rite-path]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectPathBuilder
 [ex-rite-webcal]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/RiteSelectWebCalendar
+[ex-compare-bases]: https://github.com/Liturgical-Calendar/liturgy-components-js/tree/main/examples/CompareBases
 
 To run examples:
 
@@ -98,6 +139,8 @@ To run examples:
 export {
     // Components
     ApiClient,
+    ApiClientError,
+    ApiBase,
     CalendarSelect,
     RiteSelect,
     ApiOptions,
@@ -129,13 +172,21 @@ export {
 - **No build step required** - Use directly from CDN with ES6 imports
 - **Chainable configuration** - Fluent API for all components
 - **Automatic caching** - Reduces redundant API requests
-- **Locale support** - 13 languages supported
+- **Locale support** - 13 languages supported; every component takes a locale as either a `string` or an
+  `Intl.Locale`, and treats `null` and `undefined` alike as "not supplied"
 - **Bootstrap compatible** - Easy integration with Bootstrap 5
 - **TypeScript definitions** - Full type support in `dist/index.d.ts`
 
 ## Browser Support
 
-Modern browsers with ES6 module support. Requires `<script type="module">`.
+Requires `<script type="module">`, and a browser with **ES2022** support: Chrome/Edge 94+, Firefox 93+, Safari 15.4+.
+On Node.js the floor is 16.11+ (18+ recommended).
+
+ES6 module support alone is not enough. The published code uses ES2022 runtime APIs — `Object.hasOwn()` and
+`Error`'s `cause` option — as well as `static #` private class fields. A compiler `target` alone cannot
+transpile a runtime API away, and the published build ships no polyfills, so an older engine fails at run time
+on the artifact as shipped. Consuming the package through your own toolchain lifts that: transpile the syntax
+and polyfill the two APIs (core-js does both) and the floor is whatever your build targets.
 
 ## Development
 

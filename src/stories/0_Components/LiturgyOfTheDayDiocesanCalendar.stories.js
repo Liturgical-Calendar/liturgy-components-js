@@ -1,4 +1,4 @@
-import { LiturgyOfTheDay, ApiClient } from '@liturgical-calendar/components-js';
+import { LiturgyOfTheDay, ApiClient, ApiBase } from '@liturgical-calendar/components-js';
 import '../liturgyoftheday.css';
 
 /**
@@ -93,7 +93,11 @@ const meta = {
             container.textContent = `Diocesan calendar '${args.calendar_id}' not found in API metadata`;
         } else {
             const locale = args.locale && args.locale !== '' && diocesanCalendarMetadata.locales.includes(args.locale) ? args.locale : diocesanCalendarMetadata.locales[0];
-            apiClient.fetchDiocesanCalendar(args.calendar_id, locale);
+            // The promise a story receives from a fetch method is the story's own: the
+            // library only suppresses the rejections of the requests it issues itself.
+            apiClient.fetchDiocesanCalendar(args.calendar_id, locale).catch(error => {
+                container.textContent = 'Could not load the calendar from ' + ( error.url ?? ApiBase.DEFAULT_URL ) + ': ' + error.message;
+            });
             liturgyOfTheDay.appendTo(container);
         }
     }

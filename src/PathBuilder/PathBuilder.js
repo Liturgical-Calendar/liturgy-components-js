@@ -1,7 +1,7 @@
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
-import ApiClient from '../ApiClient/ApiClient.js';
+import ApiBase, { assertSameBase } from '../ApiClient/ApiBase.js';
 import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
 
 // `CurrentEndpoint`, `CalendarType` and `RequestPayload` are defined in
@@ -20,6 +20,8 @@ export default class PathBuilder {
     #buttonWrapper;
     #pathWrapper;
     #pathCodeElement;
+    /** @type {ApiBase} */
+    #base;
     /**
      * The endpoint state this PathBuilder renders.
      *
@@ -33,6 +35,22 @@ export default class PathBuilder {
      */
     #currentEndpoint;
 
+    /**
+     * Builds a PathBuilder that renders, and keeps up to date, the API path described by an
+     * `ApiOptions` and a `CalendarSelect`.
+     *
+     * Takes no API base of its own: it adopts the one its two arguments already share, which
+     * is why they are required to agree on it.
+     *
+     * @param {ApiOptions} apiOptions - The `ApiOptions` whose inputs drive the path. Its
+     *   `CurrentEndpoint` is borrowed rather than copied, so the rite and calendar mutations
+     *   that `ApiOptions` performs land on the very object serialized here.
+     * @param {CalendarSelect} calendarSelect - The select supplying the `calendar_id` segment
+     *   of the path.
+     * @throws {Error} If `apiOptions` is not an instance of `ApiOptions`.
+     * @throws {Error} If `calendarSelect` is not an instance of `CalendarSelect`.
+     * @throws {Error} If the two arguments are bound to different API bases.
+     */
     constructor(apiOptions, calendarSelect) {
         if (!apiOptions || false === apiOptions instanceof ApiOptions) {
             throw new Error('calendarPathInput must be an instance of CalendarPathInput');
@@ -40,6 +58,12 @@ export default class PathBuilder {
         if (!calendarSelect || false === calendarSelect instanceof CalendarSelect) {
             throw new Error('calendarSelect must be an instance of CalendarSelect');
         }
+        assertSameBase(
+            apiOptions._base, calendarSelect._base,
+            'PathBuilder: the apiOptions and calendarSelect passed to it',
+            `A path built from one API's options and another API's calendars would point at neither.`
+        );
+        this.#base = apiOptions._base;
 
         this.#currentEndpoint = apiOptions._currentEndpoint;
         const currentEndpoint = this.#currentEndpoint;
@@ -61,7 +85,7 @@ export default class PathBuilder {
         this.#pathWrapper.append(getReqEl);
 
         this.#pathCodeElement = document.createElement('code');
-        this.#pathCodeElement.textContent = ApiClient._apiUrl;
+        this.#pathCodeElement.textContent = this.#base.url;
         this.#pathCodeElement.style.marginRight = '1em';
         this.#pathWrapper.append(this.#pathCodeElement);
 
@@ -173,8 +197,17 @@ export default class PathBuilder {
         });
     }
 
+    /**
+     * Gets the underlying DOM element of the PathBuilder instance.
+     *
+     * @returns {HTMLElement} The underlying DOM element of the PathBuilder instance.
+     */
+    get _domElement() {
+        return this.#domElement;
+    }
+
     #updatePathValues() {
-        const finalPath = (ApiClient._apiUrl + this.#currentEndpoint.serialize());
+        const finalPath = (this.#base.url + this.#currentEndpoint.serialize());
         this.#pathCodeElement.textContent = finalPath;
         this.#buttonElement.setAttribute('href', finalPath);
     }

@@ -1,4 +1,4 @@
-import { ApiOptions, ApiClient, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
+import { ApiOptions, ApiClient, ApiBase, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -75,13 +75,13 @@ const meta = {
             description: 'HTML string to show below the ApiOptions locale input'
         }
     },
-    render: ( args, { loaded: { apiClient } } ) => {
+    render: ( args, { loaded: { apiClient, apiClientError } } ) => {
         const container = document.createElement( 'div' );
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
         if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ApiClient._apiUrl;
+            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ( apiClientError?.url ?? ApiBase.DEFAULT_URL );
         } else {
             Input.setGlobalInputClass('form-select');
             Input.setGlobalLabelClass('form-label');

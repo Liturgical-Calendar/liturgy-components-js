@@ -1,0 +1,19 @@
+{
+  // Used only by `yarn lint:dts` (see package.json) to verify that the declaration files in
+  // `dist/` type-check under `strict` for a downstream consumer. It is deliberately isolated
+  // from tsconfig.json: that config compiles `src/` with `checkJs` off, so it never validates
+  // what actually ends up in the emitted `.d.ts` files. This config starts from `dist/index.d.ts`
+  // instead and sets its own `target`/`lib` so a consumer's default compiler options (which we
+  // cannot control) are not what determines whether the check passes.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "esModuleInterop": true
+  },
+  "files": ["dist/index.d.ts"]
+}

@@ -1,4 +1,4 @@
-import { CalendarSelect, WebCalendar, Grouping, Column, ColumnOrder, ColorAs, DateFormat, GradeDisplay, ApiClient, ApiOptions, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
+import { CalendarSelect, WebCalendar, Grouping, Column, ColumnOrder, ColorAs, DateFormat, GradeDisplay, ApiClient, ApiBase, ApiOptions, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../webcalendar.css';
 
@@ -74,7 +74,11 @@ const meta = {
         });
         apiClient.listenTo(calendarSelect).listenTo(apiOptions);
         webCalendar.listenTo(apiClient).attachTo(webCalendarContainer);
-        apiClient.fetchNationalCalendar('VA');
+        // The promise a story receives from a fetch method is the story's own: the
+        // library only suppresses the rejections of the requests it issues itself.
+        apiClient.fetchNationalCalendar('VA').catch(error => {
+            webCalendarContainer.textContent = 'Could not load the calendar from ' + ( error.url ?? ApiBase.DEFAULT_URL ) + ': ' + error.message;
+        });
     }
     return container;
   },

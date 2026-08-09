@@ -3,6 +3,8 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import { DayInput, MonthInput, YearInput } from '../ApiOptions/Input/index.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfAnyDay {
 
@@ -133,22 +135,16 @@ export default class LiturgyOfAnyDay {
     /**
      * Constructs a LiturgyOfAnyDay object.
      *
-     * @param {string|Object|null} [options=null] - The locale or options object.
-     * @throws {Error} If the locale is invalid.
+     * @param {string|Intl.Locale|Object|null} [options=null] - A locale (a string or an `Intl.Locale`),
+     *        or an options object carrying one as its `locale`. `null` and `undefined` mean "not
+     *        supplied" both as the argument itself and as the `locale` property.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish, or if the locale is invalid.
      */
     constructor(options = null) {
-        if (typeof options === 'string') {
-            this.#validateLocale(options);
-        }
-        else if (typeof options === 'object' && options !== null) {
-            if (options.hasOwnProperty('locale')) {
-                this.#validateLocale(options.locale);
-            } else {
-                this.#validateLocale('en');
-            }
-        } else {
-            this.#validateLocale('en');
-        }
+        options = normalizeComponentOptions(options, 'LiturgyOfAnyDay');
+        // A nullish READ, not `Object.hasOwn`: see the identical note in
+        // `LiturgyOfTheDay`. The key's presence is not the question — its value is.
+        this.#validateLocale(options.locale ?? 'en');
 
         const now = new Date();
         this.#selectedDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
@@ -194,7 +190,10 @@ export default class LiturgyOfAnyDay {
                 const month = parseInt(this.#monthInput._domElement.value, 10);
                 const isDecember31st = (month === 12 && day === 31);
                 const yearToFetch = isDecember31st ? newYear + 1 : newYear;
-                this.#apiClient.year(yearToFetch).refetchCalendarData();
+                // Dropping the promise here would surface as an unhandled rejection. The client
+                // suppresses it when a 'calendarFetchFailed' subscriber exists and logs it when
+                // none does; delegating keeps that rule identical across modules.
+                this.#apiClient._discardRequest(this.#apiClient.year(yearToFetch).refetchCalendarData());
             }
         });
 
@@ -202,46 +201,46 @@ export default class LiturgyOfAnyDay {
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
         if (typeof options === 'object' && options !== null) {
-            if (options.hasOwnProperty('id')) {
+            if (Object.hasOwn(options, 'id')) {
                 this.id(options.id);
             }
-            if (options.hasOwnProperty('class')) {
+            if (Object.hasOwn(options, 'class')) {
                 this.class(options.class);
             }
-            if (options.hasOwnProperty('titleClass')) {
+            if (Object.hasOwn(options, 'titleClass')) {
                 this.titleClass(options.titleClass);
             }
-            if (options.hasOwnProperty('dateClass')) {
+            if (Object.hasOwn(options, 'dateClass')) {
                 this.dateClass(options.dateClass);
             }
-            if (options.hasOwnProperty('dateControlsClass')) {
+            if (Object.hasOwn(options, 'dateControlsClass')) {
                 this.dateControlsClass(options.dateControlsClass);
             }
-            if (options.hasOwnProperty('eventClass')) {
+            if (Object.hasOwn(options, 'eventClass')) {
                 this.eventClass(options.eventClass);
             }
-            if (options.hasOwnProperty('eventGradeClass')) {
+            if (Object.hasOwn(options, 'eventGradeClass')) {
                 this.eventGradeClass(options.eventGradeClass);
             }
-            if (options.hasOwnProperty('eventCommonClass')) {
+            if (Object.hasOwn(options, 'eventCommonClass')) {
                 this.eventCommonClass(options.eventCommonClass);
             }
-            if (options.hasOwnProperty('eventYearCycleClass')) {
+            if (Object.hasOwn(options, 'eventYearCycleClass')) {
                 this.eventYearCycleClass(options.eventYearCycleClass);
             }
-            if (options.hasOwnProperty('eventsWrapperClass')) {
+            if (Object.hasOwn(options, 'eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsWrapperClass')) {
+            if (Object.hasOwn(options, 'readingsWrapperClass')) {
                 this.readingsWrapperClass(options.readingsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsLabelClass')) {
+            if (Object.hasOwn(options, 'readingsLabelClass')) {
                 this.readingsLabelClass(options.readingsLabelClass);
             }
-            if (options.hasOwnProperty('readingClass')) {
+            if (Object.hasOwn(options, 'readingClass')) {
                 this.readingClass(options.readingClass);
             }
-            if (options.hasOwnProperty('showReadings')) {
+            if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
             }
         }
@@ -250,20 +249,12 @@ export default class LiturgyOfAnyDay {
     /**
      * Validates the given locale string.
      *
-     * @param {string} locale - The locale string to validate.
+     * @param {string|Intl.Locale} locale - The locale to validate.
      * @throws {Error} If the locale is invalid.
      * @private
      */
     #validateLocale(locale) {
-        if (typeof locale !== 'string') {
-            throw new Error('LiturgyOfAnyDay: Invalid locale');
-        }
-        locale = locale.replaceAll('_', '-');
-        try {
-            this.#locale = new Intl.Locale(locale);
-        } catch (e) {
-            throw new Error('LiturgyOfAnyDay: Invalid locale');
-        }
+        this.#locale = toIntlLocale(locale, 'LiturgyOfAnyDay');
     }
 
     /**
@@ -306,12 +297,16 @@ export default class LiturgyOfAnyDay {
             if (isDecember31st && this.#currentYearType !== YearType.LITURGICAL) {
                 // Switch to LITURGICAL year type with year+1 to get vigil masses
                 this.#currentYearType = YearType.LITURGICAL;
-                this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData();
+                // Dropping the promise here would surface as an unhandled rejection — see the
+                // year input listener above; ApiClient owns the log-or-suppress rule.
+                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData());
                 return true; // Refetch triggered, wait for calendarFetched event to render
             } else if (!isDecember31st && this.#currentYearType !== YearType.CIVIL) {
                 // Switch back to CIVIL year type
                 this.#currentYearType = YearType.CIVIL;
-                this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData();
+                // Dropping the promise here would surface as an unhandled rejection — see the
+                // year input listener above; ApiClient owns the log-or-suppress rule.
+                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData());
                 return true; // Refetch triggered, wait for calendarFetched event to render
             }
         }
@@ -395,7 +390,7 @@ export default class LiturgyOfAnyDay {
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
-            if (celebration.hasOwnProperty('liturgical_year')) {
+            if (Object.hasOwn(celebration, 'liturgical_year')) {
                 const celebrationLiturgicalYearElement = document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
                     celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
@@ -806,11 +801,11 @@ export default class LiturgyOfAnyDay {
             apiClient.yearType(YearType.CIVIL).year(year);
         }
 
-        apiClient._eventBus.on('calendarFetched', async (data) => {
+        apiClient._eventBus.on('calendarFetched', (data) => {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfAnyDay: Invalid type for data received in `calendarFetched` event');
             }
-            if (!data.hasOwnProperty('litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
+            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
                 throw new Error('LiturgyOfAnyDay: Invalid liturgical calendar data received');
             }
             this.#calendarData = data;
@@ -870,7 +865,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the underlying DOM element.
      *
      * @returns {HTMLElement} The DOM element.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -880,7 +874,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the title element.
      *
      * @returns {HTMLElement} The title element.
-     * @readonly
      */
     get _titleElement() {
         return this.#titleElement;
@@ -890,7 +883,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the date element.
      *
      * @returns {HTMLElement} The date element.
-     * @readonly
      */
     get _dateElement() {
         return this.#dateElement;
@@ -900,7 +892,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the date controls wrapper element.
      *
      * @returns {HTMLElement} The date controls wrapper element.
-     * @readonly
      */
     get _dateControlsWrapper() {
         return this.#dateControlsWrapper;
@@ -910,7 +901,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the events wrapper element.
      *
      * @returns {HTMLElement} The events wrapper element.
-     * @readonly
      */
     get _eventsElementsWrapper() {
         return this.#eventsElementsWrapper;
@@ -920,7 +910,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the day input component.
      *
      * @returns {DayInput} The day input component.
-     * @readonly
      */
     get _dayInput() {
         return this.#dayInput;
@@ -930,7 +919,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the month input component.
      *
      * @returns {MonthInput} The month input component.
-     * @readonly
      */
     get _monthInput() {
         return this.#monthInput;
@@ -940,7 +928,6 @@ export default class LiturgyOfAnyDay {
      * Retrieves the year input component.
      *
      * @returns {YearInput} The year input component.
-     * @readonly
      */
     get _yearInput() {
         return this.#yearInput;

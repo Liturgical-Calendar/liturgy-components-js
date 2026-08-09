@@ -1,6 +1,9 @@
 /.yarn/
 /.storybook/
 /src/stories/
+/src/__tests__/
+/src/__fixtures__/
+/storybook-static/
 /.vscode/
 /examples/
 /.github/

@@ -85,9 +85,8 @@ export default class HolydaysOfObligationInput extends SelectInput {
     constructor(options = []) {
         super(true);
         this._domElement.name = 'holydays_of_obligation';
-        this._domElement.id = 'holydays_of_obligation';
+        this._claimDefaultId('holydays_of_obligation');
         this._labelElement.textContent = 'holydays_of_obligation';
-        this._labelElement.htmlFor = this._domElement.id;
         this.#options = Object.freeze(HolydaysOfObligationInput.mergeOptions(options));
         this.#options.forEach(({ label, value, selected }) => {
             const optionElement = document.createElement('option');
@@ -110,7 +109,7 @@ export default class HolydaysOfObligationInput extends SelectInput {
      * If no parameter is provided, defaults to true.
      *
      * @param {boolean} [boolValue=true] - Whether the input element should be disabled.
-     * @returns {Input} The current instance for method chaining.
+     * @returns {import('./Input.js').default} The current instance for method chaining.
      * @throws {Error} If the type of boolValue is not a boolean.
      */
     disabled( boolValue = true ) {

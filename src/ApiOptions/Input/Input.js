@@ -9,6 +9,33 @@ export default class Input {
     static #globalWrapper      = null;
     /** @type {string | null} */
     static #globalWrapperClass = null;
+    /**
+     * DOM ids already issued on this page, by {@link Input#_claimDefaultId} or by an
+     * explicit call to {@link Input#id}.
+     *
+     * Every `Input` subclass hardcodes the same default id in its constructor
+     * (`LocaleInput` always wants `'locale'`, `YearInput` always wants `'year'`, and
+     * so on), which collides the moment a page holds more than one instance of the
+     * same subclass — two `ApiOptions` panels, or one `ApiOptions` and one
+     * `LiturgyOfAnyDay` that both issue `'year'`. This registry is what lets
+     * {@link Input#_claimDefaultId} notice the collision and suffix it instead.
+     *
+     * Cleared only by {@link Input.reset}: without an explicit reset, ids keep
+     * incrementing (`locale`, `locale-2`, `locale-3`, ...) for as long as the page,
+     * or the test process, keeps constructing `Input`s.
+     *
+     * @type {Set<string>}
+     */
+    static #issuedIds          = new Set();
+    /**
+     * Next suffix to try for each base id — a forward-only hint that keeps
+     * {@link Input#_claimDefaultId} O(1) amortized. Advisory, not authoritative:
+     * the claim still verifies against `#issuedIds`, since {@link Input#id}
+     * registers an explicit id without moving the hint.
+     *
+     * @type {Map<string, number>}
+     */
+    static #nextSuffix         = new Map();
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
     /** @type {HTMLElement|null} */
@@ -117,6 +144,23 @@ export default class Input {
     }
 
     /**
+     * Empties the registry of DOM ids already issued to `Input` instances.
+     *
+     * A testing affordance, mirroring {@link module:ApiClient/ApiBase~ApiBase.reset}:
+     * state that is deliberately global (here, "which ids has this page already
+     * handed out") has to be resettable between tests, or the second test in a file
+     * silently inherits ids claimed by the first and its assertions about bare ids
+     * (`'locale'`, `'year'`, ...) stop matching. Call it in `beforeEach` in any suite
+     * that constructs more than one `Input` subclass, or that asserts a bare default id.
+     *
+     * @returns {void}
+     */
+    static reset() {
+        Input.#issuedIds.clear();
+        Input.#nextSuffix.clear();
+    }
+
+    /**
      * @param {string} [element='select'] - The element to create as the input element.
      *     Valid values are: `select`, `input`.
      * @param {object} [attributes={multiple: false}] - Key-value pairs of attributes to set on the element.
@@ -212,10 +256,59 @@ export default class Input {
         if (false === Utils.validateId(id)) {
             throw new Error(`Invalid id '${id}' on Input instance, must be a valid CSS selector`);
         }
+        Input.#issuedIds.add(id);
         this.#domElement.id = id;
         this.#idSet = true;
         this.#labelElement.htmlFor = this.#domElement.id;
         return this;
+    }
+
+    /**
+     * Claims a default id for this instance's DOM element and its label's `for`
+     * attribute, appending a numeric suffix when the base id has already been
+     * issued to another `Input` on the page.
+     *
+     * First use of a given base id is unsuffixed (`locale`); a second instance that
+     * claims the same base id gets `locale-2`, a third gets `locale-3`, and so on.
+     * The suffixing is a deterministic ordinal, not a random or UUID value, so ids
+     * stay stable across reloads — which matters for server-side rendering and for
+     * snapshot tests.
+     *
+     * This is what every `Input` subclass constructor calls instead of assigning
+     * `this._domElement.id` directly: a direct assignment bypasses this registry
+     * entirely, which is how two `ApiOptions` panels — or one `ApiOptions` and one
+     * `LiturgyOfAnyDay` — used to end up with two elements both bearing `id="year"`.
+     *
+     * Deliberately does NOT mark the id as explicitly set: a later call to
+     * {@link Input#id} still overrides the claimed default, exactly as it could
+     * override an id assigned directly.
+     *
+     * @param {string} baseId - The id to claim, e.g. `'locale'`.
+     * @returns {void}
+     */
+    _claimDefaultId( baseId ) {
+        let candidate = baseId;
+        if (Input.#issuedIds.has(candidate)) {
+            // Resume from the highest suffix already handed out for this base id
+            // rather than rescanning from 2. The hint only ever moves forward, so a
+            // claim costs O(1) amortized however many ids have been issued. The
+            // rescan made claim N cost N steps, and so the whole sequence quadratic:
+            // a long-lived SPA remounting one `ApiOptions` 1000 times spent ~4.5M
+            // steps in this loop. A page that mounts once never noticed.
+            let suffix = Input.#nextSuffix.get(baseId) ?? 2;
+            // The hint is a starting point, not an authority. `id()` registers an
+            // explicitly chosen id without moving the hint, so `locale-5` can be
+            // taken even when the hint still says 5 — verify before claiming, or a
+            // default claim could collide with an id the caller asked for by name.
+            while (Input.#issuedIds.has(`${baseId}-${suffix}`)) {
+                suffix++;
+            }
+            candidate = `${baseId}-${suffix}`;
+            Input.#nextSuffix.set(baseId, suffix + 1);
+        }
+        Input.#issuedIds.add(candidate);
+        this.#domElement.id = candidate;
+        this.#labelElement.htmlFor = candidate;
     }
 
     /**
@@ -605,7 +698,6 @@ export default class Input {
      * Retrieves the underlying DOM element of the input instance.
      *
      * @returns {HTMLElement} The DOM element associated with the input instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -615,7 +707,6 @@ export default class Input {
      * Whether or not the class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _classSet() {
         return this.#classSet;
@@ -625,7 +716,6 @@ export default class Input {
      * The label element.
      *
      * @returns {HTMLLabelElement}
-     * @readonly
      */
     get _labelElement() {
         return this.#labelElement;
@@ -635,7 +725,6 @@ export default class Input {
      * Whether or not the label class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _labelClassSet() {
         return this.#labelClassSet;
@@ -645,7 +734,6 @@ export default class Input {
      * The element to insert after the label element.
      *
      * @returns {DocumentFragment|null}
-     * @readonly
      */
     get _labelAfter() {
         return this.#labelAfter;
@@ -655,7 +743,6 @@ export default class Input {
      * The wrapper element.
      *
      * @returns {HTMLElement|null}
-     * @readonly
      */
     get _wrapperElement() {
         return this.#wrapperElement;
@@ -665,7 +752,6 @@ export default class Input {
      * Whether or not the wrapper class has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _wrapperClassSet() {
         return this.#wrapperClassSet;
@@ -675,7 +761,6 @@ export default class Input {
      * The default value of the input element, set with the defaultValue() method.
      *
      * @returns {string}
-     * @readonly
      */
     get _defaultValue() {
         return this.#defaultValue;
@@ -685,7 +770,6 @@ export default class Input {
      * Whether a wrapper element has been set.
      *
      * @returns {boolean}
-     * @readonly
      */
     get _hasWrapper() {
         return this.#hasWrapper;

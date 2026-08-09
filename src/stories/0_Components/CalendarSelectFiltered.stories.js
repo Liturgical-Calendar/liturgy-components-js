@@ -50,6 +50,14 @@ const meta = {
     render: ( args, { loaded: { apiClient } } ) => {
         const container = document.createElement( 'div' );
         container.id = 'calendarSelectFilteredContainer';
+
+        // Checked before anything is constructed: CalendarSelect reads its base's
+        // calendar index at construction, and a base whose load failed has none to read.
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
+            container.textContent = 'Error initializing the Liturgical Calendar API Client';
+            return container;
+        }
+
         const calendarSelectNations = new CalendarSelect( args.locale ).filter( CalendarSelectFilter.NATIONAL_CALENDARS );
         const calendarSelectDioceses = new CalendarSelect( args.locale ).filter( CalendarSelectFilter.DIOCESAN_CALENDARS );
         calendarSelectDioceses.linkToNationsSelect( calendarSelectNations );
@@ -88,13 +96,9 @@ const meta = {
             calendarSelectDioceses.after( args.diocesesAfter );
         }
 
-        if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client';
-        } else {
-            //apiClient.listenTo(calendarSelect);
-            calendarSelectNations.appendTo( container );
-            calendarSelectDioceses.appendTo( container );
-        }
+        //apiClient.listenTo(calendarSelect);
+        calendarSelectNations.appendTo( container );
+        calendarSelectDioceses.appendTo( container );
         return container;
     },
     parameters: {

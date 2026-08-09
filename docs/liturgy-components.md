@@ -3,6 +3,10 @@
 The library provides two components for displaying liturgical events: `LiturgyOfTheDay` for today's liturgy
 and `LiturgyOfAnyDay` for browsing any date.
 
+Both constructors take the same argument as the other components: a locale — a `string` or an `Intl.Locale`,
+interchangeably — or an options object carrying one as its `locale`. `null` and `undefined` mean "not supplied"
+in either position and take the default of `'en'`; anything else is rejected, naming the type it found.
+
 ## LiturgyOfTheDay
 
 Displays the liturgical events for today's date.
@@ -22,7 +26,11 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
         .listenTo(apiClient);
     liturgyOfTheDay.replace('#liturgyOfTheDay');
 
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 
@@ -60,7 +68,9 @@ By default, `year_type=LITURGICAL` is fetched. To ensure all events display thro
 import { ApiClient, LiturgyOfTheDay, YearType } from '@liturgical-calendar/components-js';
 
 // Option 1: Use CIVIL year type
-apiClient.yearType(YearType.CIVIL).fetchCalendar('en');
+apiClient.yearType(YearType.CIVIL).fetchCalendar('en').catch((error) => {
+    console.error(`Could not fetch calendar: ${error.message}`);
+});
 
 // Option 2: Handle edge cases dynamically (recommended)
 // See examples/LiturgyOfTheDay for full implementation
@@ -93,7 +103,11 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
         .listenTo(apiClient);
     liturgyOfAnyDay.appendTo('#liturgyContainer');
 
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```
 
@@ -173,8 +187,6 @@ import {
 } from '@liturgical-calendar/components-js';
 
 ApiClient.init('http://localhost:8000').then((apiClient) => {
-    if (!(apiClient instanceof ApiClient)) return;
-
     // Calendar selection
     const calendarSelect = new CalendarSelect('en-US')
         .allowNull()
@@ -238,6 +250,10 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 
     // Wire up ApiClient
     apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-    apiClient.fetchCalendar('en');
+    apiClient.fetchCalendar('en').catch((error) => {
+        console.error(`Could not fetch calendar: ${error.message}`);
+    });
+}).catch((error) => {
+    console.error(`Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}`);
 });
 ```

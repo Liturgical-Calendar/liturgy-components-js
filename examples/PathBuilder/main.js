@@ -84,48 +84,47 @@ function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
 }
 
 ApiClient.init('http://localhost:8000').then(apiClient => {
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        alert('Error initializing the Liturgical Calendar API Client');
-    } else {
-        const apiOptions = new ApiOptions( 'en-US' );
-        apiOptions._localeInput.defaultValue( 'la' );
-        apiOptions._acceptHeaderInput.hide();
-        apiOptions._yearInput.class( 'form-control' );
-        apiOptions._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptions._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptions._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-        apiOptions._holydaysOfObligationInput.class('d-none');
-        apiOptions.filter( ApiOptionsFilter.PATH_BUILDER ).appendTo('#pathBuilder');
+    const apiOptions = new ApiOptions( 'en-US' );
+    apiOptions._localeInput.defaultValue( 'la' );
+    apiOptions._acceptHeaderInput.hide();
+    apiOptions._yearInput.class( 'form-control' );
+    apiOptions._ascensionInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptions._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptions._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
+    apiOptions._holydaysOfObligationInput.class('d-none');
+    apiOptions.filter( ApiOptionsFilter.PATH_BUILDER ).appendTo('#pathBuilder');
 
-        const calendarSelect = (new CalendarSelect( 'en-US' )).allowNull();
-        calendarSelect.label({
-            class: 'form-label mb-1',
-            id: 'calendarSelectLabel',
-            text: 'Select a calendar'
-        }).wrapper({
-            class: 'form-group col col-md-3',
-            id: 'calendarSelectWrapper'
-        }).id('calendarSelect')
-        .class('form-control select-input')
-        .insertAfter( apiOptions._calendarPathInput );
+    const calendarSelect = (new CalendarSelect( 'en-US' )).allowNull();
+    calendarSelect.label({
+        class: 'form-label mb-1',
+        id: 'calendarSelectLabel',
+        text: 'Select a calendar'
+    }).wrapper({
+        class: 'form-group col col-md-3',
+        id: 'calendarSelectWrapper'
+    }).id('calendarSelect')
+    .class('form-control select-input')
+    .insertAfter( apiOptions._calendarPathInput );
 
-        apiOptions.filter( ApiOptionsFilter.ALL_PATHS ).appendTo('#requestParametersAllPaths');
-        apiOptions.filter( ApiOptionsFilter.BASE_PATH ).appendTo('#requestParametersBasePath');
-        apiOptions.linkToCalendarSelect( calendarSelect );
+    apiOptions.filter( ApiOptionsFilter.ALL_PATHS ).appendTo('#requestParametersAllPaths');
+    apiOptions.filter( ApiOptionsFilter.BASE_PATH ).appendTo('#requestParametersBasePath');
+    apiOptions.linkToCalendarSelect( calendarSelect );
 
-        wireHdobVS( apiOptions, calendarSelect, 'hdob-virtual-select' );
+    wireHdobVS( apiOptions, calendarSelect, 'hdob-virtual-select' );
 
-        const pathBuilder = new PathBuilder(apiOptions, calendarSelect)
-            .class('row align-items-center ps-2')
-            .id('pathBuilderResult')
-            .pathWrapperClass('col-sm-7 border border-secondary rounded bg-light px-3 py-1')
-            .buttonWrapperClass('col-sm-3')
-            .buttonClass('btn btn-primary')
-            .replace('#pathBuilderResult');
-        /*apiClient.listenTo( calendarSelect );
-        apiClient.listenTo( apiOptions );
-        apiClient._eventBus.on( 'calendarFetched', ( data ) => {
-            console.log('calendarFetch event received with data:', data );
-        });*/
-    }
+    const pathBuilder = new PathBuilder(apiOptions, calendarSelect)
+        .class('row align-items-center ps-2')
+        .id('pathBuilderResult')
+        .pathWrapperClass('col-sm-7 border border-secondary rounded bg-light px-3 py-1')
+        .buttonWrapperClass('col-sm-3')
+        .buttonClass('btn btn-primary')
+        .replace('#pathBuilderResult');
+    /*apiClient.listenTo( calendarSelect );
+    apiClient.listenTo( apiOptions );
+    apiClient._eventBus.on( 'calendarFetched', ( data ) => {
+        console.log('calendarFetch event received with data:', data );
+    });*/
+}).catch(error => {
+    document.querySelector('#pathBuilderResult').textContent =
+        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
 });

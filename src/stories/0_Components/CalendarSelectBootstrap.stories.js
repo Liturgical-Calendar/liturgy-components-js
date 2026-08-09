@@ -59,11 +59,12 @@ const meta = {
   render: (args, { loaded: { apiClient } }) => {
     const container = document.createElement('div');
     container.id = 'calendarSelectContainer';
-    const calendarSelect = new CalendarSelect(args);
-
+    // Constructed inside the guard: CalendarSelect reads its base's calendar index
+    // at construction, and a base whose load failed has none to read.
     if (!apiClient || !(apiClient instanceof ApiClient)) {
         container.textContent = 'Error initializing the Liturgical Calendar API Client';
     } else {
+        const calendarSelect = new CalendarSelect(args);
         //apiClient.listenTo(calendarSelect);
         calendarSelect.appendTo(container);
     }

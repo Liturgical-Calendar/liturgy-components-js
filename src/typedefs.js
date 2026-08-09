@@ -87,17 +87,17 @@
 /**
  * @typedef {Object} CalendarEvent
  * @prop {string} event_key - The "key" or "tag" or "id" of the liturgical event
- * @prop {int} event_idx - The progressive index, one for each liturgical event
+ * @prop {number} event_idx - The progressive index, one for each liturgical event
  * @prop {string} name - The name of the liturgical event according to the requested locale
  * @prop {Date|string} date - The date of the liturgical event, either as a Date object or an RFC 3339 (ISO-8601) formatted string `YYYY-MM-DD`
- * @prop {int} month - The month of the liturgical event
+ * @prop {number} month - The month of the liturgical event
  * @prop {string} month_long - The month of the liturgical event in the requested locale
  * @prop {string} month_short - The month of the liturgical event in the requested locale
- * @prop {int} day - The day of the liturgical event
+ * @prop {number} day - The day of the liturgical event
  * @prop {string} day_of_the_week_iso8601 - The day of the liturgical event according to the ISO 8601 standard
  * @prop {string} day_of_the_week_long - The day of the liturgical event in the requested locale
  * @prop {string} day_of_the_week_short - The day of the liturgical event in the requested locale
- * @prop {int} grade - The liturgical grade of the liturgical event
+ * @prop {number} grade - The liturgical grade of the liturgical event
  * @prop {string[]} common - An array of the liturgical commons of the liturgical event
  * @prop {string} common_lcl - The liturgical commons of the liturgical event in the requested locale
  * @prop {string[]} color - An array of the liturgical colors of the liturgical event
@@ -138,7 +138,7 @@
 /**
  * @typedef {Object} CalendarMetadata
  * @prop {string} version - The version of the API
- * @prop {int} timestamp - The timestamp for when the API response was generated / cached
+ * @prop {number} timestamp - The timestamp for when the API response was generated / cached
  * @prop {string} date_time - The ISO-8601 formatted date and time for when the API response was generated / cached
  * @prop {{Accept: string, 'Accept-Language': string}} request_headers - The headers received in the request
  * @prop {{event_key: string, date: string, timezone_type: number, timezone: string}[]} solemnities - An array of solemnities keys and dates in the current calendar calculation
@@ -155,11 +155,85 @@
  */
 
 /**
+ * The body of a single calendar response: the calculated liturgical events for one
+ * calendar and year, together with the settings they were calculated under.
+ *
+ * Note that `metadata` here is {@link CalendarMetadata}, the per-response block
+ * describing this one calculation. It is NOT {@link CalendarIndex}, the `/calendars`
+ * index of which calendars the API offers. The two are unrelated objects that happen
+ * to sit behind similar names, and conflating them is exactly the confusion this
+ * release exists to remove.
+ *
+ * @typedef {Object} CalendarData
+ * @prop {CalendarEvent[]} litcal - The calculated liturgical events, in date order
+ * @prop {CalendarSettings} settings - The settings the calendar was calculated under
+ * @prop {CalendarMetadata} metadata - Metadata about this response and this calculation
+ * @prop {string[]} messages - Validation and information messages raised while calculating
+ */
+
+/**
  * @typedef {Object} Counter
  * @prop {number} cm - The count of the liturgical events within the same month
  * @prop {number} cs - The count of the liturgical events within the same season
  * @prop {number} cw - The count of the liturgical events within the same week
  * @prop {number} cd - The count of the liturgical events within the same day
+ */
+
+/**
+ * @typedef {Object} NationalCalendar
+ * @prop {string} calendar_id - The calendar ID (ISO 3166-1 alpha-2 country code)
+ * @prop {string[]} locales - The locales supported by this calendar
+ * @prop {string[]} missals - The Roman Missal editions available for this calendar
+ * @prop {{epiphany: string, ascension: string, corpus_christi: string, eternal_high_priest: boolean, holydays_of_obligation: {[event_key: string]: boolean}}} settings - The calendar's default settings
+ * @prop {string} [wider_region] - The wider region this calendar belongs to
+ * @prop {string[]} [dioceses] - The calendar IDs of the dioceses within this nation
+ */
+
+/**
+ * @typedef {Object} DiocesanCalendar
+ * @prop {string} calendar_id - The calendar ID for the diocese
+ * @prop {string} diocese - The name of the diocese
+ * @prop {string} nation - The nation this diocese belongs to (ISO 3166-1 alpha-2 country code)
+ * @prop {string[]} locales - The locales supported by this calendar
+ * @prop {string} timezone - The IANA timezone for this diocese
+ * @prop {string} [group] - The diocesan group this diocese belongs to
+ * @prop {{epiphany?: string, ascension?: string, corpus_christi?: string}} [settings] - Settings overriding the national defaults
+ * @prop {'roman'|'ambrosian'} [rite] - The rite this diocese celebrates. Absent on the v5 API, where a missing value means `roman`.
+ */
+
+/**
+ * @typedef {Object} DiocesanGroup
+ * @prop {string} group_name - The name of the diocesan group
+ * @prop {string[]} dioceses - The calendar IDs of the dioceses in this group
+ */
+
+/**
+ * @typedef {Object} WiderRegion
+ * @prop {string} name - The name of the wider region
+ * @prop {string[]} locales - The locales supported by this region
+ * @prop {string} api_path - The API path for this region's calendar
+ */
+
+/**
+ * The `litcal_metadata` value unwrapped from the response body of the API's `/calendars` path
+ * (i.e. `data.litcal_metadata`, not the raw response body itself): an index of every calendar
+ * the API can serve.
+ *
+ * Distinct from {@link CalendarMetadata}, which is the `metadata` block within a
+ * single calendar response. The two describe different objects and must not be
+ * used interchangeably.
+ *
+ * @typedef {Object} CalendarIndex
+ * @prop {NationalCalendar[]} national_calendars - Every national calendar
+ * @prop {string[]} national_calendars_keys - The calendar IDs of every national calendar
+ * @prop {DiocesanCalendar[]} diocesan_calendars - Every diocesan calendar
+ * @prop {string[]} diocesan_calendars_keys - The calendar IDs of every diocesan calendar
+ * @prop {DiocesanGroup[]} diocesan_groups - Groups of dioceses
+ * @prop {WiderRegion[]} wider_regions - Wider regions, such as continents
+ * @prop {string[]} wider_regions_keys - The names of every wider region
+ * @prop {string[]} locales - Every locale the API supports
+ * @prop {NationalCalendar[]} [ambrosian_calendars] - The Ambrosian rite's own calendars. Absent on the v5 API; its absence is how rite support is feature-detected.
+ * @prop {string[]} [ambrosian_calendars_keys] - The calendar IDs of every Ambrosian calendar. Absent on the v5 API; its absence is how rite support is feature-detected.
  */
 
 export default {};

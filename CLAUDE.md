@@ -37,23 +37,36 @@ for the full coordination strategy across PHP, JavaScript, and React platforms.
 
 ```text
 liturgy-components-js/
-├── src/                      # TypeScript source files
-│   ├── index.js             # Main entry point
-│   ├── ApiClient.js         # API communication, event emitter
-│   ├── CalendarSelect.js    # Calendar dropdown component
-│   ├── ApiOptions.js        # API parameter form controls
-│   ├── WebCalendar.js       # Calendar table renderer
-│   ├── LiturgyOfTheDay.js   # Daily liturgy widget
-│   ├── PathBuilder.js       # API URL builder
-│   ├── Enums.js             # Type-safe enumerations
-│   ├── Messages.js          # Localized UI strings (13 languages)
-│   ├── Utils.js             # Utility functions
-│   ├── ApiOptions/Input/    # Form input components
-│   ├── WebCalendar/         # Table rendering helpers
-│   └── stories/             # Storybook stories
-├── dist/                    # Compiled output
-├── examples/                # Working example applications
-└── .storybook/              # Storybook configuration
+├── src/                            # TypeScript source files
+│   ├── index.js                    # Main entry point
+│   ├── Enums.js                    # Type-safe enumerations
+│   ├── Messages.js                 # Localized UI strings (13 languages)
+│   ├── Utils.js                    # Utility functions
+│   ├── typedefs.js                 # Shared JSDoc typedefs
+│   ├── ApiClient/
+│   │   ├── ApiClient.js            # API communication, per-base client
+│   │   ├── ApiBase.js              # One object per API base URL: registry, metadata, cache
+│   │   ├── ApiClientError.js       # Error carrying url/status/statusText/body/cause
+│   │   └── EventEmitter.js         # Event bus used by ApiClient
+│   ├── ApiOptions/
+│   │   ├── ApiOptions.js           # API parameter form controls
+│   │   └── Input/                  # Form input components
+│   ├── CalendarSelect/             # Calendar dropdown component
+│   ├── RiteSelect/                 # Rite dropdown component
+│   ├── PathBuilder/
+│   │   ├── PathBuilder.js          # API URL builder
+│   │   └── CurrentEndpoint.js      # Endpoint state a PathBuilder renders
+│   ├── WebCalendar/                # Calendar table renderer and helpers
+│   ├── LiturgyOfTheDay/            # Daily liturgy widget
+│   ├── LiturgyOfAnyDay/            # Liturgy of any selected date widget
+│   ├── ReadingsRenderer/           # Lectionary readings renderer
+│   ├── __fixtures__/               # Metadata fixtures for the tests
+│   ├── __tests__/                  # Jest unit tests
+│   └── stories/                    # Storybook stories
+├── dist/                           # Compiled output
+├── docs/                           # Component and API documentation
+├── examples/                       # Working example applications
+└── .storybook/                     # Storybook configuration
 ```
 
 ## Development Commands
@@ -62,6 +75,7 @@ liturgy-components-js/
 # Compilation
 yarn compile              # Compile TypeScript to JavaScript
 yarn compile:watch        # Watch mode for continuous compilation
+yarn lint:dts             # Type-check dist/*.d.ts under --strict, as a downstream consumer would
 
 # Testing
 yarn test                 # Run Jest unit tests
@@ -91,9 +105,32 @@ yarn docker               # Run compile:watch and storybook:ci in parallel
 
 ### TypeScript/JavaScript
 
-- **Target:** ES2020 modules
+- **Target:** ES2022 modules
 - **Strict mode:** Enabled
 - **Output:** `/dist/index.js` (ES module) and `/dist/index.d.ts` (type definitions)
+
+**ES2022 is a floor, not a preference.** The sources use `static #` private fields — ES2022 _syntax_ —
+and, more decisively, `Object.hasOwn()` and `Error`'s `cause` option, which are ES2022 **runtime APIs**
+that no `target` setting can transpile away. Lowering `target` would therefore produce output that still
+fails on an older engine, just less obviously. `tsconfig.json` pins `ES2022` rather than `esnext`, which
+drifts with every TypeScript release and so states no contract at all.
+
+**The build cannot catch a false target claim.** `allowJs` is on but **`checkJs` is off**, so TypeScript
+parses the JS sources and emits them but never type-checks them, and it does not flag a runtime API that
+postdates the target. The project compiles clean at ES2020 and ES2022 alike — which is how the earlier
+ES2020 claim survived unnoticed. Any change to the ECMAScript floor must be verified by reading the
+emitted `dist/`, not by trusting a green `yarn compile`. (Turning `checkJs` on is a much larger change
+and deliberately out of scope.)
+
+**`checkJs` being off also means a green `yarn compile` says nothing about whether the emitted `.d.ts`
+files are themselves valid TypeScript.** JSDoc mistakes in `src/` — a `@readonly` tag on a getter (which
+`tsc` emits as the syntactically invalid `readonly get foo(): T;`), a type name that never resolves in the
+declaration file's own scope — compile cleanly as JS but break every downstream TypeScript consumer.
+`yarn lint:dts` is the check that catches this class of bug: it runs `tsc -p tsconfig.dts-check.json`,
+a config isolated from `tsconfig.json` that starts from `dist/index.d.ts` and sets its own `target`/`lib`
+under `strict`, i.e. it checks the declarations the way a consumer's own `tsconfig.json` would, not the
+way this package's build does. Run `yarn compile` first — `lint:dts` checks whatever is already in `dist/`,
+it does not rebuild it.
 
 **Key Patterns:**
 
@@ -176,6 +213,8 @@ against those standards. Keep the options as CLI flags in the scripts, and keep 
 | Component         | Purpose                                         |
 | ----------------- | ----------------------------------------------- |
 | `ApiClient`       | Manages API communication, emits events         |
+| `ApiBase`         | One API base: its URL, calendar index and cache |
+| `ApiClientError`  | Error carrying url, status, statusText and body |
 | `CalendarSelect`  | Dropdown for selecting calendars                |
 | `ApiOptions`      | Form controls for API parameters                |
 | `WebCalendar`     | Renders calendar as HTML table                  |
@@ -183,9 +222,48 @@ against those standards. Keep the options as CLI flags in the scripts, and keep 
 | `LiturgyOfAnyDay` | Widget displaying liturgy for any selected date |
 | `PathBuilder`     | Builds and displays API request URLs            |
 
+### How components take a locale
+
+One contract, everywhere a locale is accepted — the bare constructor argument, the `locale` property of an
+options bag, `WebCalendar.locale()`, and the `locale` argument of the `ApiClient` fetch methods:
+
+- **`string` or `Intl.Locale`, interchangeably.** The tag stored is the locale's canonical form, so
+  `new CalendarSelect('it-IT')` and `new CalendarSelect(new Intl.Locale('it-IT'))` are the same call. Unicode
+  extensions survive, including ones given as `Intl.Locale` constructor options rather than written in the tag.
+- **`null` and `undefined` both mean "not supplied"**, as the argument itself and as the `locale` property
+  alike, and take the component's default (`'en'` for the five constructors, `'en-US'` for `WebCalendar`).
+- **Anything else is rejected**, naming the component and the type it found — an array, a number, or any class
+  instance other than `Intl.Locale`. The three accepted forms disambiguate in this order: `Intl.Locale` is a
+  locale, any other object is an options bag, a string is a locale.
+- **An unparseable locale throws** and is never silently replaced with English. "Absent" and "invalid" are
+  different things.
+
+The shared implementations are `src/LocaleValidation.js` (what a locale is) and `src/OptionsValidation.js`
+(what shape an options argument may take). Neither is exported from `src/index.js`: they are internal contract
+between the components, not public API.
+
 ## ApiClient
 
 The `ApiClient` is the central hub for API communication. It fetches calendar data and emits events that other components listen to.
+
+### Initialization and Failure
+
+`ApiClient.init()` **rejects** — it never resolves to `false`, and never throws synchronously:
+
+- an `ApiClientError` (with `url`, `status`, `statusText`, `body`, `cause`) when the base's `/calendars` request fails
+- a plain `Error` when the `url` argument is not a non-empty string, or is not an absolute `http:`/`https:` URL
+
+```javascript
+const apiClient = await ApiClient.init(BaseUrl); // wrap in try/catch, or use .catch()
+```
+
+The fetch methods — `fetchCalendar()`, `fetchNationalCalendar()`, `fetchDiocesanCalendar()` and
+`refetchCalendarData()` — also return promises that reject with an `ApiClientError`, after emitting
+`calendarFetchFailed` as `(error, { rite })`. Subscribe with the chainable `apiClient.on(event, listener)`.
+
+Failures are logged only when nobody could have handled them: a promise the caller holds rejects and is not
+logged, while the requests the library issues for itself (the `listenTo()` listeners, `LiturgyOfAnyDay`'s year
+handling) fall back to `console.error` only when nothing is subscribed to `calendarFetchFailed`.
 
 ### Configuration Methods
 
@@ -217,9 +295,14 @@ The ApiClient implements parameter-based caching to avoid redundant API requests
 - Year
 - Year type (LITURGICAL or CIVIL)
 - Locale
+- Rite (roman or ambrosian)
 - Mobile feast settings (epiphany, ascension, corpus_christi, eternal_high_priest)
 
 When a fetch method is called with the same parameters, cached data is returned immediately without making an HTTP request.
+
+The cache belongs to the `ApiBase`, not to the `ApiClient` class: two clients on one base share it, and two
+bases never see each other's responses. It holds 50 entries per base by default, evicting the
+least-recently-**read** first, with optional expiry — both set through `ApiBase.cacheLimits({ maxEntries, ttl })`.
 
 ```javascript
 // First call fetches from API
@@ -270,7 +353,7 @@ en, it, la, es, fr, de, pt, nl, hu, id, sk, vi
 - **No build step for production** - Components work as-is with ES6 module imports
 - **API dependency** - Components require access to Liturgical Calendar API
 - **Default API URL** - `https://litcal.johnromanodorazio.com/api/dev`
-- **Browser support** - Modern browsers with ES6 module support
+- **Browser support** - Browsers with ES2022 support (see the Target section under Code Standards): Chrome/Edge 94+, Firefox 93+, Safari 15.4+. ES6 module support alone is not sufficient
 
 ## Component Wiring Patterns
 
@@ -287,6 +370,33 @@ webCalendar.listenTo(apiClient);
 liturgyOfTheDay.listenTo(apiClient);
 liturgyOfAnyDay.listenTo(apiClient);
 ```
+
+### Multi-base Wiring
+
+Each `ApiClient` is bound to an `ApiBase` — one object per API base URL, owning that base's calendar index and
+response cache. `CalendarSelect` and `ApiOptions` take an `apiClient` option that binds them to that client's
+base:
+
+```javascript
+const dev = await ApiClient.init('http://localhost:8000');
+const prod = await ApiClient.init('https://litcal.johnromanodorazio.com/api/dev');
+
+const devSelect = new CalendarSelect({ locale: 'en', apiClient: dev });
+const devOptions = new ApiOptions({ locale: 'en', apiClient: dev }).linkToCalendarSelect(devSelect);
+const prodSelect = new CalendarSelect({ locale: 'en', apiClient: prod });
+```
+
+- Omitting `apiClient` binds to the first base registered, so single-base pages need no change. Once more than
+  one base is registered, an unbound component warns once per component class and names the base it chose.
+- `PathBuilder` has no `apiClient` option: it takes its base from the `ApiOptions` and `CalendarSelect` passed
+  to it, and throws when those two are bound to different bases. `CalendarSelect.linkToNationsSelect()` throws
+  on the same mismatch.
+- `WebCalendar`, `LiturgyOfTheDay` and `LiturgyOfAnyDay` bind through `listenTo(apiClient)` as before.
+- `ApiClient.init()` returns a **new** client on every call, including for a base already registered — only the
+  metadata and cache are shared, which is what lets two clients on one API hold different rites.
+
+`examples/CompareBases/` is a complete two-pane page. In tests, build a loaded base with no network call using
+`ApiBase.fromMetadata(url, metadata)`, and call `ApiBase.reset()` in `beforeEach`.
 
 ### LiturgyOfAnyDay Component
 
@@ -367,8 +477,10 @@ liturgyOfAnyDay.appendTo('#liturgyContainer');
 // 6. Wire ApiClient to listen to UI components
 apiClient.listenTo(calendarSelect).listenTo(apiOptions);
 
-// 7. Initial fetch with the matched locale
-apiClient.fetchCalendar(selectedLocale);
+// 7. Initial fetch with the matched locale (the promise is yours: handle its rejection)
+apiClient.fetchCalendar(selectedLocale).catch((error) => {
+    console.error(`Could not load the calendar: ${error.message}`);
+});
 ```
 
 ### CalendarSelect Default Value

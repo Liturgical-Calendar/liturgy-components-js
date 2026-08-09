@@ -1,6 +1,8 @@
 import Messages from '../Messages.js';
 import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
+import { canonicalizeLocale } from '../LocaleValidation.js';
 
 /**
  * A select menu for the liturgical rite a calendar request is computed under.
@@ -28,44 +30,21 @@ export default class RiteSelect {
     #nameSet      = false;
 
     /**
-     * @param {string|object} [options='en'] Either a locale string, or an options object.
-     * @param {string} [options.locale='en'] The locale to use for the rite option labels.
+     * @param {string|Intl.Locale|object} [options='en'] A locale string, an `Intl.Locale`, or an options object.
+     *        `null` and `undefined` both mean "no options given" and take the defaults.
+     * @param {string|Intl.Locale} [options.locale='en'] The locale to use for the rite option labels.
      * @param {string} [options.id] The id attribute for the select element.
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
-     * @throws {Error} If `options` is neither a string nor a plain object.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
      */
     constructor( options = 'en' ) {
-        if ( typeof options === 'string' ) {
-            options = { locale: options };
-        }
-        else if ( null === options || typeof options === 'undefined' ) {
-            options = { locale: 'en' };
-        }
-        else if ( typeof options !== 'object' || Array.isArray( options ) ) {
-            const optionsType = Array.isArray( options ) ? 'array' : typeof options;
-            throw new Error( 'Invalid type for options, must be of type `object` but found type: ' + optionsType );
-        }
+        options = normalizeComponentOptions( options, 'RiteSelect' );
 
         const { locale: inputLocale, id, name } = options;
         if ( inputLocale !== undefined && inputLocale !== null ) {
-            if ( typeof inputLocale !== 'string' ) {
-                throw new Error( 'Invalid type for locale, must be of type `string` but found type: ' + typeof inputLocale );
-            }
-            // Matches CalendarSelect: canonicalize through `Intl.getCanonicalLocales`
-            // so an invalid locale is reported with this library's own message
-            // rather than as a raw `RangeError` out of `new Intl.Locale()`.
-            const locale = inputLocale.replaceAll( '_', '-' );
-            try {
-                const canonicalLocales = Intl.getCanonicalLocales( locale );
-                if ( canonicalLocales.length === 0 ) {
-                    throw new Error( 'Invalid locale: ' + locale );
-                }
-                this.#locale = canonicalLocales[ 0 ];
-            } catch ( e ) {
-                throw new Error( 'Invalid locale: ' + locale );
-            }
+            this.#locale = canonicalizeLocale( inputLocale, 'RiteSelect' );
         }
 
         const language = new Intl.Locale( this.#locale ).language;
@@ -78,7 +57,7 @@ export default class RiteSelect {
         } ).join( '' );
         this.#domElement.value = Rite.ROMAN;
 
-        if ( options.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( options, 'class' ) ) {
             this.class( options.class );
         }
         if ( id ) {
@@ -215,7 +194,7 @@ export default class RiteSelect {
             this.#labelElement.setAttribute( 'for', this.#domElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'class' ) ) {
+        if ( Object.hasOwn( labelOptions, 'class' ) ) {
             if ( typeof labelOptions.class !== 'string' ) {
                 throw new Error( 'Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class );
             }
@@ -230,7 +209,7 @@ export default class RiteSelect {
             this.#labelElement.className = labelOptions.class;
         }
 
-        if ( labelOptions.hasOwnProperty( 'id' ) ) {
+        if ( Object.hasOwn( labelOptions, 'id' ) ) {
             if ( typeof labelOptions.id !== 'string' ) {
                 throw new Error( 'Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id );
             }
@@ -242,7 +221,7 @@ export default class RiteSelect {
             this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
         }
 
-        if ( labelOptions.hasOwnProperty( 'text' ) ) {
+        if ( Object.hasOwn( labelOptions, 'text' ) ) {
             if ( typeof labelOptions.text !== 'string' ) {
                 throw new Error( 'Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text );
             }
@@ -289,7 +268,6 @@ export default class RiteSelect {
      * Gets the underlying DOM element of the RiteSelect instance.
      *
      * @returns {HTMLElement} The underlying DOM element of the RiteSelect instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -299,7 +277,6 @@ export default class RiteSelect {
      * Gets the locale that was used to build this RiteSelect instance's option labels.
      *
      * @returns {string}
-     * @readonly
      */
     get _locale() {
         return this.#locale;

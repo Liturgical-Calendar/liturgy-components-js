@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
-import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
-import ApiClient from '../ApiClient/ApiClient.js';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
@@ -16,6 +16,11 @@ import Messages from '../Messages.js';
  * `boston_us` is a second Roman diocese in a DIFFERENT nation, so that
  * per-nation diocese filtering (`linkToNationsSelect`) has something to filter
  * out and can be asserted on.
+ *
+ * Local rather than the shared `FULL_METADATA`: these assertions need TWO
+ * Ambrosian dioceses (one of them under a nation with no national calendar), a
+ * `US` calendar whose `epiphany` is visibly non-default, and a `VA` with empty
+ * settings. The shared fixture carries none of those.
  */
 const METADATA = {
     // Read directly by LocaleInput (constructed by every `new ApiOptions()`),
@@ -42,12 +47,13 @@ const METADATA = {
     ambrosian_calendars: [ { calendar_id: 'ambrosian', rite: 'ambrosian', locales: [ 'it', 'la' ] } ]
 };
 
-beforeAll( async () => {
-    global.fetch = jest.fn().mockResolvedValue( {
-        ok: true,
-        json: () => Promise.resolve( { litcal_metadata: METADATA } )
-    } );
-    await ApiClient.init();
+const API_URL = 'http://localhost:8000';
+
+// A fresh registry per test, holding one base built straight from the fixture.
+// No `global.fetch` mock at all: nothing here issues a request.
+beforeEach( () => {
+    ApiBase.reset();
+    ApiBase.fromMetadata( API_URL, METADATA );
 } );
 
 // No `CurrentEndpoint` reset helper is needed: each `ApiOptions` constructs its

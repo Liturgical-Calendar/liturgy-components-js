@@ -2,6 +2,8 @@ import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfTheDay {
 
@@ -142,26 +144,21 @@ export default class LiturgyOfTheDay {
     /**
      * Constructs a LiturgyOfTheDay object.
      *
-     * @param {string|Object|null} [options=null] - The locale to use for formatting the date and the titles.
-     *                                  The locale should be a valid string that can be parsed by the Intl.getCanonicalLocales function.
+     * @param {string|Intl.Locale|Object|null} [options=null] - The locale to use for formatting the date and the titles,
+     *                                  as a string or an `Intl.Locale`, or an options object carrying one as its `locale`.
+     *                                  A locale string should be a valid tag that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *                                  The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
+     *                                  `null` and `undefined` mean "not supplied" both as the argument itself and as the `locale` property.
      *
-     * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish, or if the locale is invalid.
      */
     constructor(options = null) {
-        if (typeof options === 'string') {
-            this.#validateLocale(options);
-        }
-        else if (typeof options === 'object') {
-            if (options.hasOwnProperty('locale')) {
-                this.#validateLocale(options.locale);
-            } else {
-                this.#validateLocale('en');
-            }
-        } else {
-            throw new Error('LiturgyOfTheDay: Invalid options passed to constructor, must be of type string or object but found type: ' + typeof options);
-        }
+        options = normalizeComponentOptions(options, 'LiturgyOfTheDay');
+        // A nullish READ, not `Object.hasOwn`: the key's presence is not the question.
+        // `Object.hasOwn` sees `locale` whatever its value, so `{ ...defaults, locale }`
+        // with an unset `locale` — ordinary JavaScript — used to throw here. Issue #32.
+        this.#validateLocale(options.locale ?? 'en');
         const now = new Date();
         this.#date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
         this.#domElement = document.createElement('div');
@@ -177,44 +174,44 @@ export default class LiturgyOfTheDay {
         this.#eventsElementsWrapper = document.createElement('div');
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
-        if (typeof options === 'object') {
-            if (options.hasOwnProperty('id')) {
+        if (typeof options === 'object' && options !== null) {
+            if (Object.hasOwn(options, 'id')) {
                 this.id(options.id);
             }
-            if (options.hasOwnProperty('class')) {
+            if (Object.hasOwn(options, 'class')) {
                 this.class(options.class);
             }
-            if (options.hasOwnProperty('titleClass')) {
+            if (Object.hasOwn(options, 'titleClass')) {
                 this.titleClass(options.titleClass);
             }
-            if (options.hasOwnProperty('dateClass')) {
+            if (Object.hasOwn(options, 'dateClass')) {
                 this.dateClass(options.dateClass);
             }
-            if (options.hasOwnProperty('eventClass')) {
+            if (Object.hasOwn(options, 'eventClass')) {
                 this.eventClass(options.eventClass);
             }
-            if (options.hasOwnProperty('eventGradeClass')) {
+            if (Object.hasOwn(options, 'eventGradeClass')) {
                 this.eventGradeClass(options.eventGradeClass);
             }
-            if (options.hasOwnProperty('eventCommonClass')) {
+            if (Object.hasOwn(options, 'eventCommonClass')) {
                 this.eventCommonClass(options.eventCommonClass);
             }
-            if (options.hasOwnProperty('eventYearCycleClass')) {
+            if (Object.hasOwn(options, 'eventYearCycleClass')) {
                 this.eventYearCycleClass(options.eventYearCycleClass);
             }
-            if (options.hasOwnProperty('eventsWrapperClass')) {
+            if (Object.hasOwn(options, 'eventsWrapperClass')) {
                 this.eventsWrapperClass(options.eventsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsWrapperClass')) {
+            if (Object.hasOwn(options, 'readingsWrapperClass')) {
                 this.readingsWrapperClass(options.readingsWrapperClass);
             }
-            if (options.hasOwnProperty('readingsLabelClass')) {
+            if (Object.hasOwn(options, 'readingsLabelClass')) {
                 this.readingsLabelClass(options.readingsLabelClass);
             }
-            if (options.hasOwnProperty('readingClass')) {
+            if (Object.hasOwn(options, 'readingClass')) {
                 this.readingClass(options.readingClass);
             }
-            if (options.hasOwnProperty('showReadings')) {
+            if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
             }
         }
@@ -227,20 +224,12 @@ export default class LiturgyOfTheDay {
      * If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      * Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
      *
-     * @param {string} locale - The locale string to validate.
+     * @param {string|Intl.Locale} locale - The locale to validate.
      * @throws {Error} If the locale is invalid.
      * @private
      */
     #validateLocale(locale) {
-        if (typeof locale !== 'string') {
-            throw new Error('LiturgyOfTheDay: Invalid locale');
-        }
-        locale = locale.replaceAll('_', '-');
-        try {
-            this.#locale = new Intl.Locale(locale);
-        } catch (e) {
-            throw new Error('LiturgyOfTheDay: Invalid locale');
-        }
+        this.#locale = toIntlLocale(locale, 'LiturgyOfTheDay');
     }
 
     /**
@@ -287,7 +276,7 @@ export default class LiturgyOfTheDay {
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
-            if (celebration.hasOwnProperty('liturgical_year')) {
+            if (Object.hasOwn(celebration, 'liturgical_year')) {
                 const celebrationLiturgicalYearElement = document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
                     celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
@@ -605,16 +594,19 @@ export default class LiturgyOfTheDay {
         if (isDec31) {
             // Use LITURGICAL year type with year+1 to get vigil masses for January 1st
             apiClient.yearType(YearType.LITURGICAL).year(now.getFullYear() + 1);
+        } else {
+            // Use CIVIL year type with the current year
+            apiClient.yearType(YearType.CIVIL).year(now.getFullYear());
         }
 
-        apiClient._eventBus.on('calendarFetched', async (data) => {
+        apiClient._eventBus.on('calendarFetched', (data) => {
             if (typeof data !== 'object') {
                 throw new Error('LiturgyOfTheDay: Invalid type for data received in `calendarFetched` event, must be of type object but found type: ' + typeof data);
             }
-            if (!data.hasOwnProperty('litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
+            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
                 throw new Error('LiturgyOfTheDay: Invalid liturgical calendar data received in `calendarFetched` event');
             }
-            if (!data.hasOwnProperty('settings') || !data.hasOwnProperty('metadata') || !data.hasOwnProperty('messages')) {
+            if (!Object.hasOwn(data, 'settings') || !Object.hasOwn(data, 'metadata') || !Object.hasOwn(data, 'messages')) {
                 throw new Error('LiturgyOfTheDay: data received in `calendarFetched` event should have litcal, settings, metadata and messages properties');
             }
             const todaysTimestamp = this.#date.getTime();
@@ -673,7 +665,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying DOM element of the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The DOM element associated with the LiturgyOfTheDay instance.
-     * @readonly
      */
     get _domElement() {
         return this.#domElement;
@@ -683,7 +674,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying title element associated with the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The title element.
-     * @readonly
      */
     get _titleElement() {
         return this.#titleElement;
@@ -693,7 +683,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying date element associated with the LiturgyOfTheDay instance.
      *
      * @returns {HTMLElement} The date element.
-     * @readonly
      */
     get _dateElement() {
         return this.#dateElement;
@@ -703,7 +692,6 @@ export default class LiturgyOfTheDay {
      * Retrieves the underlying wrapper element for the liturgical events list.
      *
      * @returns {HTMLElement} The wrapper element for the liturgical events list.
-     * @readonly
      */
     get _eventsElementsWrapper() {
         return this.#eventsElementsWrapper;

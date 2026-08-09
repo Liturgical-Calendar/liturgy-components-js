@@ -42,9 +42,21 @@ export default class EventEmitter {
     }
 
     /**
+     * The live map of event names to their registered listeners — the emitter's own
+     * object, NOT a copy.
+     *
+     * Liveness is relied upon: `ApiClient#discardRequest` reads this on every failed
+     * request to decide whether anything is subscribed to `calendarFetchFailed`, and
+     * must see subscriptions made since it last looked — a page that subscribes after
+     * its first fetch would otherwise keep logging to the console forever. Returning a
+     * copy would also allocate one map and one array per failure to answer a question
+     * settled by a length check.
+     *
+     * Read-only by convention: mutating the returned object mutates the emitter's
+     * registrations. Subscribe through `on()`.
+     *
      * @type {Object<string, Array<function>>}
-     * @returns {Object<string, Array<function>>} a shallow copy of the object containing all registered events and their respective listeners
-     * @readonly
+     * @returns {Object<string, Array<function>>} The emitter's own map of registered events to their listeners.
      */
     get _events() {
         return this.#events;

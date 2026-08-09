@@ -18,9 +18,8 @@ export default class CorpusChristiInput extends SelectInput {
     constructor(locale = null) {
         super();
         this._domElement.name = 'corpus_christi';
-        this._domElement.id = 'corpus_christi';
+        this._claimDefaultId('corpus_christi');
         this._labelElement.textContent = 'corpus_christi';
-        this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
