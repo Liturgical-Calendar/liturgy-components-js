@@ -45,12 +45,17 @@ export default class EventEmitter {
      * The live map of event names to their registered listeners — the emitter's own
      * object, NOT a copy.
      *
-     * Liveness is relied upon: `ApiClient#discardRequest` reads this on every failed
-     * request to decide whether anything is subscribed to `calendarFetchFailed`, and
-     * must see subscriptions made since it last looked — a page that subscribes after
-     * its first fetch would otherwise keep logging to the console forever. Returning a
-     * copy would also allocate one map and one array per failure to answer a question
-     * settled by a length check.
+     * Liveness is relied upon: `ApiClient#emitCalendarFetchFailed` reads this
+     * immediately before every `calendarFetchFailed` emit, to record whether the
+     * error is about to reach at least one listener — the answer that
+     * `ApiClient#discardRequest` later uses to decide whether to log it. Reading a
+     * stale snapshot here would misreport a listener subscribed since the emitter
+     * was constructed. `ApiClient#discardRequest` itself no longer reads this getter:
+     * it now checks whether the specific error it caught was recorded as delivered,
+     * not whether a listener merely exists at catch time — the two diverge for a
+     * throwing `calendarFetched` listener and for an argument/state error, neither of
+     * which ever reaches an emit. Returning a copy here would also allocate one map
+     * and one array per emit to answer a question settled by a length check.
      *
      * Read-only by convention: mutating the returned object mutates the emitter's
      * registrations. Subscribe through `on()`.

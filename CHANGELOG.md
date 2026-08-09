@@ -380,3 +380,11 @@ And one entry that breaks no code, because it changes none — what narrows is w
   `yarn lint:dts` errors (an accessor overriding a base method). Reading `MonthInput#value()` now returns the
   raw string, exactly as it does for `DayInput` and `YearInput`; a caller wanting the integer should
   `parseInt( input.value(), 10 )`, which is what the only in-library caller already did.
+- `ApiClient`'s fire-and-forget calls — the `listenTo()` handlers, `LiturgyOfAnyDay`'s year handling — no longer
+  suppress an error just because _something_ is subscribed to `calendarFetchFailed`, when that error was never
+  emitted for the subscriber to receive. A throwing `calendarFetched` listener, and an argument/state rejection
+  such as an unserviceable rite, both reject without emitting: the first because a listener's throw is its own
+  bug and not a fetch failure, the second because no request was ever made. On any page following the documented
+  `apiClient.on( 'calendarFetchFailed', … )` wiring, both used to vanish completely — no event, no console
+  output. `#discardRequest` now checks whether the specific error it caught was actually delivered to a
+  listener, recorded at the point of emission, rather than whether a listener merely exists at catch time.

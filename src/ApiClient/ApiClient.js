@@ -8,6 +8,32 @@ import { YearType, Rite, RiteProperties } from '../Enums.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 
 /**
+ * Errors that were delivered to at least one `calendarFetchFailed` listener at
+ * the moment they were emitted.
+ *
+ * `#discardRequest` needs to answer "did anyone actually receive this error?",
+ * not "is anyone subscribed right now?" — those two questions diverge for a
+ * throwing `calendarFetched` listener and for an argument/state error such as an
+ * unserviceable rite, both of which reject WITHOUT ever emitting
+ * `calendarFetchFailed`. Checking the current listener list at catch time answered
+ * the wrong question for exactly those two cases: it read "someone is subscribed"
+ * as "someone has this error", when no emit had happened for them to receive.
+ * Recording the answer at the one place it is actually known — the emit site —
+ * and reading it back at the catch site removes that inference entirely.
+ *
+ * A module-level `WeakSet`, deliberately not a field on `ApiClientError`: that
+ * would add public surface for a single internal bookkeeping decision, would not
+ * work for the plain `Error`s the argument/state guards reject with, and
+ * `ApiClientError` already has a subtle `cause`/`JSON.stringify` interaction that
+ * a new enumerable field could disturb. `WeakSet` membership does not keep an
+ * error alive once nothing else references it, so this holds no memory beyond
+ * the errors already in play.
+ *
+ * @type {WeakSet<object>}
+ */
+const deliveredFailures = new WeakSet();
+
+/**
  * A client for interacting with the Liturgical Calendar API.
  * This class provides methods to fetch and manage liturgical calendar data,
  * including the General Roman Calendar, National Calendars, and Diocesan Calendars.
@@ -368,36 +394,62 @@ export default class ApiClient {
   }
 
   /**
+   * Emits `calendarFetchFailed` and records, in {@link deliveredFailures}, whether
+   * the error was actually handed to at least one listener.
+   *
+   * The three fetch methods are otherwise identical at this point, and were
+   * repeating this same two-line sequence — emit, then decide what
+   * `#discardRequest` needs to know about it — once each. Factored into one place
+   * so that a mistake in the bookkeeping cannot be made in one copy and not the
+   * others.
+   *
+   * @param {ApiClientError} apiError - The error to emit.
+   * @param {'roman' | 'ambrosian'} requestRite - The rite of the request that failed.
+   * @returns {void}
+   * @private
+   */
+  #emitCalendarFetchFailed( apiError, requestRite ) {
+    const hadListeners = this.#eventBus._events[ 'calendarFetchFailed' ]?.length > 0;
+    this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+    if ( hadListeners ) {
+      deliveredFailures.add( apiError );
+    }
+  }
+
+  /**
    * Discards the outcome of a request issued for its side effects alone.
    *
    * The change listeners this class attaches to UI components fire a request and have
    * no caller to hand the promise back to, so the rejection would surface as an
-   * unhandled rejection. What happens to it depends on whether anyone is listening:
+   * unhandled rejection. What happens to it depends on whether it was actually
+   * DELIVERED to a `calendarFetchFailed` listener — tracked in
+   * {@link deliveredFailures}, written at the point of emission — rather than on
+   * whether a listener merely exists when this `.catch` runs:
    *
-   * - **A `calendarFetchFailed` subscriber exists** — the error has already been
-   *   delivered to it, so this stays silent. It is a suppressor, not error handling.
-   * - **No subscriber exists** — the error would otherwise vanish entirely, leaving no
-   *   trace that the calendar simply never arrived. It is logged with `console.error`,
+   * - **Delivered** — some listener already received it, so this stays silent. It is
+   *   a suppressor, not error handling.
+   * - **Not delivered** — the error would otherwise vanish entirely, leaving no trace
+   *   that the calendar simply never arrived. It is logged with `console.error`,
    *   which is what these methods did unconditionally before they learned to reject.
    *   Silence here would be a regression for anyone upgrading without subscribing.
    *
-   * Two kinds of error reach here without ever having been emitted, so for them the
-   * first branch suppresses on a premise that does not hold: a throw from a
+   * Two kinds of error reach here without ever having been emitted, so for them
+   * `deliveredFailures` never gained an entry and this always logs: a throw from a
    * `calendarFetched` listener, and — since the fetch methods stopped throwing
    * synchronously — an argument or state error such as an unserviceable rite. Both
    * used to escape this method entirely, the first as an uncaught throw out of the
    * emit and the second as an uncaught throw out of the DOM change handler that
-   * started the request. Routing them here at least keeps them from surfacing as
-   * unhandled rejections; a subscriber that wants to see them should not assume
-   * `calendarFetchFailed` is the whole story.
+   * started the request. A subscriber checked only for its OWN existence at catch
+   * time used to read both as "handled" — on a page that subscribes to
+   * `calendarFetchFailed`, both vanished with no log and no event, which is the
+   * defect this method now avoids.
    *
    * @param {Promise<*>} request - The request whose outcome is being discarded.
    * @returns {void}
    */
   #discardRequest( request ) {
     request.catch( error => {
-      const listeners = this.#eventBus._events[ 'calendarFetchFailed' ];
-      if ( undefined === listeners || 0 === listeners.length ) {
+      if ( false === deliveredFailures.has( error ) ) {
         console.error( error );
       }
     } );
@@ -599,7 +651,7 @@ export default class ApiClient {
         const apiError = error instanceof ApiClientError
           ? error
           : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        this.#emitCalendarFetchFailed( apiError, requestRite );
         throw apiError;
       }).then( data => {
         // Cache regardless: the response is valid for its own key even if a newer
@@ -736,7 +788,7 @@ export default class ApiClient {
         const apiError = error instanceof ApiClientError
           ? error
           : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        this.#emitCalendarFetchFailed( apiError, requestRite );
         throw apiError;
       }).then( data => {
         // Cache regardless: the response is valid for its own key even if a newer
@@ -872,7 +924,7 @@ export default class ApiClient {
         const apiError = error instanceof ApiClientError
           ? error
           : new ApiClientError( `POST ${requestUrl} failed: ${error.message}`, { url: requestUrl, cause: error } );
-        this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
+        this.#emitCalendarFetchFailed( apiError, requestRite );
         throw apiError;
       }).then( data => {
         // Cache regardless: the response is valid for its own key even if a newer

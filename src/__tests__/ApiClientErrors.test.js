@@ -4,7 +4,8 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import ApiBase from '../ApiClient/ApiBase.js';
 import ApiClientError from '../ApiClient/ApiClientError.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
-import { FULL_METADATA } from '../__fixtures__/metadata.js';
+import { Rite } from '../Enums.js';
+import { FULL_METADATA, V5_METADATA } from '../__fixtures__/metadata.js';
 
 const DEV = 'http://localhost:8000';
 
@@ -432,6 +433,124 @@ describe( 'ApiClient fire-and-forget callers', () => {
                 riteSelect._domElement.dispatchEvent( new Event( 'change' ) );
             } );
             expect( consoleError ).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+} );
+
+/**
+ * `#discardRequest`'s real question is "did anyone actually RECEIVE this error?",
+ * not "is anyone subscribed RIGHT NOW?". A `calendarFetchFailed` subscriber only
+ * ever receives an error that was emitted, and two classes of rejection are never
+ * emitted at all — a throwing `calendarFetched` listener (the throw is the
+ * listener's own bug, not a fetch failure) and an argument/state error such as an
+ * unserviceable rite (no request was ever made, so there is nothing to report as
+ * a failed fetch). A subscriber existing at catch time used to be read as "this
+ * was handled" regardless, which silently dropped both classes on any page that
+ * subscribes to `calendarFetchFailed` — exactly the documented wiring pattern.
+ *
+ * Driven through `_discardRequest`, the public seam the library's own
+ * fire-and-forget call sites (the `listenTo()` handlers, `LiturgyOfAnyDay`'s year
+ * handling) use, rather than through a specific caller.
+ */
+describe( 'ApiClient _discardRequest distinguishes delivered errors from merely emitted ones', () => {
+
+    /**
+     * Discards `request` via the client's `_discardRequest` seam, then waits for
+     * its internal `.catch` to run. Attaching our own `.catch` to the SAME promise
+     * after `_discardRequest` has already attached its own guarantees ours settles
+     * only after the internal handler's reaction has — promise reactions on one
+     * promise run in the order they were attached — which is a stronger guarantee
+     * than an arbitrary microtask tick and cannot flake.
+     *
+     * @param {ApiClient} client - The client whose `_discardRequest` is under test.
+     * @param {Promise<*>} request - The request to discard.
+     * @returns {Promise<void>}
+     */
+    const discardAndSettle = async ( client, request ) => {
+        client._discardRequest( request );
+        await request.catch( () => {} );
+    };
+
+    it( 'stays silent for an emitted failure when a calendarFetchFailed subscriber exists', async () => {
+        loadBaseThenFailEveryCalendarRequest();
+        const client = await ApiClient.init( DEV );
+        client.on( 'calendarFetchFailed', jest.fn() );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+    it( 'logs an emitted failure when nobody is subscribed', async () => {
+        loadBaseThenFailEveryCalendarRequest();
+        const client = await ApiClient.init( DEV );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).toHaveBeenCalledTimes( 1 );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).toBeInstanceOf( ApiClientError );
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+    it( 'logs a non-emitted argument/state rejection even when a calendarFetchFailed subscriber exists', async () => {
+        // No request is ever made: the API's metadata announces no ambrosian_calendars,
+        // so #assertRiteSupported() rejects before fetch() is called and emits nothing.
+        // Before the fix, the mere presence of a calendarFetchFailed subscriber caused
+        // this to be suppressed as if the subscriber had received it — which it never did.
+        ApiBase.fromMetadata( DEV, V5_METADATA );
+        const client = await ApiClient.init( DEV );
+        client.rite( Rite.AMBROSIAN );
+        client.on( 'calendarFetchFailed', jest.fn() );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).toHaveBeenCalledTimes( 1 );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).toBeInstanceOf( Error );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).not.toBeInstanceOf( ApiClientError );
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+    it( 'logs a non-emitted argument/state rejection when nobody is subscribed either', async () => {
+        ApiBase.fromMetadata( DEV, V5_METADATA );
+        const client = await ApiClient.init( DEV );
+        client.rite( Rite.AMBROSIAN );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).toHaveBeenCalledTimes( 1 );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).toBeInstanceOf( Error );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).not.toBeInstanceOf( ApiClientError );
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
+    it( 'logs a throwing calendarFetched listener\'s rejection even when a calendarFetchFailed subscriber exists', async () => {
+        loadBaseThenServeEveryCalendarRequest();
+        const client        = await ApiClient.init( DEV );
+        const listenerError = new Error( 'listener blew up' );
+        client.on( 'calendarFetched', () => { throw listenerError; } );
+        client.on( 'calendarFetchFailed', jest.fn() );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).toHaveBeenCalledTimes( 1 );
+            expect( consoleError.mock.calls[ 0 ][ 0 ] ).toBe( listenerError );
         } finally {
             consoleError.mockRestore();
         }
