@@ -22,7 +22,7 @@ export default class MonthInput extends SelectInput {
         }
         this.#locale = locale;
         this._domElement.name = 'month';
-        this._domElement.id = 'month';
+        this._claimDefaultId('month');
         this._labelElement.textContent = 'month';
         this._labelElement.htmlFor = this._domElement.id;
 

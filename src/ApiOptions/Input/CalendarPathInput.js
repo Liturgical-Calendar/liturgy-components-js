@@ -19,7 +19,7 @@ export default class CalendarPathInput extends SelectInput {
             throw new Error('CalendarPathInput: Invalid type for locale, must be of type Intl.Locale but found type: ' + typeof locale);
         }
         this._domElement.name = 'calendar_path';
-        this._domElement.id = 'calendar_path';
+        this._claimDefaultId('calendar_path');
         this._labelElement.textContent = Messages[locale.language]['SELECT_ROUTE'] ?? 'Select route';
         this._labelElement.htmlFor = this._domElement.id;
         this._domElement.append(...CalendarPathInput.#CALENDAR_PATHS.map(path => {

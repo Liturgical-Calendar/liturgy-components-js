@@ -15,7 +15,7 @@ export default class DayInput extends NumberInput {
     constructor() {
         super();
         this._domElement.name = 'day';
-        this._domElement.id = 'day';
+        this._claimDefaultId('day');
         this._labelElement.textContent = 'day';
         this._labelElement.htmlFor = this._domElement.id;
         this._domElement.min = 1;

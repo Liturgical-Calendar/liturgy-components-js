@@ -19,7 +19,7 @@ export default class AscensionInput extends SelectInput {
     constructor(locale = null) {
         super();
         this._domElement.name = 'ascension';
-        this._domElement.id = 'ascension';
+        this._claimDefaultId('ascension');
         this._labelElement.textContent = 'ascension';
         this._labelElement.htmlFor = this._domElement.id;
         if (locale === null) {

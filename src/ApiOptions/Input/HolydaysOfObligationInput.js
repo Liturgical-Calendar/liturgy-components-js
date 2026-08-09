@@ -85,7 +85,7 @@ export default class HolydaysOfObligationInput extends SelectInput {
     constructor(options = []) {
         super(true);
         this._domElement.name = 'holydays_of_obligation';
-        this._domElement.id = 'holydays_of_obligation';
+        this._claimDefaultId('holydays_of_obligation');
         this._labelElement.textContent = 'holydays_of_obligation';
         this._labelElement.htmlFor = this._domElement.id;
         this.#options = Object.freeze(HolydaysOfObligationInput.mergeOptions(options));

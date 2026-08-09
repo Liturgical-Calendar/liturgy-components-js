@@ -9,6 +9,24 @@ export default class Input {
     static #globalWrapper      = null;
     /** @type {string | null} */
     static #globalWrapperClass = null;
+    /**
+     * DOM ids already issued on this page, by {@link Input#_claimDefaultId} or by an
+     * explicit call to {@link Input#id}.
+     *
+     * Every `Input` subclass hardcodes the same default id in its constructor
+     * (`LocaleInput` always wants `'locale'`, `YearInput` always wants `'year'`, and
+     * so on), which collides the moment a page holds more than one instance of the
+     * same subclass — two `ApiOptions` panels, or one `ApiOptions` and one
+     * `LiturgyOfAnyDay` that both issue `'year'`. This registry is what lets
+     * {@link Input#_claimDefaultId} notice the collision and suffix it instead.
+     *
+     * Cleared only by {@link Input.reset}: without an explicit reset, ids keep
+     * incrementing (`locale`, `locale-2`, `locale-3`, ...) for as long as the page,
+     * or the test process, keeps constructing `Input`s.
+     *
+     * @type {Set<string>}
+     */
+    static #issuedIds          = new Set();
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
     #domElement       = null;
     /** @type {HTMLElement|null} */
@@ -117,6 +135,22 @@ export default class Input {
     }
 
     /**
+     * Empties the registry of DOM ids already issued to `Input` instances.
+     *
+     * A testing affordance, mirroring {@link module:ApiClient/ApiBase~ApiBase.reset}:
+     * state that is deliberately global (here, "which ids has this page already
+     * handed out") has to be resettable between tests, or the second test in a file
+     * silently inherits ids claimed by the first and its assertions about bare ids
+     * (`'locale'`, `'year'`, ...) stop matching. Call it in `beforeEach` in any suite
+     * that constructs more than one `Input` subclass, or that asserts a bare default id.
+     *
+     * @returns {void}
+     */
+    static reset() {
+        Input.#issuedIds.clear();
+    }
+
+    /**
      * @param {string} [element='select'] - The element to create as the input element.
      *     Valid values are: `select`, `input`.
      * @param {object} [attributes={multiple: false}] - Key-value pairs of attributes to set on the element.
@@ -212,10 +246,46 @@ export default class Input {
         if (false === Utils.validateId(id)) {
             throw new Error(`Invalid id '${id}' on Input instance, must be a valid CSS selector`);
         }
+        Input.#issuedIds.add(id);
         this.#domElement.id = id;
         this.#idSet = true;
         this.#labelElement.htmlFor = this.#domElement.id;
         return this;
+    }
+
+    /**
+     * Claims a default id for this instance's DOM element and its label's `for`
+     * attribute, appending a numeric suffix when the base id has already been
+     * issued to another `Input` on the page.
+     *
+     * First use of a given base id is unsuffixed (`locale`); a second instance that
+     * claims the same base id gets `locale-2`, a third gets `locale-3`, and so on.
+     * The suffixing is a deterministic ordinal, not a random or UUID value, so ids
+     * stay stable across reloads — which matters for server-side rendering and for
+     * snapshot tests.
+     *
+     * This is what every `Input` subclass constructor calls instead of assigning
+     * `this._domElement.id` directly: a direct assignment bypasses this registry
+     * entirely, which is how two `ApiOptions` panels — or one `ApiOptions` and one
+     * `LiturgyOfAnyDay` — used to end up with two elements both bearing `id="year"`.
+     *
+     * Deliberately does NOT mark the id as explicitly set: a later call to
+     * {@link Input#id} still overrides the claimed default, exactly as it could
+     * override an id assigned directly.
+     *
+     * @param {string} baseId - The id to claim, e.g. `'locale'`.
+     * @returns {void}
+     */
+    _claimDefaultId( baseId ) {
+        let candidate = baseId;
+        let suffix = 2;
+        while (Input.#issuedIds.has(candidate)) {
+            candidate = `${baseId}-${suffix}`;
+            suffix++;
+        }
+        Input.#issuedIds.add(candidate);
+        this.#domElement.id = candidate;
+        this.#labelElement.htmlFor = candidate;
     }
 
     /**

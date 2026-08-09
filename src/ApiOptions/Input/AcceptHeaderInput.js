@@ -30,7 +30,7 @@ export default class AcceptHeaderInput extends SelectInput {
             this.#asReturnTypeParamSet = true;
         }
         this._domElement.name = 'return_type';
-        this._domElement.id = 'return_type';
+        this._claimDefaultId('return_type');
         this._labelElement.textContent = this.#asReturnTypeParam ? 'return_type' : 'Accept Header';
         this._labelElement.htmlFor = this._domElement.id;
         if (AcceptHeaderInput.#returnTypeOptions.length === 0) {

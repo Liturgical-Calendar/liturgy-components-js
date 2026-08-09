@@ -45,7 +45,7 @@ export default class LocaleInput extends SelectInput {
     constructor( locale = null, base = null ) {
         super();
         this._domElement.name = 'locale';
-        this._domElement.id = 'locale';
+        this._claimDefaultId('locale');
         this._labelElement.textContent = 'locale';
         this._labelElement.htmlFor = this._domElement.id;
         if ( null === base ) {
