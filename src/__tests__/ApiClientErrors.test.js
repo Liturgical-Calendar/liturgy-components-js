@@ -98,6 +98,52 @@ describe( 'ApiClient.init failure', () => {
 
 } );
 
+/**
+ * `new ApiClient( base )` is not the documented way to obtain a client — that is
+ * `ApiClient.init()` — but the constructor is public, reachable directly, and
+ * used by this very test suite to build a client on a fixture base. Before this
+ * guard, a missing or wrong-typed argument left `#base` set to whatever was
+ * passed — including `undefined` — and the failure only surfaced later and
+ * unhelpfully, e.g. `fetchCalendar()` throwing `TypeError: Cannot read
+ * properties of undefined (reading 'getCached')`. The guard rejects immediately
+ * instead, naming `ApiClient.init()` as the fix, mirroring the precedent
+ * `resolveBase()` already sets for `apiClient.base instanceof ApiBase`.
+ */
+describe( 'ApiClient constructor', () => {
+
+    it( 'throws when called with no argument, naming ApiClient.init()', () => {
+        expect( () => new ApiClient() ).toThrow( /ApiClient\.init\(\)/ );
+    } );
+
+    it( 'throws when called with null, naming ApiClient.init()', () => {
+        expect( () => new ApiClient( null ) ).toThrow( /ApiClient\.init\(\)/ );
+    } );
+
+    it( 'throws when called with something that is not an ApiBase, naming ApiClient.init()', () => {
+        expect( () => new ApiClient( { url: DEV } ) ).toThrow( /ApiClient\.init\(\)/ );
+    } );
+
+    it( 'constructs a usable client from ApiClient.init()', async () => {
+        ApiBase.fromMetadata( DEV, FULL_METADATA );
+        global.fetch = jest.fn().mockResolvedValue( {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => Promise.resolve( { litcal_metadata: FULL_METADATA } )
+        } );
+        const client = await ApiClient.init( DEV );
+        expect( client ).toBeInstanceOf( ApiClient );
+        expect( client.base ).toBe( ApiBase.resolve( DEV ) );
+    } );
+
+    it( 'still works when constructed directly with a real ApiBase', () => {
+        const base = ApiBase.fromMetadata( DEV, FULL_METADATA );
+        const client = new ApiClient( base );
+        expect( client.base ).toBe( base );
+    } );
+
+} );
+
 describe( 'ApiClient calendar fetch failure', () => {
 
     it( 'rejects with an ApiClientError carrying the status', async () => {

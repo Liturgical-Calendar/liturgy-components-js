@@ -86,11 +86,11 @@ builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings 
 Three narrower breaks, listed for completeness:
 
 - The `ApiClient` constructor now takes the `ApiBase` it is bound to: `new ApiClient( base )`. It previously
-  took no arguments and worked standalone, because the URL and metadata were statics. `new ApiClient()` now
-  leaves the client with no base, and the first fetch fails with a bare `TypeError` — delivered, like every
-  other failure of those methods, as a rejection rather than a throw. `ApiClient.init()` was
-  always the documented way to obtain a client and is unaffected; the constructor is worth knowing about
-  because it is how a test builds a client on a base from `ApiBase.fromMetadata()`.
+  took no arguments and worked standalone, because the URL and metadata were statics. `new ApiClient()` — or
+  any call whose argument is not an `ApiBase` — now throws immediately, naming `ApiClient.init()` as the way
+  to obtain a client, rather than leaving the client with no base for a later fetch to fail on unhelpfully.
+  `ApiClient.init()` was always the documented way to obtain a client and is unaffected; the constructor is
+  worth knowing about because it is how a test builds a client on a base from `ApiBase.fromMetadata()`.
 - `LocaleInput` now requires an `ApiBase` as its second constructor argument and throws without one. It is not
   exported from the package root, so this only affects code deep-importing
   `ApiOptions/Input/index.js`. Construct an `ApiOptions`, which supplies the base itself, or pass one:

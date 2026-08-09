@@ -192,10 +192,20 @@ export default class ApiClient {
    *
    * Use {@link ApiClient.init} rather than calling this directly: `init()`
    * guarantees the base's calendar index is loaded before any component reads it.
+   * A constructor cannot do the same, because loading a base is asynchronous and a
+   * constructor cannot await — so this rejects a missing or wrong-typed base
+   * immediately rather than defaulting it, which would only move the failure to
+   * the first metadata read, and unhelpfully: without this guard, `new
+   * ApiClient()` left `#base` as `undefined`, and the first fetch failed with a
+   * bare `TypeError: Cannot read properties of undefined (reading 'getCached')`.
    *
    * @param {ApiBase} base - The API base this client issues its requests against.
+   * @throws {Error} If `base` is not an `ApiBase`.
    */
   constructor( base ) {
+    if ( false === base instanceof ApiBase ) {
+      throw new Error( 'ApiClient: the base passed to the constructor must be an ApiBase. Use ApiClient.init() to obtain a client, rather than constructing one directly.' );
+    }
     this.#base     = base;
     this.#eventBus = new EventEmitter();
   }
