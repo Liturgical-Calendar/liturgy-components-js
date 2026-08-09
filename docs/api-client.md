@@ -87,7 +87,8 @@ apiClient.fetchDiocesanCalendar('romamo_it', 'it');
 apiClient.refetchCalendarData();
 ```
 
-The `locale` parameter is optional for all fetch methods. When provided, it sets the `Accept-Language` header for the request.
+The `locale` parameter is optional for all fetch methods, and may be given as a `string` or as an `Intl.Locale`.
+When provided, it sets the `Accept-Language` header for the request.
 The locale is validated against the calendar's supported locales before being applied.
 
 Each fetch method returns a promise. It resolves to this request's calendar data — or, when a newer request has

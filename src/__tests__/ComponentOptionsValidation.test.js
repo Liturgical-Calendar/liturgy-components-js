@@ -10,12 +10,12 @@
  * the locale came out `undefined`, the existing `typeof inputLocale !== 'string'`
  * check was never reached, and the component rendered in English unwarned.
  *
- * The `null` expectations differ per component ON PURPOSE. Whether `null` should
- * mean "use defaults" or "wrong argument" is issue #32; this suite pins the
- * behaviour each component already has so that answering #32 is a visible,
- * deliberate change rather than a silent one. `LiturgyOfTheDay` is the exception:
- * it previously CRASHED on `null` with `TypeError: Cannot read properties of null`,
- * so it had no behaviour to preserve and takes its sibling's.
+ * The `null` expectations used to differ per component. Issue #32 settled that:
+ * `null` and `undefined` both mean "no value supplied, use the default", for the
+ * options argument itself AND for the `locale` property inside a bag. The full
+ * matrix is asserted below by RESULTING LOCALE rather than by absence of a throw,
+ * for the reason issue #31 exists: a component that ignored the locale entirely
+ * would also not throw.
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
@@ -87,8 +87,9 @@ beforeEach( () => {
  * @type {Array<[string, () => unknown, RegExp]>}
  */
 const REJECTED = [
-    [ 'an Intl.Locale', () => new Intl.Locale( 'it' ), /found type: Locale/ ],
     [ 'a bare class instance', () => new BareThing(), /found type: BareThing/ ],
+    [ 'a Date', () => new Date(), /found type: Date/ ],
+    [ 'a boxed String', () => new String( 'it' ), /found type: String/ ],
     [ 'an array', () => [ 'en' ], /found type: array/ ],
     [ 'a number', () => 123, /found type: number/ ]
 ];
@@ -116,38 +117,130 @@ describe.each( COMPONENTS )( '$name rejects a non-plain-object options argument'
 
 } );
 
-describe( 'existing null semantics are unchanged (see issue #32)', () => {
+/**
+ * `CalendarSelect` keeps its locale private and offers no getter, but embeds it
+ * verbatim in several of its own error messages. Reading it back through one of
+ * them beats adding public surface for a test.
+ *
+ * @param {CalendarSelect} select - The select to interrogate.
+ * @returns {string} The canonical tag the select stored.
+ */
+function calendarSelectLocale( select ) {
+    try {
+        select.class( 123 );
+    } catch ( error ) {
+        return error.message.match( /with locale (.+?),/ )[ 1 ];
+    }
+    throw new Error( 'CalendarSelect.class( 123 ) was expected to throw' );
+}
 
-    it( 'CalendarSelect treats null as "no options given"', () => {
-        expect( () => new CalendarSelect( null ) ).not.toThrow();
-        expect( () => new CalendarSelect( undefined ) ).not.toThrow();
+/**
+ * Every component's resulting locale, asserted the strongest way that component
+ * allows.
+ *
+ * NOT "did not throw". A component that accepted the argument and then ignored
+ * the locale entirely would satisfy a throw-free assertion while reproducing
+ * exactly the silent-English defect issue #31 existed to remove; so each entry
+ * below reads back something the locale demonstrably determined.
+ *
+ * `ApiOptions` and the two widgets expose no tag, so they are compared against a
+ * reference instance built from the plain string form — which also pins the other
+ * half of the contract, that the new argument forms produce the SAME result the
+ * string always did, rather than merely some result.
+ *
+ * @type {Array<{name: string, build: (options?: unknown) => unknown, expectLocale: (instance: unknown, tag: string) => void}>}
+ */
+const LOCALE_OBSERVERS = [
+    {
+        name: 'CalendarSelect',
+        build: options => new CalendarSelect( options ),
+        expectLocale: ( instance, tag ) => expect( calendarSelectLocale( instance ) ).toBe( tag )
+    },
+    {
+        name: 'RiteSelect',
+        build: options => new RiteSelect( options ),
+        expectLocale: ( instance, tag ) => expect( instance._locale ).toBe( tag )
+    },
+    {
+        name: 'ApiOptions',
+        build: options => new ApiOptions( options ),
+        expectLocale: ( instance, tag ) => {
+            // `LocaleInput` labels the API's locales through
+            // `Intl.DisplayNames( [ locale.language ] )`, so the label for Italian
+            // reads `italiano` under `it` and `Italian` under `en`.
+            const labels = [ ...instance._localeInput._domElement.options ].map( option => option.textContent );
+            const expected = new Intl.DisplayNames( [ new Intl.Locale( tag ).language ], { type: 'language' } ).of( 'it' );
+            expect( labels ).toContain( expected );
+        }
+    },
+    {
+        name: 'LiturgyOfTheDay',
+        build: options => new LiturgyOfTheDay( options ),
+        expectLocale: ( instance, tag ) => {
+            const reference = new LiturgyOfTheDay( tag );
+            expect( instance._titleElement.textContent ).toBe( reference._titleElement.textContent );
+            // `dateStyle: 'full'` renders differently per REGION, so this proves the
+            // region subtag survived rather than only the language.
+            expect( instance._dateElement.textContent ).toBe( reference._dateElement.textContent );
+        }
+    },
+    {
+        name: 'LiturgyOfAnyDay',
+        build: options => new LiturgyOfAnyDay( options ),
+        expectLocale: ( instance, tag ) => {
+            const reference = new LiturgyOfAnyDay( tag );
+            expect( instance._titleElement.textContent ).toBe( reference._titleElement.textContent );
+            expect( instance._dateElement.textContent ).toBe( reference._dateElement.textContent );
+        }
+    }
+];
+
+/**
+ * The full argument matrix issue #32 settled, and the locale each form must
+ * produce.
+ *
+ * `NO_ARGUMENT` is distinguished from an explicit `undefined` on purpose: they
+ * must agree, and the only way to show that is to exercise both.
+ *
+ * @type {symbol}
+ */
+const NO_ARGUMENT = Symbol( 'no argument' );
+
+/** @type {Array<[string, () => unknown, string]>} */
+const ACCEPTED = [
+    [ 'no argument at all', () => NO_ARGUMENT, 'en' ],
+    [ 'a bare null', () => null, 'en' ],
+    [ 'a bare undefined', () => undefined, 'en' ],
+    [ 'an empty bag', () => ( {} ), 'en' ],
+    [ 'a bag with locale: null', () => ( { locale: null } ), 'en' ],
+    [ 'a bag with locale: undefined', () => ( { locale: undefined } ), 'en' ],
+    [ 'a locale string', () => 'it-IT', 'it-IT' ],
+    [ 'a bag with a locale string', () => ( { locale: 'it-IT' } ), 'it-IT' ],
+    [ 'a bare Intl.Locale', () => new Intl.Locale( 'it-IT' ), 'it-IT' ],
+    [ 'a bag with an Intl.Locale', () => ( { locale: new Intl.Locale( 'it-IT' ) } ), 'it-IT' ],
+    [ 'a bare Intl.Locale needing canonicalization', () => new Intl.Locale( 'EN-us' ), 'en-US' ],
+    [ 'a bag with an Intl.Locale needing canonicalization', () => ( { locale: new Intl.Locale( 'EN-us' ) } ), 'en-US' ]
+];
+
+describe.each( LOCALE_OBSERVERS )( '$name resolves the locale of every accepted argument form', ( { build, expectLocale } ) => {
+
+    it.each( ACCEPTED )( 'given %s, resolves to the expected locale', ( _label, make, expectedTag ) => {
+        const argument = make();
+        const instance = argument === NO_ARGUMENT ? build() : build( argument );
+        expectLocale( instance, expectedTag );
     } );
 
-    it( 'RiteSelect treats null as "no options given"', () => {
-        expect( new RiteSelect( null )._locale ).toBe( 'en' );
-        expect( new RiteSelect( undefined )._locale ).toBe( 'en' );
-    } );
+} );
 
-    it( 'ApiOptions rejects null', () => {
-        expect( () => new ApiOptions( null ) ).toThrow( /found type: null/ );
-    } );
-
-    it( 'LiturgyOfAnyDay treats null as "no options given", defaulting the locale to English', () => {
-        const widget = new LiturgyOfAnyDay( null );
-        expect( widget._domElement.querySelector( 'h1' ).textContent ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
-    } );
+describe.each( LOCALE_OBSERVERS )( '$name still rejects a non-Intl.Locale class instance as the bag', ( { build } ) => {
 
     /**
-     * Previously `TypeError: Cannot read properties of null (reading 'hasOwnProperty')`,
-     * despite `constructor( options = null )` advertising the no-argument form.
+     * The hole issue #31 closed, verified still closed now that ONE class is
+     * recognised. An `Intl.Locale` is a third accepted argument form, checked
+     * ahead of the plain-object test; nothing else joined it.
      */
-    it( 'LiturgyOfTheDay takes its sibling\'s behaviour: null means "no options given"', () => {
-        const widget = new LiturgyOfTheDay( null );
-        expect( widget._domElement.querySelector( 'h1' ).textContent ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
-    } );
-
-    it( 'LiturgyOfTheDay supports the no-argument form its default parameter advertises', () => {
-        expect( () => new LiturgyOfTheDay() ).not.toThrow();
+    it.each( REJECTED )( 'rejects %s', ( _label, make, matcher ) => {
+        expect( () => build( make() ) ).toThrow( matcher );
     } );
 
 } );

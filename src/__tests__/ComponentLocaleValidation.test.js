@@ -77,14 +77,24 @@ describe( 'CalendarSelect', () => {
 
     it( 'rejects a non-string locale, naming itself and the type', () => {
         expect( () => new CalendarSelect( { locale: 123 } ) )
-            .toThrow( 'CalendarSelect: Invalid type for locale, must be of type `string` but found type: number' );
+            .toThrow( 'CalendarSelect: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
     it( 'still defaults an absent locale to English', () => {
         expect( calendarSelectLocale( new CalendarSelect() ) ).toBe( 'en' );
+        expect( calendarSelectLocale( new CalendarSelect( null ) ) ).toBe( 'en' );
         expect( calendarSelectLocale( new CalendarSelect( {} ) ) ).toBe( 'en' );
         expect( calendarSelectLocale( new CalendarSelect( { locale: undefined } ) ) ).toBe( 'en' );
         expect( calendarSelectLocale( new CalendarSelect( { locale: null } ) ) ).toBe( 'en' );
+    } );
+
+    it( 'accepts an Intl.Locale, bare or inside a bag', () => {
+        expect( calendarSelectLocale( new CalendarSelect( new Intl.Locale( 'it-IT' ) ) ) ).toBe( 'it-IT' );
+        expect( calendarSelectLocale( new CalendarSelect( { locale: new Intl.Locale( 'it-IT' ) } ) ) ).toBe( 'it-IT' );
+    } );
+
+    it( 'canonicalizes an Intl.Locale built from a non-canonical tag', () => {
+        expect( calendarSelectLocale( new CalendarSelect( new Intl.Locale( 'EN-us' ) ) ) ).toBe( 'en-US' );
     } );
 
 } );
@@ -107,14 +117,21 @@ describe( 'RiteSelect', () => {
 
     it( 'rejects a non-string locale, naming itself and the type', () => {
         expect( () => new RiteSelect( { locale: 123 } ) )
-            .toThrow( 'RiteSelect: Invalid type for locale, must be of type `string` but found type: number' );
+            .toThrow( 'RiteSelect: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
     it( 'still defaults an absent locale to English', () => {
         expect( new RiteSelect()._locale ).toBe( 'en' );
+        expect( new RiteSelect( null )._locale ).toBe( 'en' );
         expect( new RiteSelect( {} )._locale ).toBe( 'en' );
         expect( new RiteSelect( { locale: undefined } )._locale ).toBe( 'en' );
         expect( new RiteSelect( { locale: null } )._locale ).toBe( 'en' );
+    } );
+
+    it( 'accepts an Intl.Locale, bare or inside a bag', () => {
+        expect( new RiteSelect( new Intl.Locale( 'it-IT' ) )._locale ).toBe( 'it-IT' );
+        expect( new RiteSelect( { locale: new Intl.Locale( 'it-IT' ) } )._locale ).toBe( 'it-IT' );
+        expect( new RiteSelect( new Intl.Locale( 'EN-us' ) )._locale ).toBe( 'en-US' );
     } );
 
 } );
@@ -142,23 +159,26 @@ describe( 'ApiOptions', () => {
 
     it( 'rejects a non-string locale, naming itself and the type', () => {
         expect( () => new ApiOptions( { locale: 123 } ) )
-            .toThrow( 'ApiOptions: Invalid type for locale, must be of type `string` but found type: number' );
+            .toThrow( 'ApiOptions: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
     /**
-     * `ApiOptions` alone defaults through a destructuring default rather than an
-     * explicit branch, so `{ locale: undefined }` and `{}` take the same path;
-     * `{ locale: null }` does NOT, and is rejected as a non-string. That asymmetry
-     * predates this refactor and is left exactly as it was.
+     * `ApiOptions` alone defaulted through a destructuring default rather than an
+     * explicit branch, so `{ locale: undefined }` and `{}` took the same path while
+     * `{ locale: null }` was rejected as a non-string. Issue #32 removed that
+     * asymmetry: all four spellings of "absent" now default.
      */
-    it( 'still defaults an absent locale to English', () => {
+    it( 'defaults an absent locale to English, however the absence is spelled', () => {
         expect( localeLabels( new ApiOptions() ) ).toContain( 'Italian' );
         expect( localeLabels( new ApiOptions( {} ) ) ).toContain( 'Italian' );
         expect( localeLabels( new ApiOptions( { locale: undefined } ) ) ).toContain( 'Italian' );
+        expect( localeLabels( new ApiOptions( { locale: null } ) ) ).toContain( 'Italian' );
+        expect( localeLabels( new ApiOptions( null ) ) ).toContain( 'Italian' );
     } );
 
-    it( 'still rejects an explicitly null locale rather than defaulting it', () => {
-        expect( () => new ApiOptions( { locale: null } ) ).toThrow( /Invalid type for locale/ );
+    it( 'accepts an Intl.Locale, bare or inside a bag', () => {
+        expect( localeLabels( new ApiOptions( new Intl.Locale( 'it-IT' ) ) ) ).toContain( 'italiano' );
+        expect( localeLabels( new ApiOptions( { locale: new Intl.Locale( 'it-IT' ) } ) ) ).toContain( 'italiano' );
     } );
 
 } );
@@ -195,7 +215,7 @@ describe( 'WebCalendar', () => {
 
     it( 'rejects a non-string locale, naming the setter and the type', () => {
         expect( () => new WebCalendar().locale( 123 ) )
-            .toThrow( 'WebCalendar.locale: Invalid type for locale, must be of type `string` but found type: number' );
+            .toThrow( 'WebCalendar.locale: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
     /**
@@ -217,6 +237,11 @@ describe( 'WebCalendar', () => {
      */
     it( 'still defaults to en-US when the setter is never called', () => {
         expect( new WebCalendar()._locale ).toBe( 'en-US' );
+    } );
+
+    it( 'accepts an Intl.Locale and stores its canonical tag', () => {
+        expect( new WebCalendar().locale( new Intl.Locale( 'it-IT' ) )._locale ).toBe( 'it-IT' );
+        expect( new WebCalendar().locale( new Intl.Locale( 'EN-us' ) )._locale ).toBe( 'en-US' );
     } );
 
 } );
@@ -254,22 +279,29 @@ describe.each( [
 
     it( 'rejects a non-string locale, naming itself and the type', () => {
         expect( () => build( { locale: 123 } ) )
-            .toThrow( `${name}: Invalid type for locale, must be of type \`string\` but found type: number` );
+            .toThrow( `${name}: Invalid type for locale, must be of type \`string\` or \`Intl.Locale\` but found type: number` );
     } );
 
     /**
-     * Both read the key with `Object.hasOwn`, so a bag WITHOUT `locale` defaults
-     * while a bag carrying `locale: null` or `locale: undefined` does not — it is
-     * passed through and rejected as a non-string. Unchanged by this refactor.
+     * Both used to read the key with `Object.hasOwn`, so a bag WITHOUT `locale`
+     * defaulted while a bag carrying `locale: null` or `locale: undefined` did
+     * not — it was passed through and rejected as a non-string. Issue #32 made
+     * the read nullish instead: the key's presence is not the question.
      */
-    it( 'still defaults an absent locale to English', () => {
+    it( 'defaults an absent locale to English, however the absence is spelled', () => {
         expect( titleText( build() ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
         expect( titleText( build( {} ) ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
         expect( titleText( build( null ) ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
+        expect( titleText( build( undefined ) ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
+        expect( titleText( build( { locale: null } ) ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
+        expect( titleText( build( { locale: undefined } ) ) ).toBe( Messages[ 'en' ][ 'LITURGY_OF_THE_DAY' ] );
     } );
 
-    it( 'still rejects an explicitly null locale inside a bag rather than defaulting it', () => {
-        expect( () => build( { locale: null } ) ).toThrow( /Invalid type for locale/ );
+    it( 'accepts an Intl.Locale, bare or inside a bag, region subtag intact', () => {
+        expect( titleText( build( new Intl.Locale( 'it-IT' ) ) ) ).toBe( Messages[ 'it' ][ 'LITURGY_OF_THE_DAY' ] );
+        expect( titleText( build( { locale: new Intl.Locale( 'it-IT' ) } ) ) ).toBe( Messages[ 'it' ][ 'LITURGY_OF_THE_DAY' ] );
+        expect( dateText( build( new Intl.Locale( 'en-GB' ) ) ) ).toBe( dateText( build( 'en-GB' ) ) );
+        expect( dateText( build( new Intl.Locale( 'en-GB' ) ) ) ).not.toBe( dateText( build( 'en-US' ) ) );
     } );
 
 } );
@@ -304,7 +336,7 @@ describe( 'ApiClient.fetchCalendar locale argument', () => {
 
     it( 'rejects a non-string locale, naming the method and the type', () => {
         expect( () => apiClient.fetchCalendar( 123 ) )
-            .toThrow( 'ApiClient.fetchCalendar: Invalid type for locale, must be of type `string` but found type: number' );
+            .toThrow( 'ApiClient.fetchCalendar: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number' );
     } );
 
     it( 'still treats null as "no locale given"', () => {
@@ -314,6 +346,11 @@ describe( 'ApiClient.fetchCalendar locale argument', () => {
 
     it( 'normalizes an underscored locale into the Accept-Language header', () => {
         apiClient.fetchCalendar( 'it_IT' );
+        expect( global.fetch.mock.calls[ 0 ][ 1 ].headers[ 'Accept-Language' ] ).toBe( 'it-IT' );
+    } );
+
+    it( 'accepts an Intl.Locale, producing the same header as the tag would', () => {
+        apiClient.fetchCalendar( new Intl.Locale( 'it-IT' ) );
         expect( global.fetch.mock.calls[ 0 ][ 1 ].headers[ 'Accept-Language' ] ).toBe( 'it-IT' );
     } );
 

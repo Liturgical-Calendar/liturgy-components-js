@@ -79,10 +79,14 @@ export function describeType( value ) {
  * Asserts that a constructor argument is a plain options object, and throws naming
  * both the rejecting component and the type it actually received.
  *
- * `null` and `undefined` are rejected here. Components that treat a missing argument
- * as "use the defaults" must therefore handle that case BEFORE calling this — which
- * keeps the decision where it belongs, since the components do not agree on it and
- * the disagreement is a live question (issue #32) rather than an oversight.
+ * `null` and `undefined` are rejected here, and that is deliberate even though every
+ * component treats them as "no options given". This function ASSERTS; it returns
+ * `void` and so cannot hand a substitute bag back to a caller that is about to
+ * destructure. Widening it to pass nullish through would therefore not spare a
+ * single call site its own branch — each would still have to turn `null` into
+ * something destructurable — while costing the guard its ability to report a
+ * nullish argument at all. {@link normalizeComponentOptions} is where the nullish
+ * case is answered, once, for all five components.
  *
  * @param {unknown} options - The constructor argument to check.
  * @param {string} componentName - The rejecting component's class name, for the message.
@@ -93,4 +97,51 @@ export function assertPlainOptions( options, componentName ) {
     if ( false === isPlainOptionsObject( options ) ) {
         throw new Error( `${componentName}: Invalid type for options, must be of type \`object\` but found type: ${describeType( options )}` );
     }
+}
+
+/**
+ * Normalises a component constructor's argument into a plain options bag.
+ *
+ * Every component that takes an options bag takes the same three forms, and used
+ * to spell the same branch out for itself — badly, and differently: `ApiOptions`
+ * rejected `null` where its four siblings defaulted it, and each of the five had
+ * to remember to run {@link assertPlainOptions} on the remaining case. Issue #32
+ * settled both questions in one direction, so the branch is written once here.
+ *
+ * The three accepted forms, tested IN THIS ORDER:
+ *
+ * 1. An `Intl.Locale` — a locale, wrapped as `{ locale }`. Tested first, and
+ *    ahead of the plain-object test rather than as an exception inside it: an
+ *    `Intl.Locale` IS an object, so the order is what makes it a recognised third
+ *    form instead of a hole in the guard. {@link isPlainOptionsObject} keeps
+ *    rejecting it, along with every other class instance, exactly as issue #31
+ *    left it — nothing reaches that test that this branch already claimed.
+ * 2. A string — a locale, likewise wrapped.
+ * 3. `null` or `undefined` — no options given, so an empty bag, from which every
+ *    caller's own defaults follow. `null` and `undefined` mean the same thing:
+ *    passing an absent value through a variable is ordinary JavaScript and is not
+ *    a different act from omitting the argument.
+ *
+ * Anything else must be a plain object, or {@link assertPlainOptions} throws.
+ *
+ * The locale is NOT validated here, and the `Intl.Locale` is NOT converted to a
+ * tag: this module knows what SHAPE an options argument may take, and
+ * `LocaleValidation` knows what a locale is. The bag returned carries whatever
+ * the caller wrote, for the caller's own `canonicalizeLocale`/`toIntlLocale`
+ * call to judge.
+ *
+ * @param {unknown} options - The constructor argument.
+ * @param {string} componentName - The rejecting component's class name, for the message.
+ * @returns {Object} A plain options bag — the caller's own, or one synthesised for a locale or an absent argument.
+ * @throws {Error} If `options` is none of the three accepted forms.
+ */
+export function normalizeComponentOptions( options, componentName ) {
+    if ( options instanceof Intl.Locale || typeof options === 'string' ) {
+        return { locale: options };
+    }
+    if ( null === options || undefined === options ) {
+        return {};
+    }
+    assertPlainOptions( options, componentName );
+    return options;
 }

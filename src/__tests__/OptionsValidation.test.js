@@ -1,12 +1,13 @@
 /**
  * Direct tests for the shared options guard.
  *
- * `assertPlainOptions` and `describeType` are shared contract across five
- * components, in the same way `resolveBase` and `assertSameBase` are, so they
- * are tested here on their own terms rather than only through their call sites.
+ * `assertPlainOptions`, `describeType` and `normalizeComponentOptions` are shared
+ * contract across five components, in the same way `resolveBase` and
+ * `assertSameBase` are, so they are tested here on their own terms rather than
+ * only through their call sites.
  */
 import { describe, it, expect } from '@jest/globals';
-import { assertPlainOptions, describeType } from '../OptionsValidation.js';
+import { assertPlainOptions, describeType, normalizeComponentOptions } from '../OptionsValidation.js';
 
 class BareThing {}
 
@@ -94,6 +95,68 @@ describe( 'assertPlainOptions', () => {
     it( 'names the component in the message, so the caller knows which constructor rejected', () => {
         expect( () => assertPlainOptions( 123, 'CalendarSelect' ) )
             .toThrow( 'CalendarSelect: Invalid type for options, must be of type `object` but found type: number' );
+    } );
+
+} );
+
+/**
+ * Issue #32 settled the two questions the components used to answer differently:
+ * an `Intl.Locale` IS a locale, and `null` means "not given" exactly as
+ * `undefined` does. Both answers live in this one normaliser rather than in five
+ * hand-rolled constructor branches.
+ *
+ * What must NOT change is the hole issue #31 closed. `assertPlainOptions` still
+ * rejects an `Intl.Locale`, as its own suite above pins; the normaliser claims it
+ * BEFORE reaching that test, as a recognised third argument form, so no other
+ * class instance gains entry alongside it.
+ */
+describe( 'normalizeComponentOptions', () => {
+
+    it( 'wraps a locale string as { locale }', () => {
+        expect( normalizeComponentOptions( 'it-IT', 'Component' ) ).toEqual( { locale: 'it-IT' } );
+    } );
+
+    it( 'wraps an Intl.Locale as { locale }, unconverted', () => {
+        const locale = new Intl.Locale( 'it-IT' );
+        const normalized = normalizeComponentOptions( locale, 'Component' );
+        expect( normalized.locale ).toBe( locale );
+    } );
+
+    it.each( [ [ 'null', null ], [ 'undefined', undefined ] ] )(
+        'returns an empty bag for %s, so the caller\'s own defaults apply',
+        ( _label, value ) => {
+            expect( normalizeComponentOptions( value, 'Component' ) ).toEqual( {} );
+        }
+    );
+
+    it( 'returns a plain bag unchanged, by identity', () => {
+        const options = { locale: 'it', class: 'form-select' };
+        expect( normalizeComponentOptions( options, 'Component' ) ).toBe( options );
+    } );
+
+    it( 'returns a null-prototype bag unchanged, by identity', () => {
+        const options = Object.assign( Object.create( null ), { locale: 'it' } );
+        expect( normalizeComponentOptions( options, 'Component' ) ).toBe( options );
+    } );
+
+    /**
+     * The order that matters: `Intl.Locale` is tested ahead of the plain-object
+     * check, so it is a recognised form rather than an exception carved into the
+     * guard. Every other class instance still falls through to the guard.
+     */
+    it.each( [
+        [ 'another class instance', () => new BareThing(), /found type: BareThing/ ],
+        [ 'an array', () => [ 'en' ], /found type: array/ ],
+        [ 'a number', () => 123, /found type: number/ ],
+        [ 'a boxed String', () => new String( 'it' ), /found type: String/ ],
+        [ 'a Date', () => new Date(), /found type: Date/ ]
+    ] )( 'still rejects %s', ( _label, make, matcher ) => {
+        expect( () => normalizeComponentOptions( make(), 'Component' ) ).toThrow( matcher );
+    } );
+
+    it( 'names the component when it rejects', () => {
+        expect( () => normalizeComponentOptions( new BareThing(), 'ApiOptions' ) )
+            .toThrow( 'ApiOptions: Invalid type for options, must be of type `object` but found type: BareThing' );
     } );
 
 } );

@@ -3,6 +3,10 @@
 The library provides two components for displaying liturgical events: `LiturgyOfTheDay` for today's liturgy
 and `LiturgyOfAnyDay` for browsing any date.
 
+Both constructors take the same argument as the other components: a locale — a `string` or an `Intl.Locale`,
+interchangeably — or an options object carrying one as its `locale`. `null` and `undefined` mean "not supplied"
+in either position and take the default of `'en'`; anything else is rejected, naming the type it found.
+
 ## LiturgyOfTheDay
 
 Displays the liturgical events for today's date.

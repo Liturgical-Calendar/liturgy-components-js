@@ -15,7 +15,7 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
-import { assertPlainOptions } from '../OptionsValidation.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
 
@@ -141,25 +141,25 @@ export default class ApiOptions {
     /**
      * Constructs an ApiOptions form.
      *
-     * @param {string|{locale?: string, apiClient?: import('../ApiClient/ApiClient.js').default}} [options] - A locale string,
-     *        or an options object. `apiClient` binds this form to that client's API base;
-     *        omitting it binds to the first base registered.
-     * @throws {Error} If `options` is neither a string nor a plain object, if the locale
-     *         is not a string or is invalid, or if no API base is available.
+     * @param {string|Intl.Locale|{locale?: string|Intl.Locale, apiClient?: import('../ApiClient/ApiClient.js').default}} [options] - A locale
+     *        string, an `Intl.Locale`, or an options object. `null` and `undefined` both mean "no
+     *        options given" and take the defaults. `apiClient` binds this form to that client's API
+     *        base; omitting it binds to the first base registered.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish,
+     *         if the locale is of the wrong type or is invalid, or if no API base is available.
      */
     constructor( options = 'en' ) {
         // Validated before the base is resolved: a caller who passed the wrong KIND
         // of argument needs to hear about that, not about the page's base registry.
-        if ( typeof options === 'string' ) {
-            options = { locale: options };
-        }
-        else {
-            // `null` is rejected here rather than defaulted, unlike in `CalendarSelect`
-            // and `RiteSelect`. See issue #32 — the divergence is deliberate and pinned
-            // by test, not an oversight of this refactor.
-            assertPlainOptions( options, 'ApiOptions' );
-        }
-        const { locale = 'en', apiClient = null } = options;
+        // `null` used to be rejected here where `CalendarSelect` and `RiteSelect`
+        // defaulted it; issue #32 settled that divergence in favour of defaulting,
+        // and the shared normaliser is where it is now settled for all five.
+        options = normalizeComponentOptions( options, 'ApiOptions' );
+        // `??` rather than a destructuring default, which only answers `undefined`:
+        // `{ locale: null }` is "no locale supplied" just as much as `{}` is, and
+        // spreading a bag whose `locale` happens to be unset must not throw.
+        const { locale: inputLocale, apiClient = null } = options;
+        const locale = inputLocale ?? 'en';
         // Both locale checks now precede `resolveBase`, where previously only the
         // type check did: the comment above applies just as much to a malformed tag
         // as to a wrong-typed one. A caller who wrote `new ApiOptions( 'not a locale' )`

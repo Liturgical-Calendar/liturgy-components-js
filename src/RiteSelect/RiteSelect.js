@@ -1,7 +1,7 @@
 import Messages from '../Messages.js';
 import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
-import { assertPlainOptions } from '../OptionsValidation.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 
 /**
@@ -30,25 +30,17 @@ export default class RiteSelect {
     #nameSet      = false;
 
     /**
-     * @param {string|object} [options='en'] Either a locale string, or an options object.
-     * @param {string} [options.locale='en'] The locale to use for the rite option labels.
+     * @param {string|Intl.Locale|object} [options='en'] A locale string, an `Intl.Locale`, or an options object.
+     *        `null` and `undefined` both mean "no options given" and take the defaults.
+     * @param {string|Intl.Locale} [options.locale='en'] The locale to use for the rite option labels.
      * @param {string} [options.id] The id attribute for the select element.
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
-     * @throws {Error} If `options` is neither a string nor a plain object.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
      */
     constructor( options = 'en' ) {
-        if ( typeof options === 'string' ) {
-            options = { locale: options };
-        }
-        else if ( null === options || typeof options === 'undefined' ) {
-            // As in `CalendarSelect`: "no options given, use the defaults". See issue #32.
-            options = { locale: 'en' };
-        }
-        else {
-            assertPlainOptions( options, 'RiteSelect' );
-        }
+        options = normalizeComponentOptions( options, 'RiteSelect' );
 
         const { locale: inputLocale, id, name } = options;
         if ( inputLocale !== undefined && inputLocale !== null ) {

@@ -22,11 +22,14 @@ riteSelect.appendTo('#riteOptions');
 
 ## Constructor Options
 
-The constructor accepts a locale string or an options object:
+The constructor accepts a locale, an options object, or nothing at all:
 
 ```javascript
 // With locale string
 const riteSelect = new RiteSelect('it-IT');
+
+// With an Intl.Locale
+const riteSelect = new RiteSelect(new Intl.Locale('it-IT'));
 
 // With options object
 const riteSelect = new RiteSelect({
@@ -36,6 +39,10 @@ const riteSelect = new RiteSelect({
     name: 'selected_rite'
 });
 ```
+
+A locale may be given as a `string` or as an `Intl.Locale`, interchangeably, both as the bare argument and as
+the `locale` property. `null` and `undefined` both mean "not supplied" in either position and take the default
+of `'en'`; anything else is rejected, naming the type it found.
 
 The select is populated with one `<option>` per value of the `Rite` enum (`roman` and `ambrosian`),
 labeled with the `RITE_ROMAN` / `RITE_AMBROSIAN` message keys for the given locale. It defaults to

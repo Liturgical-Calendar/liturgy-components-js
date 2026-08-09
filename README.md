@@ -172,7 +172,8 @@ export {
 - **No build step required** - Use directly from CDN with ES6 imports
 - **Chainable configuration** - Fluent API for all components
 - **Automatic caching** - Reduces redundant API requests
-- **Locale support** - 13 languages supported
+- **Locale support** - 13 languages supported; every component takes a locale as either a `string` or an
+  `Intl.Locale`, and treats `null` and `undefined` alike as "not supplied"
 - **Bootstrap compatible** - Easy integration with Bootstrap 5
 - **TypeScript definitions** - Full type support in `dist/index.d.ts`
 

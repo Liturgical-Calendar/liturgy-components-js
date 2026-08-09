@@ -87,14 +87,15 @@ Three narrower breaks, listed for completeness:
   `ApiOptions/Input/index.js`. Construct an `ApiOptions`, which supplies the base itself, or pass one:
   `new LocaleInput( locale, apiClient.base )`.
 - `CalendarSelect`, `RiteSelect`, `LiturgyOfTheDay` and `LiturgyOfAnyDay` now reject an options argument that is
-  neither a string nor a plain object, as `ApiOptions` already did. Each of the four previously accepted any
-  class instance and then took every default, English included: `new CalendarSelect( new Intl.Locale( 'it' ) )`
-  built an English select and warned about nothing, because an `Intl.Locale` shares not one property name with
-  `locale`, `id`, `filter` or any other option and so destructures to `{}`. The test is by prototype, so any
-  class instance is refused and a null-prototype object still passes; the message names the component and the
-  type it found — ``CalendarSelect: Invalid type for options, must be of type `object` but found type: Locale``.
-  A locale string or a genuine options object is unaffected. What each component makes of `null` is deliberately
-  unchanged, and the five still do not agree about it — that is issue #32, left open rather than settled here.
+  none of a string, an `Intl.Locale`, a plain object or nullish, as `ApiOptions` already did. Each of the four
+  previously accepted any class instance and then took every default, English
+  included: `new CalendarSelect( new Date() )` built an English select and warned about nothing, because a
+  `Date` shares not one property name with `locale`, `id`, `filter` or any other option and so destructures to
+  `{}`. The test is by prototype, so any class instance is refused and a null-prototype object still passes; the
+  message names the component and the type it found —
+  ``CalendarSelect: Invalid type for options, must be of type `object` but found type: Date``. A locale string
+  or a genuine options object is unaffected, and `Intl.Locale` is a recognized form in its own right rather than
+  an exception to this guard — see **Added** below.
 
 And one entry that breaks no code, because it changes none — what narrows is what the package says it needs:
 
@@ -128,6 +129,46 @@ And one entry that breaks no code, because it changes none — what narrows is w
   see `examples/CompareBases/`.
 - An options-object form for the `ApiOptions` constructor: `new ApiOptions( { locale, apiClient } )`, alongside
   the locale string it has always accepted.
+- **`Intl.Locale` is accepted wherever a locale string is** — as the bare constructor argument, as the `locale`
+  property of an options object, and as the argument to `WebCalendar.locale()`, `ApiClient.fetchCalendar()`,
+  `fetchNationalCalendar()` and `fetchDiocesanCalendar()`. It was previously refused everywhere except
+  `LocaleInput`, which requires one, so a caller holding the more precise type had to downgrade it to a string
+  for the library that already uses it internally:
+
+  ```js
+  const locale = new Intl.Locale( 'it-IT' );
+
+  new CalendarSelect( String( locale ) );          // Before
+  new CalendarSelect( locale );                    // After
+  new LiturgyOfTheDay( { locale } );               // After — inside a bag too
+  webCalendar.locale( locale );                    // After
+  ```
+
+  The three forms disambiguate without ambiguity, and are tested in this order: an `Intl.Locale` is a locale, any
+  other object is an options bag, a string is a locale. It is a recognized third form checked _before_ the
+  plain-object test, not an exception carved into that test — every other class instance is still rejected
+  exactly as it was. The value stored is the locale's canonical tag, so an `Intl.Locale` and the string it
+  stringifies to are interchangeable; extensions survive, including ones supplied as constructor options and
+  therefore absent from the tag as written (`new Intl.Locale( 'en', { calendar: 'buddhist' } )` resolves to
+  `en-u-ca-buddhist`). Passing a string is unchanged in every respect.
+
+- **`null` now means "not given" wherever `undefined` does**, both as the options argument itself and as the
+  `locale` inside a bag. The five component constructors used to run three different policies between them:
+
+  ```js
+  new CalendarSelect( null );                 // Before: defaults — After: unchanged
+  new ApiOptions( null );                     // Before: threw    — After: defaults
+  new ApiOptions( { locale: null } );         // Before: threw    — After: defaults
+  new LiturgyOfTheDay( { locale: null } );    // Before: threw    — After: defaults
+  new LiturgyOfTheDay( { locale: undefined } ); // Before: threw  — After: defaults
+  ```
+
+  The last of those is the one worth calling out: the widgets read the option with `Object.hasOwn`, which sees
+  the key whatever its value, so spreading a bag whose `locale` happened to be unset threw. That is ordinary
+  JavaScript and now behaves as an omission does. This is a widening only — every call that worked before works
+  unchanged, and only calls that used to throw have new behaviour. An invalid locale still throws: "absent" and
+  "unparseable" remain different things, and neither `null` nor `undefined` will ever silence a bad tag.
+
 - An `apiClient` option on `CalendarSelect` and `ApiOptions`, binding the component to that client's base.
   Omitting it binds to the first base registered, so existing single-base code is unaffected. Once more than one
   base is registered, an unbound component warns once per component class and names the base it chose.
@@ -184,10 +225,10 @@ And one entry that breaks no code, because it changes none — what narrows is w
   default, evicted least-recently-**read** first, with optional expiry. Both are configured through
   `ApiBase.cacheLimits( { maxEntries, ttl } )`. The cache was previously a single unbounded static map shared by
   every client. `ApiClient.clearCache()` still works and now clears every registered base.
-- `ApiOptions` validates its constructor argument, and says what was wrong with it. Anything that is neither a
-  locale string nor a plain object is rejected with a message ending in `found type: Locale` — naming the type,
-  so that the plausible slip `new ApiOptions( new Intl.Locale( 'it' ) )` is recognizable. That same call
-  previously failed with `TypeError: locale.replaceAll is not a function`, which named neither the argument nor
+- `ApiOptions` validates its constructor argument, and says what was wrong with it. Anything that is none of a
+  locale string, an `Intl.Locale`, a plain object or nullish is rejected with a message naming the type it
+  found, so that a slip like `new ApiOptions( new Date() )` is recognizable. That same call previously failed
+  with `TypeError: locale.replaceAll is not a function`, which named neither the argument nor
   the component. An invalid locale string likewise now reads `ApiOptions: Invalid locale: not a locale` rather
   than the `RangeError` that `Intl.getCanonicalLocales` raises. That guard is now one shared implementation
   rather than six divergent ones, and every component taking an options bag uses it — see the third narrower
@@ -207,13 +248,13 @@ And one entry that breaks no code, because it changes none — what narrows is w
   // After
   CalendarSelect: Invalid locale: not a locale
   WebCalendar.locale: Invalid locale: not a locale
-  LiturgyOfTheDay: Invalid type for locale, must be of type `string` but found type: Locale
+  LiturgyOfTheDay: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: Date
   ```
 
   The tag named is the normalized one, as it always was for the four that named a tag at all —
   `new ApiOptions( 'it__IT' )` reports `it--IT`, which is what `Intl` was handed — and the type comes from the
-  same `describeType` the options guard uses, so an `Intl.Locale` passed where a locale string belongs reads
-  `found type: Locale` rather than `found type: object`. `WebCalendar.locale` is prefixed with the method
+  same `describeType` the options guard uses, so a class instance passed where a locale belongs reads
+  `found type: Date` rather than `found type: object`. `WebCalendar.locale` is prefixed with the method
   rather than the class because it is a setter a caller invokes by name. No message text is API: match on the
   thrown `Error`, never on what it says. One ordering change comes with this: `ApiOptions` validates the locale
   before resolving its API base, where previously only the type check did, so

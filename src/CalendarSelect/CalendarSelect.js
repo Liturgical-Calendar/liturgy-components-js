@@ -3,7 +3,7 @@ import Messages from '../Messages.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
-import { assertPlainOptions } from '../OptionsValidation.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
 
@@ -122,8 +122,8 @@ export default class CalendarSelect {
     /**
      * Constructor for the CalendarSelect class.
      *
-     * @param {Object|string} [options] - The options object or locale string. An options object can have the following properties:
-     *                                  - `locale`: The locale to use for the `CalendarSelect` UI elements.
+     * @param {Object|string|Intl.Locale} [options] - The options object, a locale string, or an `Intl.Locale`. An options object can have the following properties:
+     *                                  - `locale`: The locale to use for the `CalendarSelect` UI elements, as a string or an `Intl.Locale`.
      *                                  - `id`: The ID of the `CalendarSelect` DOM input.
      *                                  - `class`: The class name for the `CalendarSelect` DOM input.
      *                                  - `name`: The name for the `CalendarSelect` DOM input.
@@ -135,27 +135,17 @@ export default class CalendarSelect {
      *                                  - `label`: The label for the `CalendarSelect` DOM input (an object with a `text` property, and optionally `class` and `id` properties).
      *                                  - `wrapper`: The wrapper for the `CalendarSelect` component (an object with an `as` property, and optionally `class` and `id` properties).
      *                                  - `apiClient`: The `ApiClient` whose API base this select should read its calendars from. When omitted, the first registered base is used, and a warning is emitted if more than one base is registered.
-     *                                  If a string is passed, it is expected to be the locale code to use for the `CalendarSelect` UI elements.
-     *                                  The locale should be a valid ISO 639-1 code that can be parsed by the Intl.getCanonicalLocales function.
+     *                                  If a string or an `Intl.Locale` is passed, it is taken as the locale to use for the `CalendarSelect` UI elements.
+     *                                  A locale string should be a valid tag that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
+     *                                  `null` and `undefined` both mean "no options given": the defaults are used, and the locale falls back to `'en'`.
      *
-     * @throws {Error} If `options` is neither a string nor a plain object — a class instance such as
-     *                 an `Intl.Locale` is rejected, not silently destructured to nothing.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish — any
+     *                 OTHER class instance is rejected, not silently destructured to nothing.
      * @throws {Error} If the locale is invalid.
      */
     constructor(options) {
-        if (typeof options === 'string') {
-            options = { locale: options };
-        }
-        else if (null === options || typeof options === 'undefined') {
-            // Kept as "no options given, use the defaults". Whether it SHOULD mean that
-            // rather than "wrong argument", as `ApiOptions` has it, is issue #32; the
-            // guard below deliberately does not decide it.
-            options = { locale: 'en' };
-        }
-        else {
-            assertPlainOptions(options, 'CalendarSelect');
-        }
+        options = normalizeComponentOptions(options, 'CalendarSelect');
         const { locale: inputLocale, id, name, filter, after, label, wrapper, allowNull, disabled, rite, apiClient } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             this.#locale = canonicalizeLocale(inputLocale, 'CalendarSelect');

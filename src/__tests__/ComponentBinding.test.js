@@ -276,8 +276,14 @@ describe( 'ApiOptions rejects an argument that is neither a locale string nor an
         ApiBase.fromMetadata( DEV, FULL_METADATA );
     } );
 
-    it( 'rejects null', () => {
-        expect( () => new ApiOptions( null ) ).toThrow( BAD_OPTIONS );
+    /**
+     * `null` used to be rejected here, alone among the five components. Issue #32
+     * settled that in the other direction: `null` and `undefined` alike mean "no
+     * options given", so the form is accepted and the defaults apply — including
+     * the fallback base, which is what this suite is really about.
+     */
+    it( 'accepts null as "no options given", binding to the fallback base', () => {
+        expect( new ApiOptions( null )._base ).toBe( ApiBase.resolve( DEV ) );
     } );
 
     it( 'rejects a number', () => {
@@ -289,18 +295,26 @@ describe( 'ApiOptions rejects an argument that is neither a locale string nor an
     } );
 
     /**
-     * The realistic slip, and the one a bare `typeof options === 'object'` check
-     * lets through: `LocaleInput` DOES take an `Intl.Locale`, so passing one here
-     * is an easy mistake. Left unchecked it destructures to no `locale` and no
-     * `apiClient`, silently building an English form on the fallback base.
+     * The other half of issue #32: an `Intl.Locale` is now a locale rather than a
+     * mistyped options bag. It carries no `apiClient`, so the fallback base still
+     * applies — and unlike the pre-#31 behaviour that motivated rejecting it, the
+     * locale is now actually USED rather than silently discarded.
      */
-    it( 'rejects an Intl.Locale', () => {
-        expect( () => new ApiOptions( new Intl.Locale( 'it' ) ) ).toThrow( BAD_OPTIONS );
+    it( 'accepts a bare Intl.Locale as the locale, on the fallback base', () => {
+        const apiOptions = new ApiOptions( new Intl.Locale( 'it-IT' ) );
+        expect( apiOptions._base ).toBe( ApiBase.resolve( DEV ) );
+        const labels = [ ...apiOptions._localeInput._domElement.options ].map( option => option.textContent );
+        expect( labels ).toContain( 'italiano' );
     } );
 
-    it( 'rejects a non-string locale inside a valid options object', () => {
-        expect( () => new ApiOptions( { locale: 123 } ) ).toThrow( /Invalid type for locale, must be of type `string`/ );
-        expect( () => new ApiOptions( { locale: new Intl.Locale( 'it' ) } ) ).toThrow( /Invalid type for locale/ );
+    it( 'rejects any OTHER class instance', () => {
+        class Whatever {}
+        expect( () => new ApiOptions( new Whatever() ) ).toThrow( BAD_OPTIONS );
+    } );
+
+    it( 'rejects a non-string, non-Intl.Locale locale inside a valid options object', () => {
+        expect( () => new ApiOptions( { locale: 123 } ) ).toThrow( /Invalid type for locale, must be of type `string` or `Intl.Locale`/ );
+        expect( () => new ApiOptions( { locale: [ 'it' ] } ) ).toThrow( /Invalid type for locale/ );
     } );
 
     it( 'still accepts an options object carrying only an apiClient', () => {

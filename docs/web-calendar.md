@@ -112,6 +112,12 @@ webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 | `gradeDisplay(display)` | `GradeDisplay.FULL`, `ABBREVIATED`                       | Liturgical grade display                           |
 | `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style                          |
 | `rite(rite)`            | `Rite.ROMAN`, `Rite.AMBROSIAN`                           | Rite the calendar belongs to, used for the caption |
+| `locale(locale)`        | a `string` or an `Intl.Locale`                           | Locale for month and date formatting               |
+
+`locale()` accepts a BCP 47 tag or an `Intl.Locale`, interchangeably, and stores the canonical form — so
+`_locale` reads back `'en-US'` for `'EN-us'`, `'en_us'` or `new Intl.Locale('EN-us')` alike. Underscores are
+normalized to hyphens. An unparseable, empty or blank tag throws, naming the setter. It defaults to `'en-US'`
+when never called.
 
 `rite()` affects only the caption of a **rite-level** calendar, which is otherwise indistinguishable from
 the General Roman calendar: the payload carries no rite field and has neither a `national_calendar` nor a

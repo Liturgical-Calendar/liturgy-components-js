@@ -18,11 +18,14 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
 
 ## Constructor Options
 
-The constructor accepts a locale string or an options object:
+The constructor accepts a locale, an options object, or nothing at all:
 
 ```javascript
 // With locale string
 const calendarSelect = new CalendarSelect('en-US');
+
+// With an Intl.Locale
+const calendarSelect = new CalendarSelect(new Intl.Locale('en-US'));
 
 // With options object
 const calendarSelect = new CalendarSelect({
@@ -39,6 +42,12 @@ const calendarSelect = new CalendarSelect({
     apiClient // binds this select to that client's API base
 });
 ```
+
+Wherever a locale is taken — as the bare argument or as the `locale` property — a `string` and an `Intl.Locale`
+are equally accepted and produce the same result, since the tag stored is the locale's canonical form. `null`
+and `undefined` both mean "not supplied": as the argument itself or as the `locale` property, either one takes
+the default of `'en'`. Anything else — an array, a number, or any class instance other than `Intl.Locale` — is
+rejected, naming the type it found. An unparseable locale still throws; "absent" and "invalid" are not the same.
 
 The `apiClient` option binds the select to the API base of that client, so it lists that API's calendars.
 Omitting it binds to the first base initialized — which is every single-base page — and warns once, naming the

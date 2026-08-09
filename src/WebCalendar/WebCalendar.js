@@ -710,8 +710,11 @@ export default class WebCalendar {
      * The tag is normalized (`_` to `-`) and canonicalized before it is stored, so
      * `'en_us'` and `'EN-us'` both become `'en-US'`.
      *
-     * @param {string} locale - The locale identifier to set, following BCP 47 language tag format.
-     * @throws {Error} If the provided locale is not a string, is empty or blank, or is an invalid locale identifier.
+     * An `Intl.Locale` is accepted in place of the tag, and unwrapped to its
+     * canonical string by the shared helper before anything else happens.
+     *
+     * @param {string|Intl.Locale} locale - The locale to set, as a BCP 47 language tag or an `Intl.Locale`.
+     * @throws {Error} If the provided locale is neither a string nor an `Intl.Locale`, is empty or blank, or is an invalid locale identifier.
      * @returns {WebCalendar} The current instance of the class for method chaining.
      */
     locale(locale) {

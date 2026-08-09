@@ -296,7 +296,7 @@ export default class ApiClient {
    *
    * @param {'national'|'diocesan'} category - The calendar category
    * @param {string} calendar_id - The calendar identifier
-   * @param {string} locale - The locale to resolve
+   * @param {string|Intl.Locale} locale - The locale to resolve
    * @returns {string} The resolved locale (JS format with hyphen) or the current Accept-Language header value
    * @private
    */
@@ -308,8 +308,14 @@ export default class ApiClient {
       return resolvedLocale;
     }
 
-    if (typeof locale === 'string' && locale !== '') {
-      const phpLocale = locale.replace(/-/g, '_');
+    // An `Intl.Locale` is accepted here as everywhere else a locale is (issue #32).
+    // Unwrapped rather than run through `canonicalizeLocale`: unlike `fetchCalendar`,
+    // this resolver does not THROW on a locale it cannot use — an unusable one simply
+    // leaves the header as it was — and routing it through the throwing helper would
+    // change that contract for strings too.
+    const tag = locale instanceof Intl.Locale ? locale.toString() : locale;
+    if (typeof tag === 'string' && tag !== '') {
+      const phpLocale = tag.replace(/-/g, '_');
       const jsLocale = phpLocale.replace(/_/g, '-');
       const metadataArray = category === 'national'
         ? this.#base.metadata.national_calendars
@@ -414,7 +420,7 @@ export default class ApiClient {
   /**
    * Fetches the General Roman Calendar data from the API for a given year.
    *
-   * @param {string|null} locale The locale for the General Roman Calendar. If null, the default or last set locale is used.
+   * @param {string|Intl.Locale|null} locale The locale for the General Roman Calendar, as a tag or an `Intl.Locale`. If null, the default or last set locale is used.
    *
    * This method sends a POST request to the calendar endpoint with the configured parameters.
    * The year parameter is extracted from the request body and placed in the URL path.
@@ -438,8 +444,8 @@ export default class ApiClient {
    *                                                           the request fails, after emitting
    *                                                           `calendarFetchFailed`.
    * @throws {Error} Synchronously, when the API cannot serve the current rite, or when `locale` is
-   *                 given as anything other than a parseable locale tag — a non-string, an empty or
-   *                 blank string, or an unparseable one. Nothing is thrown for a well-formed locale
+   *                 given as anything other than a parseable locale tag or an `Intl.Locale` — a value
+   *                 that is neither, an empty or blank string, or an unparseable one. Nothing is thrown for a well-formed locale
    *                 the calendar does not support: the request is made with the locale already in
    *                 force.
    */
@@ -541,7 +547,7 @@ export default class ApiClient {
   /**
    * Fetches a national liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the national calendar to fetch
-   * @param {string} [locale] - The locale for the national calendar
+   * @param {string|Intl.Locale} [locale] - The locale for the national calendar
    * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to THIS request's calendar
    *                                                           data — unless a newer request has
    *                                                           superseded it while it was in
@@ -653,7 +659,7 @@ export default class ApiClient {
   /**
    * Fetches a diocesan liturgical calendar from the API
    * @param {string} calendar_id - The identifier for the diocesan calendar to fetch
-   * @param {string} [locale] - The locale for the diocesan calendar
+   * @param {string|Intl.Locale} [locale] - The locale for the diocesan calendar
    * @returns {Promise<import('../typedefs.js').CalendarData>} Resolves to THIS request's calendar
    *                                                           data — unless a newer request has
    *                                                           superseded it while it was in

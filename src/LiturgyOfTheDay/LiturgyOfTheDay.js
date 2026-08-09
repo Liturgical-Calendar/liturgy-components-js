@@ -2,7 +2,7 @@ import Messages from '../Messages.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
-import { assertPlainOptions } from '../OptionsValidation.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfTheDay {
@@ -144,34 +144,21 @@ export default class LiturgyOfTheDay {
     /**
      * Constructs a LiturgyOfTheDay object.
      *
-     * @param {string|Object|null} [options=null] - The locale to use for formatting the date and the titles.
-     *                                  The locale should be a valid string that can be parsed by the Intl.getCanonicalLocales function.
+     * @param {string|Intl.Locale|Object|null} [options=null] - The locale to use for formatting the date and the titles,
+     *                                  as a string or an `Intl.Locale`, or an options object carrying one as its `locale`.
+     *                                  A locale string should be a valid tag that can be parsed by the Intl.getCanonicalLocales function.
      *                                  If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      *                                  The default is 'en' (English). Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
+     *                                  `null` and `undefined` mean "not supplied" both as the argument itself and as the `locale` property.
      *
-     * @throws {Error} If `options` is neither a string nor a plain object, or if the locale is invalid.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish, or if the locale is invalid.
      */
     constructor(options = null) {
-        if (typeof options === 'string') {
-            this.#validateLocale(options);
-        }
-        else if (null === options || typeof options === 'undefined') {
-            // `typeof null === 'object'`, so without this branch the no-argument form
-            // that `options = null` advertises fell through to the option reads below
-            // and threw a `TypeError` — `Object.hasOwn( null, … )` still would. It is given its
-            // sibling's behaviour rather than a throw: a crash is not behaviour worth
-            // preserving, and matching `LiturgyOfAnyDay` leaves issue #32 free to decide
-            // what `null` should mean across all five components at once.
-            this.#validateLocale('en');
-        }
-        else {
-            assertPlainOptions(options, 'LiturgyOfTheDay');
-            if (Object.hasOwn(options, 'locale')) {
-                this.#validateLocale(options.locale);
-            } else {
-                this.#validateLocale('en');
-            }
-        }
+        options = normalizeComponentOptions(options, 'LiturgyOfTheDay');
+        // A nullish READ, not `Object.hasOwn`: the key's presence is not the question.
+        // `Object.hasOwn` sees `locale` whatever its value, so `{ ...defaults, locale }`
+        // with an unset `locale` — ordinary JavaScript — used to throw here. Issue #32.
+        this.#validateLocale(options.locale ?? 'en');
         const now = new Date();
         this.#date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
         this.#domElement = document.createElement('div');
@@ -237,7 +224,7 @@ export default class LiturgyOfTheDay {
      * If the locale string contains an underscore, the underscore will be replaced with a hyphen.
      * Locales with region extensions are also supported, such as 'en-US', 'en-GB', 'en-CA', etc.
      *
-     * @param {string} locale - The locale string to validate.
+     * @param {string|Intl.Locale} locale - The locale to validate.
      * @throws {Error} If the locale is invalid.
      * @private
      */

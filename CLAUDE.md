@@ -211,6 +211,26 @@ against those standards. Keep the options as CLI flags in the scripts, and keep 
 | `LiturgyOfAnyDay` | Widget displaying liturgy for any selected date |
 | `PathBuilder`     | Builds and displays API request URLs            |
 
+### How components take a locale
+
+One contract, everywhere a locale is accepted — the bare constructor argument, the `locale` property of an
+options bag, `WebCalendar.locale()`, and the `locale` argument of the `ApiClient` fetch methods:
+
+- **`string` or `Intl.Locale`, interchangeably.** The tag stored is the locale's canonical form, so
+  `new CalendarSelect('it-IT')` and `new CalendarSelect(new Intl.Locale('it-IT'))` are the same call. Unicode
+  extensions survive, including ones given as `Intl.Locale` constructor options rather than written in the tag.
+- **`null` and `undefined` both mean "not supplied"**, as the argument itself and as the `locale` property
+  alike, and take the component's default (`'en'` for the five constructors, `'en-US'` for `WebCalendar`).
+- **Anything else is rejected**, naming the component and the type it found — an array, a number, or any class
+  instance other than `Intl.Locale`. The three accepted forms disambiguate in this order: `Intl.Locale` is a
+  locale, any other object is an options bag, a string is a locale.
+- **An unparseable locale throws** and is never silently replaced with English. "Absent" and "invalid" are
+  different things.
+
+The shared implementations are `src/LocaleValidation.js` (what a locale is) and `src/OptionsValidation.js`
+(what shape an options argument may take). Neither is exported from `src/index.js`: they are internal contract
+between the components, not public API.
+
 ## ApiClient
 
 The `ApiClient` is the central hub for API communication. It fetches calendar data and emits events that other components listen to.

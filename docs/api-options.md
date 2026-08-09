@@ -11,11 +11,18 @@ const apiOptions = new ApiOptions('en-US');
 
 // Or with an options object, binding the form to a specific API base
 const bound = new ApiOptions({ locale: 'en-US', apiClient });
+
+// A locale may also be given as an Intl.Locale, bare or inside the bag
+const italian = new ApiOptions(new Intl.Locale('it-IT'));
 ```
 
-The constructor accepts a locale string or a plain options object with `locale` and `apiClient` keys, and
-throws for anything else, naming the type it found — so `new ApiOptions(new Intl.Locale('it'))` reads
-`found type: Locale` instead of the `TypeError: locale.replaceAll is not a function` it raised before 2.0.0.
+The constructor accepts a locale — a `string` or an `Intl.Locale`, interchangeably — or a plain options object
+with `locale` and `apiClient` keys, and throws for anything else, naming the type it found. So
+`new ApiOptions(new Date())` reads `found type: Date` instead of the
+`TypeError: locale.replaceAll is not a function` it raised before 2.0.0.
+
+`null` and `undefined` both mean "not supplied", as the argument itself and as the `locale` property alike, and
+take the default of `'en'`. An unparseable locale still throws: "absent" and "invalid" are different things.
 
 The `apiClient` option binds the form to that client's API base, which is where `_localeInput` reads the
 supported locales from. Omitting it binds to the first base initialized, and warns once if more than one is

@@ -103,18 +103,82 @@ describe( 'canonicalizeLocale', () => {
             [ 'a plain object', {}, 'Object' ]
         ] )( 'rejects %s, naming the component and the type found', ( _label, value, typeName ) => {
             expect( () => canonicalizeLocale( value, 'RiteSelect' ) )
-                .toThrow( `RiteSelect: Invalid type for locale, must be of type \`string\` but found type: ${typeName}` );
+                .toThrow( `RiteSelect: Invalid type for locale, must be of type \`string\` or \`Intl.Locale\` but found type: ${typeName}` );
         } );
 
         /**
-         * The realistic slip, given that `LocaleInput` DOES take an `Intl.Locale`.
-         * Whether the components should accept one as a locale argument is issue
-         * #32; until it is answered they do not, and the message says so usefully.
+         * Every OTHER class instance is still named by its constructor rather than
+         * the useless `object` — the message issue #31 introduced, unchanged except
+         * for now advertising the second accepted form.
          */
-        it( 'names an Intl.Locale by its constructor rather than `object`', () => {
-            expect( () => canonicalizeLocale( new Intl.Locale( 'it' ), 'ApiOptions' ) )
-                .toThrow( 'ApiOptions: Invalid type for locale, must be of type `string` but found type: Locale' );
+        it( 'names another class instance by its constructor rather than `object`', () => {
+            class Whatever {}
+            expect( () => canonicalizeLocale( new Whatever(), 'ApiOptions' ) )
+                .toThrow( 'ApiOptions: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: Whatever' );
         } );
+
+        /**
+         * A `String` OBJECT is not a string, and is not an `Intl.Locale` either.
+         * It is rejected like any other instance rather than coerced: silently
+         * accepting one would be the "accept anything object-shaped" behaviour
+         * issue #31 removed.
+         */
+        it( 'rejects a boxed String object', () => {
+            // eslint-disable-next-line no-new-wrappers
+            expect( () => canonicalizeLocale( new String( 'it-IT' ), 'Test' ) )
+                .toThrow( 'Test: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: String' );
+        } );
+
+    } );
+
+    /**
+     * Issue #32, decision 1: an `Intl.Locale` is a locale, not a bad argument.
+     *
+     * The unwrap is `toString()` and nothing else, which is safe because
+     * `Intl.Locale.prototype.toString` returns the CANONICAL tag — so the
+     * canonicalisation step that follows is a no-op rather than a second,
+     * potentially disagreeing, normalisation. Each row below is one way a tag can
+     * be non-canonical, so what is pinned is that agreement rather than a single
+     * lucky example.
+     */
+    describe( 'Intl.Locale', () => {
+
+        it.each( [
+            [ 'a canonical tag', new Intl.Locale( 'it-IT' ), 'it-IT' ],
+            [ 'mixed case', new Intl.Locale( 'EN-us' ), 'en-US' ],
+            [ 'lowercase script', new Intl.Locale( 'en-latn-us' ), 'en-Latn-US' ],
+            [ 'a deprecated language subtag', new Intl.Locale( 'iw' ), 'he' ],
+            [ 'a macrolanguage', new Intl.Locale( 'cmn-Hans-CN' ), 'zh-Hans-CN' ],
+            [ 'a Unicode extension in the tag', new Intl.Locale( 'it-IT-u-ca-gregory-nu-latn' ), 'it-IT-u-ca-gregory-nu-latn' ],
+            [ 'a private-use subtag', new Intl.Locale( 'en-US-x-private' ), 'en-US-x-private' ]
+        ] )( 'accepts one carrying %s and returns its canonical tag', ( _label, locale, expected ) => {
+            expect( canonicalizeLocale( locale, 'Test' ) ).toBe( expected );
+        } );
+
+        /**
+         * Extensions supplied as CONSTRUCTOR OPTIONS never appear in the tag the
+         * caller wrote, only in the one `toString()` produces — the case a naive
+         * `locale.baseName` unwrap would silently drop.
+         */
+        it( 'keeps extensions supplied as constructor options', () => {
+            const locale = new Intl.Locale( 'en', { calendar: 'buddhist', numberingSystem: 'thai' } );
+            expect( canonicalizeLocale( locale, 'Test' ) ).toBe( 'en-u-ca-buddhist-nu-thai' );
+        } );
+
+        /**
+         * The property the unwrap rests on, asserted against `Intl` itself rather
+         * than against this helper: canonicalising an `Intl.Locale`'s own string
+         * returns that same string, so nothing is lost or rewritten in the step
+         * after the unwrap.
+         */
+        it.each( [ 'it-IT', 'EN-us', 'en-latn-us', 'iw', 'cmn-Hans-CN', 'it-IT-u-ca-gregory-nu-latn', 'en-US-x-private' ] )(
+            'agrees with Intl.getCanonicalLocales for %s',
+            ( tag ) => {
+                const locale = new Intl.Locale( tag );
+                expect( Intl.getCanonicalLocales( locale.toString() )[ 0 ] ).toBe( locale.toString() );
+                expect( canonicalizeLocale( locale, 'Test' ) ).toBe( canonicalizeLocale( tag, 'Test' ) );
+            }
+        );
 
     } );
 
@@ -152,6 +216,36 @@ describe( 'toIntlLocale', () => {
             .toThrow( 'LiturgyOfTheDay: Invalid locale: not a locale' );
         expect( () => toIntlLocale( 123, 'LiturgyOfAnyDay' ) )
             .toThrow( /^LiturgyOfAnyDay: Invalid type for locale/ );
+    } );
+
+    /**
+     * An `Intl.Locale` in, an equal `Intl.Locale` out — but a FRESH one, not the
+     * caller's own reference, since the argument goes through the same unwrap and
+     * re-parse a string does.
+     */
+    describe( 'Intl.Locale', () => {
+
+        it( 'round-trips one to an equal but distinct instance', () => {
+            const given = new Intl.Locale( 'it-IT' );
+            const stored = toIntlLocale( given, 'Test' );
+            expect( stored ).toBeInstanceOf( Intl.Locale );
+            expect( stored.toString() ).toBe( given.toString() );
+            expect( stored ).not.toBe( given );
+        } );
+
+        it( 'preserves the parts the components actually read', () => {
+            const stored = toIntlLocale( new Intl.Locale( 'EN-us' ), 'Test' );
+            expect( stored.language ).toBe( 'en' );
+            expect( stored.region ).toBe( 'US' );
+            expect( stored.baseName ).toBe( 'en-US' );
+        } );
+
+        it( 'keeps a Unicode extension through the round trip', () => {
+            const stored = toIntlLocale( new Intl.Locale( 'en', { calendar: 'buddhist' } ), 'Test' );
+            expect( stored.toString() ).toBe( 'en-u-ca-buddhist' );
+            expect( stored.language ).toBe( 'en' );
+        } );
+
     } );
 
 } );
