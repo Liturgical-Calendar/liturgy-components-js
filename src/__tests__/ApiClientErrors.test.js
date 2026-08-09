@@ -488,6 +488,28 @@ describe( 'ApiClient _discardRequest distinguishes delivered errors from merely 
         }
     } );
 
+    /**
+     * `EventEmitter#emit` is a synchronous `forEach`, so a listener that rethrows the
+     * error it was handed propagates straight out of the emit. Delivery is therefore
+     * recorded BEFORE the emit rather than after it: recording afterwards would be
+     * skipped in exactly this case, and the error would be logged despite a
+     * subscriber demonstrably having received it — the double-report the delivery
+     * check exists to avoid.
+     */
+    it( 'stays silent when the calendarFetchFailed subscriber rethrows the error', async () => {
+        loadBaseThenFailEveryCalendarRequest();
+        const client = await ApiClient.init( DEV );
+        client.on( 'calendarFetchFailed', error => { throw error; } );
+
+        const consoleError = jest.spyOn( console, 'error' ).mockImplementation( () => {} );
+        try {
+            await discardAndSettle( client, client.fetchCalendar() );
+            expect( consoleError ).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+        }
+    } );
+
     it( 'logs an emitted failure when nobody is subscribed', async () => {
         loadBaseThenFailEveryCalendarRequest();
         const client = await ApiClient.init( DEV );

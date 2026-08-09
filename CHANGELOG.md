@@ -78,10 +78,12 @@ builder's ability to re-filter its calendar select. Upgrading from 1.5.0 brings 
   was never made. A promise
   you hold is yours: the library does not log it on your behalf. Its `console.error` fallback covers only its
   own fire-and-forget calls — the listeners behind `listenTo()`, and `LiturgyOfAnyDay`'s year handling — which
-  have no caller to hand a promise back to, and even those are silenced once anything is subscribed to
-  `calendarFetchFailed`. Subscribing is therefore the intended way to take over reporting entirely. A throw from
-  a `calendarFetched` listener is **not** a fetch failure: it propagates to the returned promise unwrapped, and
-  emits no `calendarFetchFailed`.
+  have no caller to hand a promise back to, and one of those is silenced when the error it caught was itself
+  delivered to a `calendarFetchFailed` listener. Subscribing is therefore the intended way to take over
+  reporting of request failures — but only of those: an error that never emits is still logged, because no
+  subscriber could have received it. Two never emit. An argument or state rejection reports a request that was
+  never made, and a throw from a `calendarFetched` listener is **not** a fetch failure — it propagates to the
+  returned promise unwrapped.
 
 Three narrower breaks, listed for completeness:
 

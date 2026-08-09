@@ -398,10 +398,9 @@ export default class ApiClient {
    * the error was actually handed to at least one listener.
    *
    * The three fetch methods are otherwise identical at this point, and were
-   * repeating this same two-line sequence — emit, then decide what
-   * `#discardRequest` needs to know about it — once each. Factored into one place
-   * so that a mistake in the bookkeeping cannot be made in one copy and not the
-   * others.
+   * repeating this same two-line sequence — decide what `#discardRequest` needs to
+   * know about the error, then emit it — once each. Factored into one place so that
+   * a mistake in the bookkeeping cannot be made in one copy and not the others.
    *
    * @param {ApiClientError} apiError - The error to emit.
    * @param {'roman' | 'ambrosian'} requestRite - The rite of the request that failed.
@@ -409,11 +408,15 @@ export default class ApiClient {
    * @private
    */
   #emitCalendarFetchFailed( apiError, requestRite ) {
-    const hadListeners = this.#eventBus._events[ 'calendarFetchFailed' ]?.length > 0;
-    this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
-    if ( hadListeners ) {
+    // Recorded BEFORE the emit, not after. `EventEmitter#emit` is a synchronous
+    // `forEach`, so a listener that throws — including one that rethrows the very
+    // error it was handed — propagates straight out of this method. Recording
+    // afterwards would be skipped in exactly that case, and `#discardRequest`
+    // would then log an error the subscriber demonstrably did receive.
+    if ( this.#eventBus._events[ 'calendarFetchFailed' ]?.length > 0 ) {
       deliveredFailures.add( apiError );
     }
+    this.#eventBus.emit( 'calendarFetchFailed', apiError, { rite: requestRite } );
   }
 
   /**
