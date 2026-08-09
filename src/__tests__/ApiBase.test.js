@@ -218,6 +218,13 @@ describe( 'ApiBase.load yields to an index installed while it was in flight', ()
         return ( response ) => settle( response );
     };
 
+    /** Rejects the pending `fetch` on demand, so a network error can land mid-request. */
+    const deferredFetchFailure = () => {
+        let fail;
+        global.fetch = jest.fn( () => new Promise( ( resolve, reject ) => { fail = reject; } ) );
+        return ( error ) => fail( error );
+    };
+
     it( 'keeps the installed index rather than the fetched one', async () => {
         const respondWith = deferredFetch();
         const base    = ApiBase.resolve( 'http://localhost:8000' );
@@ -252,8 +259,40 @@ describe( 'ApiBase.load yields to an index installed while it was in flight', ()
         respondWith( okResponse( OTHER_METADATA ) );
         await loading;
 
+        expect( base.metadata ).toBe( FULL_METADATA );
         await expect( base.load() ).resolves.toBe( base );
         expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+    } );
+
+    it( 'keeps the installed index when the overtaken request comes back with a non-ok response', async () => {
+        const respondWith = deferredFetch();
+        const base    = ApiBase.resolve( 'http://localhost:8000' );
+        const loading = base.load();
+
+        ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        respondWith( {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: () => Promise.resolve( 'boom' )
+        } );
+
+        await expect( loading ).resolves.toBe( base );
+        expect( base.metadata ).toBe( FULL_METADATA );
+        await expect( base.load() ).resolves.toBe( base );
+        expect( global.fetch ).toHaveBeenCalledTimes( 1 );
+    } );
+
+    it( 'keeps the installed index when the overtaken request throws a network error', async () => {
+        const fail = deferredFetchFailure();
+        const base    = ApiBase.resolve( 'http://localhost:8000' );
+        const loading = base.load();
+
+        ApiBase.fromMetadata( 'http://localhost:8000', FULL_METADATA );
+        fail( new TypeError( 'network error' ) );
+
+        await expect( loading ).resolves.toBe( base );
+        expect( base.metadata ).toBe( FULL_METADATA );
     } );
 
 } );

@@ -409,6 +409,14 @@ export default class ApiBase {
             return this;
         } ).catch( error => {
             this.#loadPromise = null;
+            // An index installed by `fromMetadata()` while this request was open
+            // outranks the request, and outranks its failure too: the base is
+            // loaded, so `load()`'s contract — resolve once the metadata is
+            // there — is satisfied, and rejecting would report a base as
+            // unloadable while it is loaded.
+            if ( this.#metadata !== null ) {
+                return this;
+            }
             if ( error instanceof ApiClientError ) {
                 throw error;
             }
