@@ -175,8 +175,9 @@ When linked:
 
 ### Linking a RiteSelect
 
-`linkToCalendarSelect()` accepts an optional second parameter, a `RiteSelect` instance (see
-[RiteSelect](rite-select.md)), to drive the rite -> calendar chain alongside the calendar link:
+`linkToRiteSelect()` drives the rite -> calendar chain alongside the calendar link (see
+[RiteSelect](rite-select.md)). It is chainable, and may be called before or after
+`linkToCalendarSelect()` — whichever arrives second completes the pairing:
 
 ```javascript
 import { ApiOptions, CalendarSelect, RiteSelect, CalendarSelectFilter } from '@liturgical-calendar/components-js';
@@ -186,12 +187,18 @@ const nationSelect  = new CalendarSelect('en-US').filter(CalendarSelectFilter.NA
 const dioceseSelect = new CalendarSelect('en-US').filter(CalendarSelectFilter.DIOCESAN_CALENDARS);
 
 const apiOptions = new ApiOptions('en-US')
-    .linkToCalendarSelect([nationSelect, dioceseSelect], riteSelect);
+    .linkToCalendarSelect([nationSelect, dioceseSelect])
+    .linkToRiteSelect(riteSelect);
 ```
 
-The first parameter accepts either a single `CalendarSelect` or a `[nationSelect, dioceseSelect]` pair,
-exactly as without a `RiteSelect`. When a `RiteSelect` is passed as the second parameter, `ApiOptions`
-takes over the whole rite -> calendar chain on every rite change:
+> **Deprecated:** passing the `RiteSelect` as a second argument to `linkToCalendarSelect()` does the same
+> thing and still works, but warns. It reads as though it wires the rite completely, when in fact a
+> fetching page must also call `apiClient.listenTo(riteSelect)` — only the client turns the rite into a
+> path segment. Use `linkToRiteSelect()`, so each wiring step is its own call.
+
+`linkToCalendarSelect()` accepts either a single `CalendarSelect` or a `[nationSelect, dioceseSelect]`
+pair, exactly as without a `RiteSelect`. Once a rite select is linked, `ApiOptions` takes over the whole
+rite -> calendar chain on every rite change:
 
 - The linked `CalendarSelect`(s) are rebuilt for the selected rite, and the calendar selection is reset
 - A linked nation select is hidden for rites with no national tier (e.g. Ambrosian)

@@ -57,10 +57,9 @@ ApiClient.init('http://localhost:8000')
 
         // The whole chain hangs off this one call: the rite select drives the
         // calendar selects, which in turn drive the option inputs.
-        apiOptions.linkToCalendarSelect(
-            [nationSelect, dioceseSelect],
-            riteSelect,
-        );
+        apiOptions
+            .linkToCalendarSelect([nationSelect, dioceseSelect])
+            .linkToRiteSelect(riteSelect);
         apiOptions.appendTo('#calendarOptions');
     })
     .catch((error) => {

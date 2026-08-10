@@ -49,7 +49,9 @@ ApiClient.init('http://localhost:8000')
         apiOptions
             .filter(ApiOptionsFilter.ALL_PATHS)
             .appendTo('#requestParameters');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
 
         const pathBuilder = new PathBuilder(apiOptions, calendarSelect)
             .class('row align-items-center ps-2')

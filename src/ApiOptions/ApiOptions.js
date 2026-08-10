@@ -70,6 +70,43 @@ export default class ApiOptions {
     /** @type {boolean} */
     #linked = false;
 
+    /**
+     * The calendar select(s) passed to `linkToCalendarSelect()`, kept so that a
+     * `linkToRiteSelect()` arriving afterwards has something to drive.
+     *
+     * @type {?CalendarSelect|?[CalendarSelect, CalendarSelect]}
+     */
+    #linkedCalendarSelect = null;
+
+    /**
+     * Re-collapses a PATH_BUILDER calendar select to the rite-level calendar
+     * after a rite change, when the `/calendar` route is the one selected.
+     *
+     * Set only in the single-select PATH_BUILDER case, which is the only shape
+     * that repurposes ONE select across the three routes; null otherwise, so the
+     * rite handler can call it unconditionally.
+     *
+     * @type {?function(): void}
+     */
+    #refreshPathBuilderCalendarSelect = null;
+
+    /**
+     * The rite select passed to `linkToRiteSelect()` (or to the deprecated second
+     * parameter of `linkToCalendarSelect()`), kept so that the two link methods can
+     * be called in either order: whichever arrives second completes the pairing.
+     *
+     * @type {?RiteSelect}
+     */
+    #linkedRiteSelect = null;
+
+    /**
+     * Whether the rite chain has been wired, so that completing the pairing from
+     * either side attaches the listener exactly once.
+     *
+     * @type {boolean}
+     */
+    #riteWired = false;
+
     /** @type {?Intl.Locale} */
     #locale = null;
 
@@ -491,6 +528,12 @@ export default class ApiOptions {
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId = null;
 
+            // After the route fallback above, so it sees the settled path value, and
+            // before the dispatch below, so anything rendering off that `change`
+            // (a `PathBuilder`, an `ApiClient`) reads a select that already shows
+            // the new rite's calendar.
+            this.#refreshPathBuilderCalendarSelect?.();
+
             // `linkToRiteSelect()` above was told NOT to dispatch its own `change`
             // (passed `false` as its second, positional argument), so this is the only dispatch each eligible
             // select receives per rite change — exactly one, and it happens here,
@@ -681,8 +724,28 @@ export default class ApiOptions {
     #handleSingleLinkedCalendarSelect(calendarSelect) {
         //console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
         if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
-            calendarSelect.allowNull(false).disabled()._domElement.innerHTML =
-                '<option value="">GENERAL ROMAN</option>';
+            calendarSelect
+                .allowNull(false)
+                .disabled()
+                ._showRiteLevelCalendarOnly();
+
+            // A rite change rebuilds this select from scratch (ApiOptions wires
+            // the rite AFTER this method runs, and `CalendarSelect._applyRite()`
+            // repopulates the element), which discards the collapse above. On the
+            // `/calendar` route that left the select showing a full calendar list
+            // it cannot represent — and with `allowNull(false)` there was no
+            // empty option for the `value = ''` that follows to select, so it
+            // rendered blank. Re-collapse from the rite side too; the path
+            // listener below cannot, since the path itself has not changed.
+            this.#refreshPathBuilderCalendarSelect = () => {
+                if (
+                    '/calendar' ===
+                    this.#inputs.calendarPathInput._domElement.value
+                ) {
+                    calendarSelect.disabled(true)._showRiteLevelCalendarOnly();
+                }
+            };
+
             let lastCalendarPathValue =
                 this.#inputs.calendarPathInput._domElement.value;
             let lastCalendarSelectValue = calendarSelect._domElement.value;
@@ -693,10 +756,9 @@ export default class ApiOptions {
                         lastCalendarPathValue = ev.target.value;
                         switch (ev.target.value) {
                             case '/calendar':
-                                calendarSelect.disabled(
-                                    true,
-                                )._domElement.innerHTML =
-                                    '<option value="">GENERAL ROMAN</option>';
+                                calendarSelect
+                                    .disabled(true)
+                                    ._showRiteLevelCalendarOnly();
                                 break;
                             // _applyFilter, not filter(): the user can switch back and
                             // forth between these two paths, and filter() refuses a
@@ -862,7 +924,11 @@ export default class ApiOptions {
      * instances, the API options will be updated accordingly.
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The CalendarSelect instance or
      * an array of two CalendarSelect instances (one for nations and one for dioceses) to link to the ApiOptions instance.
-     * @param {?RiteSelect} [riteSelect=null] - An optional `RiteSelect` instance. When provided, `ApiOptions`
+     * @param {?RiteSelect} [riteSelect=null] - **Deprecated. Use {@link ApiOptions#linkToRiteSelect} instead**,
+     * which does the same thing, may be called before or after this method, and reads as its own wiring step
+     * rather than as an argument to another component's link. Passing it here still works and warns.
+     *
+     * An optional `RiteSelect` instance. When provided, `ApiOptions`
      * drives the whole rite -> calendar chain: the linked CalendarSelect(s) are rebuilt for the selected rite,
      * the nation select (when linked as a pair) is hidden for rites with no national tier, the fixed-temporal-option
      * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
@@ -897,6 +963,17 @@ export default class ApiOptions {
             throw new Error(
                 'ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' +
                     typeof riteSelect,
+            );
+        }
+        // Same conflict `linkToRiteSelect()` raises, caught from this side too: a
+        // caller part-way through migrating off the deprecated argument can reach
+        // here with a rite select already linked, and silently replacing it would
+        // strand the first one — linked, but driving nothing. Checked here with the
+        // other type checks, so the refusal leaves neither the rite state nor the
+        // calendar link mutated.
+        if (null !== riteSelect && null !== this.#linkedRiteSelect) {
+            throw new Error(
+                'Current ApiOptions instance already linked to another RiteSelect instance',
             );
         }
         if (Array.isArray(calendarSelect)) {
@@ -959,12 +1036,75 @@ export default class ApiOptions {
         // listener, and rebuilding the calendar select(s) for the current
         // rite. A `riteSelect` rejected above never reaches this point either,
         // since the type-check threw before we got here.
+        this.#linkedCalendarSelect = calendarSelect;
         if (null !== riteSelect) {
+            // Warned here rather than at the type-check above, so that a call which
+            // goes on to throw on `calendarSelect` does not also emit a deprecation
+            // notice for an argument that never took effect.
+            console.warn(
+                'The second argument of ApiOptions.linkToCalendarSelect() is deprecated. Use ApiOptions.linkToRiteSelect() instead.',
+            );
             this.#currentEndpoint.explicitRite = true;
-            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
+            this.#linkedRiteSelect = riteSelect;
         }
+        this.#wireRiteIfReady();
         this.#linked = true;
         return this;
+    }
+
+    /**
+     * Link this `ApiOptions` to a `RiteSelect`, so that a rite change drives the whole
+     * rite -> calendar chain.
+     *
+     * @param {RiteSelect} riteSelect - The rite select to follow.
+     * @returns {ApiOptions} This instance, for chaining.
+     */
+    linkToRiteSelect(riteSelect) {
+        if (false === riteSelect instanceof RiteSelect) {
+            throw new Error(
+                'ApiOptions.linkToRiteSelect: riteSelect must be of type `RiteSelect` but found type: ' +
+                    typeof riteSelect,
+            );
+        }
+        // One-way within this instance, matching `linkToCalendarSelect()`: there is no
+        // supported way to un-link a rite select and revert to the implicit form, so a
+        // second call is a mistake rather than a reconfiguration. Catches the case where
+        // a caller migrating off the deprecated second argument adds the new call
+        // without removing the old one, which would otherwise wire two listeners.
+        if (null !== this.#linkedRiteSelect) {
+            throw new Error(
+                'Current ApiOptions instance already linked to another RiteSelect instance',
+            );
+        }
+        this.#currentEndpoint.explicitRite = true;
+        this.#linkedRiteSelect = riteSelect;
+        this.#wireRiteIfReady();
+        return this;
+    }
+
+    /**
+     * Attach the rite chain once both halves of the pairing have arrived.
+     *
+     * `linkToCalendarSelect()` and `linkToRiteSelect()` may be called in either
+     * order, so each calls this and the second one to arrive does the work.
+     * Deliberately idempotent: wiring twice would attach two `change` listeners to
+     * the same rite select, and every rebuild would run — and dispatch — twice.
+     *
+     * @returns {void}
+     */
+    #wireRiteIfReady() {
+        if (
+            this.#riteWired ||
+            null === this.#linkedRiteSelect ||
+            null === this.#linkedCalendarSelect
+        ) {
+            return;
+        }
+        this.#riteWired = true;
+        this.#handleLinkedRiteSelect(
+            this.#linkedRiteSelect,
+            this.#linkedCalendarSelect,
+        );
     }
 
     /**

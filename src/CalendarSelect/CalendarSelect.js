@@ -269,11 +269,54 @@ export default class CalendarSelect {
         if (false === this.#riteAware) {
             return '<option value="">---</option>';
         }
+        return this.#riteLevelOptionHtml();
+    }
+
+    /**
+     * Builds the `<option>` for the rite-level calendar, labelled with that
+     * calendar's own name ("General Roman Calendar" / "Ambrosian Calendar").
+     *
+     * Split out of `#emptyOptionHtml()` because the two have different triggers:
+     * that one is the placeholder at the head of a LIST of calendars, and only
+     * takes this label in rite-aware mode. This one is the rite-level calendar
+     * as a selection in its own right — what `_showRiteLevelCalendarOnly()`
+     * renders for the `/calendar` route — so it is always rite-labelled, and a
+     * path builder without a linked `RiteSelect` still gets "General Roman
+     * Calendar" from the default rite rather than a bare `---`.
+     *
+     * @returns {string} The `<option>` markup for the rite-level calendar.
+     * @private
+     */
+    #riteLevelOptionHtml() {
         const locale = new Intl.Locale(this.#locale);
         const key = RiteProperties[this.#rite].emptyOptionLabelKey;
         const emptyLabel =
             Messages[locale.language]?.[key] ?? Messages['en'][key];
         return `<option value="">${emptyLabel}</option>`;
+    }
+
+    /**
+     * Collapse this select to the rite-level calendar alone.
+     *
+     * The `/calendar` route takes neither a nation nor a diocese, so the only
+     * calendar it can name is the rite-level one. `ApiOptions`' path builder
+     * calls this instead of writing its own `<option>`, so the label follows the
+     * selected rite and the component's locale rather than being a hardcoded
+     * English "GENERAL ROMAN" that outlives a switch to the Ambrosian rite.
+     *
+     * @returns {CalendarSelect} This instance, for chaining.
+     */
+    _showRiteLevelCalendarOnly() {
+        this.#domElement.innerHTML = this.#riteLevelOptionHtml();
+        this.#domElement.value = '';
+        // Every rite has a rite-level calendar, so this state is always
+        // meaningful and always visible. Settled here rather than left to
+        // `#reapplyOptionsToDom()`, which this deliberately bypasses: the
+        // `/calendar` route keeps whatever `#filter` the previously chosen route
+        // set, so the derivation there would still read NATIONAL_CALENDARS and
+        // hide a select that is showing the Ambrosian calendar perfectly well.
+        this._setHidden(false);
+        return this;
     }
 
     /**
@@ -297,6 +340,22 @@ export default class CalendarSelect {
             this.#domElement.innerHTML =
                 firstElement + this.nationsInnerHtml + this.diocesesInnerHtml;
         }
+
+        // Visibility is DERIVED from the pair (filter, rite), so it is settled
+        // here — the one place both of them land, reached from `_applyFilter()`
+        // and `_applyRite()` alike — rather than at either call site.
+        //
+        // A nations select under a rite with no national tier lists nothing and
+        // is hidden. Deriving it only on the rite side (which is where this
+        // started) leaked: `ApiOptions`' path builder re-filters a SINGLE select
+        // as the user switches routes, so a select hidden under the nation
+        // filter kept `hidden` when the filter moved to dioceses or to the
+        // rite-level route — with no rite change to re-evaluate it, and no way
+        // back, since the nation route is disabled for exactly that rite.
+        this._setHidden(
+            CalendarSelectFilter.NATIONAL_CALENDARS === this.#filter &&
+                false === RiteProperties[this.#rite].hasNationalTier,
+        );
     }
 
     /**
@@ -1504,20 +1563,17 @@ export default class CalendarSelect {
      * @private
      */
     #applyLinkedRite(rite) {
-        const riteProps = RiteProperties[rite];
-
         // Cleared BEFORE the rebuild as well as after: a diocese select linked to a
         // nation select re-derives its per-nation narrowing from that select's
         // CURRENT value inside `_applyRite()`, and that value must already be the
         // reset one rather than the outgoing rite's — otherwise the rebuilt list is
         // filtered for a nation that is no longer selected.
         this.#domElement.value = '';
+        // Settles this select's visibility too: `_applyRite()` ends in
+        // `#reapplyOptionsToDom()`, which derives `hidden` from the new rite and
+        // the current filter together.
         this._applyRite(rite, true);
         this.#domElement.value = '';
-
-        if (CalendarSelectFilter.NATIONAL_CALENDARS === this.#filter) {
-            this._setHidden(false === riteProps.hasNationalTier);
-        }
 
         // A dependent diocese select carries its own `change` listener on this
         // element, which would re-derive its options for the now-empty nation value

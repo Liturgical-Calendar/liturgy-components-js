@@ -410,6 +410,28 @@ liturgyOfTheDay.listenTo(apiClient);
 liturgyOfAnyDay.listenTo(apiClient);
 ```
 
+### Rite Wiring
+
+A `RiteSelect` is inert on its own, and on a fetching page it takes **two** wires, because two different
+consumers act on a rite change:
+
+```javascript
+apiOptions.linkToCalendarSelect(calendarSelect).linkToRiteSelect(riteSelect);
+apiClient.listenTo(calendarSelect).listenTo(riteSelect).listenTo(apiOptions);
+```
+
+`ApiOptions` rebuilds the calendar list, disables the temporal options the rite fixes, and adjusts the year
+floor. Only the **client** turns the rite into a path segment. Wire just the first and the failure is silent:
+the form reads `ambrosian` while every request still goes to `/calendar/roman/`.
+
+`linkToRiteSelect()` is chainable and may be called before or after `linkToCalendarSelect()` — whichever
+arrives second completes the pairing. Passing the rite select as a **second argument** to
+`linkToCalendarSelect()` is deprecated and warns: it did the same thing, but read as if it were the whole
+wiring.
+
+A page that only renders a form, with no `ApiClient`, needs no second wire — use
+`CalendarSelect.linkToRiteSelect()` directly, which works for any filter.
+
 ### Multi-base Wiring
 
 Each `ApiClient` is bound to an `ApiBase` — one object per API base URL, owning that base's calendar index and
