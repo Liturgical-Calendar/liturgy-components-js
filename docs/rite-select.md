@@ -165,9 +165,11 @@ Switching back to Roman reverses all of the above.
 
 ## Driving a CalendarSelect without an ApiOptions
 
-`RiteSelect` is usually passed to `ApiOptions.linkToRiteSelect()`, which wires it to the option
-inputs as well as the calendar select. When there is no `ApiOptions` on the page, link the calendar
-select to the rite directly instead:
+`RiteSelect` is usually passed to `ApiOptions.linkToRiteSelect()`, which drives the option inputs as
+well as the calendar select — but only once `linkToCalendarSelect()` has been called too. Neither link
+does anything on its own: whichever is called second completes the pairing.
+
+When there is no `ApiOptions` on the page, link the calendar select to the rite directly instead:
 
 ```javascript
 const calSelect = new CalendarSelect( 'it' )

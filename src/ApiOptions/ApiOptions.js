@@ -928,6 +928,17 @@ export default class ApiOptions {
                     typeof riteSelect,
             );
         }
+        // Same conflict `linkToRiteSelect()` raises, caught from this side too: a
+        // caller part-way through migrating off the deprecated argument can reach
+        // here with a rite select already linked, and silently replacing it would
+        // strand the first one — linked, but driving nothing. Checked here with the
+        // other type checks, so the refusal leaves neither the rite state nor the
+        // calendar link mutated.
+        if (null !== riteSelect && null !== this.#linkedRiteSelect) {
+            throw new Error(
+                'Current ApiOptions instance already linked to another RiteSelect instance',
+            );
+        }
         if (Array.isArray(calendarSelect)) {
             if (calendarSelect.length > 2) {
                 throw new Error(

@@ -135,6 +135,48 @@ describe('ApiOptions.linkToRiteSelect() rejects', () => {
         );
     });
 
+    it('a deprecated second argument that would replace an already linked rite select', () => {
+        const { riteSelect, nationSelect, dioceseSelect, apiOptions } =
+            buildParts();
+        const otherRiteSelect = new RiteSelect('en');
+
+        apiOptions.linkToRiteSelect(riteSelect);
+
+        expect(() =>
+            apiOptions.linkToCalendarSelect(
+                [nationSelect, dioceseSelect],
+                otherRiteSelect,
+            ),
+        ).toThrow(/already linked/);
+    });
+
+    it('leaves the first rite select in charge after refusing the second', () => {
+        const { riteSelect, nationSelect, dioceseSelect, apiOptions } =
+            buildParts();
+        const otherRiteSelect = new RiteSelect('en');
+        otherRiteSelect.appendTo(document.createElement('div'));
+
+        apiOptions.linkToRiteSelect(riteSelect);
+        expect(() =>
+            apiOptions.linkToCalendarSelect(
+                [nationSelect, dioceseSelect],
+                otherRiteSelect,
+            ),
+        ).toThrow(/already linked/);
+
+        // The refused call must not have linked the calendar selects either, so
+        // this one succeeds and completes the pairing with the ORIGINAL rite select.
+        apiOptions.linkToCalendarSelect([nationSelect, dioceseSelect]);
+        apiOptions.appendTo('#opts');
+
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+        expect(dioceseValues(dioceseSelect)).toContain('milano_it');
+
+        // The rejected one drives nothing.
+        chooseRite(otherRiteSelect, Rite.ROMAN);
+        expect(dioceseValues(dioceseSelect)).toContain('milano_it');
+    });
+
     it('a call that would replace one made through the deprecated argument', () => {
         const { riteSelect, nationSelect, dioceseSelect, apiOptions } =
             buildParts();
