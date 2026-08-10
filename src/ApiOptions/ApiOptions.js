@@ -79,6 +79,18 @@ export default class ApiOptions {
     #linkedCalendarSelect = null;
 
     /**
+     * Re-collapses a PATH_BUILDER calendar select to the rite-level calendar
+     * after a rite change, when the `/calendar` route is the one selected.
+     *
+     * Set only in the single-select PATH_BUILDER case, which is the only shape
+     * that repurposes ONE select across the three routes; null otherwise, so the
+     * rite handler can call it unconditionally.
+     *
+     * @type {?function(): void}
+     */
+    #refreshPathBuilderCalendarSelect = null;
+
+    /**
      * The rite select passed to `linkToRiteSelect()` (or to the deprecated second
      * parameter of `linkToCalendarSelect()`), kept so that the two link methods can
      * be called in either order: whichever arrives second completes the pairing.
@@ -516,6 +528,12 @@ export default class ApiOptions {
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId = null;
 
+            // After the route fallback above, so it sees the settled path value, and
+            // before the dispatch below, so anything rendering off that `change`
+            // (a `PathBuilder`, an `ApiClient`) reads a select that already shows
+            // the new rite's calendar.
+            this.#refreshPathBuilderCalendarSelect?.();
+
             // `linkToRiteSelect()` above was told NOT to dispatch its own `change`
             // (passed `false` as its second, positional argument), so this is the only dispatch each eligible
             // select receives per rite change — exactly one, and it happens here,
@@ -706,8 +724,28 @@ export default class ApiOptions {
     #handleSingleLinkedCalendarSelect(calendarSelect) {
         //console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
         if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
-            calendarSelect.allowNull(false).disabled()._domElement.innerHTML =
-                '<option value="">GENERAL ROMAN</option>';
+            calendarSelect
+                .allowNull(false)
+                .disabled()
+                ._showRiteLevelCalendarOnly();
+
+            // A rite change rebuilds this select from scratch (ApiOptions wires
+            // the rite AFTER this method runs, and `CalendarSelect._applyRite()`
+            // repopulates the element), which discards the collapse above. On the
+            // `/calendar` route that left the select showing a full calendar list
+            // it cannot represent — and with `allowNull(false)` there was no
+            // empty option for the `value = ''` that follows to select, so it
+            // rendered blank. Re-collapse from the rite side too; the path
+            // listener below cannot, since the path itself has not changed.
+            this.#refreshPathBuilderCalendarSelect = () => {
+                if (
+                    '/calendar' ===
+                    this.#inputs.calendarPathInput._domElement.value
+                ) {
+                    calendarSelect.disabled(true)._showRiteLevelCalendarOnly();
+                }
+            };
+
             let lastCalendarPathValue =
                 this.#inputs.calendarPathInput._domElement.value;
             let lastCalendarSelectValue = calendarSelect._domElement.value;
@@ -718,10 +756,9 @@ export default class ApiOptions {
                         lastCalendarPathValue = ev.target.value;
                         switch (ev.target.value) {
                             case '/calendar':
-                                calendarSelect.disabled(
-                                    true,
-                                )._domElement.innerHTML =
-                                    '<option value="">GENERAL ROMAN</option>';
+                                calendarSelect
+                                    .disabled(true)
+                                    ._showRiteLevelCalendarOnly();
                                 break;
                             // _applyFilter, not filter(): the user can switch back and
                             // forth between these two paths, and filter() refuses a
