@@ -1,8 +1,75 @@
 # Changelog
 
 Releases up to and including 1.5.0 are not recorded here; see the git history. There is no 1.6.0 — the release
-prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. This
-entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
+prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
+2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
+
+## 2.1.0
+
+A new way to wire a `RiteSelect` into an `ApiOptions`, and two path builder bugs that were reaching real pages.
+Minor rather than patch: `ApiOptions.linkToRiteSelect()` is a new public method. Nothing is removed and nothing
+changes behaviour for code that does not use the rite components — the one deprecation keeps working and warns.
+
+Both halves are the same mistake wearing different clothes: rite state that reads as wired when it is not, or
+that is written at a call site instead of derived where its inputs meet.
+
+### Added
+
+- **`ApiOptions.linkToRiteSelect( riteSelect )`**, chainable, replacing the second argument of
+  `linkToCalendarSelect()`. The two link methods may be called in **either order** — whichever arrives second
+  completes the pairing — so migrating cannot introduce an ordering bug, and neither does anything on its own:
+
+  ```js
+  // Before
+  apiOptions.linkToCalendarSelect( calendarSelect, riteSelect );
+
+  // After
+  apiOptions.linkToCalendarSelect( calendarSelect ).linkToRiteSelect( riteSelect );
+  ```
+
+  The point is not fewer calls — there were always two, and there still are. It is that the second one no longer
+  hides inside the first. **On a page that fetches, `ApiOptions` is only half the wiring:** it rebuilds the
+  calendar list, disables the temporal options the rite fixes and adjusts the year floor, but only the client
+  turns the rite into a path segment.
+
+  ```js
+  apiClient.listenTo( calendarSelect ).listenTo( riteSelect ).listenTo( apiOptions );
+  ```
+
+  Omit `listenTo( riteSelect )` and the failure is **silent**: the form reads `ambrosian`, the calendar list
+  rebuilds with the Ambrosian dioceses, the temporal inputs grey themselves out — and every request still goes
+  to `/calendar/roman/`. That bug was shipping in this project's own frontend. A page that only renders a form,
+  with no `ApiClient`, needs no second wire.
+
+  Linking is idempotent and one-way per instance: a second link throws, from either side, including a deprecated
+  second argument arriving after `linkToRiteSelect()`. Wiring twice would put two `change` listeners on one rite
+  select and rebuild — and dispatch — twice per change.
+
+- `CalendarSelect._showRiteLevelCalendarOnly()`, which collapses a select to the rite-level calendar under that
+  calendar's own localized name. Used by the path builder for the `/calendar` route.
+
+### Deprecated
+
+- **The second argument of `ApiOptions.linkToCalendarSelect()`.** It still works and now warns, naming
+  `linkToRiteSelect()`. The warning is emitted after `calendarSelect` validation, so a call that goes on to
+  throw does not also warn about an argument that never took effect.
+
+### Fixed
+
+- The path builder's calendar select **rendered blank on load**, then showed a wrong, sticky `GENERAL ROMAN`.
+  Two causes compounding. `ApiOptions` wrote a hardcoded, unlocalized `<option value="">GENERAL ROMAN</option>`,
+  rite-independent — so an Ambrosian request announced itself as the General Roman Calendar — when
+  `CalendarSelect` had had a rite-aware, localized version of exactly that since rite support landed. The same
+  call also set `allowNull( false )`, and because the calendar select is linked _before_ the rite is wired, the
+  rite's first `_applyRite()` rebuilt the options with no empty option at all; `value = ''` then matched nothing,
+  leaving `selectedIndex` at `-1`. Hence blank until the user round-tripped through another route — the one path
+  that re-injected the option.
+- The path builder's calendar select **disappeared for good** after selecting a rite with no national tier while
+  the `/calendar/nation/` route was active. `hidden` was written in one place but derived from two inputs, filter
+  and rite: hiding was correct, but `ApiOptions` then forced the route back to `/calendar`, moving the filter off
+  `NATIONAL_CALENDARS`, and the only `_setHidden( false )` lived in the `NATIONAL_CALENDARS` branch — while the
+  nation route that would return there is disabled under precisely that rite. Visibility is now derived in
+  `#reapplyOptionsToDom()`, the single point both `_applyFilter()` and `_applyRite()` pass through.
 
 ## 2.0.0
 
