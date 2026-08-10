@@ -115,10 +115,9 @@ describe('ApiOptions rite orchestration', () => {
 
         riteSelect = new RiteSelect('en');
         apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(
-            [nationSelect, dioceseSelect],
-            riteSelect,
-        );
+        apiOptions
+            .linkToCalendarSelect([nationSelect, dioceseSelect])
+            .linkToRiteSelect(riteSelect);
     });
 
     it('hides the nation select for a rite with no national tier', () => {
@@ -239,10 +238,9 @@ describe('ApiOptions rite orchestration', () => {
             .allowNull();
         const localRiteSelect = new RiteSelect('en');
         const localApiOptions = new ApiOptions('en');
-        localApiOptions.linkToCalendarSelect(
-            [wrappedNationSelect, localDioceseSelect],
-            localRiteSelect,
-        );
+        localApiOptions
+            .linkToCalendarSelect([wrappedNationSelect, localDioceseSelect])
+            .linkToRiteSelect(localRiteSelect);
 
         localRiteSelect._domElement.value = Rite.AMBROSIAN;
         localRiteSelect._domElement.dispatchEvent(new Event('change'));
@@ -496,7 +494,9 @@ describe('ApiOptions rite-level locales on a single linked CalendarSelect', () =
         calendarSelect = new CalendarSelect('en').allowNull();
         riteSelect = new RiteSelect('en');
         apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
     });
 
     it('survives the change dispatch that applyRite fires after resetting the selection', () => {
@@ -541,10 +541,9 @@ describe('ApiOptions rite orchestration with a nation-linked diocese select', ()
 
         riteSelect = new RiteSelect('en');
         apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(
-            [nationSelect, dioceseSelect],
-            riteSelect,
-        );
+        apiOptions
+            .linkToCalendarSelect([nationSelect, dioceseSelect])
+            .linkToRiteSelect(riteSelect);
     });
 
     it('keeps per-nation diocese filtering after a rite change', () => {
@@ -599,7 +598,9 @@ describe('ApiOptions PATH_BUILDER filter with a linked RiteSelect', () => {
         calendarSelect = new CalendarSelect('en').allowNull();
         riteSelect = new RiteSelect('en');
         apiOptions = new ApiOptions('en').filter(ApiOptionsFilter.PATH_BUILDER);
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
     });
 
     const nationPathOption = () =>
@@ -667,10 +668,9 @@ describe('ApiOptions without a linked RiteSelect (back-compat)', () => {
 
         const riteAwareSelect = new CalendarSelect('en').allowNull();
         const riteAwareApiOptions = new ApiOptions('en');
-        riteAwareApiOptions.linkToCalendarSelect(
-            riteAwareSelect,
-            new RiteSelect('en'),
-        );
+        riteAwareApiOptions
+            .linkToCalendarSelect(riteAwareSelect)
+            .linkToRiteSelect(new RiteSelect('en'));
 
         expect(riteAwareApiOptions._currentEndpoint.path).toBe(
             '/calendar/roman',
@@ -687,10 +687,9 @@ describe('ApiOptions without a linked RiteSelect (back-compat)', () => {
         const riteAwareSelect = new CalendarSelect('en').allowNull();
         const riteAwareApiOptions = new ApiOptions('en');
         const riteAwareRiteSelect = new RiteSelect('en');
-        riteAwareApiOptions.linkToCalendarSelect(
-            riteAwareSelect,
-            riteAwareRiteSelect,
-        );
+        riteAwareApiOptions
+            .linkToCalendarSelect(riteAwareSelect)
+            .linkToRiteSelect(riteAwareRiteSelect);
 
         riteAwareRiteSelect._domElement.value = Rite.AMBROSIAN;
         riteAwareRiteSelect._domElement.dispatchEvent(new Event('change'));
@@ -769,7 +768,9 @@ describe('ApiOptions + PathBuilder: displayed path refreshes after a rite change
         calendarSelect = new CalendarSelect('en').allowNull();
         riteSelect = new RiteSelect('en');
         apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
         pathBuilder = new PathBuilder(apiOptions, calendarSelect);
         container = document.createElement('div');
         pathBuilder.appendTo(container);

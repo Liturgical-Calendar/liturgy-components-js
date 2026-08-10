@@ -112,7 +112,9 @@ function buildRiteAwareSetup() {
     const calendarSelect = new CalendarSelect('en').allowNull();
     const riteSelect = new RiteSelect('en');
     const apiOptions = new ApiOptions('en');
-    apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+    apiOptions
+        .linkToCalendarSelect(calendarSelect)
+        .linkToRiteSelect(riteSelect);
     return { calendarSelect, riteSelect, apiOptions };
 }
 

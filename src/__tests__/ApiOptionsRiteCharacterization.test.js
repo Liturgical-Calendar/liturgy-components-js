@@ -78,7 +78,9 @@ const buildPaired = () => {
     dioceseSelect.appendTo('#diocese');
 
     const apiOptions = new ApiOptions('en');
-    apiOptions.linkToCalendarSelect([nationSelect, dioceseSelect], riteSelect);
+    apiOptions
+        .linkToCalendarSelect([nationSelect, dioceseSelect])
+        .linkToRiteSelect(riteSelect);
     apiOptions.appendTo('#opts');
 
     return { riteSelect, nationSelect, dioceseSelect, apiOptions };
@@ -94,7 +96,9 @@ const buildSingle = () => {
 
     const apiOptions = new ApiOptions('en');
     apiOptions.filter(ApiOptionsFilter.PATH_BUILDER).appendTo('#opts');
-    apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+    apiOptions
+        .linkToCalendarSelect(calendarSelect)
+        .linkToRiteSelect(riteSelect);
 
     return { riteSelect, calendarSelect, apiOptions };
 };

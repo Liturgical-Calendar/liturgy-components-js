@@ -43,7 +43,9 @@ ApiClient.init('http://localhost:8000')
         apiOptions._yearInput.class('form-control');
         apiOptions._acceptHeaderInput.hide();
         apiOptions._holydaysOfObligationInput.class('d-none');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
         apiOptions.appendTo('#calendarOptions');
 
         const webCalendar = new WebCalendar();

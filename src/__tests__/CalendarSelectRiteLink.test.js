@@ -234,7 +234,9 @@ describe('linkToRiteSelect and ApiOptions together', () => {
         calendarSelect.appendTo('#single');
 
         const apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
 
         // ApiOptions has already linked it; a second, direct link would put two rite
         // listeners on one select and apply the rite twice per change.
@@ -260,7 +262,9 @@ describe('linkToRiteSelect and ApiOptions together', () => {
         calendarSelect.appendTo('#single');
 
         const apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(calendarSelect, riteSelect);
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
 
         let changes = 0;
         calendarSelect._domElement.addEventListener('change', () => {
@@ -288,10 +292,9 @@ describe('linkToRiteSelect and ApiOptions together', () => {
         dioceseSelect.appendTo('#diocese');
 
         const apiOptions = new ApiOptions('en');
-        apiOptions.linkToCalendarSelect(
-            [nationSelect, dioceseSelect],
-            riteSelect,
-        );
+        apiOptions
+            .linkToCalendarSelect([nationSelect, dioceseSelect])
+            .linkToRiteSelect(riteSelect);
 
         let nationChanges = 0;
         let dioceseChanges = 0;
@@ -338,7 +341,9 @@ describe('linkToRiteSelect and ApiOptions together', () => {
         nationA.value('IT');
 
         const apiOptionsA = new ApiOptions('en');
-        apiOptionsA.linkToCalendarSelect([nationA, dioceseA], riteSelectA);
+        apiOptionsA
+            .linkToCalendarSelect([nationA, dioceseA])
+            .linkToRiteSelect(riteSelectA);
 
         const expectedDioceseValues = [...dioceseA._domElement.options].map(
             (o) => o.value,
@@ -362,7 +367,9 @@ describe('linkToRiteSelect and ApiOptions together', () => {
         nationB.value('IT');
 
         const apiOptionsB = new ApiOptions('en');
-        apiOptionsB.linkToCalendarSelect([dioceseB, nationB], riteSelectB);
+        apiOptionsB
+            .linkToCalendarSelect([dioceseB, nationB])
+            .linkToRiteSelect(riteSelectB);
 
         const actualDioceseValues = [...dioceseB._domElement.options].map(
             (o) => o.value,

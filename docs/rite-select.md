@@ -94,8 +94,7 @@ riteSelect._locale      // The locale used to build the option labels
 ## Linking to CalendarSelect and ApiOptions
 
 On its own, `RiteSelect` is inert — changing its value has no effect on any other component. To wire a
-rite selection into the rest of a form, pass it as the optional second argument to
-`ApiOptions.linkToCalendarSelect()`:
+rite selection into the rest of a form, pass it to `ApiOptions.linkToRiteSelect()`:
 
 ```javascript
 import { ApiClient, ApiOptions, CalendarSelect, RiteSelect, CalendarSelectFilter } from '@liturgical-calendar/components-js';
@@ -110,7 +109,9 @@ ApiClient.init().then( () => {
     nationSelect.appendTo( '#nation' );
     dioceseSelect.appendTo( '#diocese' );
 
-    apiOptions.linkToCalendarSelect( [ nationSelect, dioceseSelect ], riteSelect );
+    apiOptions
+        .linkToCalendarSelect( [ nationSelect, dioceseSelect ] )
+        .linkToRiteSelect( riteSelect );
 } ).catch( ( error ) => {
     console.error( `Could not reach the API at ${error.url ?? 'the configured base'}: ${error.message}` );
 } );
@@ -134,6 +135,17 @@ Once linked, `ApiOptions` drives the whole rite -> calendar chain on every chang
   is disabled for a rite with no national tier, since no such route exists for it. If that route was
   selected at the time of the rite change, the selection falls back to `/calendar`.
 
+> **On a page that fetches, this is only half the wiring.** `ApiOptions` rebuilds the form; it does not
+> issue requests. Only the client turns the rite into a path segment, so it needs the rite select too:
+>
+> ```javascript
+> apiClient.listenTo( calendarSelect ).listenTo( riteSelect ).listenTo( apiOptions );
+> ```
+>
+> Omit `listenTo( riteSelect )` and the failure is silent: the form reads `ambrosian`, the calendar list
+> rebuilds with the Ambrosian dioceses, the temporal inputs disable themselves — and every request still
+> goes to `/calendar/roman/`. A page that only renders a form, with no `ApiClient`, needs no second wire.
+
 ### Selecting the Ambrosian rite
 
 Selecting Ambrosian:
@@ -153,7 +165,7 @@ Switching back to Roman reverses all of the above.
 
 ## Driving a CalendarSelect without an ApiOptions
 
-`RiteSelect` is usually passed to `ApiOptions.linkToCalendarSelect()`, which wires it to the option
+`RiteSelect` is usually passed to `ApiOptions.linkToRiteSelect()`, which wires it to the option
 inputs as well as the calendar select. When there is no `ApiOptions` on the page, link the calendar
 select to the rite directly instead:
 

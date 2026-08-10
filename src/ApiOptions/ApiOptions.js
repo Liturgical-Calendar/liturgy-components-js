@@ -70,6 +70,31 @@ export default class ApiOptions {
     /** @type {boolean} */
     #linked = false;
 
+    /**
+     * The calendar select(s) passed to `linkToCalendarSelect()`, kept so that a
+     * `linkToRiteSelect()` arriving afterwards has something to drive.
+     *
+     * @type {?CalendarSelect|?[CalendarSelect, CalendarSelect]}
+     */
+    #linkedCalendarSelect = null;
+
+    /**
+     * The rite select passed to `linkToRiteSelect()` (or to the deprecated second
+     * parameter of `linkToCalendarSelect()`), kept so that the two link methods can
+     * be called in either order: whichever arrives second completes the pairing.
+     *
+     * @type {?RiteSelect}
+     */
+    #linkedRiteSelect = null;
+
+    /**
+     * Whether the rite chain has been wired, so that completing the pairing from
+     * either side attaches the listener exactly once.
+     *
+     * @type {boolean}
+     */
+    #riteWired = false;
+
     /** @type {?Intl.Locale} */
     #locale = null;
 
@@ -862,7 +887,11 @@ export default class ApiOptions {
      * instances, the API options will be updated accordingly.
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The CalendarSelect instance or
      * an array of two CalendarSelect instances (one for nations and one for dioceses) to link to the ApiOptions instance.
-     * @param {?RiteSelect} [riteSelect=null] - An optional `RiteSelect` instance. When provided, `ApiOptions`
+     * @param {?RiteSelect} [riteSelect=null] - **Deprecated. Use {@link ApiOptions#linkToRiteSelect} instead**,
+     * which does the same thing, may be called before or after this method, and reads as its own wiring step
+     * rather than as an argument to another component's link. Passing it here still works and warns.
+     *
+     * An optional `RiteSelect` instance. When provided, `ApiOptions`
      * drives the whole rite -> calendar chain: the linked CalendarSelect(s) are rebuilt for the selected rite,
      * the nation select (when linked as a pair) is hidden for rites with no national tier, the fixed-temporal-option
      * inputs are disabled for rites that fix their own temporal cycle, the year floor is adjusted, and the calendar
@@ -959,12 +988,75 @@ export default class ApiOptions {
         // listener, and rebuilding the calendar select(s) for the current
         // rite. A `riteSelect` rejected above never reaches this point either,
         // since the type-check threw before we got here.
+        this.#linkedCalendarSelect = calendarSelect;
         if (null !== riteSelect) {
+            // Warned here rather than at the type-check above, so that a call which
+            // goes on to throw on `calendarSelect` does not also emit a deprecation
+            // notice for an argument that never took effect.
+            console.warn(
+                'The second argument of ApiOptions.linkToCalendarSelect() is deprecated. Use ApiOptions.linkToRiteSelect() instead.',
+            );
             this.#currentEndpoint.explicitRite = true;
-            this.#handleLinkedRiteSelect(riteSelect, calendarSelect);
+            this.#linkedRiteSelect = riteSelect;
         }
+        this.#wireRiteIfReady();
         this.#linked = true;
         return this;
+    }
+
+    /**
+     * Link this `ApiOptions` to a `RiteSelect`, so that a rite change drives the whole
+     * rite -> calendar chain.
+     *
+     * @param {RiteSelect} riteSelect - The rite select to follow.
+     * @returns {ApiOptions} This instance, for chaining.
+     */
+    linkToRiteSelect(riteSelect) {
+        if (false === riteSelect instanceof RiteSelect) {
+            throw new Error(
+                'ApiOptions.linkToRiteSelect: riteSelect must be of type `RiteSelect` but found type: ' +
+                    typeof riteSelect,
+            );
+        }
+        // One-way within this instance, matching `linkToCalendarSelect()`: there is no
+        // supported way to un-link a rite select and revert to the implicit form, so a
+        // second call is a mistake rather than a reconfiguration. Catches the case where
+        // a caller migrating off the deprecated second argument adds the new call
+        // without removing the old one, which would otherwise wire two listeners.
+        if (null !== this.#linkedRiteSelect) {
+            throw new Error(
+                'Current ApiOptions instance already linked to another RiteSelect instance',
+            );
+        }
+        this.#currentEndpoint.explicitRite = true;
+        this.#linkedRiteSelect = riteSelect;
+        this.#wireRiteIfReady();
+        return this;
+    }
+
+    /**
+     * Attach the rite chain once both halves of the pairing have arrived.
+     *
+     * `linkToCalendarSelect()` and `linkToRiteSelect()` may be called in either
+     * order, so each calls this and the second one to arrive does the work.
+     * Deliberately idempotent: wiring twice would attach two `change` listeners to
+     * the same rite select, and every rebuild would run — and dispatch — twice.
+     *
+     * @returns {void}
+     */
+    #wireRiteIfReady() {
+        if (
+            this.#riteWired ||
+            null === this.#linkedRiteSelect ||
+            null === this.#linkedCalendarSelect
+        ) {
+            return;
+        }
+        this.#riteWired = true;
+        this.#handleLinkedRiteSelect(
+            this.#linkedRiteSelect,
+            this.#linkedCalendarSelect,
+        );
     }
 
     /**
