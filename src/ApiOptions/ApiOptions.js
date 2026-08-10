@@ -971,7 +971,11 @@ export default class ApiOptions {
      * Appends input elements to the specified DOM element, optionally filtered based on the ApiOptionsFilter.
      *
      * @param {string|HTMLElement} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
-     * @returns {void} Deliberately not chainable: unlike the configuration methods, this returns nothing, so it must be called on its own rather than in a chain.
+     * @returns {void} Returns `undefined` rather than `this`, so nothing can be chained *off* this call
+     *                 and its result must never be assigned. Terminating a chain with it is fine: the
+     *                 receiver is whatever the preceding configuration method returned, so
+     *                 `apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#options' )` calls
+     *                 it on the `ApiOptions` and simply discards the `undefined`.
      * @throws {Error} If the selector is neither a valid CSS selector nor an HTMLElement.
      */
     appendTo(elementSelector) {

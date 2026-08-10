@@ -162,7 +162,7 @@ convention) so an editor's live indentation matches what prettier will enforce a
 **Key Patterns:**
 
 - **Chainable methods** - Configuration methods return `this` for fluent interface
-- **Non-chainable methods** - `appendTo()` is void and does NOT return `this`
+- **Non-chainable methods** - `appendTo()` is void: it may terminate a chain, but nothing can be chained off it
 - **JSDoc comments** - All public methods documented with parameter and return types
 - **Private fields** - Uses `#` prefix for encapsulation
 
@@ -182,23 +182,34 @@ convention) so an editor's live indentation matches what prettier will enforce a
 the table content is rebuilt and the target element's children are _replaced_ (not appended). This reactive behavior
 means the calendar updates automatically whenever new data arrives from the ApiClient.
 
-**IMPORTANT:** Since `appendTo()` does not return `this`, you must NOT chain it with other methods.
-Call it separately after configuring the component:
+**IMPORTANT:** `appendTo()` returns `undefined` rather than `this`. Two things follow, and only two:
+nothing can be chained _off_ it, and its result must never be assigned. It may still **terminate** a
+chain — the receiver is whatever the preceding configuration method returned, and the `undefined` is
+simply discarded as a statement.
 
 ```javascript
 import { CalendarSelect, ApiOptions } from 'liturgy-components-js';
 
-// CORRECT - appendTo() called separately
+// CORRECT - configure, then insert
 const calendarSelect = new CalendarSelect('en-US')
     .filter(CalendarSelectFilter.NATIONAL_CALENDARS)
     .class('form-control')
     .id('calendar-select');
 calendarSelect.appendTo('#container');
 
-// WRONG - appendTo() chained returns undefined
+// ALSO CORRECT - appendTo() ends the chain. class() returned the CalendarSelect,
+// so appendTo() runs on that instance and nothing consumes its undefined.
+new CalendarSelect('en-US').class('form-control').appendTo('#container');
+
+// WRONG - the const is undefined, not the component
 const calendarSelect = new CalendarSelect('en-US')
     .class('form-control')
-    .appendTo('#container');  // Returns undefined, not the CalendarSelect instance!
+    .appendTo('#container');
+
+// WRONG - nothing can be chained off appendTo()
+new CalendarSelect('en-US')
+    .appendTo('#container')
+    .class('form-control'); // TypeError: Cannot read properties of undefined
 ```
 
 ### Markdown
