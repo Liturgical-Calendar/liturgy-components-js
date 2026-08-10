@@ -971,6 +971,8 @@ export default class ApiOptions {
      * Appends input elements to the specified DOM element, optionally filtered based on the ApiOptionsFilter.
      *
      * @param {string|HTMLElement} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
+     * @returns {void} Deliberately not chainable: unlike the configuration methods, this returns nothing, so it must be called on its own rather than in a chain.
+     * @throws {Error} If the selector is neither a valid CSS selector nor an HTMLElement.
      */
     appendTo(elementSelector) {
         let domNode;

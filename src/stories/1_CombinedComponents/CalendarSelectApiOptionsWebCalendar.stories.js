@@ -97,7 +97,7 @@ const meta = {
                 gradeDisplay: GradeDisplay.ABBREVIATED,
             });
             apiClient.listenTo(calendarSelect).listenTo(apiOptions);
-            webCalendar.listenTo(apiClient).attachTo(webCalendarContainer);
+            webCalendar.listenTo(apiClient).appendTo(webCalendarContainer);
             // The promise a story receives from a fetch method is the story's own: the
             // library only suppresses the rejections of the requests it issues itself.
             apiClient.fetchNationalCalendar('VA').catch((error) => {

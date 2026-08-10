@@ -43,7 +43,7 @@ const meta = {
             description: 'Class for the WebCalendar instance',
             defaultValue: '',
         },
-        firtColumnGrouping: {
+        firstColumnGrouping: {
             control: { type: 'select' },
             options: [Grouping.BY_MONTH, Grouping.BY_LITURGICAL_SEASON],
             labels: {
@@ -202,7 +202,7 @@ const meta = {
             if (locale) {
                 webCalendar.locale(locale);
             }
-            webCalendar.listenTo(apiClient).attachTo(container);
+            webCalendar.listenTo(apiClient).appendTo(container);
             // The promise a story receives from a fetch method is the story's own: the
             // library only suppresses the rejections of the requests it issues itself.
             apiClient.fetchCalendar(locale).catch((error) => {
