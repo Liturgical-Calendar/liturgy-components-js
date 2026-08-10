@@ -15,156 +15,166 @@ import { CalendarSelect, ApiClient } from '@liturgical-calendar/components-js';
  * to send a request that does not specify a National or Diocesan calendar (in other words, a request for the General Roman Calendar).
  */
 const meta = {
-  title: 'Components/CalendarSelect/Unstyled',
-  tags: ['autodocs'],
-  argTypes: {
-    locale: {
-      control: 'text',
-      description: 'Locale code for UI elements. This option is passed directly to the `CalendarSelect` constructor.'
+    title: 'Components/CalendarSelect/Unstyled',
+    tags: ['autodocs'],
+    argTypes: {
+        locale: {
+            control: 'text',
+            description:
+                'Locale code for UI elements. This option is passed directly to the `CalendarSelect` constructor.',
+        },
+        id: {
+            control: 'text',
+            description: "ID for the widget's underlying HTML element",
+        },
+        class: {
+            control: 'text',
+            description:
+                "CSS class(es) for the widget's underlying HTML element",
+        },
+        label: {
+            text: {
+                control: 'text',
+                description:
+                    "Text content for the select label's underlying HTML element",
+            },
+            class: {
+                control: 'text',
+                description:
+                    "CSS class(es) for the select label's underlying HTML element",
+            },
+            id: {
+                control: 'text',
+                description:
+                    "ID for the select label's underlying HTML element",
+            },
+        },
+        wrapper: {
+            id: {
+                control: 'text',
+                description:
+                    "ID for the select wrapper's underlying HTML element",
+            },
+            class: {
+                control: 'text',
+                description:
+                    "CSS class(es) for the select wrapper's underlying HTML element",
+            },
+        },
+        after: {
+            control: 'text',
+            description:
+                "HTML string to append to the select or select wrapper's underlying HTML element",
+        },
+        onChange: {
+            action: 'onChange',
+        },
+        allowNull: {
+            control: 'boolean',
+            description:
+                'Set whether the select element should include an empty option as the first option',
+        },
     },
-    id: {
-      control: 'text',
-      description: 'ID for the widget\'s underlying HTML element'
-    },
-    class: {
-      control: 'text',
-      description: 'CSS class(es) for the widget\'s underlying HTML element'
-    },
-    label: {
-      text: {
-        control: 'text',
-        description: 'Text content for the select label\'s underlying HTML element'
-      },
-      class: {
-        control: 'text',
-        description: 'CSS class(es) for the select label\'s underlying HTML element'
-      },
-      id: {
-        control: 'text',
-        description: 'ID for the select label\'s underlying HTML element'
-      }
-    },
-    wrapper: {
-      id: {
-        control: 'text',
-        description: 'ID for the select wrapper\'s underlying HTML element'
-      },
-      class: {
-        control: 'text',
-        description: 'CSS class(es) for the select wrapper\'s underlying HTML element'
-      }
-    },
-    after: {
-      control: 'text',
-      description: 'HTML string to append to the select or select wrapper\'s underlying HTML element'
-    },
-    onChange: {
-      action: 'onChange'
-    },
-    allowNull: {
-      control: 'boolean',
-      description: 'Set whether the select element should include an empty option as the first option'
-    }
-  },
-  render: (args, { loaded: { apiClient } }) => {
-    const container = document.createElement('div');
-    container.id = 'calendarSelectContainer';
+    render: (args, { loaded: { apiClient } }) => {
+        const container = document.createElement('div');
+        container.id = 'calendarSelectContainer';
 
-    // Constructed inside the guard: CalendarSelect reads its base's calendar index
-    // at construction, and a base whose load failed has none to read.
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        container.textContent = 'Error initializing the Liturgical Calendar API Client';
-    } else {
-        const calendarSelect = new CalendarSelect(args);
-        //apiClient.listenTo(calendarSelect);
-        calendarSelect.appendTo(container);
-    }
-    return container;
-  },
-  parameters: {
-    actions: {
-      handles: ['change', 'change #calendarSelectContainer select'],
+        // Constructed inside the guard: CalendarSelect reads its base's calendar index
+        // at construction, and a base whose load failed has none to read.
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
+            container.textContent =
+                'Error initializing the Liturgical Calendar API Client';
+        } else {
+            const calendarSelect = new CalendarSelect(args);
+            //apiClient.listenTo(calendarSelect);
+            calendarSelect.appendTo(container);
+        }
+        return container;
     },
-  },
-  args: {
-    label: {
-      text: 'Select a calendar',
-      class: 'label-class',
-      id: 'label_id'
+    parameters: {
+        actions: {
+            handles: ['change', 'change #calendarSelectContainer select'],
+        },
     },
-    wrapper: {
-      as: 'div',
-      class: 'wrapper-class',
-      id: 'wrapper_id'
+    args: {
+        label: {
+            text: 'Select a calendar',
+            class: 'label-class',
+            id: 'label_id',
+        },
+        wrapper: {
+            as: 'div',
+            class: 'wrapper-class',
+            id: 'wrapper_id',
+        },
+        allowNull: false,
     },
-    allowNull: false
-  }
-}
+};
 
 export default meta;
 
 export const Default = {
-  args: {}
-}
+    args: {},
+};
 
 export const EnglishWithAfter = {
-  args: {
-    locale: 'en-US',
-    label: {
-      text: 'Select a calendar'
+    args: {
+        locale: 'en-US',
+        label: {
+            text: 'Select a calendar',
+        },
+        after: '<small class="text-muted"><i>Liturgical calendars loaded from the Liturgical Calendar API</i></small>',
+        wrapper: undefined,
     },
-    after: '<small class="text-muted"><i>Liturgical calendars loaded from the Liturgical Calendar API</i></small>',
-    wrapper: undefined
-  }
-}
+};
 
 export const EnglishAllowNull = {
-  args: {
-    locale: 'en-US',
-    label: {
-      text: 'Select a calendar'
+    args: {
+        locale: 'en-US',
+        label: {
+            text: 'Select a calendar',
+        },
+        wrapper: null,
+        allowNull: true,
     },
-    wrapper: null,
-    allowNull: true
-  }
-}
+};
 
 export const Italian = {
-  args: {
-    locale: 'it-IT',
-    label: {
-      text: 'Seleziona calendario'
+    args: {
+        locale: 'it-IT',
+        label: {
+            text: 'Seleziona calendario',
+        },
+        wrapper: undefined,
     },
-    wrapper: undefined
-  }
-}
+};
 
 export const French = {
-  args: {
-    locale: 'fr-FR',
-    label: {
-      text: 'Eligir calendrier'
+    args: {
+        locale: 'fr-FR',
+        label: {
+            text: 'Eligir calendrier',
+        },
+        wrapper: undefined,
     },
-    wrapper: undefined
-  }
-}
+};
 
 export const Spanish = {
-  args: {
-    locale: 'es-ES',
-    label: {
-      text: 'Seleccione calendario'
+    args: {
+        locale: 'es-ES',
+        label: {
+            text: 'Seleccione calendario',
+        },
+        wrapper: undefined,
     },
-    wrapper: undefined
-  }
-}
+};
 
 export const German = {
-  args: {
-    locale: 'de-DE',
-    label: {
-      text: 'Kalender auswählen'
+    args: {
+        locale: 'de-DE',
+        label: {
+            text: 'Kalender auswählen',
+        },
+        wrapper: undefined,
     },
-    wrapper: undefined
-  }
-}
+};

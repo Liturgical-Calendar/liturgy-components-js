@@ -1,0 +1,25 @@
+# EditorConfig for @liturgical-calendar/components-js.
+#
+# This is the "get it right live" half of the JavaScript formatting story: prettier (see
+# .prettierrc and the "JavaScript" section under Code Standards in CLAUDE.md) enforces the
+# house style — 4-space indent, single quotes — after the fact, via `yarn format:js` and in CI.
+# This file gets an editor to the same indentation before the fact, so a contributor's editor
+# doesn't fight the formatter.
+#
+# `end_of_line = lf` matches the repo's dominant convention: of the 91 tracked JavaScript files
+# under src/ and examples/, 86 use LF and 5 use CRLF. LF is the one to standardize new edits on;
+# the existing CRLF files are left alone (prettier's `endOfLine: "auto"` in .prettierrc does the
+# same) rather than being rewritten as a line-ending change bundled into an unrelated
+# formatting pass.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.js]
+indent_style = space
+indent_size = 4

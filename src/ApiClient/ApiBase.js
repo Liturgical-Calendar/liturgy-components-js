@@ -31,7 +31,6 @@ const warnedComponents = new Set();
  * @license Apache-2.0
  */
 export default class ApiBase {
-
     /** @type {Map<string, ApiBase>} Registry keyed by normalized URL, in registration order. */
     static #registry = new Map();
 
@@ -62,7 +61,7 @@ export default class ApiBase {
      *
      * @param {string} url - An already normalized base URL.
      */
-    constructor( url ) {
+    constructor(url) {
         this.#url = url;
     }
 
@@ -96,13 +95,16 @@ export default class ApiBase {
      * @returns {string} The normalized URL.
      * @throws {Error} If the URL is not a non-empty string, or is not an absolute `http:` or `https:` URL.
      */
-    static normalizeUrl( url ) {
-        if ( typeof url !== 'string' || url.trim() === '' ) {
-            throw new Error( 'ApiBase: url must be a non-empty string, but found: ' + String( url ) );
+    static normalizeUrl(url) {
+        if (typeof url !== 'string' || url.trim() === '') {
+            throw new Error(
+                'ApiBase: url must be a non-empty string, but found: ' +
+                    String(url),
+            );
         }
-        const trimmed    = url.trim();
-        const normalized = trimmed.replace( /\/+$/, '' );
-        ApiBase.#assertAbsoluteHttpUrl( normalized, trimmed );
+        const trimmed = url.trim();
+        const normalized = trimmed.replace(/\/+$/, '');
+        ApiBase.#assertAbsoluteHttpUrl(normalized, trimmed);
         return normalized;
     }
 
@@ -129,28 +131,37 @@ export default class ApiBase {
      * @throws {Error} If the URL is not an absolute `http:` or `https:` URL.
      * @private
      */
-    static #assertAbsoluteHttpUrl( normalized, original ) {
+    static #assertAbsoluteHttpUrl(normalized, original) {
         let parsed = null;
         try {
-            parsed = new URL( normalized );
+            parsed = new URL(normalized);
         } catch {
             parsed = null;
         }
 
-        if ( null !== parsed && ( 'http:' === parsed.protocol || 'https:' === parsed.protocol ) ) {
+        if (
+            null !== parsed &&
+            ('http:' === parsed.protocol || 'https:' === parsed.protocol)
+        ) {
             return;
         }
 
-        const suggestion = ApiBase.#httpSuggestion( normalized );
-        if ( null !== suggestion ) {
-            throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which carries no scheme. Did you mean ${suggestion}?` );
+        const suggestion = ApiBase.#httpSuggestion(normalized);
+        if (null !== suggestion) {
+            throw new Error(
+                `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which carries no scheme. Did you mean ${suggestion}?`,
+            );
         }
 
-        if ( null !== parsed ) {
-            throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — whose scheme is ${parsed.protocol}. The base is fetched over HTTP; no other scheme can serve /calendars.` );
+        if (null !== parsed) {
+            throw new Error(
+                `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — whose scheme is ${parsed.protocol}. The base is fetched over HTTP; no other scheme can serve /calendars.`,
+            );
         }
 
-        throw new Error( `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which is not a URL. A relative base is not supported: it would resolve /calendars against the document and 404 silently.` );
+        throw new Error(
+            `ApiBase: url must be an absolute http: or https: URL, but found: ${original} — which is not a URL. A relative base is not supported: it would resolve /calendars against the document and 404 silently.`,
+        );
     }
 
     /**
@@ -173,22 +184,30 @@ export default class ApiBase {
      * @returns {string|null} The suggested absolute URL, or null if none can be inferred.
      * @private
      */
-    static #httpSuggestion( normalized ) {
+    static #httpSuggestion(normalized) {
         // Already carries an explicit scheme and authority: the scheme was chosen, not omitted.
-        if ( /^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test( normalized ) ) {
+        if (/^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(normalized)) {
             return null;
         }
         // A bare `something:` prefix is an omitted scheme only when what follows is a port.
-        if ( /^[^/:?#]+:/.test( normalized ) && false === /^[^/:?#]+:\d+(?:[/?#]|$)/.test( normalized ) ) {
+        if (
+            /^[^/:?#]+:/.test(normalized) &&
+            false === /^[^/:?#]+:\d+(?:[/?#]|$)/.test(normalized)
+        ) {
             return null;
         }
         // A single leading slash is a relative path, not an authority.
-        if ( normalized.startsWith( '/' ) && false === normalized.startsWith( '//' ) ) {
+        if (
+            normalized.startsWith('/') &&
+            false === normalized.startsWith('//')
+        ) {
             return null;
         }
-        const candidate = normalized.startsWith( '//' ) ? `http:${normalized}` : `http://${normalized}`;
+        const candidate = normalized.startsWith('//')
+            ? `http:${normalized}`
+            : `http://${normalized}`;
         try {
-            return '' === new URL( candidate ).hostname ? null : candidate;
+            return '' === new URL(candidate).hostname ? null : candidate;
         } catch {
             return null;
         }
@@ -227,18 +246,30 @@ export default class ApiBase {
      * @throws {Error} If the index is not an object, or omits a required field, or carries one that is not an array.
      * @private
      */
-    static #assertValidIndex( metadata, url ) {
-        if ( null === metadata || typeof metadata !== 'object' || Array.isArray( metadata ) ) {
-            throw new Error( `ApiBase: the calendar index of the base at ${url} must be an object, but found: ${Array.isArray( metadata ) ? 'array' : typeof metadata}.` );
+    static #assertValidIndex(metadata, url) {
+        if (
+            null === metadata ||
+            typeof metadata !== 'object' ||
+            Array.isArray(metadata)
+        ) {
+            throw new Error(
+                `ApiBase: the calendar index of the base at ${url} must be an object, but found: ${Array.isArray(metadata) ? 'array' : typeof metadata}.`,
+            );
         }
-        [ 'national_calendars', 'diocesan_calendars', 'locales' ].forEach( field => {
-            if ( false === Object.hasOwn( metadata, field ) ) {
-                throw new Error( `ApiBase: the calendar index of the base at ${url} carries no \`${field}\` field. Every component reads it; an index without it is not a usable calendar index.` );
-            }
-            if ( false === Array.isArray( metadata[ field ] ) ) {
-                throw new Error( `ApiBase: the \`${field}\` field of the calendar index of the base at ${url} must be an array, but found: ${describeType( metadata[ field ] )}. Every component iterates it; anything else surfaces later as a bare TypeError naming neither the field nor the API that served it.` );
-            }
-        } );
+        ['national_calendars', 'diocesan_calendars', 'locales'].forEach(
+            (field) => {
+                if (false === Object.hasOwn(metadata, field)) {
+                    throw new Error(
+                        `ApiBase: the calendar index of the base at ${url} carries no \`${field}\` field. Every component reads it; an index without it is not a usable calendar index.`,
+                    );
+                }
+                if (false === Array.isArray(metadata[field])) {
+                    throw new Error(
+                        `ApiBase: the \`${field}\` field of the calendar index of the base at ${url} must be an array, but found: ${describeType(metadata[field])}. Every component iterates it; anything else surfaces later as a bare TypeError naming neither the field nor the API that served it.`,
+                    );
+                }
+            },
+        );
     }
 
     /**
@@ -249,12 +280,12 @@ export default class ApiBase {
      * @param {string} [url] - The base URL. Defaults to {@link ApiBase.DEFAULT_URL}.
      * @returns {ApiBase}
      */
-    static resolve( url = ApiBase.#defaultUrl ) {
-        const normalized = ApiBase.normalizeUrl( url );
-        if ( false === ApiBase.#registry.has( normalized ) ) {
-            ApiBase.#registry.set( normalized, new ApiBase( normalized ) );
+    static resolve(url = ApiBase.#defaultUrl) {
+        const normalized = ApiBase.normalizeUrl(url);
+        if (false === ApiBase.#registry.has(normalized)) {
+            ApiBase.#registry.set(normalized, new ApiBase(normalized));
         }
-        return ApiBase.#registry.get( normalized );
+        return ApiBase.#registry.get(normalized);
     }
 
     /**
@@ -285,10 +316,10 @@ export default class ApiBase {
      *          until {@link ApiBase.reset} clears the registry.
      * @throws {Error} If the metadata is not an object, or omits `national_calendars`, `diocesan_calendars` or `locales`, or carries any of the three as something other than an array.
      */
-    static fromMetadata( url, metadata ) {
-        const normalized = ApiBase.normalizeUrl( url );
-        ApiBase.#assertValidIndex( metadata, normalized );
-        const base = ApiBase.resolve( normalized );
+    static fromMetadata(url, metadata) {
+        const normalized = ApiBase.normalizeUrl(url);
+        ApiBase.#assertValidIndex(metadata, normalized);
+        const base = ApiBase.resolve(normalized);
         base.#metadata = metadata;
         base.clearCache();
         return base;
@@ -310,7 +341,7 @@ export default class ApiBase {
      * @returns {ApiBase[]}
      */
     static get all() {
-        return Array.from( ApiBase.#registry.values() );
+        return Array.from(ApiBase.#registry.values());
     }
 
     /**
@@ -368,71 +399,84 @@ export default class ApiBase {
      *         promise resolves to the loaded base.
      */
     load() {
-        if ( this.#metadata !== null ) {
-            return Promise.resolve( this );
+        if (this.#metadata !== null) {
+            return Promise.resolve(this);
         }
-        if ( this.#loadPromise !== null ) {
+        if (this.#loadPromise !== null) {
             return this.#loadPromise;
         }
 
         const requestUrl = `${this.#url}/calendars`;
 
-        this.#loadPromise = fetch( requestUrl ).then( response => {
-            if ( false === response.ok ) {
-                return response.text()
-                    .catch( () => null )
-                    .then( body => {
-                        throw new ApiClientError(
-                            `GET ${requestUrl} failed: ${response.status} ${response.statusText}`,
-                            { url: requestUrl, status: response.status, statusText: response.statusText, body }
-                        );
-                    } );
-            }
-            return response.json();
-        } ).then( data => {
-            if ( null === data || typeof data !== 'object' || false === Object.hasOwn( data, 'litcal_metadata' ) ) {
-                throw new ApiClientError(
-                    `GET ${requestUrl} returned no litcal_metadata property`,
-                    { url: requestUrl }
-                );
-            }
-            // A plain Error here is deliberate: the `catch` below wraps anything
-            // that is not already an ApiClientError, so the message survives and
-            // callers still see the ApiClientError that `load()` promises.
+        this.#loadPromise = fetch(requestUrl)
+            .then((response) => {
+                if (false === response.ok) {
+                    return response
+                        .text()
+                        .catch(() => null)
+                        .then((body) => {
+                            throw new ApiClientError(
+                                `GET ${requestUrl} failed: ${response.status} ${response.statusText}`,
+                                {
+                                    url: requestUrl,
+                                    status: response.status,
+                                    statusText: response.statusText,
+                                    body,
+                                },
+                            );
+                        });
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (
+                    null === data ||
+                    typeof data !== 'object' ||
+                    false === Object.hasOwn(data, 'litcal_metadata')
+                ) {
+                    throw new ApiClientError(
+                        `GET ${requestUrl} returned no litcal_metadata property`,
+                        { url: requestUrl },
+                    );
+                }
+                // A plain Error here is deliberate: the `catch` below wraps anything
+                // that is not already an ApiClientError, so the message survives and
+                // callers still see the ApiClientError that `load()` promises.
 
-            // An index may have been installed by `fromMetadata()` — a fixture, or a
-            // server-rendered payload — while this request was in flight. It wins: an
-            // explicit call outranks a background fetch. The response is dropped without
-            // being validated as a calendar index — `#assertValidIndex` below is skipped —
-            // because it is no longer what anyone will read, and rejecting here would fail
-            // a `load()` on a base that is loaded.
-            if ( this.#metadata !== null ) {
+                // An index may have been installed by `fromMetadata()` — a fixture, or a
+                // server-rendered payload — while this request was in flight. It wins: an
+                // explicit call outranks a background fetch. The response is dropped without
+                // being validated as a calendar index — `#assertValidIndex` below is skipped —
+                // because it is no longer what anyone will read, and rejecting here would fail
+                // a `load()` on a base that is loaded.
+                if (this.#metadata !== null) {
+                    this.#loadPromise = null;
+                    return this;
+                }
+
+                ApiBase.#assertValidIndex(data.litcal_metadata, this.#url);
+                this.#metadata = data.litcal_metadata;
                 this.#loadPromise = null;
                 return this;
-            }
-
-            ApiBase.#assertValidIndex( data.litcal_metadata, this.#url );
-            this.#metadata    = data.litcal_metadata;
-            this.#loadPromise = null;
-            return this;
-        } ).catch( error => {
-            this.#loadPromise = null;
-            // An index installed by `fromMetadata()` while this request was open
-            // outranks the request, and outranks its failure too: the base is
-            // loaded, so `load()`'s contract — resolve once the metadata is
-            // there — is satisfied, and rejecting would report a base as
-            // unloadable while it is loaded.
-            if ( this.#metadata !== null ) {
-                return this;
-            }
-            if ( error instanceof ApiClientError ) {
-                throw error;
-            }
-            throw new ApiClientError(
-                `GET ${requestUrl} failed: ${error.message}`,
-                { url: requestUrl, cause: error }
-            );
-        } );
+            })
+            .catch((error) => {
+                this.#loadPromise = null;
+                // An index installed by `fromMetadata()` while this request was open
+                // outranks the request, and outranks its failure too: the base is
+                // loaded, so `load()`'s contract — resolve once the metadata is
+                // there — is satisfied, and rejecting would report a base as
+                // unloadable while it is loaded.
+                if (this.#metadata !== null) {
+                    return this;
+                }
+                if (error instanceof ApiClientError) {
+                    throw error;
+                }
+                throw new ApiClientError(
+                    `GET ${requestUrl} failed: ${error.message}`,
+                    { url: requestUrl, cause: error },
+                );
+            });
 
         return this.#loadPromise;
     }
@@ -449,20 +493,26 @@ export default class ApiBase {
      * @returns {void}
      * @throws {Error} If a supplied limit is out of range.
      */
-    static cacheLimits( { maxEntries, ttl } = {} ) {
-        if ( maxEntries !== undefined ) {
-            if ( false === Number.isInteger( maxEntries ) || maxEntries < 1 ) {
-                throw new Error( 'ApiBase.cacheLimits: maxEntries must be a positive integer, but found: ' + String( maxEntries ) );
+    static cacheLimits({ maxEntries, ttl } = {}) {
+        if (maxEntries !== undefined) {
+            if (false === Number.isInteger(maxEntries) || maxEntries < 1) {
+                throw new Error(
+                    'ApiBase.cacheLimits: maxEntries must be a positive integer, but found: ' +
+                        String(maxEntries),
+                );
             }
             ApiBase.#maxEntries = maxEntries;
             // A lowered limit must apply immediately: a base that is never written to
             // again would otherwise stay over the new limit indefinitely, since
             // `setCached()` is the only other place trimming happens.
-            ApiBase.#registry.forEach( base => base.#trimCache() );
+            ApiBase.#registry.forEach((base) => base.#trimCache());
         }
-        if ( ttl !== undefined ) {
-            if ( ttl !== null && ( false === Number.isFinite( ttl ) || ttl <= 0 ) ) {
-                throw new Error( 'ApiBase.cacheLimits: ttl must be null or a positive number of milliseconds, but found: ' + String( ttl ) );
+        if (ttl !== undefined) {
+            if (ttl !== null && (false === Number.isFinite(ttl) || ttl <= 0)) {
+                throw new Error(
+                    'ApiBase.cacheLimits: ttl must be null or a positive number of milliseconds, but found: ' +
+                        String(ttl),
+                );
             }
             ApiBase.#ttl = ttl;
         }
@@ -482,9 +532,9 @@ export default class ApiBase {
      * @private
      */
     #trimCache() {
-        while ( this.#cache.size > ApiBase.#maxEntries ) {
+        while (this.#cache.size > ApiBase.#maxEntries) {
             const oldest = this.#cache.keys().next().value;
-            this.#cache.delete( oldest );
+            this.#cache.delete(oldest);
         }
     }
 
@@ -494,7 +544,7 @@ export default class ApiBase {
      * @returns {void}
      */
     static clearAllCaches() {
-        ApiBase.#registry.forEach( base => base.clearCache() );
+        ApiBase.#registry.forEach((base) => base.clearCache());
     }
 
     /**
@@ -507,17 +557,20 @@ export default class ApiBase {
      * @param {string} key - The cache key.
      * @returns {object|null} The cached data, or null on a miss or an expired entry.
      */
-    getCached( key ) {
-        if ( false === this.#cache.has( key ) ) {
+    getCached(key) {
+        if (false === this.#cache.has(key)) {
             return null;
         }
-        const entry = this.#cache.get( key );
-        if ( ApiBase.#ttl !== null && Date.now() - entry.timestamp > ApiBase.#ttl ) {
-            this.#cache.delete( key );
+        const entry = this.#cache.get(key);
+        if (
+            ApiBase.#ttl !== null &&
+            Date.now() - entry.timestamp > ApiBase.#ttl
+        ) {
+            this.#cache.delete(key);
             return null;
         }
-        this.#cache.delete( key );
-        this.#cache.set( key, entry );
+        this.#cache.delete(key);
+        this.#cache.set(key, entry);
         return entry.data;
     }
 
@@ -528,12 +581,12 @@ export default class ApiBase {
      * @param {object} data - The response data to cache.
      * @returns {void}
      */
-    setCached( key, data ) {
-        this.#cache.delete( key );
-        this.#cache.set( key, { data, timestamp: Date.now() } );
-        while ( this.#cache.size > ApiBase.#maxEntries ) {
+    setCached(key, data) {
+        this.#cache.delete(key);
+        this.#cache.set(key, { data, timestamp: Date.now() });
+        while (this.#cache.size > ApiBase.#maxEntries) {
             const oldest = this.#cache.keys().next().value;
-            this.#cache.delete( oldest );
+            this.#cache.delete(oldest);
         }
     }
 
@@ -558,9 +611,11 @@ export default class ApiBase {
      * @throws {Error} If the metadata has not been loaded.
      * @private
      */
-    #assertLoaded( method ) {
-        if ( null === this.#metadata ) {
-            throw new Error( `ApiBase.${method}: the base at ${this.#url} has not been loaded. Await load() — or ApiClient.init() — before querying its metadata.` );
+    #assertLoaded(method) {
+        if (null === this.#metadata) {
+            throw new Error(
+                `ApiBase.${method}: the base at ${this.#url} has not been loaded. Await load() — or ApiClient.init() — before querying its metadata.`,
+            );
         }
     }
 
@@ -571,7 +626,7 @@ export default class ApiBase {
      * @throws {Error} If the metadata has not been loaded.
      */
     locales() {
-        this.#assertLoaded( 'locales' );
+        this.#assertLoaded('locales');
         return this.#metadata.locales;
     }
 
@@ -585,7 +640,7 @@ export default class ApiBase {
      * @throws {Error} If the metadata has not been loaded.
      */
     nationalCalendars() {
-        this.#assertLoaded( 'nationalCalendars' );
+        this.#assertLoaded('nationalCalendars');
         return this.#metadata.national_calendars;
     }
 
@@ -600,10 +655,11 @@ export default class ApiBase {
      * @returns {import('../typedefs.js').DiocesanCalendar[]}
      * @throws {Error} If the metadata has not been loaded.
      */
-    diocesanCalendars( rite = Rite.ROMAN ) {
-        this.#assertLoaded( 'diocesanCalendars' );
+    diocesanCalendars(rite = Rite.ROMAN) {
+        this.#assertLoaded('diocesanCalendars');
         return this.#metadata.diocesan_calendars.filter(
-            diocesanCalendar => ( diocesanCalendar.rite ?? Rite.ROMAN ) === rite
+            (diocesanCalendar) =>
+                (diocesanCalendar.rite ?? Rite.ROMAN) === rite,
         );
     }
 
@@ -618,10 +674,10 @@ export default class ApiBase {
      * @returns {import('../typedefs.js').NationalCalendar[]}
      * @throws {Error} If the metadata has not been loaded.
      */
-    riteCalendars( rite ) {
-        this.#assertLoaded( 'riteCalendars' );
-        const riteCalendars = this.#metadata[ `${rite}_calendars` ];
-        return Array.isArray( riteCalendars ) ? riteCalendars : [];
+    riteCalendars(rite) {
+        this.#assertLoaded('riteCalendars');
+        const riteCalendars = this.#metadata[`${rite}_calendars`];
+        return Array.isArray(riteCalendars) ? riteCalendars : [];
     }
 
     /**
@@ -636,7 +692,7 @@ export default class ApiBase {
      * @returns {boolean}
      */
     get supportsRite() {
-        return Array.isArray( this.#metadata?.ambrosian_calendars );
+        return Array.isArray(this.#metadata?.ambrosian_calendars);
     }
 
     /**
@@ -647,14 +703,13 @@ export default class ApiBase {
      * @returns {boolean} False when the diocese is unknown to this API.
      * @throws {Error} If the metadata has not been loaded.
      */
-    isValidDioceseForNation( dioceseId, nation ) {
-        this.#assertLoaded( 'isValidDioceseForNation' );
+    isValidDioceseForNation(dioceseId, nation) {
+        this.#assertLoaded('isValidDioceseForNation');
         const diocese = this.#metadata.diocesan_calendars.find(
-            diocesanCalendar => diocesanCalendar.calendar_id === dioceseId
+            (diocesanCalendar) => diocesanCalendar.calendar_id === dioceseId,
         );
         return undefined !== diocese && diocese.nation === nation;
     }
-
 }
 
 /**
@@ -676,20 +731,29 @@ export default class ApiBase {
  * @returns {ApiBase} The resolved base.
  * @throws {Error} If no client is given and no base is registered.
  */
-export function resolveBase( apiClient, componentName ) {
-    if ( apiClient !== null && apiClient !== undefined ) {
-        if ( false === apiClient.base instanceof ApiBase ) {
-            throw new Error( `${componentName}: the apiClient option must be an ApiClient obtained from ApiClient.init().` );
+export function resolveBase(apiClient, componentName) {
+    if (apiClient !== null && apiClient !== undefined) {
+        if (false === apiClient.base instanceof ApiBase) {
+            throw new Error(
+                `${componentName}: the apiClient option must be an ApiClient obtained from ApiClient.init().`,
+            );
         }
         return apiClient.base;
     }
     const fallback = ApiBase.default;
-    if ( null === fallback ) {
-        throw new Error( `${componentName}: ApiClient has not been initialized. Please initialize with \`ApiClient.init().then(() => { ... })\`, and construct ${componentName} instances within the callback.` );
+    if (null === fallback) {
+        throw new Error(
+            `${componentName}: ApiClient has not been initialized. Please initialize with \`ApiClient.init().then(() => { ... })\`, and construct ${componentName} instances within the callback.`,
+        );
     }
-    if ( ApiBase.all.length > 1 && false === warnedComponents.has( componentName ) ) {
-        warnedComponents.add( componentName );
-        console.warn( `${componentName} was constructed without an apiClient while ${ApiBase.all.length} API bases are registered, and bound to ${fallback.url}. Pass \`apiClient\` explicitly to choose.` );
+    if (
+        ApiBase.all.length > 1 &&
+        false === warnedComponents.has(componentName)
+    ) {
+        warnedComponents.add(componentName);
+        console.warn(
+            `${componentName} was constructed without an apiClient while ${ApiBase.all.length} API bases are registered, and bound to ${fallback.url}. Pass \`apiClient\` explicitly to choose.`,
+        );
     }
     return fallback;
 }
@@ -720,18 +784,22 @@ export function resolveBase( apiClient, componentName ) {
  * @returns {void}
  * @throws {Error} If either argument is not an `ApiBase`, or if `a` and `b` are not the same base.
  */
-export function assertSameBase( a, b, pairing, consequence ) {
+export function assertSameBase(a, b, pairing, consequence) {
     const absent = [];
-    if ( false === a instanceof ApiBase ) {
-        absent.push( `the first carries no API base (found ${String( a )})` );
+    if (false === a instanceof ApiBase) {
+        absent.push(`the first carries no API base (found ${String(a)})`);
     }
-    if ( false === b instanceof ApiBase ) {
-        absent.push( `the second carries no API base (found ${String( b )})` );
+    if (false === b instanceof ApiBase) {
+        absent.push(`the second carries no API base (found ${String(b)})`);
     }
-    if ( absent.length > 0 ) {
-        throw new Error( `${pairing} cannot be checked for a shared API base: ${absent.join( ', and ' )}. Pass the component type this pairing expects — one constructed with an \`apiClient\`, or bound to the default base — rather than an object that holds no base.` );
+    if (absent.length > 0) {
+        throw new Error(
+            `${pairing} cannot be checked for a shared API base: ${absent.join(', and ')}. Pass the component type this pairing expects — one constructed with an \`apiClient\`, or bound to the default base — rather than an object that holds no base.`,
+        );
     }
-    if ( a !== b ) {
-        throw new Error( `${pairing} are bound to different API bases — ${a.url} and ${b.url}. ${consequence}` );
+    if (a !== b) {
+        throw new Error(
+            `${pairing} are bound to different API bases — ${a.url} and ${b.url}. ${consequence}`,
+        );
     }
 }

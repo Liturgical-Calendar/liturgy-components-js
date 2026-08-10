@@ -1,5 +1,4 @@
 export default class EventEmitter {
-
     /** @type {Object<string, Array<function>>} */
     #events;
 

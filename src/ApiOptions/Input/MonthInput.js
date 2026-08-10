@@ -1,7 +1,6 @@
-import SelectInput from "./SelectInput.js";
+import SelectInput from './SelectInput.js';
 
 export default class MonthInput extends SelectInput {
-
     /** @type {Intl.Locale} */
     #locale = null;
 
@@ -18,7 +17,10 @@ export default class MonthInput extends SelectInput {
     constructor(locale) {
         super();
         if (false === locale instanceof Intl.Locale) {
-            throw new Error('MonthInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' + typeof locale);
+            throw new Error(
+                'MonthInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' +
+                    typeof locale,
+            );
         }
         this.#locale = locale;
         this._domElement.name = 'month';
@@ -26,7 +28,9 @@ export default class MonthInput extends SelectInput {
         this._labelElement.textContent = 'month';
 
         const currentMonth = new Date().getMonth() + 1; // 1-12
-        const formatter = new Intl.DateTimeFormat(locale.baseName, { month: 'long' });
+        const formatter = new Intl.DateTimeFormat(locale.baseName, {
+            month: 'long',
+        });
         const tempDate = new Date();
 
         for (let month = 1; month <= 12; month++) {

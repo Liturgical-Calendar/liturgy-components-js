@@ -1,4 +1,11 @@
-import { ApiOptions, ApiClient, ApiBase, ApiOptionsFilter, Input, CalendarSelect } from '@liturgical-calendar/components-js';
+import {
+    ApiOptions,
+    ApiClient,
+    ApiBase,
+    ApiOptionsFilter,
+    Input,
+    CalendarSelect,
+} from '@liturgical-calendar/components-js';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
@@ -19,116 +26,131 @@ import 'bootstrap/dist/css/bootstrap.min.css';
  */
 const meta = {
     title: 'Combined Components/CalendarSelect - ApiOptions/National and Diocesan Calendars',
-    tags: [ 'autodocs' ],
+    tags: ['autodocs'],
     argTypes: {
         locale: {
             control: 'text',
-            description: 'Locale code for UI elements, applicable via the `CalendarSelect.locale("en-US")` instance method and the `ApiOptions.locale("en-US")` instance method',
-            defaultValue: 'en-US'
+            description:
+                'Locale code for UI elements, applicable via the `CalendarSelect.locale("en-US")` instance method and the `ApiOptions.locale("en-US")` instance method',
+            defaultValue: 'en-US',
         },
         onChange: {
-            action: 'onChange'
+            action: 'onChange',
         },
         apiOptionsFilter: {
             control: { type: 'select' },
-            options: [ ApiOptionsFilter.NONE, ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN ],
+            options: [
+                ApiOptionsFilter.NONE,
+                ApiOptionsFilter.ALL_CALENDARS,
+                ApiOptionsFilter.GENERAL_ROMAN,
+            ],
             labels: {
-                [ ApiOptionsFilter.NONE ]: 'None',
-                [ ApiOptionsFilter.ALL_CALENDARS ]: 'National / Diocesan Calendars only',
-                [ ApiOptionsFilter.GENERAL_ROMAN ]: 'General Roman Calendar only'
+                [ApiOptionsFilter.NONE]: 'None',
+                [ApiOptionsFilter.ALL_CALENDARS]:
+                    'National / Diocesan Calendars only',
+                [ApiOptionsFilter.GENERAL_ROMAN]: 'General Roman Calendar only',
             },
-            description: 'Filter for the ApiOptions instance, applicable via the `ApiOptions.filter(ApiOptionsFilter.ALL_CALENDARS)` instance method',
-            defaultValue: ApiOptionsFilter.ALL_CALENDARS
+            description:
+                'Filter for the ApiOptions instance, applicable via the `ApiOptions.filter(ApiOptionsFilter.ALL_CALENDARS)` instance method',
+            defaultValue: ApiOptionsFilter.ALL_CALENDARS,
         },
         calendarSelectClass: {
             control: 'text',
-            description: 'CSS class(es) for the widget\'s underlying HTML element, applicable via the `CalendarSelect.class("my-class")` instance method'
+            description:
+                'CSS class(es) for the widget\'s underlying HTML element, applicable via the `CalendarSelect.class("my-class")` instance method',
         },
         calendarSelectLabelClass: {
             control: 'text',
-            description: 'CSS class(es) for the select label\'s underlying HTML element, applicable via the `CalendarSelect.label({text: "Select a calendar", class: "my-class"})` instance method'
+            description:
+                'CSS class(es) for the select label\'s underlying HTML element, applicable via the `CalendarSelect.label({text: "Select a calendar", class: "my-class"})` instance method',
         },
         calendarSelectLabelText: {
             control: 'text',
-            description: 'Text for the select label\'s underlying HTML element, applicable via the `CalendarSelect.label({text: "Select a calendar", class: "my-class"})` instance method',
-            defaultValue: 'Select a calendar'
+            description:
+                'Text for the select label\'s underlying HTML element, applicable via the `CalendarSelect.label({text: "Select a calendar", class: "my-class"})` instance method',
+            defaultValue: 'Select a calendar',
         },
         calendarSelectWrapperClass: {
             control: 'text',
-            description: 'CSS class(es) for the select wrapper\'s underlying HTML element, applicable via the `CalendarSelect.wrapper({class: "my-class"})` instance method'
+            description:
+                'CSS class(es) for the select wrapper\'s underlying HTML element, applicable via the `CalendarSelect.wrapper({class: "my-class"})` instance method',
         },
         calendarSelectAfter: {
             control: 'text',
-            description: 'HTML string to append to the select or select wrapper\'s underlying HTML element, applicable via the `CalendarSelect.after("<div>...</div>")` instance method'
+            description:
+                'HTML string to append to the select or select wrapper\'s underlying HTML element, applicable via the `CalendarSelect.after("<div>...</div>")` instance method',
         },
         localeInputAfter: {
             control: 'text',
-            description: 'HTML string to show below the ApiOptions locale input, applicable via the `ApiOptions._localeInput.after("<div>...</div>")` instance method'
-        }
+            description:
+                'HTML string to show below the ApiOptions locale input, applicable via the `ApiOptions._localeInput.after("<div>...</div>")` instance method',
+        },
     },
-    render: ( args, { loaded: { apiClient, apiClientError } } ) => {
-        const container = document.createElement( 'div' );
+    render: (args, { loaded: { apiClient, apiClientError } }) => {
+        const container = document.createElement('div');
         container.id = 'apiOptionsCalendarSelectContainer';
         container.classList.add('row');
 
         if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ( apiClientError?.url ?? ApiBase.DEFAULT_URL );
+            container.textContent =
+                'Error initializing the Liturgical Calendar API Client, check that the API is running at ' +
+                (apiClientError?.url ?? ApiBase.DEFAULT_URL);
         } else {
             Input.setGlobalInputClass('form-select');
             Input.setGlobalLabelClass('form-label');
             Input.setGlobalWrapper('div');
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
-            const calendarSelect = new CalendarSelect( args.locale );
-            const apiOptions = new ApiOptions( args.locale );
+            const calendarSelect = new CalendarSelect(args.locale);
+            const apiOptions = new ApiOptions(args.locale);
             apiOptions._yearInput.class('form-control'); // override the global input class for number input
-            apiOptions.linkToCalendarSelect( calendarSelect );
+            apiOptions.linkToCalendarSelect(calendarSelect);
             //apiClient.listenTo(apiOptions);
-            if ( args.apiOptionsFilter ) {
-                apiOptions.filter( args.apiOptionsFilter );
+            if (args.apiOptionsFilter) {
+                apiOptions.filter(args.apiOptionsFilter);
             }
-            if ( args.calendarSelectLabelText || args.calendarSelectLabelClass ) {
+            if (args.calendarSelectLabelText || args.calendarSelectLabelClass) {
                 const label = {};
-                if ( args.calendarSelectLabelText ) {
+                if (args.calendarSelectLabelText) {
                     label.text = args.calendarSelectLabelText;
                 }
-                if ( args.calendarSelectLabelClass ) {
+                if (args.calendarSelectLabelClass) {
                     label.class = args.calendarSelectLabelClass;
                 }
-                calendarSelect.label( label );
+                calendarSelect.label(label);
             }
-            if ( args.calendarSelectClass ) {
-                calendarSelect.class( args.calendarSelectClass );
+            if (args.calendarSelectClass) {
+                calendarSelect.class(args.calendarSelectClass);
             }
-            if ( args.calendarSelectWrapperClass ) {
+            if (args.calendarSelectWrapperClass) {
                 const wrapper = {};
                 wrapper.class = args.calendarSelectWrapperClass;
-                calendarSelect.wrapper( wrapper );
+                calendarSelect.wrapper(wrapper);
             }
             apiOptions._acceptHeaderInput.hide();
-            calendarSelect.appendTo( container );
-            apiOptions.appendTo( container );
+            calendarSelect.appendTo(container);
+            apiOptions.appendTo(container);
         }
         return container;
     },
     parameters: {
         actions: {
-            handles: [ 'change', 'change #apiOptionsContainer select' ],
+            handles: ['change', 'change #apiOptionsContainer select'],
         },
     },
     args: {
         calendarSelectClass: 'form-select',
         calendarSelectLabelClass: 'form-label d-block mb-1',
         calendarSelectWrapperClass: 'form-group col col-md-3',
-        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS
-    }
-}
+        apiOptionsFilter: ApiOptionsFilter.ALL_CALENDARS,
+    },
+};
 
 export default meta;
 
 export const Default = {
-    args: {}
-}
+    args: {},
+};
 
 /**
  * `CalendarSelect` e `ApiOptions`
@@ -150,9 +172,9 @@ export const Default = {
 export const Italian = {
     args: {
         locale: 'it-IT',
-        calendarSelectLabelText: 'Seleziona calendario'
-    }
-}
+        calendarSelectLabelText: 'Seleziona calendario',
+    },
+};
 
 /**
  * `CalendarSelect` et `ApiOptions`
@@ -174,9 +196,9 @@ export const Italian = {
 export const French = {
     args: {
         locale: 'fr-FR',
-        calendarSelectLabelText: 'Sélectionnez calendrier'
-    }
-}
+        calendarSelectLabelText: 'Sélectionnez calendrier',
+    },
+};
 
 /**
  * `CalendarSelect` y `ApiOptions`
@@ -198,9 +220,9 @@ export const French = {
 export const Spanish = {
     args: {
         locale: 'es-ES',
-        calendarSelectLabelText: 'Seleccione calendario'
-    }
-}
+        calendarSelectLabelText: 'Seleccione calendario',
+    },
+};
 
 /**
  * `CalendarSelect` und `ApiOptions`
@@ -222,6 +244,6 @@ export const Spanish = {
 export const German = {
     args: {
         locale: 'de-DE',
-        calendarSelectLabelText: 'Wählen Sie ein Kalender'
-    }
-}
+        calendarSelectLabelText: 'Wählen Sie ein Kalender',
+    },
+};

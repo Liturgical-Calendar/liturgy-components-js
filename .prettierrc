@@ -1,0 +1,15 @@
+{
+  "tabWidth": 4,
+  "singleQuote": true,
+  "endOfLine": "auto",
+  "overrides": [
+    {
+      "files": "*.md",
+      "options": {
+        "tabWidth": 2,
+        "singleQuote": false,
+        "endOfLine": "lf"
+      }
+    }
+  ]
+}

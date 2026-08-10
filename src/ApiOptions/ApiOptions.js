@@ -8,12 +8,16 @@ import {
     HolydaysOfObligationInput,
     YearInput,
     YearTypeInput,
-    CalendarPathInput
+    CalendarPathInput,
 } from './Input/index.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
-import { ApiOptionsFilter, CalendarSelectFilter, RiteProperties } from '../Enums.js';
+import {
+    ApiOptionsFilter,
+    CalendarSelectFilter,
+    RiteProperties,
+} from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
@@ -51,7 +55,6 @@ import Utils from '../Utils.js';
  * @see https://github.com/Liturgical-Calendar/liturgy-components-js
  */
 export default class ApiOptions {
-
     /** @type {string[]} */
     static #expectedSettingsKeys = [
         'year',
@@ -61,14 +64,14 @@ export default class ApiOptions {
         'ascension',
         'corpus_christi',
         'eternal_high_priest',
-        'holydays_of_obligation'
+        'holydays_of_obligation',
     ];
 
     /** @type {boolean} */
-    #linked                = false;
+    #linked = false;
 
     /** @type {?Intl.Locale} */
-    #locale                = null;
+    #locale = null;
 
     /**
      * The API base this form reads its metadata from.
@@ -80,10 +83,10 @@ export default class ApiOptions {
      *
      * @type {ApiBase}
      */
-    #base                  = null;
+    #base = null;
 
     /** @type {boolean} */
-    #pathBuilderEnabled    = false;
+    #pathBuilderEnabled = false;
 
     /**
      * @type {{
@@ -99,7 +102,7 @@ export default class ApiOptions {
      *  calendarPathInput: ?CalendarPathInput
      * }}
      */
-    #inputs                = {
+    #inputs = {
         epiphanyInput: null,
         ascensionInput: null,
         corpusChristiInput: null,
@@ -109,11 +112,11 @@ export default class ApiOptions {
         yearInput: null,
         yearTypeInput: null,
         acceptHeaderInput: null,
-        calendarPathInput: null
+        calendarPathInput: null,
     };
 
-    #filter                = ApiOptionsFilter.NONE;
-    #filtersSet            = [];
+    #filter = ApiOptionsFilter.NONE;
+    #filtersSet = [];
 
     /**
      * Whether the currently selected rite fixes the four temporal options
@@ -149,13 +152,13 @@ export default class ApiOptions {
      * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish,
      *         if the locale is of the wrong type or is invalid, or if no API base is available.
      */
-    constructor( options = 'en' ) {
+    constructor(options = 'en') {
         // Validated before the base is resolved: a caller who passed the wrong KIND
         // of argument needs to hear about that, not about the page's base registry.
         // `null` used to be rejected here where `CalendarSelect` and `RiteSelect`
         // defaulted it; issue #32 settled that divergence in favour of defaulting,
         // and the shared normaliser is where it is now settled for all five.
-        options = normalizeComponentOptions( options, 'ApiOptions' );
+        options = normalizeComponentOptions(options, 'ApiOptions');
         // `??` rather than a destructuring default, which only answers `undefined`:
         // `{ locale: null }` is "no locale supplied" just as much as `{}` is, and
         // spreading a bag whose `locale` happens to be unset must not throw.
@@ -166,13 +169,16 @@ export default class ApiOptions {
         // as to a wrong-typed one. A caller who wrote `new ApiOptions( 'not a locale' )`
         // on a page with no registered base hears about the locale rather than the
         // registry — which is the argument they got wrong.
-        this.#locale = toIntlLocale( locale, 'ApiOptions' );
-        this.#base = resolveBase( apiClient, 'ApiOptions' );
+        this.#locale = toIntlLocale(locale, 'ApiOptions');
+        this.#base = resolveBase(apiClient, 'ApiOptions');
         this.#inputs.epiphanyInput = new EpiphanyInput(this.#locale);
         this.#inputs.ascensionInput = new AscensionInput(this.#locale);
         this.#inputs.corpusChristiInput = new CorpusChristiInput(this.#locale);
-        this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(this.#locale);
-        this.#inputs.holydaysOfObligationInput = new HolydaysOfObligationInput();
+        this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(
+            this.#locale,
+        );
+        this.#inputs.holydaysOfObligationInput =
+            new HolydaysOfObligationInput();
         this.#inputs.localeInput = new LocaleInput(this.#locale, this.#base);
         this.#inputs.yearInput = new YearInput();
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
@@ -196,7 +202,7 @@ export default class ApiOptions {
     static #prettifyLabel(key) {
         return key
             .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, s => s.toUpperCase())
+            .replace(/^./, (s) => s.toUpperCase())
             .trim()
             .replace(/^(St(?:s?))/, '$1.')
             .replace('Mary Mother Of God', 'Mary, Mother of God')
@@ -223,17 +229,26 @@ export default class ApiOptions {
             }
             // transform the key from snake_case to camelCase
             key = key.replaceAll('_', ' ');
-            key = key.split(' ').map((word, index) => index === 0 ? word.charAt(0).toLowerCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1)).join('');
+            key = key
+                .split(' ')
+                .map((word, index) =>
+                    index === 0
+                        ? word.charAt(0).toLowerCase() + word.slice(1)
+                        : word.charAt(0).toUpperCase() + word.slice(1),
+                )
+                .join('');
             //console.log(`national settings: transformed key: ${key}, value type: ${typeof value}`);
             if (typeof value === 'boolean') {
-                value = (value ? 'true' : 'false');
+                value = value ? 'true' : 'false';
             }
             if (key === 'holydaysOfObligation' && typeof value === 'object') {
-                const optionsArray = Object.entries(value).map(([optionKey, optionSelected]) => ({
-                    label: ApiOptions.#prettifyLabel(optionKey),
-                    value: optionKey,
-                    selected: Boolean(optionSelected)
-                }));
+                const optionsArray = Object.entries(value).map(
+                    ([optionKey, optionSelected]) => ({
+                        label: ApiOptions.#prettifyLabel(optionKey),
+                        value: optionKey,
+                        selected: Boolean(optionSelected),
+                    }),
+                );
                 this.#inputs[`${key}Input`].setOptions(optionsArray);
             } else {
                 this.#inputs[`${key}Input`]._domElement.value = value;
@@ -266,13 +281,18 @@ export default class ApiOptions {
      * @param {Object} diocesanCalendar - The selected diocesan calendar's metadata entry.
      * @private
      */
-    #applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar ) {
-        if ( false === RiteProperties[ calendarSelect._rite ].hasNationalTier ) {
+    #applyNationalSettingsForDiocese(calendarSelect, diocesanCalendar) {
+        if (false === RiteProperties[calendarSelect._rite].hasNationalTier) {
             return;
         }
-        const nationalCalendarForDiocese = this.#base.nationalCalendars().find( nationCalendarObj => nationCalendarObj.calendar_id === diocesanCalendar.nation );
+        const nationalCalendarForDiocese = this.#base
+            .nationalCalendars()
+            .find(
+                (nationCalendarObj) =>
+                    nationCalendarObj.calendar_id === diocesanCalendar.nation,
+            );
         //console.info('handling national calendar settings for diocesan calendar:', nationalCalendarForDiocese.settings);
-        this.#applySettingsToInputs( nationalCalendarForDiocese.settings );
+        this.#applySettingsToInputs(nationalCalendarForDiocese.settings);
     }
 
     /**
@@ -299,13 +319,14 @@ export default class ApiOptions {
      * @param {boolean} calendarSelected - Whether a nation or diocese is currently selected.
      * @private
      */
-    #applyTemporalInputState( calendarSelected ) {
-        const fixedTemporalDisabled = calendarSelected || this.#riteFixesTemporalOptions;
-        this.#inputs.epiphanyInput.disabled( fixedTemporalDisabled );
-        this.#inputs.ascensionInput.disabled( fixedTemporalDisabled );
-        this.#inputs.corpusChristiInput.disabled( fixedTemporalDisabled );
-        this.#inputs.eternalHighPriestInput.disabled( fixedTemporalDisabled );
-        this.#inputs.holydaysOfObligationInput.disabled( calendarSelected );
+    #applyTemporalInputState(calendarSelected) {
+        const fixedTemporalDisabled =
+            calendarSelected || this.#riteFixesTemporalOptions;
+        this.#inputs.epiphanyInput.disabled(fixedTemporalDisabled);
+        this.#inputs.ascensionInput.disabled(fixedTemporalDisabled);
+        this.#inputs.corpusChristiInput.disabled(fixedTemporalDisabled);
+        this.#inputs.eternalHighPriestInput.disabled(fixedTemporalDisabled);
+        this.#inputs.holydaysOfObligationInput.disabled(calendarSelected);
     }
 
     /**
@@ -344,27 +365,39 @@ export default class ApiOptions {
      * @param {string} rite - The newly selected rite.
      * @private
      */
-    #applyRiteToLocaleInput( rite ) {
-        const riteCalendars = this.#base.riteCalendars( rite );
-        const riteLevelCalendar = riteCalendars.find( calendar => calendar.calendar_id === rite ) ?? null;
+    #applyRiteToLocaleInput(rite) {
+        const riteCalendars = this.#base.riteCalendars(rite);
+        const riteLevelCalendar =
+            riteCalendars.find((calendar) => calendar.calendar_id === rite) ??
+            null;
 
-        if ( Array.isArray( riteLevelCalendar?.locales ) && riteLevelCalendar.locales.length > 0 ) {
-            this.#inputs.localeInput.setOptionsForCalendarLocales( riteLevelCalendar.locales );
+        if (
+            Array.isArray(riteLevelCalendar?.locales) &&
+            riteLevelCalendar.locales.length > 0
+        ) {
+            this.#inputs.localeInput.setOptionsForCalendarLocales(
+                riteLevelCalendar.locales,
+            );
         } else {
             this.#inputs.localeInput.resetOptions();
         }
     }
 
-    #applyRiteToCalendarPathInput( hasNationalTier ) {
+    #applyRiteToCalendarPathInput(hasNationalTier) {
         const calendarPathElement = this.#inputs.calendarPathInput._domElement;
-        const nationPathOption = calendarPathElement.querySelector( 'option[value="/calendar/nation/"]' );
-        if ( null === nationPathOption ) {
+        const nationPathOption = calendarPathElement.querySelector(
+            'option[value="/calendar/nation/"]',
+        );
+        if (null === nationPathOption) {
             return;
         }
         nationPathOption.disabled = false === hasNationalTier;
-        if ( nationPathOption.disabled && calendarPathElement.value === nationPathOption.value ) {
+        if (
+            nationPathOption.disabled &&
+            calendarPathElement.value === nationPathOption.value
+        ) {
             calendarPathElement.value = '/calendar';
-            calendarPathElement.dispatchEvent( new Event( 'change' ) );
+            calendarPathElement.dispatchEvent(new Event('change'));
         }
     }
 
@@ -383,8 +416,10 @@ export default class ApiOptions {
      * @param {CalendarSelect | [CalendarSelect, CalendarSelect]} calendarSelect - The linked CalendarSelect instance(s).
      * @private
      */
-    #handleLinkedRiteSelect( riteSelect, calendarSelect ) {
-        const unordered = Array.isArray( calendarSelect ) ? calendarSelect : [ calendarSelect ];
+    #handleLinkedRiteSelect(riteSelect, calendarSelect) {
+        const unordered = Array.isArray(calendarSelect)
+            ? calendarSelect
+            : [calendarSelect];
 
         // Normalize a linked pair to nation-first, the same way
         // `#handleMultipleLinkedCalendarSelects` identifies each select by its
@@ -397,12 +432,21 @@ export default class ApiOptions {
         // nation value that is about to be cleared, leaving it out of sync with
         // the nation select once both have settled. A single, non-array
         // `calendarSelect` has nothing to reorder.
-        const selects = unordered.length === 2
-            ? [
-                unordered.find( cs => cs._filter === CalendarSelectFilter.NATIONAL_CALENDARS ) ?? unordered[0],
-                unordered.find( cs => cs._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ) ?? unordered[1]
-            ]
-            : unordered;
+        const selects =
+            unordered.length === 2
+                ? [
+                      unordered.find(
+                          (cs) =>
+                              cs._filter ===
+                              CalendarSelectFilter.NATIONAL_CALENDARS,
+                      ) ?? unordered[0],
+                      unordered.find(
+                          (cs) =>
+                              cs._filter ===
+                              CalendarSelectFilter.DIOCESAN_CALENDARS,
+                      ) ?? unordered[1],
+                  ]
+                : unordered;
 
         // The calendar-side rebuild lives on CalendarSelect, so there is one
         // implementation of it. Linked FIRST so that each select's listener is
@@ -417,10 +461,10 @@ export default class ApiOptions {
         // listens (e.g. a `PathBuilder`) from the stale, pre-change endpoint, and one
         // once this listener catches it up — each independently triggering any
         // network fetch a listener like `ApiClient` makes on `change`.
-        selects.forEach( cs => cs.linkToRiteSelect( riteSelect, false ) );
+        selects.forEach((cs) => cs.linkToRiteSelect(riteSelect, false));
 
-        const applyRite = ( rite ) => {
-            const riteProps = RiteProperties[ rite ];
+        const applyRite = (rite) => {
+            const riteProps = RiteProperties[rite];
 
             this.#currentEndpoint.rite = rite;
             this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
@@ -428,24 +472,24 @@ export default class ApiOptions {
             // The selection has just been reset to the rite-level calendar, so the
             // calendar-selection half of the rule is false here; the rite half is
             // carried by `#riteFixesTemporalOptions`, set above.
-            this.#applyTemporalInputState( false );
+            this.#applyTemporalInputState(false);
 
-            this.#inputs.yearInput.min( riteProps.minYear );
+            this.#inputs.yearInput.min(riteProps.minYear);
             // Decision 5: pre-empt an invalid request rather than let it through.
             // Raising `min` alone leaves an already-entered year below the new floor
             // untouched — e.g. 1970 (valid Roman) is below the Ambrosian floor of
             // 1976 — which the API would reject. Clamp it up and notify listeners
             // with a `change` event, matching how a user edit would.
             const yearInputElement = this.#inputs.yearInput._domElement;
-            if ( Number( yearInputElement.value ) < riteProps.minYear ) {
+            if (Number(yearInputElement.value) < riteProps.minYear) {
                 yearInputElement.value = riteProps.minYear;
-                yearInputElement.dispatchEvent( new Event( 'change' ) );
+                yearInputElement.dispatchEvent(new Event('change'));
             }
-            this.#applyRiteToCalendarPathInput( riteProps.hasNationalTier );
-            this.#applyRiteToLocaleInput( rite );
+            this.#applyRiteToCalendarPathInput(riteProps.hasNationalTier);
+            this.#applyRiteToLocaleInput(rite);
 
             this.#currentEndpoint.calendarType = null;
-            this.#currentEndpoint.calendarId   = null;
+            this.#currentEndpoint.calendarId = null;
 
             // `linkToRiteSelect()` above was told NOT to dispatch its own `change`
             // (passed `false` as its second, positional argument), so this is the only dispatch each eligible
@@ -462,12 +506,16 @@ export default class ApiOptions {
             // diocese options for the now-empty nation value and stomp the flat
             // list `_applyRite()` just built for a tierless rite.
             selects
-                .filter( cs => false === cs._hasDependentDioceseSelects )
-                .forEach( cs => cs._domElement.dispatchEvent( new Event( 'change' ) ) );
+                .filter((cs) => false === cs._hasDependentDioceseSelects)
+                .forEach((cs) =>
+                    cs._domElement.dispatchEvent(new Event('change')),
+                );
         };
 
-        riteSelect._domElement.addEventListener( 'change', ( ev ) => applyRite( ev.target.value ) );
-        applyRite( riteSelect._domElement.value );
+        riteSelect._domElement.addEventListener('change', (ev) =>
+            applyRite(ev.target.value),
+        );
+        applyRite(riteSelect._domElement.value);
     }
 
     /**
@@ -486,11 +534,12 @@ export default class ApiOptions {
      * @throws {Error} If the select is bound to a different API base than this instance.
      * @private
      */
-    #assertLinkedSelectSharesBase( calendarSelectInstance ) {
+    #assertLinkedSelectSharesBase(calendarSelectInstance) {
         assertSameBase(
-            this.#base, calendarSelectInstance._base,
+            this.#base,
+            calendarSelectInstance._base,
             'ApiOptions.linkToCalendarSelect: this ApiOptions and the CalendarSelect passed to it',
-            `Applying a calendar chosen from one API's select to the other API's option inputs would look its calendar_id up in metadata that does not describe it, and throw inside a change listener the DOM discards, leaving the locale select silently stale.`
+            `Applying a calendar chosen from one API's select to the other API's option inputs would look its calendar_id up in metadata that does not describe it, and throw inside a change listener the DOM discards, leaving the locale select silently stale.`,
         );
     }
 
@@ -518,12 +567,21 @@ export default class ApiOptions {
      *   the change paths ignore it.
      * @private
      */
-    #applyCalendarToInputs( calendarSelect, calendarId, calendarType, notify = false ) {
-        switch ( calendarType ) {
+    #applyCalendarToInputs(
+        calendarSelect,
+        calendarId,
+        calendarType,
+        notify = false,
+    ) {
+        switch (calendarType) {
             case 'national': {
-                const nationalCalendar = this.#base.nationalCalendars().find( obj => obj.calendar_id === calendarId );
-                this.#applySettingsToInputs( nationalCalendar.settings );
-                this.#inputs.localeInput.setOptionsForCalendarLocales( nationalCalendar.locales );
+                const nationalCalendar = this.#base
+                    .nationalCalendars()
+                    .find((obj) => obj.calendar_id === calendarId);
+                this.#applySettingsToInputs(nationalCalendar.settings);
+                this.#inputs.localeInput.setOptionsForCalendarLocales(
+                    nationalCalendar.locales,
+                );
                 break;
             }
             case 'diocesan': {
@@ -531,27 +589,45 @@ export default class ApiOptions {
                 // one diocese up by id and must find it whatever its rite, whereas the
                 // query method filters by rite and would return nothing for a diocese
                 // of another one.
-                const diocesanCalendar = this.#base.metadata.diocesan_calendars.find( obj => obj.calendar_id === calendarId );
-                this.#applyNationalSettingsForDiocese( calendarSelect, diocesanCalendar );
-                if ( Object.hasOwn( diocesanCalendar, 'settings' ) ) {
-                    this.#applySettingsToInputs( diocesanCalendar.settings );
+                const diocesanCalendar =
+                    this.#base.metadata.diocesan_calendars.find(
+                        (obj) => obj.calendar_id === calendarId,
+                    );
+                this.#applyNationalSettingsForDiocese(
+                    calendarSelect,
+                    diocesanCalendar,
+                );
+                if (Object.hasOwn(diocesanCalendar, 'settings')) {
+                    this.#applySettingsToInputs(diocesanCalendar.settings);
                 }
-                this.#inputs.localeInput.setOptionsForCalendarLocales( diocesanCalendar.locales );
+                this.#inputs.localeInput.setOptionsForCalendarLocales(
+                    diocesanCalendar.locales,
+                );
                 break;
             }
             default:
                 return false;
         }
-        if ( notify ) {
-            this.#inputs.localeInput._domElement.dispatchEvent( new Event( 'change' ) );
+        if (notify) {
+            this.#inputs.localeInput._domElement.dispatchEvent(
+                new Event('change'),
+            );
         }
         return true;
     }
 
     // TODO: add support for multiple linked calendar selects
     #handleMultipleLinkedCalendarSelects(calendarSelects) {
-        const nationSelector = calendarSelects[0]._filter === CalendarSelectFilter.NATIONAL_CALENDARS ? calendarSelects[0] : calendarSelects[1];
-        const dioceseSelector = calendarSelects[0]._filter === CalendarSelectFilter.DIOCESAN_CALENDARS ? calendarSelects[0] : calendarSelects[1];
+        const nationSelector =
+            calendarSelects[0]._filter ===
+            CalendarSelectFilter.NATIONAL_CALENDARS
+                ? calendarSelects[0]
+                : calendarSelects[1];
+        const dioceseSelector =
+            calendarSelects[0]._filter ===
+            CalendarSelectFilter.DIOCESAN_CALENDARS
+                ? calendarSelects[0]
+                : calendarSelects[1];
 
         /**
          * Both selects describe ONE calendar between them, so both listeners run
@@ -563,24 +639,35 @@ export default class ApiOptions {
          * nothing. With neither chosen the calendar is the rite-level one.
          */
         const applySelection = () => {
-            const nationValue  = nationSelector._domElement.value;
+            const nationValue = nationSelector._domElement.value;
             const dioceseValue = dioceseSelector._domElement.value;
 
-            if ( dioceseValue !== '' ) {
-                this.#applyCalendarToInputs( dioceseSelector, dioceseValue, 'diocesan', true );
-            } else if ( nationValue !== '' ) {
-                this.#applyCalendarToInputs( nationSelector, nationValue, 'national', true );
+            if (dioceseValue !== '') {
+                this.#applyCalendarToInputs(
+                    dioceseSelector,
+                    dioceseValue,
+                    'diocesan',
+                    true,
+                );
+            } else if (nationValue !== '') {
+                this.#applyCalendarToInputs(
+                    nationSelector,
+                    nationValue,
+                    'national',
+                    true,
+                );
             } else {
-                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
+                this.#applyRiteToLocaleInput(this.#currentEndpoint.rite);
             }
 
-            this.#applyTemporalInputState( nationValue !== '' || dioceseValue !== '' );
+            this.#applyTemporalInputState(
+                nationValue !== '' || dioceseValue !== '',
+            );
         };
 
         nationSelector._domElement.addEventListener('change', applySelection);
         dioceseSelector._domElement.addEventListener('change', applySelection);
     }
-
 
     /**
      * Handles the events for a single linked calendar select.
@@ -594,60 +681,101 @@ export default class ApiOptions {
     #handleSingleLinkedCalendarSelect(calendarSelect) {
         //console.log('handling single linked calendar select', calendarSelect, this.#filtersSet);
         if (this.#filtersSet.includes(ApiOptionsFilter.PATH_BUILDER)) {
-            calendarSelect.allowNull(false).disabled()._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
-            let lastCalendarPathValue = this.#inputs.calendarPathInput._domElement.value;
+            calendarSelect.allowNull(false).disabled()._domElement.innerHTML =
+                '<option value="">GENERAL ROMAN</option>';
+            let lastCalendarPathValue =
+                this.#inputs.calendarPathInput._domElement.value;
             let lastCalendarSelectValue = calendarSelect._domElement.value;
-            this.#inputs.calendarPathInput._domElement.addEventListener('change', (ev) => {
-                if (ev.target.value !== lastCalendarPathValue) {
-                    lastCalendarPathValue = ev.target.value;
-                    switch (ev.target.value) {
-                        case '/calendar':
-                            calendarSelect.disabled(true)._domElement.innerHTML = '<option value="">GENERAL ROMAN</option>';
-                            break;
-                        // _applyFilter, not filter(): the user can switch back and
-                        // forth between these two paths, and filter() refuses a
-                        // second, different value. See CalendarSelect._applyFilter.
-                        case '/calendar/nation/':
-                            calendarSelect.disabled(false)._applyFilter(CalendarSelectFilter.NATIONAL_CALENDARS);
-                            break;
-                        case '/calendar/diocese/':
-                            calendarSelect.disabled(false)._applyFilter(CalendarSelectFilter.DIOCESAN_CALENDARS);
-                            break;
+            this.#inputs.calendarPathInput._domElement.addEventListener(
+                'change',
+                (ev) => {
+                    if (ev.target.value !== lastCalendarPathValue) {
+                        lastCalendarPathValue = ev.target.value;
+                        switch (ev.target.value) {
+                            case '/calendar':
+                                calendarSelect.disabled(
+                                    true,
+                                )._domElement.innerHTML =
+                                    '<option value="">GENERAL ROMAN</option>';
+                                break;
+                            // _applyFilter, not filter(): the user can switch back and
+                            // forth between these two paths, and filter() refuses a
+                            // second, different value. See CalendarSelect._applyFilter.
+                            case '/calendar/nation/':
+                                calendarSelect
+                                    .disabled(false)
+                                    ._applyFilter(
+                                        CalendarSelectFilter.NATIONAL_CALENDARS,
+                                    );
+                                break;
+                            case '/calendar/diocese/':
+                                calendarSelect
+                                    .disabled(false)
+                                    ._applyFilter(
+                                        CalendarSelectFilter.DIOCESAN_CALENDARS,
+                                    );
+                                break;
+                        }
+                        if (
+                            calendarSelect._domElement.firstChild.getAttribute(
+                                'value',
+                            ) !== lastCalendarSelectValue
+                        ) {
+                            lastCalendarSelectValue =
+                                calendarSelect._domElement.value;
+                            calendarSelect._domElement.dispatchEvent(
+                                new Event('change'),
+                            );
+                        }
                     }
-                    if (calendarSelect._domElement.firstChild.getAttribute('value') !== lastCalendarSelectValue) {
-                        lastCalendarSelectValue = calendarSelect._domElement.value;
-                        calendarSelect._domElement.dispatchEvent(new Event('change'));
-                    }
-                }
-            });
+                },
+            );
         }
 
         let currentSelectedCalendarId = calendarSelect._domElement.value;
         if (currentSelectedCalendarId !== '') {
-            let currentSelectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
-            if ( false === this.#applyCalendarToInputs( calendarSelect, currentSelectedCalendarId, currentSelectedCalendarType ) ) {
-                throw new Error('Unknown calendar type: ' + currentSelectedCalendarType);
+            let currentSelectedCalendarType = calendarSelect._domElement
+                .querySelector(':checked')
+                .getAttribute('data-calendartype');
+            if (
+                false ===
+                this.#applyCalendarToInputs(
+                    calendarSelect,
+                    currentSelectedCalendarId,
+                    currentSelectedCalendarType,
+                )
+            ) {
+                throw new Error(
+                    'Unknown calendar type: ' + currentSelectedCalendarType,
+                );
             }
-            this.#applyTemporalInputState( true );
+            this.#applyTemporalInputState(true);
         } else {
-            this.#applyTemporalInputState( false );
+            this.#applyTemporalInputState(false);
             // An empty selection IS the rite-level calendar, so offer that
             // calendar's locales rather than every locale the API supports.
             // Falls back to the full list for a rite that does not restrict
             // them, which is what the Roman rite does.
-            this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
+            this.#applyRiteToLocaleInput(this.#currentEndpoint.rite);
         }
         calendarSelect._domElement.addEventListener('change', (ev) => {
             if (ev.target.value === '') {
-                this.#applyTemporalInputState( false );
+                this.#applyTemporalInputState(false);
                 // See above: empty means the rite-level calendar.
-                this.#applyRiteToLocaleInput( this.#currentEndpoint.rite );
+                this.#applyRiteToLocaleInput(this.#currentEndpoint.rite);
             } else {
-                const selectedCalendarType = calendarSelect._domElement.querySelector(':checked').getAttribute('data-calendartype');
+                const selectedCalendarType = calendarSelect._domElement
+                    .querySelector(':checked')
+                    .getAttribute('data-calendartype');
                 // An unrecognised type is ignored here rather than thrown, as it
                 // always has been on this path.
-                this.#applyCalendarToInputs( calendarSelect, ev.target.value, selectedCalendarType, true );
-                this.#applyTemporalInputState( true );
+                this.#applyCalendarToInputs(
+                    calendarSelect,
+                    ev.target.value,
+                    selectedCalendarType,
+                    true,
+                );
+                this.#applyTemporalInputState(true);
             }
         });
     }
@@ -677,28 +805,48 @@ export default class ApiOptions {
      * @throws {Error} If the filter is set to a value that is different from the current filter.
      * @returns {ApiOptions} The ApiOptions instance.
      */
-    filter( filter = ApiOptionsFilter.NONE ) {
+    filter(filter = ApiOptionsFilter.NONE) {
         if (
-            ApiOptionsFilter.ALL_CALENDARS !== filter
-            && ApiOptionsFilter.GENERAL_ROMAN !== filter
-            && ApiOptionsFilter.PATH_BUILDER !== filter
-            && ApiOptionsFilter.LOCALE_ONLY !== filter
-            && ApiOptionsFilter.YEAR_ONLY !== filter
-            && ApiOptionsFilter.NONE !== filter
+            ApiOptionsFilter.ALL_CALENDARS !== filter &&
+            ApiOptionsFilter.GENERAL_ROMAN !== filter &&
+            ApiOptionsFilter.PATH_BUILDER !== filter &&
+            ApiOptionsFilter.LOCALE_ONLY !== filter &&
+            ApiOptionsFilter.YEAR_ONLY !== filter &&
+            ApiOptionsFilter.NONE !== filter
         ) {
-            throw new Error('Invalid filter: ' + filter + ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`');
+            throw new Error(
+                'Invalid filter: ' +
+                    filter +
+                    ', must be one of `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`',
+            );
         }
         if (
-            filter === ApiOptionsFilter.NONE
-            && [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER, ApiOptionsFilter.LOCALE_ONLY, ApiOptionsFilter.YEAR_ONLY].includes(this.#filter)
+            filter === ApiOptionsFilter.NONE &&
+            [
+                ApiOptionsFilter.ALL_CALENDARS,
+                ApiOptionsFilter.GENERAL_ROMAN,
+                ApiOptionsFilter.PATH_BUILDER,
+                ApiOptionsFilter.LOCALE_ONLY,
+                ApiOptionsFilter.YEAR_ONLY,
+            ].includes(this.#filter)
         ) {
-            throw new Error('Cannot set filter to `ApiOptionsFilter.NONE` when filter has already been set to a value that is not `ApiOptionsFilter.NONE`');
+            throw new Error(
+                'Cannot set filter to `ApiOptionsFilter.NONE` when filter has already been set to a value that is not `ApiOptionsFilter.NONE`',
+            );
         }
         if (
-            [ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN, ApiOptionsFilter.PATH_BUILDER, ApiOptionsFilter.LOCALE_ONLY, ApiOptionsFilter.YEAR_ONLY].includes(filter)
-            && this.#filtersSet.includes(ApiOptionsFilter.NONE)
+            [
+                ApiOptionsFilter.ALL_CALENDARS,
+                ApiOptionsFilter.GENERAL_ROMAN,
+                ApiOptionsFilter.PATH_BUILDER,
+                ApiOptionsFilter.LOCALE_ONLY,
+                ApiOptionsFilter.YEAR_ONLY,
+            ].includes(filter) &&
+            this.#filtersSet.includes(ApiOptionsFilter.NONE)
         ) {
-            throw new Error('Cannot set filter to a value that is not `ApiOptionsFilter.NONE` when filter has already been set explicitly to `ApiOptionsFilter.NONE`');
+            throw new Error(
+                'Cannot set filter to a value that is not `ApiOptionsFilter.NONE` when filter has already been set explicitly to `ApiOptionsFilter.NONE`',
+            );
         }
         this.#filter = filter;
         this.#filtersSet.push(filter);
@@ -735,7 +883,9 @@ export default class ApiOptions {
      */
     linkToCalendarSelect(calendarSelect, riteSelect = null) {
         if (this.#linked) {
-            throw new Error('Current ApiOptions instance already linked to another CalendarSelect instance');
+            throw new Error(
+                'Current ApiOptions instance already linked to another CalendarSelect instance',
+            );
         }
         // Type-check only: no side effects here yet. The actual rite wiring
         // (mutating `CurrentEndpoint`, attaching the rite-change listener,
@@ -744,37 +894,64 @@ export default class ApiOptions {
         // `calendarSelect` never leaves `CurrentEndpoint` mutated or a
         // listener attached behind a thrown error.
         if (null !== riteSelect && false === riteSelect instanceof RiteSelect) {
-            throw new Error('ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' + typeof riteSelect);
+            throw new Error(
+                'ApiOptions.linkToCalendarSelect: riteSelect must be of type `RiteSelect` but found type: ' +
+                    typeof riteSelect,
+            );
         }
         if (Array.isArray(calendarSelect)) {
             if (calendarSelect.length > 2) {
-                throw new Error('Cannot link more than two CalendarSelect instances');
+                throw new Error(
+                    'Cannot link more than two CalendarSelect instances',
+                );
             }
-            calendarSelect.forEach(calendarSelectInstance => {
-                if (false === calendarSelectInstance instanceof CalendarSelect) {
-                    throw new Error('ApiOptions.linkToCalendarSelect: Invalid type for items passed in parameter, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
+            calendarSelect.forEach((calendarSelectInstance) => {
+                if (
+                    false ===
+                    calendarSelectInstance instanceof CalendarSelect
+                ) {
+                    throw new Error(
+                        'ApiOptions.linkToCalendarSelect: Invalid type for items passed in parameter, must be of type `CalendarSelect` but found type: ' +
+                            typeof calendarSelect,
+                    );
                 }
             });
             if (
-                (calendarSelect[0]._filter === 'nations' && calendarSelect[1]._filter !== 'dioceses')
-                ||
-                (calendarSelect[0]._filter === 'dioceses' && calendarSelect[1]._filter !== 'nations')
+                (calendarSelect[0]._filter === 'nations' &&
+                    calendarSelect[1]._filter !== 'dioceses') ||
+                (calendarSelect[0]._filter === 'dioceses' &&
+                    calendarSelect[1]._filter !== 'nations')
             ) {
-                throw new Error('When linking two CalendarSelect instances, one instance must be a `nations` filtered CalendarSelect and the other a `dioceses` filtered CalendarSelect, instead we found: ' + calendarSelect[0]._filter + ' and ' + calendarSelect[1]._filter);
+                throw new Error(
+                    'When linking two CalendarSelect instances, one instance must be a `nations` filtered CalendarSelect and the other a `dioceses` filtered CalendarSelect, instead we found: ' +
+                        calendarSelect[0]._filter +
+                        ' and ' +
+                        calendarSelect[1]._filter,
+                );
             }
-            calendarSelect.forEach( calendarSelectInstance => this.#assertLinkedSelectSharesBase( calendarSelectInstance ) );
+            calendarSelect.forEach((calendarSelectInstance) =>
+                this.#assertLinkedSelectSharesBase(calendarSelectInstance),
+            );
             this.#handleMultipleLinkedCalendarSelects(calendarSelect);
         } else {
             if (false === calendarSelect instanceof CalendarSelect) {
-                throw new Error('ApiOptions.linkToCalendarSelect: Invalid type for parameter, must be of type `CalendarSelect` but found type: ' + typeof calendarSelect);
+                throw new Error(
+                    'ApiOptions.linkToCalendarSelect: Invalid type for parameter, must be of type `CalendarSelect` but found type: ' +
+                        typeof calendarSelect,
+                );
             }
             if (calendarSelect._filter !== 'none') {
-                throw new Error('ApiOptions.linkToCalendarSelect: When linking a single CalendarSelect instance, it must be a `none` filtered CalendarSelect, instead we found: ' + calendarSelect._filter);
+                throw new Error(
+                    'ApiOptions.linkToCalendarSelect: When linking a single CalendarSelect instance, it must be a `none` filtered CalendarSelect, instead we found: ' +
+                        calendarSelect._filter,
+                );
             }
             if (calendarSelect._domElement.children.length === 0) {
-                throw new Error('ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.');
+                throw new Error(
+                    'ApiOptions.linkToCalendarSelect: You seem to be attempting to link to a CalendarSelect instance that is not fully initialized.',
+                );
             }
-            this.#assertLinkedSelectSharesBase( calendarSelect );
+            this.#assertLinkedSelectSharesBase(calendarSelect);
             this.#handleSingleLinkedCalendarSelect(calendarSelect);
         }
         // Only now, with `calendarSelect` fully validated, do the rite side
@@ -794,16 +971,19 @@ export default class ApiOptions {
      * Appends input elements to the specified DOM element, optionally filtered based on the ApiOptionsFilter.
      *
      * @param {string|HTMLElement} elementSelector - The CSS selector for the DOM element to which the input elements will be appended.
+     * @returns {void} Deliberately not chainable: unlike the configuration methods, this returns nothing, so it must be called on its own rather than in a chain.
+     * @throws {Error} If the selector is neither a valid CSS selector nor an HTMLElement.
      */
     appendTo(elementSelector) {
         let domNode;
         if (typeof elementSelector === 'string') {
-            domNode = Utils.validateElementSelector( elementSelector );
-        }
-        else if(elementSelector instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(elementSelector);
+        } else if (elementSelector instanceof HTMLElement) {
             domNode = elementSelector;
         } else {
-            throw new Error('ApiOptions.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
+            throw new Error(
+                'ApiOptions.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
         if (ApiOptionsFilter.PATH_BUILDER === this.#filter) {
             this.#inputs.calendarPathInput.appendTo(domNode);
@@ -816,7 +996,10 @@ export default class ApiOptions {
         if (ApiOptionsFilter.YEAR_ONLY === this.#filter) {
             this.#inputs.yearInput.appendTo(domNode);
         }
-        if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.ALL_CALENDARS === this.#filter) {
+        if (
+            ApiOptionsFilter.NONE === this.#filter ||
+            ApiOptionsFilter.ALL_CALENDARS === this.#filter
+        ) {
             this.#inputs.localeInput.appendTo(domNode);
             this.#inputs.yearTypeInput.appendTo(domNode);
             if (false === this.#inputs.acceptHeaderInput._hidden) {
@@ -828,7 +1011,10 @@ export default class ApiOptions {
                 this.#inputs.yearInput.appendTo(domNode);
             }
         }
-        if (ApiOptionsFilter.NONE === this.#filter || ApiOptionsFilter.GENERAL_ROMAN === this.#filter) {
+        if (
+            ApiOptionsFilter.NONE === this.#filter ||
+            ApiOptionsFilter.GENERAL_ROMAN === this.#filter
+        ) {
             this.#inputs.epiphanyInput.appendTo(domNode);
             this.#inputs.ascensionInput.appendTo(domNode);
             this.#inputs.corpusChristiInput.appendTo(domNode);

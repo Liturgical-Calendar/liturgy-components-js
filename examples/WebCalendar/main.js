@@ -1,4 +1,16 @@
-import { ApiClient, CalendarSelect, ApiOptions, Input, WebCalendar, Grouping, ColorAs, Column, ColumnOrder, DateFormat, GradeDisplay } from '../../src/index.js';
+import {
+    ApiClient,
+    CalendarSelect,
+    ApiOptions,
+    Input,
+    WebCalendar,
+    Grouping,
+    ColorAs,
+    Column,
+    ColumnOrder,
+    DateFormat,
+    GradeDisplay,
+} from '../../src/index.js';
 
 Input.setGlobalInputClass('form-select');
 Input.setGlobalLabelClass('form-label d-block mb-1');
@@ -14,11 +26,11 @@ const baseLang = lang.split('-')[0];
  * @param {HTMLSelectElement} selectElement - the native select element to build virtual select options from
  * @returns {Array<Object>} - an array of virtual select options, each with a label, value, and selected property
  */
-function buildVirtualSelectOptions( selectElement ) {
-    return Array.from(selectElement.options).map(opt => ({
+function buildVirtualSelectOptions(selectElement) {
+    return Array.from(selectElement.options).map((opt) => ({
         label: opt.textContent,
         value: opt.value,
-        selected: opt.selected
+        selected: opt.selected,
     }));
 }
 
@@ -29,30 +41,33 @@ function buildVirtualSelectOptions( selectElement ) {
  * @param {string} vsContainerId - the id of the container element to initialize VirtualSelect on
  * @throws {Error} if nativeSelect is not an instance of HTMLSelectElement
  */
-function buildAndInitVirtualSelectFromNativeSelect(nativeSelect, vsContainerId) {
-  // 1) build options and selected values
-  const opts = buildVirtualSelectOptions(nativeSelect);
-  const selectedValues = opts.filter(o => o.selected).map(o => o.value);
+function buildAndInitVirtualSelectFromNativeSelect(
+    nativeSelect,
+    vsContainerId,
+) {
+    // 1) build options and selected values
+    const opts = buildVirtualSelectOptions(nativeSelect);
+    const selectedValues = opts.filter((o) => o.selected).map((o) => o.value);
 
-  // 2) init VirtualSelect on the div container
-  VirtualSelect.init({
-    ele: `#${vsContainerId}`,
-    showValueAsTags: true,
-    //additionalToggleButtonClasses: "btn",
-    additionalDropboxContainerClasses: "dropdown-menu",
-    multiple: true,
-    search: false,
-    options: opts,
-    selectedValue: selectedValues,
-    onChange: function(value) {
-        // value is an array in multiple mode
-        // sync back to the native select
-        Array.from(nativeSelect.options).forEach(opt => {
-            opt.selected = value.includes(opt.value);
-        });
-        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
+    // 2) init VirtualSelect on the div container
+    VirtualSelect.init({
+        ele: `#${vsContainerId}`,
+        showValueAsTags: true,
+        //additionalToggleButtonClasses: "btn",
+        additionalDropboxContainerClasses: 'dropdown-menu',
+        multiple: true,
+        search: false,
+        options: opts,
+        selectedValue: selectedValues,
+        onChange: function (value) {
+            // value is an array in multiple mode
+            // sync back to the native select
+            Array.from(nativeSelect.options).forEach((opt) => {
+                opt.selected = value.includes(opt.value);
+            });
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+    });
 }
 
 /**
@@ -64,23 +79,32 @@ function buildAndInitVirtualSelectFromNativeSelect(nativeSelect, vsContainerId) 
  * @throws {Error} if calendarSelect is not an instance of CalendarSelect
  * @throws {Error} if vsContainerId is not a non-empty string
  */
-function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
-    if (false === (apiOptions instanceof ApiOptions)) {
+function wireHdobVS(apiOptions, calendarSelect, vsContainerId) {
+    if (false === apiOptions instanceof ApiOptions) {
         throw new Error('apiOptions must be an instance of ApiOptions');
     }
-    if (false === (calendarSelect instanceof CalendarSelect)) {
+    if (false === calendarSelect instanceof CalendarSelect) {
         throw new Error('calendarSelect must be an instance of CalendarSelect');
     }
-    if (false === (typeof vsContainerId === 'string' && vsContainerId.length > 0)) {
+    if (
+        false ===
+        (typeof vsContainerId === 'string' && vsContainerId.length > 0)
+    ) {
         throw new Error('vsContainerId must be a non-empty string');
     }
     // 1. Create a new container element for the virtual select
     const hdobVirtualSelect = document.createElement('div');
     hdobVirtualSelect.id = vsContainerId;
     // 2. Insert it right after the original native select
-    apiOptions._holydaysOfObligationInput._domElement.parentNode.insertBefore( hdobVirtualSelect, apiOptions._holydaysOfObligationInput._domElement.nextSibling );
+    apiOptions._holydaysOfObligationInput._domElement.parentNode.insertBefore(
+        hdobVirtualSelect,
+        apiOptions._holydaysOfObligationInput._domElement.nextSibling,
+    );
     // 3. Build and initialize the virtual select from the native select
-    buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, vsContainerId );
+    buildAndInitVirtualSelectFromNativeSelect(
+        apiOptions._holydaysOfObligationInput._domElement,
+        vsContainerId,
+    );
     if (calendarSelect.value() === '') {
         hdobVirtualSelect.enable();
     } else {
@@ -90,7 +114,10 @@ function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
     calendarSelect.onChange((ev) => {
         //console.log('calendar changed to:', ev.target.value);
         hdobVirtualSelect.destroy();
-        buildAndInitVirtualSelectFromNativeSelect( apiOptions._holydaysOfObligationInput._domElement, vsContainerId );
+        buildAndInitVirtualSelectFromNativeSelect(
+            apiOptions._holydaysOfObligationInput._domElement,
+            vsContainerId,
+        );
         if (ev.target.value === '') {
             hdobVirtualSelect.enable();
         } else {
@@ -99,55 +126,65 @@ function wireHdobVS( apiOptions, calendarSelect, vsContainerId ) {
     });
 }
 
-ApiClient.init('http://localhost:8000').then( (apiClient) => {
-    const calendarSelect = new CalendarSelect( lang );
-    calendarSelect.allowNull()
-        .label({
-            class: 'form-label d-block mb-1'
-        }).wrapper({
-            class: 'form-group col col-md-3'
-        }).class('form-select')
-        .appendTo( '#calendarOptions');
+ApiClient.init('http://localhost:8000')
+    .then((apiClient) => {
+        const calendarSelect = new CalendarSelect(lang);
+        calendarSelect
+            .allowNull()
+            .label({
+                class: 'form-label d-block mb-1',
+            })
+            .wrapper({
+                class: 'form-group col col-md-3',
+            })
+            .class('form-select')
+            .appendTo('#calendarOptions');
 
-    const apiOptions = new ApiOptions( lang );
-    apiOptions._localeInput.defaultValue( baseLang );
-    apiOptions._acceptHeaderInput.hide();
-    apiOptions._yearInput.class( 'form-control' ); // override the global input class
-    apiOptions._ascensionInput.wrapperClass( 'form-group col col-md-2' );
-    apiOptions._corpusChristiInput.wrapperClass( 'form-group col col-md-2' );
-    apiOptions._eternalHighPriestInput.wrapperClass( 'form-group col col-md-2' );
-    apiOptions._holydaysOfObligationInput.class('d-none');
-    apiOptions.linkToCalendarSelect( calendarSelect ).appendTo( '#calendarOptions' );
+        const apiOptions = new ApiOptions(lang);
+        apiOptions._localeInput.defaultValue(baseLang);
+        apiOptions._acceptHeaderInput.hide();
+        apiOptions._yearInput.class('form-control'); // override the global input class
+        apiOptions._ascensionInput.wrapperClass('form-group col col-md-2');
+        apiOptions._corpusChristiInput.wrapperClass('form-group col col-md-2');
+        apiOptions._eternalHighPriestInput.wrapperClass(
+            'form-group col col-md-2',
+        );
+        apiOptions._holydaysOfObligationInput.class('d-none');
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .appendTo('#calendarOptions');
 
-    apiClient.listenTo( calendarSelect ).listenTo( apiOptions );
+        apiClient.listenTo(calendarSelect).listenTo(apiOptions);
 
-    wireHdobVS( apiOptions, calendarSelect, 'hdob-virtual-select' );
+        wireHdobVS(apiOptions, calendarSelect, 'hdob-virtual-select');
 
-    const webCalendar = new WebCalendar();
-    webCalendar.id('LitCalTable')
-                .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
-                .psalterWeekColumn() // add psalter week column as the right hand most column
-                .removeHeaderRow() // we don't need to see the header row
-                .seasonColor(ColorAs.CSS_CLASS)
-                .seasonColorColumns(Column.LITURGICAL_SEASON)
-                .eventColor(ColorAs.INDICATOR)
-                .eventColorColumns(Column.EVENT_DETAILS)
-                .monthHeader() // enable month header at the start of each month
-                .dateFormat(DateFormat.DAY_ONLY)
-                .columnOrder(ColumnOrder.GRADE_FIRST)
-                .gradeDisplay(GradeDisplay.ABBREVIATED)
-                .listenTo(apiClient);
-    // appendTo() must be called separately as it doesn't return `this`
-    webCalendar.appendTo('#litcalWebcalendar');
+        const webCalendar = new WebCalendar();
+        webCalendar
+            .id('LitCalTable')
+            .firstColumnGrouping(Grouping.BY_LITURGICAL_SEASON)
+            .psalterWeekColumn() // add psalter week column as the right hand most column
+            .removeHeaderRow() // we don't need to see the header row
+            .seasonColor(ColorAs.CSS_CLASS)
+            .seasonColorColumns(Column.LITURGICAL_SEASON)
+            .eventColor(ColorAs.INDICATOR)
+            .eventColorColumns(Column.EVENT_DETAILS)
+            .monthHeader() // enable month header at the start of each month
+            .dateFormat(DateFormat.DAY_ONLY)
+            .columnOrder(ColumnOrder.GRADE_FIRST)
+            .gradeDisplay(GradeDisplay.ABBREVIATED)
+            .listenTo(apiClient);
+        // appendTo() must be called separately as it doesn't return `this`
+        webCalendar.appendTo('#litcalWebcalendar');
 
-    // The promise returned by a fetch method belongs to the caller: the library only
-    // suppresses the rejections of the fire-and-forget requests it issues itself, so
-    // this one has to be handled here.
-    apiClient.fetchNationalCalendar('VA').catch( (error) => {
+        // The promise returned by a fetch method belongs to the caller: the library only
+        // suppresses the rejections of the fire-and-forget requests it issues itself, so
+        // this one has to be handled here.
+        apiClient.fetchNationalCalendar('VA').catch((error) => {
+            document.querySelector('#litcalWebcalendar').textContent =
+                `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+        });
+    })
+    .catch((error) => {
         document.querySelector('#litcalWebcalendar').textContent =
-            `Could not load the calendar from ${error.url ?? 'the configured base'}: ${error.message}`;
+            `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
     });
-}).catch( (error) => {
-    document.querySelector('#litcalWebcalendar').textContent =
-        `Could not reach the Liturgical Calendar API at ${error.url ?? 'the configured base'}: ${error.message}`;
-});

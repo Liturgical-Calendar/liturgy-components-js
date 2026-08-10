@@ -2,11 +2,11 @@ import Utils from '../../Utils.js';
 
 export default class Input {
     /** @type {string | null} */
-    static #globalInputClass   = null;
+    static #globalInputClass = null;
     /** @type {string | null} */
-    static #globalLabelClass   = null;
+    static #globalLabelClass = null;
     /** @type {string | null} */
-    static #globalWrapper      = null;
+    static #globalWrapper = null;
     /** @type {string | null} */
     static #globalWrapperClass = null;
     /**
@@ -26,7 +26,7 @@ export default class Input {
      *
      * @type {Set<string>}
      */
-    static #issuedIds          = new Set();
+    static #issuedIds = new Set();
     /**
      * Next suffix to try for each base id — a forward-only hint that keeps
      * {@link Input#_claimDefaultId} O(1) amortized. Advisory, not authoritative:
@@ -35,23 +35,23 @@ export default class Input {
      *
      * @type {Map<string, number>}
      */
-    static #nextSuffix         = new Map();
+    static #nextSuffix = new Map();
     /** @type {HTMLSelectElement | HTMLInputElement | null} */
-    #domElement       = null;
+    #domElement = null;
     /** @type {HTMLElement|null} */
-    #labelElement     = null;
+    #labelElement = null;
     /** @type {DocumentFragment|null} */
-    #labelAfter       = null;
+    #labelAfter = null;
     /** @type {HTMLElement|null} */
-    #wrapperElement   = null;
-    #idSet            = false;
-    #nameSet          = false;
-    #classSet         = false;
-    #dataSet          = false;
-    #labelClassSet    = false;
-    #hasWrapper       = false;
-    #wrapperClassSet  = false;
-    #defaultValue    = '';
+    #wrapperElement = null;
+    #idSet = false;
+    #nameSet = false;
+    #classSet = false;
+    #dataSet = false;
+    #labelClassSet = false;
+    #hasWrapper = false;
+    #wrapperClassSet = false;
+    #defaultValue = '';
 
     /**
      * Sets a global class attribute for all input elements created by this class.
@@ -64,15 +64,21 @@ export default class Input {
      * assigned globally.
      * @throws {Error} If the className is not a string, or if any class name is invalid.
      */
-    static setGlobalInputClass( className = '' ) {
+    static setGlobalInputClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to globalInputClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to globalInputClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
-                throw new Error('Invalid class value passed to globalInputClass: ' + className);
+                throw new Error(
+                    'Invalid class value passed to globalInputClass: ' +
+                        className,
+                );
             }
         });
         Input.#globalInputClass = classNames.join(' ');
@@ -87,15 +93,21 @@ export default class Input {
      * @param {string} [className=''] - A space-separated string of class names to be assigned globally.
      * @throws {Error} If the className is not a string, or if any class name is invalid.
      */
-    static setGlobalLabelClass( className = '' ) {
+    static setGlobalLabelClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to globalLabelClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to globalLabelClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
-                throw new Error('Invalid class value passed to globalLabelClass: ' + className);
+                throw new Error(
+                    'Invalid class value passed to globalLabelClass: ' +
+                        className,
+                );
             }
         });
         Input.#globalLabelClass = classNames.join(' ');
@@ -110,12 +122,17 @@ export default class Input {
      * @param {string} [wrapper] - The wrapper element, currently only 'div' and 'td' are supported.
      * @throws {Error} If the wrapper is not a string, or if the wrapper is not one of the valid values.
      */
-    static setGlobalWrapper( wrapper ) {
+    static setGlobalWrapper(wrapper) {
         if (typeof wrapper !== 'string') {
-            throw new Error('Invalid type for wrapper, must be of type string but found type: ' + typeof wrapper);
+            throw new Error(
+                'Invalid type for wrapper, must be of type string but found type: ' +
+                    typeof wrapper,
+            );
         }
         if (false === ['div', 'td'].includes(wrapper)) {
-            throw new Error('Invalid wrapper: ' + wrapper + ', valid values are: div, td');
+            throw new Error(
+                'Invalid wrapper: ' + wrapper + ', valid values are: div, td',
+            );
         }
         Input.#globalWrapper = wrapper;
     }
@@ -129,15 +146,21 @@ export default class Input {
      * @param {string} [className=''] - A space-separated string of class names to be assigned globally.
      * @throws {Error} If the className is not a string, or if any class name is invalid.
      */
-    static setGlobalWrapperClass( className = '' ) {
+    static setGlobalWrapperClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to globalWrapperClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to globalWrapperClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
-                throw new Error('Invalid class value passed to globalWrapperClass: ' + className);
+                throw new Error(
+                    'Invalid class value passed to globalWrapperClass: ' +
+                        className,
+                );
             }
         });
         Input.#globalWrapperClass = classNames.join(' ');
@@ -168,31 +191,54 @@ export default class Input {
      *     When the element is `select`, the `multiple` attribute can be set to `true` to create a multi-select element.
      * @throws {Error} If the element parameter is not a string or is not one of the valid values.
      */
-    constructor(element = 'select', attributes = {multiple: false}) {
+    constructor(element = 'select', attributes = { multiple: false }) {
         if (typeof element !== 'string') {
-            throw new Error('Invalid type for element parameter, must be of type string but found type: ' + typeof element);
+            throw new Error(
+                'Invalid type for element parameter, must be of type string but found type: ' +
+                    typeof element,
+            );
         }
         if (false === ['select', 'input'].includes(element)) {
-            throw new Error('Invalid `element` parameter: ' + element + ', valid values are: `select` and `input`');
+            throw new Error(
+                'Invalid `element` parameter: ' +
+                    element +
+                    ', valid values are: `select` and `input`',
+            );
         }
-        if (attributes !== undefined && (attributes === null || typeof attributes !== 'object')) {
-            throw new Error('Invalid type for attributes parameter, when set it must be of type object but found type: ' + typeof attributes);
+        if (
+            attributes !== undefined &&
+            (attributes === null || typeof attributes !== 'object')
+        ) {
+            throw new Error(
+                'Invalid type for attributes parameter, when set it must be of type object but found type: ' +
+                    typeof attributes,
+            );
         }
         switch (element) {
             case 'select':
                 if (attributes && typeof attributes.multiple !== 'undefined') {
                     if (typeof attributes.multiple !== 'boolean') {
-                        throw new Error('Invalid type for multiple attribute, when set it must be of type boolean but found type: ' + typeof attributes.multiple);
+                        throw new Error(
+                            'Invalid type for multiple attribute, when set it must be of type boolean but found type: ' +
+                                typeof attributes.multiple,
+                        );
                     }
                 }
                 break;
             case 'input':
                 if (attributes && typeof attributes.type !== 'undefined') {
                     if (typeof attributes.type !== 'string') {
-                        throw new Error('Invalid type for type attribute, when set it must be of type string but found type: ' + typeof attributes.type);
+                        throw new Error(
+                            'Invalid type for type attribute, when set it must be of type string but found type: ' +
+                                typeof attributes.type,
+                        );
                     }
                     if (false === ['number'].includes(attributes.type)) {
-                        throw new Error('Invalid type attribute for input element: ' + attributes.type + ', valid values are: `number`');
+                        throw new Error(
+                            'Invalid type attribute for input element: ' +
+                                attributes.type +
+                                ', valid values are: `number`',
+                        );
                     }
                 }
                 break;
@@ -201,12 +247,18 @@ export default class Input {
         if (attributes && typeof attributes === 'object') {
             switch (element) {
                 case 'select':
-                    if (attributes.multiple !== undefined && attributes.multiple === true) {
+                    if (
+                        attributes.multiple !== undefined &&
+                        attributes.multiple === true
+                    ) {
                         this.#domElement.setAttribute('multiple', 'multiple');
                     }
                     break;
                 case 'input':
-                    if (attributes.type !== undefined && attributes.type === 'number') {
+                    if (
+                        attributes.type !== undefined &&
+                        attributes.type === 'number'
+                    ) {
                         this.#domElement.setAttribute('type', 'number');
                     }
                     break;
@@ -243,18 +295,31 @@ export default class Input {
      * @throws {Error} If the id is not a string, or if the id is invalid, or if the id has already been set.
      * @returns {Input} The current Input instance for chaining.
      */
-    id( id = '' ) {
+    id(id = '') {
         if (this.#idSet && this.#domElement.id !== id) {
-            console.error('ID has already been set to `' + this.#domElement.id + '` on Input instance.');
+            console.error(
+                'ID has already been set to `' +
+                    this.#domElement.id +
+                    '` on Input instance.',
+            );
             console.error(this);
-            throw new Error('ID has already been set to `' + this.#domElement.id + '` on Input instance.');
+            throw new Error(
+                'ID has already been set to `' +
+                    this.#domElement.id +
+                    '` on Input instance.',
+            );
         }
         if (false === (typeof id === 'string')) {
-            throw new Error('Invalid type for id on Input instance, must be of type string but found type: ' + typeof id);
+            throw new Error(
+                'Invalid type for id on Input instance, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
         id = Utils.sanitizeInput(id);
         if (false === Utils.validateId(id)) {
-            throw new Error(`Invalid id '${id}' on Input instance, must be a valid CSS selector`);
+            throw new Error(
+                `Invalid id '${id}' on Input instance, must be a valid CSS selector`,
+            );
         }
         Input.#issuedIds.add(id);
         this.#domElement.id = id;
@@ -286,7 +351,7 @@ export default class Input {
      * @param {string} baseId - The id to claim, e.g. `'locale'`.
      * @returns {void}
      */
-    _claimDefaultId( baseId ) {
+    _claimDefaultId(baseId) {
         let candidate = baseId;
         if (Input.#issuedIds.has(candidate)) {
             // Resume from the highest suffix already handed out for this base id
@@ -322,16 +387,27 @@ export default class Input {
      * @throws {Error} If the name is not a string, or if the name has already been set.
      * @returns {Input} The current Input instance for chaining.
      */
-    name( name = '' ) {
+    name(name = '') {
         if (this.#nameSet && this.#domElement.name !== name) {
-            console.error('Name has already been set to `' + this.#domElement.name + '` on Input instance.');
+            console.error(
+                'Name has already been set to `' +
+                    this.#domElement.name +
+                    '` on Input instance.',
+            );
             console.error(this);
-            throw new Error('Name has already been set to `' + this.#domElement.name + '` on Input instance.');
+            throw new Error(
+                'Name has already been set to `' +
+                    this.#domElement.name +
+                    '` on Input instance.',
+            );
         }
         if (false === (typeof name === 'string')) {
-            throw new Error('Invalid type for name on Input instance, must be of type string but found type: ' + typeof name);
+            throw new Error(
+                'Invalid type for name on Input instance, must be of type string but found type: ' +
+                    typeof name,
+            );
         }
-        if ( '' === name ) {
+        if ('' === name) {
             throw new Error('Name cannot be empty on Input instance.');
         }
         this.#domElement.name = Utils.sanitizeInput(name);
@@ -353,20 +429,34 @@ export default class Input {
      * invalid.
      * @returns {Input} The current Input instance for chaining.
      */
-    class( className = '' ) {
+    class(className = '') {
         if (this.#classSet && this.#domElement.className !== className) {
-            console.error('Class has already been set to `' + this.#domElement.className + '` on Input instance:');
+            console.error(
+                'Class has already been set to `' +
+                    this.#domElement.className +
+                    '` on Input instance:',
+            );
             console.error(this);
-            throw new Error('Class has already been set to `' + this.#domElement.className + '` on Input instance.');
+            throw new Error(
+                'Class has already been set to `' +
+                    this.#domElement.className +
+                    '` on Input instance.',
+            );
         }
         if (typeof className !== 'string') {
-            console.error('Invalid type for class name on Input instance, must be of type string but found type: ' + typeof className);
+            console.error(
+                'Invalid type for class name on Input instance, must be of type string but found type: ' +
+                    typeof className,
+            );
             console.error(this);
-            throw new Error('Invalid type for class name on Input instance, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for class name on Input instance, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
                 throw new Error('Invalid class name: ' + className);
             }
@@ -390,20 +480,36 @@ export default class Input {
      * @throws {Error} If the labelClass is not a string, or if any class name is invalid.
      * @returns {Input} The current Input instance for chaining.
      */
-    labelClass( labelClass = '' ) {
-        if (this.#labelClassSet && this.#labelElement.className !== labelClass) {
-            console.error('Label class has already been set to `' + this.#labelElement.className + '` on Input instance.');
+    labelClass(labelClass = '') {
+        if (
+            this.#labelClassSet &&
+            this.#labelElement.className !== labelClass
+        ) {
+            console.error(
+                'Label class has already been set to `' +
+                    this.#labelElement.className +
+                    '` on Input instance.',
+            );
             console.error(this);
-            throw new Error('Label class has already been set to `' + this.#labelElement.className + '` on Input instance.');
+            throw new Error(
+                'Label class has already been set to `' +
+                    this.#labelElement.className +
+                    '` on Input instance.',
+            );
         }
         if (false === (typeof labelClass === 'string')) {
-            throw new Error('Invalid type for label class on Input instance, must be of type string but found type: ' + typeof labelClass);
+            throw new Error(
+                'Invalid type for label class on Input instance, must be of type string but found type: ' +
+                    typeof labelClass,
+            );
         }
         labelClass = Utils.sanitizeInput(labelClass);
         const classNames = labelClass.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
-                throw new Error(`Invalid label class '${className}' on Input instance, must be a valid CSS class`);
+                throw new Error(
+                    `Invalid label class '${className}' on Input instance, must be a valid CSS class`,
+                );
             }
         });
         this.#labelElement.className = classNames.join(' ');
@@ -424,11 +530,13 @@ export default class Input {
      * @throws {Error} If content is attempted to be set more than once.
      * @returns {Input} The current instance for method chaining.
      */
-    labelAfter( contents = '' ) {
+    labelAfter(contents = '') {
         if (this.#labelAfter !== null) {
             //console.error('Label after content has already been set on Input instance.');
             //console.error(this);
-            throw new Error('labelAfter content has already been set on Input instance.');
+            throw new Error(
+                'labelAfter content has already been set on Input instance.',
+            );
         }
         if (contents === null) {
             this.#labelAfter = null;
@@ -442,9 +550,14 @@ export default class Input {
         //  - `|` is a logical OR operator
         //  - `<script(.*?)>.*?<\/script>` matches the start of a script tag, any attributes, the contents of the script tag, and the end of the script tag
         //  - `g` flag makes the regex replacement global, so it will replace all occurrences of the regex, not just the first one
-        contents = contents.replace(/<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g, '');
+        contents = contents.replace(
+            /<\?(?:php)?|\?>|<script(.*?)>.*?<\/script>/g,
+            '',
+        );
         if (contents !== '') {
-            const fragment = document.createRange().createContextualFragment(contents);
+            const fragment = document
+                .createRange()
+                .createContextualFragment(contents);
             this.#labelAfter = fragment;
         }
         return this;
@@ -465,13 +578,18 @@ export default class Input {
      *
      * @throws {Error} If the `wrapper` argument is not a string or is not one of the valid values.
      */
-    wrapper( wrapper = 'div' ) {
+    wrapper(wrapper = 'div') {
         if (typeof wrapper !== 'string') {
-            throw new Error('Invalid type for wrapper, must be of type string but found type: ' + typeof wrapper);
+            throw new Error(
+                'Invalid type for wrapper, must be of type string but found type: ' +
+                    typeof wrapper,
+            );
         }
         wrapper = Utils.sanitizeInput(wrapper);
         if (false === ['div', 'td'].includes(wrapper)) {
-            throw new Error('Invalid wrapper: ' + wrapper + ', valid values are: div, td');
+            throw new Error(
+                'Invalid wrapper: ' + wrapper + ', valid values are: div, td',
+            );
         }
         this.#wrapperElement = document.createElement(wrapper);
         this.#hasWrapper = true;
@@ -497,23 +615,41 @@ export default class Input {
      * @throws {Error} If any of the class names are invalid.
      * @return {Input} - The same instance of Input.
      */
-    wrapperClass( wrapperClass = '') {
-        if (this.#wrapperClassSet && this.#wrapperElement.className !== wrapperClass) {
-            console.error('Wrapper class has already been set to `' + this.#wrapperElement.className + '` on Input instance.');
+    wrapperClass(wrapperClass = '') {
+        if (
+            this.#wrapperClassSet &&
+            this.#wrapperElement.className !== wrapperClass
+        ) {
+            console.error(
+                'Wrapper class has already been set to `' +
+                    this.#wrapperElement.className +
+                    '` on Input instance.',
+            );
             console.error(this);
-            throw new Error('Wrapper class has already been set to `' + this.#wrapperElement.className + '` on Input instance.');
+            throw new Error(
+                'Wrapper class has already been set to `' +
+                    this.#wrapperElement.className +
+                    '` on Input instance.',
+            );
         }
         if (typeof wrapperClass !== 'string') {
-            throw new Error('Invalid type for wrapper class on Input instance, must be of type string but found type: ' + typeof wrapperClass);
+            throw new Error(
+                'Invalid type for wrapper class on Input instance, must be of type string but found type: ' +
+                    typeof wrapperClass,
+            );
         }
         if (null === this.#wrapperElement) {
-            throw new Error('Wrapper has not been set, cannot set wrapper class on Input instance.');
+            throw new Error(
+                'Wrapper has not been set, cannot set wrapper class on Input instance.',
+            );
         }
         wrapperClass = Utils.sanitizeInput(wrapperClass);
         const classNames = wrapperClass.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === Utils.validateClassName(className)) {
-                throw new Error(`Invalid wrapper class '${className}' on Input instance, must be a valid CSS class`);
+                throw new Error(
+                    `Invalid wrapper class '${className}' on Input instance, must be a valid CSS class`,
+                );
             }
         });
         this.#wrapperElement.className = classNames.join(' ');
@@ -532,22 +668,35 @@ export default class Input {
      *
      * @return {Input} Returns the current instance to allow method chaining.
      */
-    data( data = {} ) {
+    data(data = {}) {
         if (this.#dataSet) {
-            console.error('Data attributes have already been set on Input instance.');
+            console.error(
+                'Data attributes have already been set on Input instance.',
+            );
             console.error(this);
-            throw new Error('Data attributes have already been set on Input instance.');
+            throw new Error(
+                'Data attributes have already been set on Input instance.',
+            );
         }
         if (typeof data !== 'object') {
-            throw new Error('Invalid type for data, must be of type object but found type: ' + typeof data);
+            throw new Error(
+                'Invalid type for data, must be of type object but found type: ' +
+                    typeof data,
+            );
         }
         Object.entries(data).forEach(([key, value]) => {
             if (typeof key !== 'string') {
-                throw new Error('Invalid type for data key, must be of type string but found type: ' + typeof key);
+                throw new Error(
+                    'Invalid type for data key, must be of type string but found type: ' +
+                        typeof key,
+                );
             }
             key = Utils.sanitizeInput(key);
             if (typeof value !== 'string') {
-                throw new Error('Invalid type for data value, must be of type string but found type: ' + typeof value);
+                throw new Error(
+                    'Invalid type for data value, must be of type string but found type: ' +
+                        typeof value,
+                );
             }
             value = Utils.sanitizeInput(value);
 
@@ -575,9 +724,12 @@ export default class Input {
      * @returns {Input} The current instance for method chaining.
      * @throws {Error} If the type of boolValue is not a boolean.
      */
-    disabled( boolValue = true ) {
+    disabled(boolValue = true) {
         if (typeof boolValue !== 'boolean') {
-            throw new Error('Invalid type for disabled, must be of type boolean but found type: ' + typeof boolValue);
+            throw new Error(
+                'Invalid type for disabled, must be of type boolean but found type: ' +
+                    typeof boolValue,
+            );
         }
         this.#domElement.disabled = boolValue;
         return this;
@@ -590,10 +742,12 @@ export default class Input {
      * @throws {Error} If the type of value is not a string.
      * @return {Input} - The same instance of Input.
      */
-    defaultValue( value = '' )
-    {
+    defaultValue(value = '') {
         if (typeof value !== 'string') {
-            throw new Error('Invalid type for defaultValue, must be of type string but found type: ' + typeof value);
+            throw new Error(
+                'Invalid type for defaultValue, must be of type string but found type: ' +
+                    typeof value,
+            );
         }
         this.#domElement.value = Utils.sanitizeInput(value);
         this.#defaultValue = value;
@@ -613,12 +767,15 @@ export default class Input {
      * @returns {string|Input} The current value when used as getter, or the instance when used as setter.
      * @throws {Error} If the provided value is not a string.
      */
-    value( val ) {
+    value(val) {
         if (typeof val === 'undefined') {
             return this.#domElement.value;
         }
         if (typeof val !== 'string') {
-            throw new Error('Invalid type for value, must be of type string but found type: ' + typeof val);
+            throw new Error(
+                'Invalid type for value, must be of type string but found type: ' +
+                    typeof val,
+            );
         }
         this.#domElement.value = val;
         return this;
@@ -636,7 +793,7 @@ export default class Input {
         if (this.#domElement.tagName.toLowerCase() !== 'select') {
             return [];
         }
-        return Array.from(this.#domElement.options).map(opt => opt.value);
+        return Array.from(this.#domElement.options).map((opt) => opt.value);
     }
 
     /**
@@ -652,22 +809,27 @@ export default class Input {
      * @throws {Error} If the element selector does not match any element.
      * @return {Input} - The same instance of Input.
      */
-    appendTo( elementSelector = '' ) {
+    appendTo(elementSelector = '') {
         let domNode;
         if (typeof elementSelector === 'string') {
             if (elementSelector === '') {
-                throw new Error('Input.appendTo: Element selector cannot be empty.');
+                throw new Error(
+                    'Input.appendTo: Element selector cannot be empty.',
+                );
             }
             domNode = document.querySelector(elementSelector);
             if (domNode === null) {
-                throw new Error('Input.appendTo: Element not found: ' + elementSelector);
+                throw new Error(
+                    'Input.appendTo: Element not found: ' + elementSelector,
+                );
             }
-        }
-        else if (elementSelector instanceof HTMLElement) {
+        } else if (elementSelector instanceof HTMLElement) {
             domNode = elementSelector;
-        }
-        else {
-            throw new Error('Input.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' + typeof elementSelector);
+        } else {
+            throw new Error(
+                'Input.appendTo: Invalid type for elementSelector, must be either a valid CSS selector or an instance of HTMLElement but found type: ' +
+                    typeof elementSelector,
+            );
         }
         if (this._labelAfter instanceof DocumentFragment) {
             // If wrapper, we append after input inside wrapper; otherwise after input in domNode
@@ -681,8 +843,7 @@ export default class Input {
                 domNode.appendChild(this._domElement);
                 domNode.appendChild(this._labelAfter);
             }
-        }
-        else {
+        } else {
             if (null !== this._wrapperElement) {
                 this._wrapperElement.appendChild(this._labelElement);
                 this._wrapperElement.appendChild(this._domElement);

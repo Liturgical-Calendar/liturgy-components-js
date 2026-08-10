@@ -3,7 +3,7 @@
  */
 const Grouping = Object.freeze({
     BY_MONTH: 'BY_MONTH',
-    BY_LITURGICAL_SEASON: 'BY_LITURGICAL_SEASON'
+    BY_LITURGICAL_SEASON: 'BY_LITURGICAL_SEASON',
 });
 
 /**
@@ -11,7 +11,7 @@ const Grouping = Object.freeze({
  */
 const ColumnOrder = Object.freeze({
     GRADE_FIRST: 'GRADE_FIRST',
-    EVENT_DETAILS_FIRST: 'EVENT_DETAILS_FIRST'
+    EVENT_DETAILS_FIRST: 'EVENT_DETAILS_FIRST',
 });
 
 /**
@@ -19,23 +19,23 @@ const ColumnOrder = Object.freeze({
  */
 const Column = Object.freeze({
     LITURGICAL_SEASON: 1 << 0, // 1
-    MONTH:             1 << 1, // 2
-    DATE:              1 << 2, // 4
-    EVENT_DETAILS:     1 << 3, // 8
-    GRADE:             1 << 4, // 16
-    PSALTER_WEEK:      1 << 5, // 32
-    ALL:               (1 | 2 | 4 | 8 | 16 | 32), // 63
-    NONE:              0
+    MONTH: 1 << 1, // 2
+    DATE: 1 << 2, // 4
+    EVENT_DETAILS: 1 << 3, // 8
+    GRADE: 1 << 4, // 16
+    PSALTER_WEEK: 1 << 5, // 32
+    ALL: 1 | 2 | 4 | 8 | 16 | 32, // 63
+    NONE: 0,
 });
 
 /**
  * @enum {{BACKGROUND: 'BACKGROUND', CSS_CLASS: 'CSS_CLASS', INDICATOR: 'INDICATOR', NONE: 'NONE'}}
  */
 const ColorAs = Object.freeze({
-    BACKGROUND: "BACKGROUND",
-    CSS_CLASS: "CSS_CLASS",
-    INDICATOR: "INDICATOR",
-    NONE: "NONE"
+    BACKGROUND: 'BACKGROUND',
+    CSS_CLASS: 'CSS_CLASS',
+    INDICATOR: 'INDICATOR',
+    NONE: 'NONE',
 });
 
 /**
@@ -46,7 +46,7 @@ const DateFormat = Object.freeze({
     LONG: 'long',
     MEDIUM: 'medium',
     SHORT: 'short',
-    DAY_ONLY: 'day-only'
+    DAY_ONLY: 'day-only',
 });
 
 /**
@@ -54,7 +54,7 @@ const DateFormat = Object.freeze({
  */
 const GradeDisplay = Object.freeze({
     FULL: 'full',
-    ABBREVIATED: 'abbreviated'
+    ABBREVIATED: 'abbreviated',
 });
 
 /**
@@ -68,7 +68,7 @@ const ApiOptionsFilter = Object.freeze({
     YEAR_ONLY: 'yearOnly',
     BASE_PATH: 'basePath',
     ALL_PATHS: 'allPaths',
-    NONE: null
+    NONE: null,
 });
 
 /**
@@ -77,7 +77,7 @@ const ApiOptionsFilter = Object.freeze({
 const CalendarSelectFilter = Object.freeze({
     NATIONAL_CALENDARS: 'nations',
     DIOCESAN_CALENDARS: 'dioceses',
-    NONE: 'none'
+    NONE: 'none',
 });
 
 /**
@@ -85,34 +85,44 @@ const CalendarSelectFilter = Object.freeze({
  */
 const YearType = Object.freeze({
     LITURGICAL: 'LITURGICAL',
-    CIVIL: 'CIVIL'
+    CIVIL: 'CIVIL',
 });
 
 const monthsLatin = Object.freeze([
     '', // Placeholder for 0 index
-    'Ianuarius', 'Februarius', 'Martius', 'Aprilis', 'Maius', 'Iunius',
-    'Iulius', 'Augustus', 'September', 'October', 'November', 'December'
+    'Ianuarius',
+    'Februarius',
+    'Martius',
+    'Aprilis',
+    'Maius',
+    'Iunius',
+    'Iulius',
+    'Augustus',
+    'September',
+    'October',
+    'November',
+    'December',
 ]);
 
 const daysLatin = Object.freeze({
-    'ecclesiastical': [
-        'Dominica',    // Sunday
-        'Feria II',    // Monday
-        'Feria III',   // Tuesday
-        'Feria IV',    // Wednesday
-        'Feria V',     // Thursday
-        'Feria VI',    // Friday
-        'Sabbato'      // Saturday
+    ecclesiastical: [
+        'Dominica', // Sunday
+        'Feria II', // Monday
+        'Feria III', // Tuesday
+        'Feria IV', // Wednesday
+        'Feria V', // Thursday
+        'Feria VI', // Friday
+        'Sabbato', // Saturday
     ],
-    'civil': [
-        'Dies Solis',    // Sunday
-        'Dies Lunæ',     // Monday
-        'Dies Martis',   // Tuesday
+    civil: [
+        'Dies Solis', // Sunday
+        'Dies Lunæ', // Monday
+        'Dies Martis', // Tuesday
         'Dies Mercurii', // Wednesday
-        'Dies Iovis',    // Thursday
-        'Dies Veneris',  // Friday
-        'Dies Saturni'   // Saturday
-    ]
+        'Dies Iovis', // Thursday
+        'Dies Veneris', // Friday
+        'Dies Saturni', // Saturday
+    ],
 });
 
 /**
@@ -123,21 +133,21 @@ const daysLatin = Object.freeze({
  */
 const LatinInterface = Object.freeze({
     ECCLESIASTICAL: {
-        month: function(month) {
+        month: function (month) {
             return monthsLatin[month] || '';
         },
-        dayOfTheWeek: function(day) {
+        dayOfTheWeek: function (day) {
             return daysLatin.ecclesiastical[day] || '';
-        }
+        },
     },
     CIVIL: {
-        month: function(month) {
+        month: function (month) {
             return monthsLatin[month] || '';
         },
-        dayOfTheWeek: function(day) {
+        dayOfTheWeek: function (day) {
             return daysLatin.civil[day] || '';
-        }
-    }
+        },
+    },
 });
 
 /**
@@ -149,8 +159,8 @@ const LatinInterface = Object.freeze({
  * @enum {{ROMAN: 'roman', AMBROSIAN: 'ambrosian'}}
  */
 const Rite = Object.freeze({
-    ROMAN:     'roman',
-    AMBROSIAN: 'ambrosian'
+    ROMAN: 'roman',
+    AMBROSIAN: 'ambrosian',
 });
 
 /**
@@ -177,18 +187,31 @@ const Rite = Object.freeze({
  * @type {Readonly<Object<string, {hasNationalTier: boolean, hasFixedTemporalOptions: boolean, minYear: number, emptyOptionLabelKey: string}>>}
  */
 const RiteProperties = Object.freeze({
-    [ Rite.ROMAN ]: Object.freeze({
-        hasNationalTier:         true,
+    [Rite.ROMAN]: Object.freeze({
+        hasNationalTier: true,
         hasFixedTemporalOptions: false,
-        minYear:                 1970,
-        emptyOptionLabelKey:     'GENERAL_ROMAN_CALENDAR'
+        minYear: 1970,
+        emptyOptionLabelKey: 'GENERAL_ROMAN_CALENDAR',
     }),
-    [ Rite.AMBROSIAN ]: Object.freeze({
-        hasNationalTier:         false,
+    [Rite.AMBROSIAN]: Object.freeze({
+        hasNationalTier: false,
         hasFixedTemporalOptions: true,
-        minYear:                 1976,
-        emptyOptionLabelKey:     'AMBROSIAN_CALENDAR'
-    })
+        minYear: 1976,
+        emptyOptionLabelKey: 'AMBROSIAN_CALENDAR',
+    }),
 });
 
-export { Grouping, ColumnOrder, Column, ColorAs, DateFormat, GradeDisplay, ApiOptionsFilter, CalendarSelectFilter, YearType, LatinInterface, Rite, RiteProperties };
+export {
+    Grouping,
+    ColumnOrder,
+    Column,
+    ColorAs,
+    DateFormat,
+    GradeDisplay,
+    ApiOptionsFilter,
+    CalendarSelectFilter,
+    YearType,
+    LatinInterface,
+    Rite,
+    RiteProperties,
+};

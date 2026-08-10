@@ -20,14 +20,13 @@ import { canonicalizeLocale } from '../LocaleValidation.js';
  * @see https://github.com/Liturgical-Calendar/liturgy-components-js
  */
 export default class RiteSelect {
-
-    #domElement   = null;
+    #domElement = null;
     #labelElement = null;
-    #hasLabel     = false;
-    #labelSet     = false;
-    #locale       = 'en';
-    #idSet        = false;
-    #nameSet      = false;
+    #hasLabel = false;
+    #labelSet = false;
+    #locale = 'en';
+    #idSet = false;
+    #nameSet = false;
 
     /**
      * @param {string|Intl.Locale|object} [options='en'] A locale string, an `Intl.Locale`, or an options object.
@@ -39,32 +38,34 @@ export default class RiteSelect {
      * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
      */
-    constructor( options = 'en' ) {
-        options = normalizeComponentOptions( options, 'RiteSelect' );
+    constructor(options = 'en') {
+        options = normalizeComponentOptions(options, 'RiteSelect');
 
         const { locale: inputLocale, id, name } = options;
-        if ( inputLocale !== undefined && inputLocale !== null ) {
-            this.#locale = canonicalizeLocale( inputLocale, 'RiteSelect' );
+        if (inputLocale !== undefined && inputLocale !== null) {
+            this.#locale = canonicalizeLocale(inputLocale, 'RiteSelect');
         }
 
-        const language = new Intl.Locale( this.#locale ).language;
+        const language = new Intl.Locale(this.#locale).language;
 
-        this.#domElement = document.createElement( 'select' );
-        this.#domElement.innerHTML = Object.values( Rite ).map( rite => {
-            const key   = 'RITE_' + rite.toUpperCase();
-            const label = Messages[ language ]?.[ key ] ?? Messages[ 'en' ][ key ];
-            return `<option value="${rite}">${label}</option>`;
-        } ).join( '' );
+        this.#domElement = document.createElement('select');
+        this.#domElement.innerHTML = Object.values(Rite)
+            .map((rite) => {
+                const key = 'RITE_' + rite.toUpperCase();
+                const label = Messages[language]?.[key] ?? Messages['en'][key];
+                return `<option value="${rite}">${label}</option>`;
+            })
+            .join('');
         this.#domElement.value = Rite.ROMAN;
 
-        if ( Object.hasOwn( options, 'class' ) ) {
-            this.class( options.class );
+        if (Object.hasOwn(options, 'class')) {
+            this.class(options.class);
         }
-        if ( id ) {
-            this.id( id );
+        if (id) {
+            this.id(id);
         }
-        if ( name ) {
-            this.name( name );
+        if (name) {
+            this.name(name);
         }
     }
 
@@ -80,22 +81,27 @@ export default class RiteSelect {
      * @throws {Error} If the className is not a string, or if any class name is invalid.
      * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
      */
-    class( className ) {
-        if ( typeof className !== 'string' ) {
-            throw new Error( 'Invalid type for class name on RiteSelect instance, must be of type string but found type: ' + typeof className );
+    class(className) {
+        if (typeof className !== 'string') {
+            throw new Error(
+                'Invalid type for class name on RiteSelect instance, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
-        let classNames = className.split( /\s+/ );
-        classNames = classNames.map( className => Utils.sanitizeInput( className ) );
-        classNames.forEach( className => {
-            if ( false === Utils.validateClassName( className ) ) {
-                throw new Error( 'Invalid class name: ' + className );
+        let classNames = className.split(/\s+/);
+        classNames = classNames.map((className) =>
+            Utils.sanitizeInput(className),
+        );
+        classNames.forEach((className) => {
+            if (false === Utils.validateClassName(className)) {
+                throw new Error('Invalid class name: ' + className);
             }
-        } );
-        className = classNames.join( ' ' );
-        if ( className === '' ) {
-            this.#domElement.removeAttribute( 'class' );
+        });
+        className = classNames.join(' ');
+        if (className === '') {
+            this.#domElement.removeAttribute('class');
         } else {
-            this.#domElement.setAttribute( 'class', className );
+            this.#domElement.setAttribute('class', className);
         }
         return this;
     }
@@ -112,22 +118,35 @@ export default class RiteSelect {
      * @throws {Error} If the id is not a string, or if the id is invalid.
      * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
      */
-    id( id ) {
-        if ( this.#idSet && this.#domElement.id !== id ) {
-            throw new Error( 'ID has already been set to `' + this.#domElement.id + '` on this RiteSelect instance.' );
+    id(id) {
+        if (this.#idSet && this.#domElement.id !== id) {
+            throw new Error(
+                'ID has already been set to `' +
+                    this.#domElement.id +
+                    '` on this RiteSelect instance.',
+            );
         }
-        if ( typeof id !== 'string' ) {
-            throw new Error( 'Invalid type for id, must be of type string but found type: ' + typeof id );
+        if (typeof id !== 'string') {
+            throw new Error(
+                'Invalid type for id, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
-        id = Utils.sanitizeInput( id );
-        if ( Utils.validateId( id ) === false ) {
-            throw new Error( 'Invalid id, cannot contain any kind of whitespace character: ' + id );
+        id = Utils.sanitizeInput(id);
+        if (Utils.validateId(id) === false) {
+            throw new Error(
+                'Invalid id, cannot contain any kind of whitespace character: ' +
+                    id,
+            );
         }
         this.#domElement.id = id;
-        if ( this.#hasLabel ) {
-            this.#labelElement.setAttribute( 'for', this.#domElement.id );
-            if ( this.#labelElement.hasAttribute( 'id' ) ) {
-                this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
+        if (this.#hasLabel) {
+            this.#labelElement.setAttribute('for', this.#domElement.id);
+            if (this.#labelElement.hasAttribute('id')) {
+                this.#domElement.setAttribute(
+                    'aria-labelledby',
+                    this.#labelElement.id,
+                );
             }
         }
         this.#idSet = true;
@@ -141,12 +160,19 @@ export default class RiteSelect {
      * @throws {Error} If the name is not a string, or if it has already been set to a different value.
      * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
      */
-    name( name ) {
-        if ( this.#nameSet && this.#domElement.name !== name ) {
-            throw new Error( 'Name has already been set to `' + this.#domElement.name + '` on this RiteSelect instance.' );
+    name(name) {
+        if (this.#nameSet && this.#domElement.name !== name) {
+            throw new Error(
+                'Name has already been set to `' +
+                    this.#domElement.name +
+                    '` on this RiteSelect instance.',
+            );
         }
-        if ( typeof name !== 'string' ) {
-            throw new Error( 'Invalid type for name, must be of type string but found type: ' + typeof name );
+        if (typeof name !== 'string') {
+            throw new Error(
+                'Invalid type for name, must be of type string but found type: ' +
+                    typeof name,
+            );
         }
         this.#domElement.name = name;
         this.#nameSet = true;
@@ -167,69 +193,104 @@ export default class RiteSelect {
      * @throws {Error} If the label has already been set, or the options are invalid.
      * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
      */
-    label( labelOptions = null ) {
-        if ( this.#labelSet ) {
-            throw new Error( 'Label has already been set on this RiteSelect instance.' );
+    label(labelOptions = null) {
+        if (this.#labelSet) {
+            throw new Error(
+                'Label has already been set on this RiteSelect instance.',
+            );
         }
-        if ( null === labelOptions ) {
+        if (null === labelOptions) {
             this.#hasLabel = false;
             this.#labelElement = null;
-            this.#domElement.removeAttribute( 'aria-labelledby' );
+            this.#domElement.removeAttribute('aria-labelledby');
             this.#labelSet = true;
             return this;
-        }
-        else if ( typeof labelOptions !== 'object' || Array.isArray( labelOptions ) ) {
-            const labelOptionsType = Array.isArray( labelOptions ) ? 'array' : typeof labelOptions;
-            throw new Error( 'Invalid type for label options, must be of type object (not null or array) but found type: ' + labelOptionsType );
-        }
-        else if ( Object.keys( labelOptions ).length === 0 || false === Object.keys( labelOptions ).some( key => [ 'class', 'id', 'text' ].includes( key ) ) ) {
-            throw new Error( 'Invalid label options, must be an object with at least a `text`, `class` or `id` property' );
+        } else if (
+            typeof labelOptions !== 'object' ||
+            Array.isArray(labelOptions)
+        ) {
+            const labelOptionsType = Array.isArray(labelOptions)
+                ? 'array'
+                : typeof labelOptions;
+            throw new Error(
+                'Invalid type for label options, must be of type object (not null or array) but found type: ' +
+                    labelOptionsType,
+            );
+        } else if (
+            Object.keys(labelOptions).length === 0 ||
+            false ===
+                Object.keys(labelOptions).some((key) =>
+                    ['class', 'id', 'text'].includes(key),
+                )
+        ) {
+            throw new Error(
+                'Invalid label options, must be an object with at least a `text`, `class` or `id` property',
+            );
         }
 
-        this.#labelElement = document.createElement( 'label' );
+        this.#labelElement = document.createElement('label');
         this.#hasLabel = true;
         this.#labelSet = true;
 
-        if ( this.#domElement.hasAttribute( 'id' ) ) {
-            this.#labelElement.setAttribute( 'for', this.#domElement.id );
+        if (this.#domElement.hasAttribute('id')) {
+            this.#labelElement.setAttribute('for', this.#domElement.id);
         }
 
-        if ( Object.hasOwn( labelOptions, 'class' ) ) {
-            if ( typeof labelOptions.class !== 'string' ) {
-                throw new Error( 'Invalid type for label class, must be of type string but found type: ' + typeof labelOptions.class );
+        if (Object.hasOwn(labelOptions, 'class')) {
+            if (typeof labelOptions.class !== 'string') {
+                throw new Error(
+                    'Invalid type for label class, must be of type string but found type: ' +
+                        typeof labelOptions.class,
+                );
             }
-            let classNames = labelOptions.class.split( /\s+/ );
-            classNames = classNames.map( className => Utils.sanitizeInput( className ) );
-            classNames.forEach( className => {
-                if ( false === Utils.validateClassName( className ) ) {
-                    throw new Error( 'Invalid class name: ' + className );
+            let classNames = labelOptions.class.split(/\s+/);
+            classNames = classNames.map((className) =>
+                Utils.sanitizeInput(className),
+            );
+            classNames.forEach((className) => {
+                if (false === Utils.validateClassName(className)) {
+                    throw new Error('Invalid class name: ' + className);
                 }
-            } );
-            labelOptions.class = classNames.join( ' ' );
+            });
+            labelOptions.class = classNames.join(' ');
             this.#labelElement.className = labelOptions.class;
         }
 
-        if ( Object.hasOwn( labelOptions, 'id' ) ) {
-            if ( typeof labelOptions.id !== 'string' ) {
-                throw new Error( 'Invalid type for label id, must be of type string but found type: ' + typeof labelOptions.id );
+        if (Object.hasOwn(labelOptions, 'id')) {
+            if (typeof labelOptions.id !== 'string') {
+                throw new Error(
+                    'Invalid type for label id, must be of type string but found type: ' +
+                        typeof labelOptions.id,
+                );
             }
-            labelOptions.id = Utils.sanitizeInput( labelOptions.id );
-            if ( false === Utils.validateId( labelOptions.id ) ) {
-                throw new Error( 'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' + labelOptions.id );
+            labelOptions.id = Utils.sanitizeInput(labelOptions.id);
+            if (false === Utils.validateId(labelOptions.id)) {
+                throw new Error(
+                    'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
+                        labelOptions.id,
+                );
             }
             this.#labelElement.id = labelOptions.id;
-            this.#domElement.setAttribute( 'aria-labelledby', this.#labelElement.id );
+            this.#domElement.setAttribute(
+                'aria-labelledby',
+                this.#labelElement.id,
+            );
         }
 
-        if ( Object.hasOwn( labelOptions, 'text' ) ) {
-            if ( typeof labelOptions.text !== 'string' ) {
-                throw new Error( 'Invalid type for label text, must be of type string but found type: ' + typeof labelOptions.text );
+        if (Object.hasOwn(labelOptions, 'text')) {
+            if (typeof labelOptions.text !== 'string') {
+                throw new Error(
+                    'Invalid type for label text, must be of type string but found type: ' +
+                        typeof labelOptions.text,
+                );
             }
-            labelOptions.text = Utils.sanitizeInput( labelOptions.text );
+            labelOptions.text = Utils.sanitizeInput(labelOptions.text);
             this.#labelElement.textContent = labelOptions.text;
         } else {
-            const language = new Intl.Locale( this.#locale ).language;
-            this.#labelElement.textContent = Messages[ language ]?.[ 'SELECT_A_RITE' ] ?? Messages[ 'en' ][ 'SELECT_A_RITE' ];
+            const language = new Intl.Locale(this.#locale).language;
+            this.#labelElement.textContent =
+                Messages[language]?.['SELECT_A_RITE'] ??
+                Messages['en']['SELECT_A_RITE'];
         }
 
         return this;
@@ -243,24 +304,28 @@ export default class RiteSelect {
      * @param {string|HTMLElement} element The element selector of the element to append the select element to, or the element itself.
      * @throws {Error} If `element` is neither a valid CSS selector nor an HTMLElement.
      */
-    appendTo( element ) {
+    appendTo(element) {
         let domNode;
-        if ( typeof element === 'string' ) {
-            domNode = Utils.validateElementSelector( element );
-        }
-        else if ( element instanceof HTMLElement ) {
+        if (typeof element === 'string') {
+            domNode = Utils.validateElementSelector(element);
+        } else if (element instanceof HTMLElement) {
             domNode = element;
         } else {
-            throw new Error( 'RiteSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement' );
+            throw new Error(
+                'RiteSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
-        domNode.appendChild( this.#domElement );
-        if ( this.#hasLabel ) {
+        domNode.appendChild(this.#domElement);
+        if (this.#hasLabel) {
             // Matches CalendarSelect.appendTo(): the select is appended first,
             // then the label is placed immediately before it via
             // insertAdjacentElement rather than appendChild, so the label
             // always ends up adjacent to (and before) the select regardless
             // of what else domNode already contains.
-            this.#domElement.insertAdjacentElement( 'beforebegin', this.#labelElement );
+            this.#domElement.insertAdjacentElement(
+                'beforebegin',
+                this.#labelElement,
+            );
         }
     }
 

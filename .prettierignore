@@ -1,9 +1,9 @@
-# Prettier is used in this project for MARKDOWN ONLY — see the `lint:md` /
-# `lint:md:fix` scripts in package.json. It is deliberately NOT wired up for
-# JavaScript or TypeScript: prettier's defaults (double quotes, 2-space indent)
-# contradict this project's code standards (single quotes, 4-space indent), and
-# there is intentionally no .prettierrc so that an editor's format-on-save does
-# not silently start reformatting source files against those standards.
+# Prettier formats both markdown (`lint:md` / `format:md` — see package.json) and
+# JavaScript (`format:js` / `format:js:fix`) in this project. `.prettierrc` scopes
+# JS-specific options (tabWidth: 4, singleQuote: true) to JS/TS via an `overrides`
+# block, so markdown keeps prettier's own defaults and its output is unaffected by
+# the JS settings. See the Markdown and JavaScript sections under Code Standards in
+# CLAUDE.md for the full rationale, including why this used to be markdown-only.
 
 # Build output and dependencies
 dist/

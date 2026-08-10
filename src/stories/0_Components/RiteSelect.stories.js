@@ -17,99 +17,105 @@ import { RiteSelect, ApiClient } from '@liturgical-calendar/components-js';
  * `ApiOptions.linkToCalendarSelect()` — see the `docs/rite-select.md` documentation for a full example.
  */
 const meta = {
-  title: 'Components/RiteSelect/Unstyled',
-  tags: ['autodocs'],
-  argTypes: {
-    locale: {
-      control: 'text',
-      description: 'Locale code for UI elements. This option is passed directly to the `RiteSelect` constructor.'
+    title: 'Components/RiteSelect/Unstyled',
+    tags: ['autodocs'],
+    argTypes: {
+        locale: {
+            control: 'text',
+            description:
+                'Locale code for UI elements. This option is passed directly to the `RiteSelect` constructor.',
+        },
+        id: {
+            control: 'text',
+            description: "ID for the widget's underlying HTML element",
+        },
+        class: {
+            control: 'text',
+            description:
+                "CSS class(es) for the widget's underlying HTML element",
+        },
+        label: {
+            text: {
+                control: 'text',
+                description:
+                    "Text content for the select label's underlying HTML element",
+            },
+            class: {
+                control: 'text',
+                description:
+                    "CSS class(es) for the select label's underlying HTML element",
+            },
+            id: {
+                control: 'text',
+                description:
+                    "ID for the select label's underlying HTML element",
+            },
+        },
+        onChange: {
+            action: 'onChange',
+        },
     },
-    id: {
-      control: 'text',
-      description: 'ID for the widget\'s underlying HTML element'
-    },
-    class: {
-      control: 'text',
-      description: 'CSS class(es) for the widget\'s underlying HTML element'
-    },
-    label: {
-      text: {
-        control: 'text',
-        description: 'Text content for the select label\'s underlying HTML element'
-      },
-      class: {
-        control: 'text',
-        description: 'CSS class(es) for the select label\'s underlying HTML element'
-      },
-      id: {
-        control: 'text',
-        description: 'ID for the select label\'s underlying HTML element'
-      }
-    },
-    onChange: {
-      action: 'onChange'
-    }
-  },
-  render: (args, { loaded: { apiClient } }) => {
-    const container = document.createElement('div');
-    container.id = 'riteSelectContainer';
+    render: (args, { loaded: { apiClient } }) => {
+        const container = document.createElement('div');
+        container.id = 'riteSelectContainer';
 
-    const riteSelect = new RiteSelect(args);
+        const riteSelect = new RiteSelect(args);
 
-    if (args.label) {
-        riteSelect.label(args.label);
-    }
+        if (args.label) {
+            riteSelect.label(args.label);
+        }
 
-    if (!apiClient || !(apiClient instanceof ApiClient)) {
-        container.textContent = 'Error initializing the Liturgical Calendar API Client';
-    } else {
-        riteSelect.appendTo(container);
-    }
-    return container;
-  },
-  parameters: {
-    actions: {
-      handles: ['change', 'change #riteSelectContainer select'],
+        if (!apiClient || !(apiClient instanceof ApiClient)) {
+            container.textContent =
+                'Error initializing the Liturgical Calendar API Client';
+        } else {
+            riteSelect.appendTo(container);
+        }
+        return container;
     },
-  },
-  args: {
-    label: {
-      text: 'Select a rite',
-      class: 'label-class',
-      id: 'label_id'
-    }
-  }
-}
+    parameters: {
+        actions: {
+            handles: ['change', 'change #riteSelectContainer select'],
+        },
+    },
+    args: {
+        label: {
+            text: 'Select a rite',
+            class: 'label-class',
+            id: 'label_id',
+        },
+    },
+};
 
 export default meta;
 
 export const Default = {
-  args: {}
-}
+    args: {},
+};
 
 export const English = {
-  args: {
-    locale: 'en-US',
-    label: {
-      text: 'Select a rite'
-    }
-  }
-}
+    args: {
+        locale: 'en-US',
+        label: {
+            text: 'Select a rite',
+        },
+    },
+};
 
 export const Italian = {
-  args: {
-    locale: 'it-IT',
-    label: {
-      text: 'Seleziona un rito'
-    }
-  }
-}
+    args: {
+        locale: 'it-IT',
+        label: {
+            text: 'Seleziona un rito',
+        },
+    },
+};
 
 export const French = {
-  args: {
-    locale: 'fr-FR',
-    label: {
-      text: 'Sélectionnez un rite'
-    }
-  }
-}
+    args: {
+        locale: 'fr-FR',
+        label: {
+            text: 'Sélectionnez un rite',
+        },
+    },
+};

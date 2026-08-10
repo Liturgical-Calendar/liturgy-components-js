@@ -17,33 +17,34 @@ import { V5_METADATA } from '../__fixtures__/metadata.js';
 
 const API_URL = 'http://localhost:8000';
 
-beforeEach( () => {
+beforeEach(() => {
     ApiBase.reset();
-    ApiBase.fromMetadata( API_URL, V5_METADATA );
-} );
+    ApiBase.fromMetadata(API_URL, V5_METADATA);
+});
 
-describe( 'CalendarSelect against metadata with no rite field (live v5 API)', () => {
-
-    it( 'offers every diocese under the Roman rite', () => {
+describe('CalendarSelect against metadata with no rite field (live v5 API)', () => {
+    it('offers every diocese under the Roman rite', () => {
         const cs = new CalendarSelect();
-        expect( cs.diocesesInnerHtml ).toContain( 'value="romamo_it"' );
-        expect( cs.diocesesInnerHtml ).toContain( 'value="boston_us"' );
-    } );
+        expect(cs.diocesesInnerHtml).toContain('value="romamo_it"');
+        expect(cs.diocesesInnerHtml).toContain('value="boston_us"');
+    });
 
-    it( 'still groups them under their nations', () => {
+    it('still groups them under their nations', () => {
         const cs = new CalendarSelect();
-        expect( cs.nationsInnerHtml ).toContain( 'value="IT"' );
-        expect( cs.nationsInnerHtml ).toContain( 'value="US"' );
-        expect( cs.diocesesInnerHtml ).toMatch( /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/ );
-    } );
+        expect(cs.nationsInnerHtml).toContain('value="IT"');
+        expect(cs.nationsInnerHtml).toContain('value="US"');
+        expect(cs.diocesesInnerHtml).toMatch(
+            /<optgroup label="[^"]*">[^<]*<option[^>]*value="romamo_it"/,
+        );
+    });
 
-    it( 'offers none of them under the Ambrosian rite', () => {
-        const cs = new CalendarSelect().rite( Rite.AMBROSIAN );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="romamo_it"' );
-        expect( cs.diocesesInnerHtml ).not.toContain( 'value="boston_us"' );
-    } );
+    it('offers none of them under the Ambrosian rite', () => {
+        const cs = new CalendarSelect().rite(Rite.AMBROSIAN);
+        expect(cs.diocesesInnerHtml).not.toContain('value="romamo_it"');
+        expect(cs.diocesesInnerHtml).not.toContain('value="boston_us"');
+    });
 
-    it( 'throws an explicit, labelled error — not a TypeError — for a rite-less diocese whose nation has no national calendar', () => {
+    it('throws an explicit, labelled error — not a TypeError — for a rite-less diocese whose nation has no national calendar', () => {
         // `lugano_ch` has no `rite` field, matching the live v5 shape, so it is
         // filtered into the Roman rite by the `?? Rite.ROMAN` fallback. Its
         // nation `CH` is deliberately absent from `national_calendars`, which is
@@ -57,24 +58,28 @@ describe( 'CalendarSelect against metadata with no rite field (live v5 API)', ()
         // it: `V5_METADATA` is a module-level object shared with every other
         // suite, and mutating it in place would leak `lugano_ch` into whatever
         // ran next in this file.
-        ApiBase.fromMetadata( API_URL, {
+        ApiBase.fromMetadata(API_URL, {
             ...V5_METADATA,
             diocesan_calendars: [
                 ...V5_METADATA.diocesan_calendars,
-                { calendar_id: 'lugano_ch', nation: 'CH', diocese: 'Diocesi di Lugano' }
-            ]
-        } );
+                {
+                    calendar_id: 'lugano_ch',
+                    nation: 'CH',
+                    diocese: 'Diocesi di Lugano',
+                },
+            ],
+        });
 
         let caught = null;
         try {
             new CalendarSelect();
-        } catch ( e ) {
+        } catch (e) {
             caught = e;
         }
 
-        expect( caught ).not.toBeNull();
-        expect( caught ).not.toBeInstanceOf( TypeError );
-        expect( caught.message ).toMatch( /CH/ );
-        expect( caught.message ).toMatch( /inconsistent/i );
-    } );
-} );
+        expect(caught).not.toBeNull();
+        expect(caught).not.toBeInstanceOf(TypeError);
+        expect(caught.message).toMatch(/CH/);
+        expect(caught.message).toMatch(/inconsistent/i);
+    });
+});

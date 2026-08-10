@@ -1,0 +1,9 @@
+# Commits listed here are skipped by `git blame` (GitHub reads this file
+# automatically; locally run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+# once to opt in). Each entry is a mechanical, behavior-preserving reformat that would
+# otherwise sit atop the blame of nearly every line it touches, hiding the commit that
+# actually last changed each line.
+
+# Reformat src/ and examples/ to the prettier house style (4-space indent, single
+# quotes). Verified semantically inert via AST comparison; see the commit message.
+a890cef9e91c8af9548be595a3e8ca6823483aec

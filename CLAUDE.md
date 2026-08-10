@@ -86,6 +86,10 @@ yarn lint:md:fix          # markdownlint-cli2 --fix (cannot fix MD060 table alig
 yarn format:md            # prettier: check formatting, changes nothing
 yarn format:md:fix        # prettier: reformat in place (this is what fixes MD060)
 
+# JavaScript formatting (see the JavaScript section under Code Standards)
+yarn format:js            # prettier: check src/ and examples/, changes nothing
+yarn format:js:fix        # prettier: reformat src/ and examples/ in place
+
 # Storybook
 yarn storybook            # Launch on random free port (requires API at localhost:8000)
 yarn storybook --port 6006  # Launch on specific port
@@ -131,6 +135,29 @@ a config isolated from `tsconfig.json` that starts from `dist/index.d.ts` and se
 under `strict`, i.e. it checks the declarations the way a consumer's own `tsconfig.json` would, not the
 way this package's build does. Run `yarn compile` first — `lint:dts` checks whatever is already in `dist/`,
 it does not rebuild it.
+
+**Formatting: prettier owns `src/` and `examples/`.** `.prettierrc` sets `tabWidth: 4` and
+`singleQuote: true` — 4-space indent, single-quoted strings, prettier's other defaults otherwise
+(trailing commas, no forced parens beyond what prettier already adds around a sole arrow-function
+parameter). Check with `yarn format:js`, rewrite in place with `yarn format:js:fix`; both are also
+CLI flags-free, unlike the markdown scripts, because the JS-specific options live in `.prettierrc`
+rather than being passed on the command line. CI runs `yarn format:js` — an unformatted file fails
+the build the same way an unformatted markdown file does.
+
+This reverses an earlier decision (visible in git history) to keep prettier markdown-only, on the
+grounds that prettier's _defaults_ — double quotes, 2-space indent — contradicted this project's
+style. That objection is gone now that `.prettierrc` overrides those two defaults; nothing else
+about the project's style depends on a prettier option, so there was no remaining reason to hand-
+enforce formatting instead of letting the formatter do it. `.prettierrc` scopes the JS options to
+JS/TS via an `overrides` block for `*.md` that resets `tabWidth`/`singleQuote` back to prettier's
+own defaults, so `yarn format:md` output is unaffected — verify this after touching `.prettierrc`
+by confirming `yarn format:md` still reports no files needing changes. `endOfLine` is `"auto"` for
+JS (preserve each file's existing line ending) rather than the default `"lf"`, because 5 of the 91
+tracked JS files under `src/` and `examples/` are CRLF (see `.editorconfig`) and a formatting pass
+should not silently rewrite line endings as a side effect.
+
+There is now an `.editorconfig` (4-space `[*.js]`, `end_of_line = lf` to match the repo's dominant
+convention) so an editor's live indentation matches what prettier will enforce after the fact.
 
 **Key Patterns:**
 
@@ -200,13 +227,14 @@ Both share the same names in the monorepo's other (PHP) projects, where only mar
 `lint:md` is markdownlint and `format:md` is prettier. Defining prettier as `lint:md` would silently
 shadow the markdownlint scripts — JSON takes the last duplicate key — so keep the names distinct.
 
-**Prettier is configured for markdown only, on purpose.** The `format:md` scripts pass
-`--embedded-language-formatting=off` so that fenced JavaScript samples inside the docs are left exactly
-as written: prettier's defaults are double quotes and 2-space indent, which contradict this project's
-single-quote, 4-space standard. For the same reason there is deliberately **no `.prettierrc`** — a
-config file would be picked up by editors' format-on-save and would start silently reformatting `src/`
-against those standards. Keep the options as CLI flags in the scripts, and keep source files out via
-`.prettierignore`.
+**Prettier now formats both markdown and JavaScript** (see the JavaScript section above), but the
+`format:md` scripts still pass `--embedded-language-formatting=off` so that fenced JavaScript samples
+inside the docs are left exactly as written — reformatting a code sample inside prose is a separate,
+not-yet-made decision from reformatting `src/` itself. The markdown-specific options
+(`--prose-wrap=preserve`, `--embedded-language-formatting=off`) stay as CLI flags on the `format:md`
+scripts rather than moving into `.prettierrc`, and `.prettierrc`'s JS-specific `tabWidth`/`singleQuote`
+are scoped away from `*.md` via an `overrides` block, so the two configurations don't interfere with
+each other.
 
 ## Key Components
 

@@ -1,4 +1,10 @@
-import { ApiOptions, ApiClient, ApiBase, ApiOptionsFilter, Input } from '@liturgical-calendar/components-js';
+import {
+    ApiOptions,
+    ApiClient,
+    ApiBase,
+    ApiOptionsFilter,
+    Input,
+} from '@liturgical-calendar/components-js';
 
 /**
  * ApiOptions component
@@ -25,44 +31,52 @@ import { ApiOptions, ApiClient, ApiBase, ApiOptionsFilter, Input } from '@liturg
  */
 const meta = {
     title: 'Components/ApiOptions/Unstyled',
-    tags: [ 'autodocs' ],
+    tags: ['autodocs'],
     argTypes: {
         locale: {
             control: 'text',
             description: 'Locale code for UI elements',
-            defaultValue: 'en-US'
+            defaultValue: 'en-US',
         },
         onChange: {
-            action: 'onChange'
+            action: 'onChange',
         },
         filter: {
             control: { type: 'select' },
-            options: [ ApiOptionsFilter.NONE, ApiOptionsFilter.ALL_CALENDARS, ApiOptionsFilter.GENERAL_ROMAN ],
+            options: [
+                ApiOptionsFilter.NONE,
+                ApiOptionsFilter.ALL_CALENDARS,
+                ApiOptionsFilter.GENERAL_ROMAN,
+            ],
             labels: {
-                [ ApiOptionsFilter.NONE ]: 'None',
-                [ ApiOptionsFilter.ALL_CALENDARS ]: 'All Calendars',
-                [ ApiOptionsFilter.GENERAL_ROMAN ]: 'General Roman'
+                [ApiOptionsFilter.NONE]: 'None',
+                [ApiOptionsFilter.ALL_CALENDARS]: 'All Calendars',
+                [ApiOptionsFilter.GENERAL_ROMAN]: 'General Roman',
             },
             description: 'Filter for the ApiOptions instance',
-            defaultValue: ApiOptionsFilter.NONE
+            defaultValue: ApiOptionsFilter.NONE,
         },
         hideAcceptHeaderInput: {
             control: 'boolean',
-            description: 'Hide the Accept header input. This option is not passed to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.hide()` method to hide the Accept header input.',
-            defaultValue: false
+            description:
+                'Hide the Accept header input. This option is not passed to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.hide()` method to hide the Accept header input.',
+            defaultValue: false,
         },
         acceptHeaderAsReturnTypeParam: {
             control: 'boolean',
-            description: 'When the Accept header input is not hidden, display the Accept header select as a `return type` parameter select. This option is not passed directly to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.asReturnTypeParam(true)` method to display the Accept header input as a `return type` parameter select.',
-            defaultValue: false
-        }
+            description:
+                'When the Accept header input is not hidden, display the Accept header select as a `return type` parameter select. This option is not passed directly to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.asReturnTypeParam(true)` method to display the Accept header input as a `return type` parameter select.',
+            defaultValue: false,
+        },
     },
-    render: ( args, { loaded: { apiClient, apiClientError } } ) => {
-        const container = document.createElement( 'div' );
+    render: (args, { loaded: { apiClient, apiClientError } }) => {
+        const container = document.createElement('div');
         container.id = 'apiOptionsContainer';
 
         if (!apiClient || !(apiClient instanceof ApiClient)) {
-            container.textContent = 'Error initializing the Liturgical Calendar API Client, check that the API is running at ' + ( apiClientError?.url ?? ApiBase.DEFAULT_URL );
+            container.textContent =
+                'Error initializing the Liturgical Calendar API Client, check that the API is running at ' +
+                (apiClientError?.url ?? ApiBase.DEFAULT_URL);
         } else {
             Input.setGlobalInputClass('unstyled');
             Input.setGlobalLabelClass('unstyled');
@@ -70,9 +84,9 @@ const meta = {
             Input.setGlobalWrapperClass('unstyled');
 
             //apiClient.listenTo(apiOptions);
-            const apiOptions = new ApiOptions( args.locale );
-            if ( args.filter ) {
-                apiOptions.filter( args.filter );
+            const apiOptions = new ApiOptions(args.locale);
+            if (args.filter) {
+                apiOptions.filter(args.filter);
             }
             if (args.hideAcceptHeaderInput) {
                 apiOptions._acceptHeaderInput.hide();
@@ -80,81 +94,81 @@ const meta = {
             if (args.acceptHeaderAsReturnTypeParam) {
                 apiOptions._acceptHeaderInput.asReturnTypeParam(true);
             }
-            apiOptions.appendTo( container );
+            apiOptions.appendTo(container);
         }
         return container;
     },
     parameters: {
         actions: {
-            handles: [ 'change', 'change #apiOptionsContainer select' ],
+            handles: ['change', 'change #apiOptionsContainer select'],
         },
     },
-    args: {}
-}
+    args: {},
+};
 
 export default meta;
 
 export const Default = {
-    args: {}
-}
+    args: {},
+};
 
 export const Italian = {
     args: {
-        locale: 'it-IT'
-    }
-}
+        locale: 'it-IT',
+    },
+};
 
 export const French = {
     args: {
-        locale: 'fr-FR'
-    }
-}
+        locale: 'fr-FR',
+    },
+};
 
 export const Spanish = {
     args: {
-        locale: 'es-ES'
-    }
-}
+        locale: 'es-ES',
+    },
+};
 
 export const German = {
     args: {
-        locale: 'de-DE'
-    }
-}
+        locale: 'de-DE',
+    },
+};
 
 export const AllCalendars = {
     args: {
         locale: 'en-US',
-        filter: ApiOptionsFilter.ALL_CALENDARS
-    }
-}
+        filter: ApiOptionsFilter.ALL_CALENDARS,
+    },
+};
 
 export const GeneralRoman = {
     args: {
         locale: 'en-US',
-        filter: ApiOptionsFilter.GENERAL_ROMAN
-    }
-}
+        filter: ApiOptionsFilter.GENERAL_ROMAN,
+    },
+};
 
 export const HideAcceptHeaderInput = {
     args: {
         locale: 'en-US',
-        hideAcceptHeaderInput: true
-    }
-}
+        hideAcceptHeaderInput: true,
+    },
+};
 
 export const AllCalendarsHideAcceptHeaderInput = {
     args: {
         locale: 'en-US',
         filter: ApiOptionsFilter.ALL_CALENDARS,
-        hideAcceptHeaderInput: true
-    }
-}
+        hideAcceptHeaderInput: true,
+    },
+};
 
 export const AcceptHeaderInputAsReturnTypeParameter = {
     args: {
         locale: 'en-US',
         filter: ApiOptionsFilter.ALL_CALENDARS,
-        acceptHeaderAsReturnTypeParam: true
-    }
-}
+        acceptHeaderAsReturnTypeParam: true,
+    },
+};

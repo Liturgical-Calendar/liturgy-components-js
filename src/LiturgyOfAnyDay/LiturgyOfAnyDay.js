@@ -7,7 +7,6 @@ import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 
 export default class LiturgyOfAnyDay {
-
     /**
      * @type {RegExp[]}
      * @static
@@ -18,7 +17,7 @@ export default class LiturgyOfAnyDay {
         /OrdSunday[0-9]{1,2}(_vigil){0,1}/,
         /Advent[1-4](_vigil){0,1}/,
         /Lent[1-5](_vigil){0,1}/,
-        /Easter[1-7](_vigil){0,1}/
+        /Easter[1-7](_vigil){0,1}/,
     ]);
 
     /**
@@ -27,7 +26,7 @@ export default class LiturgyOfAnyDay {
      * @private
      * @readonly
      */
-    static #highContrast = Object.freeze([ 'green', 'red', 'purple' ]);
+    static #highContrast = Object.freeze(['green', 'red', 'purple']);
 
     /** @type {Date} */
     #selectedDate = null;
@@ -94,7 +93,7 @@ export default class LiturgyOfAnyDay {
      * @static
      * @private
      */
-    static #isValidClassName( className ) {
+    static #isValidClassName(className) {
         const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
         return pattern.test(className);
     }
@@ -107,8 +106,9 @@ export default class LiturgyOfAnyDay {
      * @static
      * @private
      */
-    static #isValidId( id ) {
-        const pattern = /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
+    static #isValidId(id) {
+        const pattern =
+            /^(?!\d|--|-?\d)(?:[_-][a-zA-Z][\w\-]*|[a-zA-Z][\w\-]*)$/;
         return pattern.test(id);
     }
 
@@ -121,12 +121,15 @@ export default class LiturgyOfAnyDay {
      * @static
      * @private
      */
-    static #validateElementSelector( element ) {
+    static #validateElementSelector(element) {
         if (typeof element !== 'string') {
-            throw new Error('Invalid type for element selector, must be of type string but found type: ' + typeof element);
+            throw new Error(
+                'Invalid type for element selector, must be of type string but found type: ' +
+                    typeof element,
+            );
         }
-        const domNode = document.querySelector( element );
-        if ( null === domNode ) {
+        const domNode = document.querySelector(element);
+        if (null === domNode) {
             throw new Error('Invalid element selector: ' + element);
         }
         return domNode;
@@ -147,16 +150,30 @@ export default class LiturgyOfAnyDay {
         this.#validateLocale(options.locale ?? 'en');
 
         const now = new Date();
-        this.#selectedDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
+        this.#selectedDate = new Date(
+            Date.UTC(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                0,
+                0,
+                0,
+                0,
+            ),
+        );
 
         // Initialize year_type based on current date - use LITURGICAL for December 31st
-        const isDecember31st = (now.getMonth() === 11 && now.getDate() === 31);
-        this.#currentYearType = isDecember31st ? YearType.LITURGICAL : YearType.CIVIL;
+        const isDecember31st = now.getMonth() === 11 && now.getDate() === 31;
+        this.#currentYearType = isDecember31st
+            ? YearType.LITURGICAL
+            : YearType.CIVIL;
 
         this.#domElement = document.createElement('div');
 
         this.#titleElement = document.createElement('h1');
-        this.#titleElement.textContent = Messages[this.#locale.language]['LITURGY_OF_THE_DAY'] || 'Liturgy of the Day';
+        this.#titleElement.textContent =
+            Messages[this.#locale.language]['LITURGY_OF_THE_DAY'] ||
+            'Liturgy of the Day';
         this.#domElement.appendChild(this.#titleElement);
 
         this.#dateElement = document.createElement('div');
@@ -173,7 +190,9 @@ export default class LiturgyOfAnyDay {
         this.#yearInput = new YearInput();
 
         // Set up event listeners for date changes
-        this.#dayInput._domElement.addEventListener('change', () => this.#handleDateChange());
+        this.#dayInput._domElement.addEventListener('change', () =>
+            this.#handleDateChange(),
+        );
         this.#monthInput._domElement.addEventListener('change', () => {
             this.#updateDaysInMonth();
             this.#handleDateChange();
@@ -188,12 +207,14 @@ export default class LiturgyOfAnyDay {
                 // Use the appropriate year based on December 31st check
                 const day = parseInt(this.#dayInput._domElement.value, 10);
                 const month = parseInt(this.#monthInput._domElement.value, 10);
-                const isDecember31st = (month === 12 && day === 31);
+                const isDecember31st = month === 12 && day === 31;
                 const yearToFetch = isDecember31st ? newYear + 1 : newYear;
                 // Dropping the promise here would surface as an unhandled rejection. The client
                 // suppresses it when a 'calendarFetchFailed' subscriber exists and logs it when
                 // none does; delegating keeps that rule identical across modules.
-                this.#apiClient._discardRequest(this.#apiClient.year(yearToFetch).refetchCalendarData());
+                this.#apiClient._discardRequest(
+                    this.#apiClient.year(yearToFetch).refetchCalendarData(),
+                );
             }
         });
 
@@ -262,7 +283,10 @@ export default class LiturgyOfAnyDay {
      * @private
      */
     #updateDateDisplay() {
-        const formatter = new Intl.DateTimeFormat(this.#locale.baseName, { dateStyle: 'full', timeZone: 'UTC' });
+        const formatter = new Intl.DateTimeFormat(this.#locale.baseName, {
+            dateStyle: 'full',
+            timeZone: 'UTC',
+        });
         this.#dateElement.textContent = formatter.format(this.#selectedDate);
     }
 
@@ -287,26 +311,44 @@ export default class LiturgyOfAnyDay {
         const month = parseInt(this.#monthInput._domElement.value, 10);
         const year = parseInt(this.#yearInput._domElement.value, 10);
 
-        this.#selectedDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        this.#selectedDate = new Date(
+            Date.UTC(year, month - 1, day, 0, 0, 0, 0),
+        );
         this.#updateDateDisplay();
 
         // Check if we need to switch year_type for December 31st (vigil mass support)
-        const isDecember31st = (month === 12 && day === 31);
+        const isDecember31st = month === 12 && day === 31;
 
         if (this.#apiClient) {
-            if (isDecember31st && this.#currentYearType !== YearType.LITURGICAL) {
+            if (
+                isDecember31st &&
+                this.#currentYearType !== YearType.LITURGICAL
+            ) {
                 // Switch to LITURGICAL year type with year+1 to get vigil masses
                 this.#currentYearType = YearType.LITURGICAL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.LITURGICAL).year(year + 1).refetchCalendarData());
+                this.#apiClient._discardRequest(
+                    this.#apiClient
+                        .yearType(YearType.LITURGICAL)
+                        .year(year + 1)
+                        .refetchCalendarData(),
+                );
                 return true; // Refetch triggered, wait for calendarFetched event to render
-            } else if (!isDecember31st && this.#currentYearType !== YearType.CIVIL) {
+            } else if (
+                !isDecember31st &&
+                this.#currentYearType !== YearType.CIVIL
+            ) {
                 // Switch back to CIVIL year type
                 this.#currentYearType = YearType.CIVIL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(this.#apiClient.yearType(YearType.CIVIL).year(year).refetchCalendarData());
+                this.#apiClient._discardRequest(
+                    this.#apiClient
+                        .yearType(YearType.CIVIL)
+                        .year(year)
+                        .refetchCalendarData(),
+                );
                 return true; // Refetch triggered, wait for calendarFetched event to render
             }
         }
@@ -328,13 +370,14 @@ export default class LiturgyOfAnyDay {
         }
 
         const selectedTimestamp = this.#selectedDate.getTime();
-        const todaysEvents = this.#calendarData.litcal.filter(event => {
+        const todaysEvents = this.#calendarData.litcal.filter((event) => {
             return new Date(event.date).getTime() === selectedTimestamp;
         });
 
         if (todaysEvents.length === 0) {
             const noEventsEl = document.createElement('p');
-            noEventsEl.textContent = 'No liturgical events found for this date.';
+            noEventsEl.textContent =
+                'No liturgical events found for this date.';
             this.#eventsElementsWrapper.appendChild(noEventsEl);
             return;
         }
@@ -350,18 +393,30 @@ export default class LiturgyOfAnyDay {
      */
     #updateEventDetails(events) {
         events.forEach((celebration) => {
-            const lclzdGrade = celebration.grade < 7 ? celebration.grade_lcl : '';
-            const isSundayOrdAdvLentEaster = LiturgyOfAnyDay.#filterTagsDisplayGrade.some(pattern => pattern.test(celebration.event_key));
-            const celebrationGrade = celebration.grade_display !== null
-                ? celebration.grade_display
-                : (!isSundayOrdAdvLentEaster && celebration.grade !== 0 ? lclzdGrade : '');
+            const lclzdGrade =
+                celebration.grade < 7 ? celebration.grade_lcl : '';
+            const isSundayOrdAdvLentEaster =
+                LiturgyOfAnyDay.#filterTagsDisplayGrade.some((pattern) =>
+                    pattern.test(celebration.event_key),
+                );
+            const celebrationGrade =
+                celebration.grade_display !== null
+                    ? celebration.grade_display
+                    : !isSundayOrdAdvLentEaster && celebration.grade !== 0
+                      ? lclzdGrade
+                      : '';
             const celebrationColor = celebration.color;
             const litEventElement = document.createElement('div');
             if (this.#eventClassName !== '') {
-                litEventElement.classList.add(...this.#eventClassName.split(' '));
+                litEventElement.classList.add(
+                    ...this.#eventClassName.split(' '),
+                );
             }
             litEventElement.style.backgroundColor = celebrationColor[0];
-            litEventElement.style.color = LiturgyOfAnyDay.#highContrast.includes(celebrationColor[0]) ? "white" : "black";
+            litEventElement.style.color =
+                LiturgyOfAnyDay.#highContrast.includes(celebrationColor[0])
+                    ? 'white'
+                    : 'black';
             // Add border for white backgrounds to distinguish from parent background
             if (celebrationColor[0] === 'white') {
                 litEventElement.style.border = '1px solid #dee2e6';
@@ -374,9 +429,13 @@ export default class LiturgyOfAnyDay {
             if (celebrationGrade !== '') {
                 const celebrationGradeElement = document.createElement('div');
                 if (this.#eventGradeClassName !== '') {
-                    celebrationGradeElement.classList.add(...this.#eventGradeClassName.split(' '));
+                    celebrationGradeElement.classList.add(
+                        ...this.#eventGradeClassName.split(' '),
+                    );
                 }
-                celebrationGradeElement.classList.add(`grade-${celebration.grade}`);
+                celebrationGradeElement.classList.add(
+                    `grade-${celebration.grade}`,
+                );
                 celebrationGradeElement.textContent = celebrationGrade;
                 litEventElement.appendChild(celebrationGradeElement);
             }
@@ -384,24 +443,36 @@ export default class LiturgyOfAnyDay {
             if (celebration.common && celebration.common.length) {
                 const celebrationCommonElement = document.createElement('div');
                 if (this.#eventCommonClassName !== '') {
-                    celebrationCommonElement.classList.add(...this.#eventCommonClassName.split(' '));
+                    celebrationCommonElement.classList.add(
+                        ...this.#eventCommonClassName.split(' '),
+                    );
                 }
                 celebrationCommonElement.textContent = celebration.common_lcl;
                 litEventElement.appendChild(celebrationCommonElement);
             }
 
             if (Object.hasOwn(celebration, 'liturgical_year')) {
-                const celebrationLiturgicalYearElement = document.createElement('div');
+                const celebrationLiturgicalYearElement =
+                    document.createElement('div');
                 if (this.#eventYearCycleClassName !== '') {
-                    celebrationLiturgicalYearElement.classList.add(...this.#eventYearCycleClassName.split(' '));
+                    celebrationLiturgicalYearElement.classList.add(
+                        ...this.#eventYearCycleClassName.split(' '),
+                    );
                 }
-                celebrationLiturgicalYearElement.textContent = celebration.liturgical_year;
+                celebrationLiturgicalYearElement.textContent =
+                    celebration.liturgical_year;
                 litEventElement.appendChild(celebrationLiturgicalYearElement);
             }
 
             // Render lectionary readings if enabled and available
-            if (this.#showReadings && Object.prototype.hasOwnProperty.call(celebration, 'readings')) {
-                this.#readingsRenderer.renderReadings(celebration.readings, litEventElement);
+            if (
+                this.#showReadings &&
+                Object.prototype.hasOwnProperty.call(celebration, 'readings')
+            ) {
+                this.#readingsRenderer.renderReadings(
+                    celebration.readings,
+                    litEventElement,
+                );
             }
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
@@ -417,10 +488,15 @@ export default class LiturgyOfAnyDay {
      */
     id(id) {
         if (typeof id !== 'string') {
-            throw new Error('LiturgyOfAnyDay: Invalid type for id, must be of type string but found type: ' + typeof id);
+            throw new Error(
+                'LiturgyOfAnyDay: Invalid type for id, must be of type string but found type: ' +
+                    typeof id,
+            );
         }
         if (false === LiturgyOfAnyDay.#isValidId(id)) {
-            throw new Error(`LiturgyOfAnyDay: Invalid id ${id}, must be a valid CSS selector`);
+            throw new Error(
+                `LiturgyOfAnyDay: Invalid id ${id}, must be a valid CSS selector`,
+            );
         }
         this.#domElement.id = id;
         return this;
@@ -435,12 +511,17 @@ export default class LiturgyOfAnyDay {
      */
     class(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay: Invalid type for className, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'LiturgyOfAnyDay: Invalid type for className, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#domElement.classList.add(...classNames);
@@ -455,12 +536,16 @@ export default class LiturgyOfAnyDay {
      */
     titleClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.titleClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.titleClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#titleElement.classList.add(...classNames);
@@ -475,12 +560,16 @@ export default class LiturgyOfAnyDay {
      */
     dateClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.dateClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.dateClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#dateElement.classList.add(...classNames);
@@ -495,12 +584,16 @@ export default class LiturgyOfAnyDay {
      */
     dateControlsClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.dateControlsClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.dateControlsClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#dateControlsWrapper.classList.add(...classNames);
@@ -515,12 +608,16 @@ export default class LiturgyOfAnyDay {
      */
     eventsWrapperClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.eventsWrapperClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.eventsWrapperClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventsElementsWrapper.classList.add(...classNames);
@@ -535,12 +632,16 @@ export default class LiturgyOfAnyDay {
      */
     eventClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.eventClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.eventClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventClassName = classNames.join(' ');
@@ -555,12 +656,16 @@ export default class LiturgyOfAnyDay {
      */
     eventGradeClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.eventGradeClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.eventGradeClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventGradeClassName = classNames.join(' ');
@@ -575,12 +680,16 @@ export default class LiturgyOfAnyDay {
      */
     eventCommonClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.eventCommonClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.eventCommonClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventCommonClassName = classNames.join(' ');
@@ -595,12 +704,16 @@ export default class LiturgyOfAnyDay {
      */
     eventYearCycleClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.eventYearCycleClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.eventYearCycleClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#eventYearCycleClassName = classNames.join(' ');
@@ -615,15 +728,21 @@ export default class LiturgyOfAnyDay {
      */
     readingsWrapperClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.readingsWrapperClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.readingsWrapperClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
-        this.#readingsRenderer.setReadingsWrapperClassName(classNames.join(' '));
+        this.#readingsRenderer.setReadingsWrapperClassName(
+            classNames.join(' '),
+        );
         return this;
     }
 
@@ -635,12 +754,16 @@ export default class LiturgyOfAnyDay {
      */
     readingsLabelClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.readingsLabelClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.readingsLabelClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#readingsRenderer.setReadingsLabelClassName(classNames.join(' '));
@@ -655,12 +778,16 @@ export default class LiturgyOfAnyDay {
      */
     readingClass(className) {
         if (typeof className !== 'string') {
-            throw new Error('LiturgyOfAnyDay.readingClass: Invalid type for className');
+            throw new Error(
+                'LiturgyOfAnyDay.readingClass: Invalid type for className',
+            );
         }
         const classNames = className.split(/\s+/);
-        classNames.forEach(className => {
+        classNames.forEach((className) => {
             if (false === LiturgyOfAnyDay.#isValidClassName(className)) {
-                throw new Error('LiturgyOfAnyDay: Invalid class name: ' + className);
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid class name: ' + className,
+                );
             }
         });
         this.#readingsRenderer.setReadingClassName(classNames.join(' '));
@@ -675,7 +802,9 @@ export default class LiturgyOfAnyDay {
      */
     showReadings(show = true) {
         if (typeof show !== 'boolean') {
-            throw new Error('LiturgyOfAnyDay.showReadings: Invalid type for show, must be of type boolean');
+            throw new Error(
+                'LiturgyOfAnyDay.showReadings: Invalid type for show, must be of type boolean',
+            );
         }
         this.#showReadings = show;
         return this;
@@ -782,7 +911,11 @@ export default class LiturgyOfAnyDay {
      */
     listenTo(apiClient) {
         if (false === apiClient instanceof ApiClient) {
-            throw new Error('LiturgyOfAnyDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' + typeof apiClient + '.');
+            throw new Error(
+                'LiturgyOfAnyDay.listenTo(apiClient) requires an instance of ApiClient, but found: ' +
+                    typeof apiClient +
+                    '.',
+            );
         }
         this.#apiClient = apiClient;
 
@@ -791,7 +924,7 @@ export default class LiturgyOfAnyDay {
         const day = parseInt(this.#dayInput._domElement.value, 10);
         const month = parseInt(this.#monthInput._domElement.value, 10);
         const year = parseInt(this.#yearInput._domElement.value, 10);
-        const isDecember31st = (month === 12 && day === 31);
+        const isDecember31st = month === 12 && day === 31;
 
         if (isDecember31st) {
             // Use LITURGICAL year type with year+1 to get vigil masses
@@ -803,10 +936,18 @@ export default class LiturgyOfAnyDay {
 
         apiClient._eventBus.on('calendarFetched', (data) => {
             if (typeof data !== 'object') {
-                throw new Error('LiturgyOfAnyDay: Invalid type for data received in `calendarFetched` event');
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid type for data received in `calendarFetched` event',
+                );
             }
-            if (!Object.hasOwn(data, 'litcal') || !Array.isArray(data.litcal) || data.litcal.length === 0) {
-                throw new Error('LiturgyOfAnyDay: Invalid liturgical calendar data received');
+            if (
+                !Object.hasOwn(data, 'litcal') ||
+                !Array.isArray(data.litcal) ||
+                data.litcal.length === 0
+            ) {
+                throw new Error(
+                    'LiturgyOfAnyDay: Invalid liturgical calendar data received',
+                );
             }
             this.#calendarData = data;
             this.#renderEvents();
@@ -835,12 +976,14 @@ export default class LiturgyOfAnyDay {
     appendTo(elementSelector) {
         if (elementSelector instanceof HTMLElement) {
             elementSelector.appendChild(this.#domElement);
-        }
-        else if (typeof elementSelector === 'string') {
-            const element = LiturgyOfAnyDay.#validateElementSelector(elementSelector);
+        } else if (typeof elementSelector === 'string') {
+            const element =
+                LiturgyOfAnyDay.#validateElementSelector(elementSelector);
             element.appendChild(this.#domElement);
         } else {
-            throw new Error('LiturgyOfAnyDay.appendTo(): invalid type for parameter');
+            throw new Error(
+                'LiturgyOfAnyDay.appendTo(): invalid type for parameter',
+            );
         }
     }
 
@@ -852,12 +995,14 @@ export default class LiturgyOfAnyDay {
     replace(elementSelector) {
         if (elementSelector instanceof HTMLElement) {
             elementSelector.replaceWith(this.#domElement);
-        }
-        else if (typeof elementSelector === 'string') {
-            const element = LiturgyOfAnyDay.#validateElementSelector(elementSelector);
+        } else if (typeof elementSelector === 'string') {
+            const element =
+                LiturgyOfAnyDay.#validateElementSelector(elementSelector);
             element.replaceWith(this.#domElement);
         } else {
-            throw new Error('LiturgyOfAnyDay.replace(): invalid type for parameter');
+            throw new Error(
+                'LiturgyOfAnyDay.replace(): invalid type for parameter',
+            );
         }
     }
 

@@ -119,7 +119,6 @@
  * @prop {Readings} readings - The lectionary readings for this liturgical event
  */
 
-
 /**
  * @typedef {Object} CalendarSettings
  * @prop {number} year - The year for which the calendar is calculated

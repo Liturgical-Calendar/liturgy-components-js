@@ -1,7 +1,6 @@
 import Input from './Input.js';
 
 export default class NumberInput extends Input {
-
     /**
      * Initializes a new instance of the NumberInput class.
      *
@@ -10,6 +9,6 @@ export default class NumberInput extends Input {
      * @throws {Error} If the element parameter is not a string or is not one of the valid values.
      */
     constructor() {
-        super('input', {type: 'number'});
+        super('input', { type: 'number' });
     }
 }

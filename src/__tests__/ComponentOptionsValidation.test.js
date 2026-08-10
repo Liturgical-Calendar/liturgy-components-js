@@ -40,45 +40,47 @@ class BareThing {}
  *
  * @returns {Object} A fresh payload — `buildTable()` mutates `litcal[].date` in place.
  */
-const CALENDAR_DATA = () => ( {
-    litcal: [ {
-        event_key: 'Advent1',
-        event_idx: 1,
-        name: 'Dominica I in Adventu Domini',
-        color: [ 'purple' ],
-        color_lcl: [ 'viola' ],
-        grade: 7,
-        grade_lcl: 'solennità',
-        grade_abbr: 'S',
-        grade_display: '',
-        common: [],
-        common_lcl: '',
-        type: 'mobile',
-        date: '2026-11-29T00:00:00+00:00',
-        year: 2026,
-        month: 11,
-        month_short: 'Nov.',
-        month_long: 'November',
-        day: 29,
-        day_of_the_week_iso8601: 7,
-        day_of_the_week_short: 'Sun',
-        day_of_the_week_long: 'Sunday',
-        liturgical_year: 'A',
-        is_vigil_mass: false,
-        psalter_week: 1,
-        liturgical_season: 'ADVENT',
-        liturgical_season_lcl: 'Advent',
-        holy_day_of_obligation: false
-    } ],
+const CALENDAR_DATA = () => ({
+    litcal: [
+        {
+            event_key: 'Advent1',
+            event_idx: 1,
+            name: 'Dominica I in Adventu Domini',
+            color: ['purple'],
+            color_lcl: ['viola'],
+            grade: 7,
+            grade_lcl: 'solennità',
+            grade_abbr: 'S',
+            grade_display: '',
+            common: [],
+            common_lcl: '',
+            type: 'mobile',
+            date: '2026-11-29T00:00:00+00:00',
+            year: 2026,
+            month: 11,
+            month_short: 'Nov.',
+            month_long: 'November',
+            day: 29,
+            day_of_the_week_iso8601: 7,
+            day_of_the_week_short: 'Sun',
+            day_of_the_week_long: 'Sunday',
+            liturgical_year: 'A',
+            is_vigil_mass: false,
+            psalter_week: 1,
+            liturgical_season: 'ADVENT',
+            liturgical_season_lcl: 'Advent',
+            holy_day_of_obligation: false,
+        },
+    ],
     settings: { year: 2026, locale: 'en', year_type: 'LITURGICAL' },
     metadata: { version: 'test' },
-    messages: []
-} );
+    messages: [],
+});
 
-beforeEach( () => {
+beforeEach(() => {
     ApiBase.reset();
-    ApiBase.fromMetadata( DEV, FULL_METADATA );
-} );
+    ApiBase.fromMetadata(DEV, FULL_METADATA);
+});
 
 /**
  * The four arguments that must be rejected by every component, whatever each one
@@ -87,35 +89,50 @@ beforeEach( () => {
  * @type {Array<[string, () => unknown, RegExp]>}
  */
 const REJECTED = [
-    [ 'a bare class instance', () => new BareThing(), /found type: BareThing/ ],
-    [ 'a Date', () => new Date(), /found type: Date/ ],
-    [ 'a boxed String', () => new String( 'it' ), /found type: String/ ],
-    [ 'an array', () => [ 'en' ], /found type: array/ ],
-    [ 'a number', () => 123, /found type: number/ ]
+    ['a bare class instance', () => new BareThing(), /found type: BareThing/],
+    ['a Date', () => new Date(), /found type: Date/],
+    ['a boxed String', () => new String('it'), /found type: String/],
+    ['an array', () => ['en'], /found type: array/],
+    ['a number', () => 123, /found type: number/],
 ];
 
 /**
  * @type {Array<{name: string, build: (options: unknown) => unknown}>}
  */
 const COMPONENTS = [
-    { name: 'CalendarSelect', build: options => new CalendarSelect( options ) },
-    { name: 'RiteSelect', build: options => new RiteSelect( options ) },
-    { name: 'ApiOptions', build: options => new ApiOptions( options ) },
-    { name: 'LiturgyOfTheDay', build: options => new LiturgyOfTheDay( options ) },
-    { name: 'LiturgyOfAnyDay', build: options => new LiturgyOfAnyDay( options ) }
+    { name: 'CalendarSelect', build: (options) => new CalendarSelect(options) },
+    { name: 'RiteSelect', build: (options) => new RiteSelect(options) },
+    { name: 'ApiOptions', build: (options) => new ApiOptions(options) },
+    {
+        name: 'LiturgyOfTheDay',
+        build: (options) => new LiturgyOfTheDay(options),
+    },
+    {
+        name: 'LiturgyOfAnyDay',
+        build: (options) => new LiturgyOfAnyDay(options),
+    },
 ];
 
-describe.each( COMPONENTS )( '$name rejects a non-plain-object options argument', ( { name, build } ) => {
+describe.each(COMPONENTS)(
+    '$name rejects a non-plain-object options argument',
+    ({ name, build }) => {
+        it.each(REJECTED)(
+            'rejects %s, naming the type it found',
+            (_label, make, typeMatcher) => {
+                expect(() => build(make())).toThrow(typeMatcher);
+            },
+        );
 
-    it.each( REJECTED )( 'rejects %s, naming the type it found', ( _label, make, typeMatcher ) => {
-        expect( () => build( make() ) ).toThrow( typeMatcher );
-    } );
-
-    it.each( REJECTED )( 'names itself in the message when rejecting %s', ( _label, make ) => {
-        expect( () => build( make() ) ).toThrow( new RegExp( `^${name}: Invalid type for options` ) );
-    } );
-
-} );
+        it.each(REJECTED)(
+            'names itself in the message when rejecting %s',
+            (_label, make) => {
+                expect(() => build(make())).toThrow(
+                    new RegExp(`^${name}: Invalid type for options`),
+                );
+            },
+        );
+    },
+);
 
 /**
  * `CalendarSelect` keeps its locale private and offers no getter, but embeds it
@@ -125,13 +142,13 @@ describe.each( COMPONENTS )( '$name rejects a non-plain-object options argument'
  * @param {CalendarSelect} select - The select to interrogate.
  * @returns {string} The canonical tag the select stored.
  */
-function calendarSelectLocale( select ) {
+function calendarSelectLocale(select) {
     try {
-        select.class( 123 );
-    } catch ( error ) {
-        return error.message.match( /with locale (.+?),/ )[ 1 ];
+        select.class(123);
+    } catch (error) {
+        return error.message.match(/with locale (.+?),/)[1];
     }
-    throw new Error( 'CalendarSelect.class( 123 ) was expected to throw' );
+    throw new Error('CalendarSelect.class( 123 ) was expected to throw');
 }
 
 /**
@@ -153,46 +170,60 @@ function calendarSelectLocale( select ) {
 const LOCALE_OBSERVERS = [
     {
         name: 'CalendarSelect',
-        build: options => new CalendarSelect( options ),
-        expectLocale: ( instance, tag ) => expect( calendarSelectLocale( instance ) ).toBe( tag )
+        build: (options) => new CalendarSelect(options),
+        expectLocale: (instance, tag) =>
+            expect(calendarSelectLocale(instance)).toBe(tag),
     },
     {
         name: 'RiteSelect',
-        build: options => new RiteSelect( options ),
-        expectLocale: ( instance, tag ) => expect( instance._locale ).toBe( tag )
+        build: (options) => new RiteSelect(options),
+        expectLocale: (instance, tag) => expect(instance._locale).toBe(tag),
     },
     {
         name: 'ApiOptions',
-        build: options => new ApiOptions( options ),
-        expectLocale: ( instance, tag ) => {
+        build: (options) => new ApiOptions(options),
+        expectLocale: (instance, tag) => {
             // `LocaleInput` labels the API's locales through
             // `Intl.DisplayNames( [ locale.language ] )`, so the label for Italian
             // reads `italiano` under `it` and `Italian` under `en`.
-            const labels = [ ...instance._localeInput._domElement.options ].map( option => option.textContent );
-            const expected = new Intl.DisplayNames( [ new Intl.Locale( tag ).language ], { type: 'language' } ).of( 'it' );
-            expect( labels ).toContain( expected );
-        }
+            const labels = [...instance._localeInput._domElement.options].map(
+                (option) => option.textContent,
+            );
+            const expected = new Intl.DisplayNames(
+                [new Intl.Locale(tag).language],
+                { type: 'language' },
+            ).of('it');
+            expect(labels).toContain(expected);
+        },
     },
     {
         name: 'LiturgyOfTheDay',
-        build: options => new LiturgyOfTheDay( options ),
-        expectLocale: ( instance, tag ) => {
-            const reference = new LiturgyOfTheDay( tag );
-            expect( instance._titleElement.textContent ).toBe( reference._titleElement.textContent );
+        build: (options) => new LiturgyOfTheDay(options),
+        expectLocale: (instance, tag) => {
+            const reference = new LiturgyOfTheDay(tag);
+            expect(instance._titleElement.textContent).toBe(
+                reference._titleElement.textContent,
+            );
             // `dateStyle: 'full'` renders differently per REGION, so this proves the
             // region subtag survived rather than only the language.
-            expect( instance._dateElement.textContent ).toBe( reference._dateElement.textContent );
-        }
+            expect(instance._dateElement.textContent).toBe(
+                reference._dateElement.textContent,
+            );
+        },
     },
     {
         name: 'LiturgyOfAnyDay',
-        build: options => new LiturgyOfAnyDay( options ),
-        expectLocale: ( instance, tag ) => {
-            const reference = new LiturgyOfAnyDay( tag );
-            expect( instance._titleElement.textContent ).toBe( reference._titleElement.textContent );
-            expect( instance._dateElement.textContent ).toBe( reference._dateElement.textContent );
-        }
-    }
+        build: (options) => new LiturgyOfAnyDay(options),
+        expectLocale: (instance, tag) => {
+            const reference = new LiturgyOfAnyDay(tag);
+            expect(instance._titleElement.textContent).toBe(
+                reference._titleElement.textContent,
+            );
+            expect(instance._dateElement.textContent).toBe(
+                reference._dateElement.textContent,
+            );
+        },
+    },
 ];
 
 /**
@@ -204,58 +235,74 @@ const LOCALE_OBSERVERS = [
  *
  * @type {symbol}
  */
-const NO_ARGUMENT = Symbol( 'no argument' );
+const NO_ARGUMENT = Symbol('no argument');
 
 /** @type {Array<[string, () => unknown, string]>} */
 const ACCEPTED = [
-    [ 'no argument at all', () => NO_ARGUMENT, 'en' ],
-    [ 'a bare null', () => null, 'en' ],
-    [ 'a bare undefined', () => undefined, 'en' ],
-    [ 'an empty bag', () => ( {} ), 'en' ],
-    [ 'a bag with locale: null', () => ( { locale: null } ), 'en' ],
-    [ 'a bag with locale: undefined', () => ( { locale: undefined } ), 'en' ],
-    [ 'a locale string', () => 'it-IT', 'it-IT' ],
-    [ 'a bag with a locale string', () => ( { locale: 'it-IT' } ), 'it-IT' ],
-    [ 'a bare Intl.Locale', () => new Intl.Locale( 'it-IT' ), 'it-IT' ],
-    [ 'a bag with an Intl.Locale', () => ( { locale: new Intl.Locale( 'it-IT' ) } ), 'it-IT' ],
-    [ 'a bare Intl.Locale needing canonicalization', () => new Intl.Locale( 'EN-us' ), 'en-US' ],
-    [ 'a bag with an Intl.Locale needing canonicalization', () => ( { locale: new Intl.Locale( 'EN-us' ) } ), 'en-US' ]
+    ['no argument at all', () => NO_ARGUMENT, 'en'],
+    ['a bare null', () => null, 'en'],
+    ['a bare undefined', () => undefined, 'en'],
+    ['an empty bag', () => ({}), 'en'],
+    ['a bag with locale: null', () => ({ locale: null }), 'en'],
+    ['a bag with locale: undefined', () => ({ locale: undefined }), 'en'],
+    ['a locale string', () => 'it-IT', 'it-IT'],
+    ['a bag with a locale string', () => ({ locale: 'it-IT' }), 'it-IT'],
+    ['a bare Intl.Locale', () => new Intl.Locale('it-IT'), 'it-IT'],
+    [
+        'a bag with an Intl.Locale',
+        () => ({ locale: new Intl.Locale('it-IT') }),
+        'it-IT',
+    ],
+    [
+        'a bare Intl.Locale needing canonicalization',
+        () => new Intl.Locale('EN-us'),
+        'en-US',
+    ],
+    [
+        'a bag with an Intl.Locale needing canonicalization',
+        () => ({ locale: new Intl.Locale('EN-us') }),
+        'en-US',
+    ],
 ];
 
-describe.each( LOCALE_OBSERVERS )( '$name resolves the locale of every accepted argument form', ( { build, expectLocale } ) => {
+describe.each(LOCALE_OBSERVERS)(
+    '$name resolves the locale of every accepted argument form',
+    ({ build, expectLocale }) => {
+        it.each(ACCEPTED)(
+            'given %s, resolves to the expected locale',
+            (_label, make, expectedTag) => {
+                const argument = make();
+                const instance =
+                    argument === NO_ARGUMENT ? build() : build(argument);
+                expectLocale(instance, expectedTag);
+            },
+        );
+    },
+);
 
-    it.each( ACCEPTED )( 'given %s, resolves to the expected locale', ( _label, make, expectedTag ) => {
-        const argument = make();
-        const instance = argument === NO_ARGUMENT ? build() : build( argument );
-        expectLocale( instance, expectedTag );
-    } );
+describe.each(LOCALE_OBSERVERS)(
+    '$name still rejects a non-Intl.Locale class instance as the bag',
+    ({ build }) => {
+        /**
+         * The hole issue #31 closed, verified still closed now that ONE class is
+         * recognised. An `Intl.Locale` is a third accepted argument form, checked
+         * ahead of the plain-object test; nothing else joined it.
+         */
+        it.each(REJECTED)('rejects %s', (_label, make, matcher) => {
+            expect(() => build(make())).toThrow(matcher);
+        });
+    },
+);
 
-} );
+describe('a plain options object is still accepted everywhere', () => {
+    it.each(COMPONENTS)('$name accepts { locale }', ({ build }) => {
+        expect(() => build({ locale: 'it' })).not.toThrow();
+    });
 
-describe.each( LOCALE_OBSERVERS )( '$name still rejects a non-Intl.Locale class instance as the bag', ( { build } ) => {
-
-    /**
-     * The hole issue #31 closed, verified still closed now that ONE class is
-     * recognised. An `Intl.Locale` is a third accepted argument form, checked
-     * ahead of the plain-object test; nothing else joined it.
-     */
-    it.each( REJECTED )( 'rejects %s', ( _label, make, matcher ) => {
-        expect( () => build( make() ) ).toThrow( matcher );
-    } );
-
-} );
-
-describe( 'a plain options object is still accepted everywhere', () => {
-
-    it.each( COMPONENTS )( '$name accepts { locale }', ( { build } ) => {
-        expect( () => build( { locale: 'it' } ) ).not.toThrow();
-    } );
-
-    it.each( COMPONENTS )( '$name accepts a locale string', ( { build } ) => {
-        expect( () => build( 'it' ) ).not.toThrow();
-    } );
-
-} );
+    it.each(COMPONENTS)('$name accepts a locale string', ({ build }) => {
+        expect(() => build('it')).not.toThrow();
+    });
+});
 
 /**
  * The two bag shapes on which `options.hasOwnProperty( key )` does not work.
@@ -281,79 +328,99 @@ describe( 'a plain options object is still accepted everywhere', () => {
  * @type {Array<[string, (props: Object) => Object]>}
  */
 const AWKWARD_BAGS = [
-    [ 'a null-prototype bag', props => Object.assign( Object.create( null ), props ) ],
-    [ 'a bag whose own `hasOwnProperty` key shadows the method', props => ( { ...props, hasOwnProperty: 'not a function' } ) ]
+    [
+        'a null-prototype bag',
+        (props) => Object.assign(Object.create(null), props),
+    ],
+    [
+        'a bag whose own `hasOwnProperty` key shadows the method',
+        (props) => ({ ...props, hasOwnProperty: 'not a function' }),
+    ],
 ];
 
-describe.each( AWKWARD_BAGS )( 'options carried by %s are read', ( _label, bag ) => {
+describe.each(AWKWARD_BAGS)('options carried by %s are read', (_label, bag) => {
+    it('CalendarSelect applies the class the bag carries', () => {
+        const select = new CalendarSelect(
+            bag({ locale: 'it', class: 'form-select' }),
+        );
+        expect(select._domElement.className).toBe('form-select');
+    });
 
-    it( 'CalendarSelect applies the class the bag carries', () => {
-        const select = new CalendarSelect( bag( { locale: 'it', class: 'form-select' } ) );
-        expect( select._domElement.className ).toBe( 'form-select' );
-    } );
+    it('CalendarSelect.label() applies the label options the bag carries', () => {
+        const container = document.createElement('div');
+        const select = new CalendarSelect({ locale: 'it' });
+        select.label(bag({ text: 'Calendario', class: 'form-label' }));
+        select.appendTo(container);
+        const label = container.querySelector('label');
+        expect(label.textContent).toBe('Calendario');
+        expect(label.className).toBe('form-label');
+    });
 
-    it( 'CalendarSelect.label() applies the label options the bag carries', () => {
-        const container = document.createElement( 'div' );
-        const select = new CalendarSelect( { locale: 'it' } );
-        select.label( bag( { text: 'Calendario', class: 'form-label' } ) );
-        select.appendTo( container );
-        const label = container.querySelector( 'label' );
-        expect( label.textContent ).toBe( 'Calendario' );
-        expect( label.className ).toBe( 'form-label' );
-    } );
+    it('CalendarSelect.wrapper() applies the wrapper options the bag carries', () => {
+        const select = new CalendarSelect({ locale: 'it' });
+        select.wrapper(bag({ as: 'td', class: 'wrap' }));
+        expect(select._wrapperElement.tagName).toBe('TD');
+        expect(select._wrapperElement.className).toBe('wrap');
+    });
 
-    it( 'CalendarSelect.wrapper() applies the wrapper options the bag carries', () => {
-        const select = new CalendarSelect( { locale: 'it' } );
-        select.wrapper( bag( { as: 'td', class: 'wrap' } ) );
-        expect( select._wrapperElement.tagName ).toBe( 'TD' );
-        expect( select._wrapperElement.className ).toBe( 'wrap' );
-    } );
+    it('RiteSelect applies the class and locale the bag carries', () => {
+        const select = new RiteSelect(
+            bag({ locale: 'it', class: 'form-select' }),
+        );
+        expect(select._domElement.className).toBe('form-select');
+        expect(select._locale).toBe('it');
+    });
 
-    it( 'RiteSelect applies the class and locale the bag carries', () => {
-        const select = new RiteSelect( bag( { locale: 'it', class: 'form-select' } ) );
-        expect( select._domElement.className ).toBe( 'form-select' );
-        expect( select._locale ).toBe( 'it' );
-    } );
+    it('RiteSelect.label() applies the label options the bag carries', () => {
+        const container = document.createElement('div');
+        const select = new RiteSelect({ locale: 'it' });
+        select.label(bag({ text: 'Rito', class: 'form-label' }));
+        select.appendTo(container);
+        const label = container.querySelector('label');
+        expect(label.textContent).toBe('Rito');
+        expect(label.className).toBe('form-label');
+    });
 
-    it( 'RiteSelect.label() applies the label options the bag carries', () => {
-        const container = document.createElement( 'div' );
-        const select = new RiteSelect( { locale: 'it' } );
-        select.label( bag( { text: 'Rito', class: 'form-label' } ) );
-        select.appendTo( container );
-        const label = container.querySelector( 'label' );
-        expect( label.textContent ).toBe( 'Rito' );
-        expect( label.className ).toBe( 'form-label' );
-    } );
+    it('ApiOptions applies the locale the bag carries', () => {
+        const apiOptions = new ApiOptions(bag({ locale: 'it' }));
+        const optionLabels = [
+            ...apiOptions._yearTypeInput._domElement.options,
+        ].map((option) => option.textContent);
+        expect(optionLabels).toContain(Messages['it']['LITURGICAL_YEAR']);
+    });
 
-    it( 'ApiOptions applies the locale the bag carries', () => {
-        const apiOptions = new ApiOptions( bag( { locale: 'it' } ) );
-        const optionLabels = [ ...apiOptions._yearTypeInput._domElement.options ].map( option => option.textContent );
-        expect( optionLabels ).toContain( Messages[ 'it' ][ 'LITURGICAL_YEAR' ] );
-    } );
+    it('LiturgyOfTheDay applies the locale and class the bag carries', () => {
+        const widget = new LiturgyOfTheDay(
+            bag({ locale: 'it', class: 'card' }),
+        );
+        expect(widget._titleElement.textContent).toBe(
+            Messages['it']['LITURGY_OF_THE_DAY'],
+        );
+        expect(widget._domElement.className).toBe('card');
+    });
 
-    it( 'LiturgyOfTheDay applies the locale and class the bag carries', () => {
-        const widget = new LiturgyOfTheDay( bag( { locale: 'it', class: 'card' } ) );
-        expect( widget._titleElement.textContent ).toBe( Messages[ 'it' ][ 'LITURGY_OF_THE_DAY' ] );
-        expect( widget._domElement.className ).toBe( 'card' );
-    } );
+    it('LiturgyOfAnyDay applies the locale and class the bag carries', () => {
+        const widget = new LiturgyOfAnyDay(
+            bag({ locale: 'it', class: 'card' }),
+        );
+        expect(widget._titleElement.textContent).toBe(
+            Messages['it']['LITURGY_OF_THE_DAY'],
+        );
+        expect(widget._domElement.className).toBe('card');
+    });
 
-    it( 'LiturgyOfAnyDay applies the locale and class the bag carries', () => {
-        const widget = new LiturgyOfAnyDay( bag( { locale: 'it', class: 'card' } ) );
-        expect( widget._titleElement.textContent ).toBe( Messages[ 'it' ][ 'LITURGY_OF_THE_DAY' ] );
-        expect( widget._domElement.className ).toBe( 'card' );
-    } );
-
-    it( 'WebCalendar applies the id and class the bag carries', async () => {
-        const apiClient = await ApiClient.init( DEV );
-        const container = document.createElement( 'div' );
-        const webCalendar = new WebCalendar( bag( { id: 'litcal', class: 'table' } ) );
-        webCalendar.appendTo( container );
-        webCalendar.listenTo( apiClient );
-        apiClient._eventBus.emit( 'calendarFetched', CALENDAR_DATA() );
-        await new Promise( resolve => setTimeout( resolve, 0 ) );
-        const table = container.querySelector( 'table' );
-        expect( table.id ).toBe( 'litcal' );
-        expect( table.className ).toBe( 'table' );
-    } );
-
-} );
+    it('WebCalendar applies the id and class the bag carries', async () => {
+        const apiClient = await ApiClient.init(DEV);
+        const container = document.createElement('div');
+        const webCalendar = new WebCalendar(
+            bag({ id: 'litcal', class: 'table' }),
+        );
+        webCalendar.appendTo(container);
+        webCalendar.listenTo(apiClient);
+        apiClient._eventBus.emit('calendarFetched', CALENDAR_DATA());
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const table = container.querySelector('table');
+        expect(table.id).toBe('litcal');
+        expect(table.className).toBe('table');
+    });
+});

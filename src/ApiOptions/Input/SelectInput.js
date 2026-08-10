@@ -1,7 +1,6 @@
 import Input from './Input.js';
 
 export default class SelectInput extends Input {
-
     /**
      * Initializes a SelectInput instance as a select element.
      *
@@ -10,6 +9,6 @@ export default class SelectInput extends Input {
      * @param {boolean} [multiple=false] - Whether the select input allows multiple selections.
      */
     constructor(multiple = false) {
-        super('select', {multiple: multiple});
+        super('select', { multiple: multiple });
     }
 }

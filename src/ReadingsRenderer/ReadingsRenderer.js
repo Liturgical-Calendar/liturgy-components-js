@@ -15,7 +15,6 @@
  */
 
 export default class ReadingsRenderer {
-
     /**
      * Mapping of reading property keys to human-readable labels.
      * @type {Object<string, string>}
@@ -23,25 +22,25 @@ export default class ReadingsRenderer {
      * @readonly
      */
     static readingLabels = Object.freeze({
-        'first_reading': 'First Reading',
-        'responsorial_psalm': 'Responsorial Psalm',
-        'second_reading': 'Second Reading',
-        'gospel_acclamation': 'Gospel Acclamation',
-        'gospel': 'Gospel',
-        'palm_gospel': 'Gospel at the Procession',
-        'epistle': 'Epistle',
-        'responsorial_psalm_2': 'Responsorial Psalm',
-        'third_reading': 'Third Reading',
-        'responsorial_psalm_3': 'Responsorial Psalm',
-        'fourth_reading': 'Fourth Reading',
-        'responsorial_psalm_4': 'Responsorial Psalm',
-        'fifth_reading': 'Fifth Reading',
-        'responsorial_psalm_5': 'Responsorial Psalm',
-        'sixth_reading': 'Sixth Reading',
-        'responsorial_psalm_6': 'Responsorial Psalm',
-        'seventh_reading': 'Seventh Reading',
-        'responsorial_psalm_7': 'Responsorial Psalm',
-        'responsorial_psalm_epistle': 'Responsorial Psalm'
+        first_reading: 'First Reading',
+        responsorial_psalm: 'Responsorial Psalm',
+        second_reading: 'Second Reading',
+        gospel_acclamation: 'Gospel Acclamation',
+        gospel: 'Gospel',
+        palm_gospel: 'Gospel at the Procession',
+        epistle: 'Epistle',
+        responsorial_psalm_2: 'Responsorial Psalm',
+        third_reading: 'Third Reading',
+        responsorial_psalm_3: 'Responsorial Psalm',
+        fourth_reading: 'Fourth Reading',
+        responsorial_psalm_4: 'Responsorial Psalm',
+        fifth_reading: 'Fifth Reading',
+        responsorial_psalm_5: 'Responsorial Psalm',
+        sixth_reading: 'Sixth Reading',
+        responsorial_psalm_6: 'Responsorial Psalm',
+        seventh_reading: 'Seventh Reading',
+        responsorial_psalm_7: 'Responsorial Psalm',
+        responsorial_psalm_epistle: 'Responsorial Psalm',
     });
 
     /**
@@ -51,16 +50,16 @@ export default class ReadingsRenderer {
      * @readonly
      */
     static massLabels = Object.freeze({
-        'vigil': 'Vigil Mass',
-        'night': 'Mass during the Night',
-        'dawn': 'Mass at Dawn',
-        'day': 'Mass during the Day',
-        'evening': 'Evening Mass',
-        'schema_one': 'Schema I',
-        'schema_two': 'Schema II',
-        'schema_three': 'Schema III',
-        'easter_season': 'Easter Season',
-        'outside_easter_season': 'Outside Easter Season'
+        vigil: 'Vigil Mass',
+        night: 'Mass during the Night',
+        dawn: 'Mass at Dawn',
+        day: 'Mass during the Day',
+        evening: 'Evening Mass',
+        schema_one: 'Schema I',
+        schema_two: 'Schema II',
+        schema_three: 'Schema III',
+        easter_season: 'Easter Season',
+        outside_easter_season: 'Outside Easter Season',
     });
 
     /**
@@ -88,7 +87,7 @@ export default class ReadingsRenderer {
         'epistle',
         'responsorial_psalm_epistle',
         'gospel_acclamation',
-        'gospel'
+        'gospel',
     ]);
 
     /**
@@ -98,9 +97,16 @@ export default class ReadingsRenderer {
      * @readonly
      */
     static #nestedSchemaKeys = Object.freeze([
-        'vigil', 'night', 'dawn', 'day', 'evening',
-        'schema_one', 'schema_two', 'schema_three',
-        'easter_season', 'outside_easter_season'
+        'vigil',
+        'night',
+        'dawn',
+        'day',
+        'evening',
+        'schema_one',
+        'schema_two',
+        'schema_three',
+        'easter_season',
+        'outside_easter_season',
     ]);
 
     /** @type {string} */
@@ -118,13 +124,22 @@ export default class ReadingsRenderer {
      * @param {ReadingsRendererOptions} [options={}] - Configuration options.
      */
     constructor(options = {}) {
-        if (options.readingsWrapperClassName && typeof options.readingsWrapperClassName === 'string') {
+        if (
+            options.readingsWrapperClassName &&
+            typeof options.readingsWrapperClassName === 'string'
+        ) {
             this.#readingsWrapperClassName = options.readingsWrapperClassName;
         }
-        if (options.readingsLabelClassName && typeof options.readingsLabelClassName === 'string') {
+        if (
+            options.readingsLabelClassName &&
+            typeof options.readingsLabelClassName === 'string'
+        ) {
             this.#readingsLabelClassName = options.readingsLabelClassName;
         }
-        if (options.readingClassName && typeof options.readingClassName === 'string') {
+        if (
+            options.readingClassName &&
+            typeof options.readingClassName === 'string'
+        ) {
             this.#readingClassName = options.readingClassName;
         }
     }
@@ -138,7 +153,9 @@ export default class ReadingsRenderer {
      */
     setReadingsWrapperClassName(className) {
         if (typeof className !== 'string') {
-            throw new TypeError('ReadingsRenderer.setReadingsWrapperClassName: className must be a string');
+            throw new TypeError(
+                'ReadingsRenderer.setReadingsWrapperClassName: className must be a string',
+            );
         }
         this.#readingsWrapperClassName = className;
         return this;
@@ -153,7 +170,9 @@ export default class ReadingsRenderer {
      */
     setReadingsLabelClassName(className) {
         if (typeof className !== 'string') {
-            throw new TypeError('ReadingsRenderer.setReadingsLabelClassName: className must be a string');
+            throw new TypeError(
+                'ReadingsRenderer.setReadingsLabelClassName: className must be a string',
+            );
         }
         this.#readingsLabelClassName = className;
         return this;
@@ -168,7 +187,9 @@ export default class ReadingsRenderer {
      */
     setReadingClassName(className) {
         if (typeof className !== 'string') {
-            throw new TypeError('ReadingsRenderer.setReadingClassName: className must be a string');
+            throw new TypeError(
+                'ReadingsRenderer.setReadingClassName: className must be a string',
+            );
         }
         this.#readingClassName = className;
         return this;
@@ -183,7 +204,9 @@ export default class ReadingsRenderer {
     hasNestedSchemas(readings) {
         if (!readings || typeof readings !== 'object') return false;
         const keys = Object.keys(readings);
-        return keys.some(key => ReadingsRenderer.#nestedSchemaKeys.includes(key));
+        return keys.some((key) =>
+            ReadingsRenderer.#nestedSchemaKeys.includes(key),
+        );
     }
 
     /**
@@ -195,30 +218,42 @@ export default class ReadingsRenderer {
      */
     renderSingleReadings(readings, container, schemaLabel = null) {
         if (!(container instanceof HTMLElement)) {
-            throw new Error('ReadingsRenderer.renderSingleReadings: container must be an HTMLElement');
+            throw new Error(
+                'ReadingsRenderer.renderSingleReadings: container must be an HTMLElement',
+            );
         }
 
         if (schemaLabel) {
             const schemaLabelEl = document.createElement('div');
             if (this.#readingsLabelClassName !== '') {
-                schemaLabelEl.classList.add(...this.#readingsLabelClassName.split(' '));
+                schemaLabelEl.classList.add(
+                    ...this.#readingsLabelClassName.split(' '),
+                );
             }
             schemaLabelEl.textContent = schemaLabel;
             container.appendChild(schemaLabelEl);
         }
 
         for (const key of ReadingsRenderer.readingOrder) {
-            if (Object.prototype.hasOwnProperty.call(readings, key) && readings[key]) {
+            if (
+                Object.prototype.hasOwnProperty.call(readings, key) &&
+                readings[key]
+            ) {
                 const readingEl = document.createElement('div');
                 if (this.#readingClassName !== '') {
-                    readingEl.classList.add(...this.#readingClassName.split(' '));
+                    readingEl.classList.add(
+                        ...this.#readingClassName.split(' '),
+                    );
                 }
 
                 const labelEl = document.createElement('span');
                 if (this.#readingsLabelClassName !== '') {
-                    labelEl.classList.add(...this.#readingsLabelClassName.split(' '));
+                    labelEl.classList.add(
+                        ...this.#readingsLabelClassName.split(' '),
+                    );
                 }
-                labelEl.textContent = ReadingsRenderer.readingLabels[key] + ': ';
+                labelEl.textContent =
+                    ReadingsRenderer.readingLabels[key] + ': ';
 
                 const valueEl = document.createElement('span');
                 valueEl.textContent = readings[key];
@@ -240,12 +275,16 @@ export default class ReadingsRenderer {
         if (!readings || typeof readings !== 'object') return;
 
         if (!(container instanceof HTMLElement)) {
-            throw new Error('ReadingsRenderer.renderReadings: container must be an HTMLElement');
+            throw new Error(
+                'ReadingsRenderer.renderReadings: container must be an HTMLElement',
+            );
         }
 
         const readingsWrapper = document.createElement('div');
         if (this.#readingsWrapperClassName !== '') {
-            readingsWrapper.classList.add(...this.#readingsWrapperClassName.split(' '));
+            readingsWrapper.classList.add(
+                ...this.#readingsWrapperClassName.split(' '),
+            );
         }
 
         if (this.hasNestedSchemas(readings)) {
@@ -253,8 +292,13 @@ export default class ReadingsRenderer {
             // Iterate in predefined liturgical sequence rather than insertion order
             for (const schemaKey of ReadingsRenderer.#nestedSchemaKeys) {
                 if (Object.prototype.hasOwnProperty.call(readings, schemaKey)) {
-                    const schemaLabel = ReadingsRenderer.massLabels[schemaKey] || schemaKey;
-                    this.renderSingleReadings(readings[schemaKey], readingsWrapper, schemaLabel);
+                    const schemaLabel =
+                        ReadingsRenderer.massLabels[schemaKey] || schemaKey;
+                    this.renderSingleReadings(
+                        readings[schemaKey],
+                        readingsWrapper,
+                        schemaLabel,
+                    );
                 }
             }
         } else {

@@ -2,7 +2,11 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import Utils from '../Utils.js';
 import ApiBase, { assertSameBase } from '../ApiClient/ApiBase.js';
-import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint.js';
+import {
+    CurrentEndpoint,
+    CalendarType,
+    RequestPayload,
+} from './CurrentEndpoint.js';
 
 // `CurrentEndpoint`, `CalendarType` and `RequestPayload` are defined in
 // `./CurrentEndpoint.js` — see the doc comment on the `CurrentEndpoint` class
@@ -14,7 +18,6 @@ import { CurrentEndpoint, CalendarType, RequestPayload } from './CurrentEndpoint
 export { CurrentEndpoint, CalendarType, RequestPayload };
 
 export default class PathBuilder {
-
     #domElement;
     #buttonElement;
     #buttonWrapper;
@@ -53,21 +56,29 @@ export default class PathBuilder {
      */
     constructor(apiOptions, calendarSelect) {
         if (!apiOptions || false === apiOptions instanceof ApiOptions) {
-            throw new Error('calendarPathInput must be an instance of CalendarPathInput');
+            throw new Error(
+                'calendarPathInput must be an instance of CalendarPathInput',
+            );
         }
-        if (!calendarSelect || false === calendarSelect instanceof CalendarSelect) {
-            throw new Error('calendarSelect must be an instance of CalendarSelect');
+        if (
+            !calendarSelect ||
+            false === calendarSelect instanceof CalendarSelect
+        ) {
+            throw new Error(
+                'calendarSelect must be an instance of CalendarSelect',
+            );
         }
         assertSameBase(
-            apiOptions._base, calendarSelect._base,
+            apiOptions._base,
+            calendarSelect._base,
             'PathBuilder: the apiOptions and calendarSelect passed to it',
-            `A path built from one API's options and another API's calendars would point at neither.`
+            `A path built from one API's options and another API's calendars would point at neither.`,
         );
         this.#base = apiOptions._base;
 
         this.#currentEndpoint = apiOptions._currentEndpoint;
         const currentEndpoint = this.#currentEndpoint;
-        const requestPayload  = currentEndpoint.requestPayload;
+        const requestPayload = currentEndpoint.requestPayload;
 
         this.#domElement = document.createElement('div');
         this.#buttonWrapper = document.createElement('div');
@@ -95,34 +106,49 @@ export default class PathBuilder {
 
         this.#updatePathValues();
 
-        apiOptions._calendarPathInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.locale              = null;
-            requestPayload.ascension           = null;
-            requestPayload.corpus_christi      = null;
-            requestPayload.epiphany            = null;
-            requestPayload.year_type           = null;
-            requestPayload.eternal_high_priest = null;
-            const selectEl = calendarSelect._domElement;
-            switch (ev.target.value) {
-                case '/calendar':
-                    currentEndpoint.calendarType       = null;
-                    currentEndpoint.calendarId         = null;
-                    break;
-                case '/calendar/nation/':
-                    if ( currentEndpoint.calendarType !== CalendarType.NATIONAL ) {
-                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        currentEndpoint.calendarType = CalendarType.NATIONAL;
-                    }
-                    break;
-                case '/calendar/diocese/':
-                    if ( currentEndpoint.calendarType !== CalendarType.DIOCESAN ) {
-                        currentEndpoint.calendarId   = encodeURIComponent(selectEl.value);
-                        currentEndpoint.calendarType = CalendarType.DIOCESAN;
-                    }
-                    break;
-            }
-            this.#updatePathValues();
-        });
+        apiOptions._calendarPathInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.locale = null;
+                requestPayload.ascension = null;
+                requestPayload.corpus_christi = null;
+                requestPayload.epiphany = null;
+                requestPayload.year_type = null;
+                requestPayload.eternal_high_priest = null;
+                const selectEl = calendarSelect._domElement;
+                switch (ev.target.value) {
+                    case '/calendar':
+                        currentEndpoint.calendarType = null;
+                        currentEndpoint.calendarId = null;
+                        break;
+                    case '/calendar/nation/':
+                        if (
+                            currentEndpoint.calendarType !==
+                            CalendarType.NATIONAL
+                        ) {
+                            currentEndpoint.calendarId = encodeURIComponent(
+                                selectEl.value,
+                            );
+                            currentEndpoint.calendarType =
+                                CalendarType.NATIONAL;
+                        }
+                        break;
+                    case '/calendar/diocese/':
+                        if (
+                            currentEndpoint.calendarType !==
+                            CalendarType.DIOCESAN
+                        ) {
+                            currentEndpoint.calendarId = encodeURIComponent(
+                                selectEl.value,
+                            );
+                            currentEndpoint.calendarType =
+                                CalendarType.DIOCESAN;
+                        }
+                        break;
+                }
+                this.#updatePathValues();
+            },
+        );
 
         calendarSelect._domElement.addEventListener('change', (ev) => {
             // A select can legitimately have NOTHING selected: `allowNull(false)`
@@ -132,15 +158,16 @@ export default class PathBuilder {
             // — so the endpoint would be updated correctly while the rendered
             // path below never repaints. Treat "nothing selected" as no calendar.
             const selectedOption = ev.target.selectedOptions[0];
-            const calendarType = selectedOption?.getAttribute('data-calendartype') ?? null;
-            switch (calendarType){
+            const calendarType =
+                selectedOption?.getAttribute('data-calendartype') ?? null;
+            switch (calendarType) {
                 case 'national':
                     currentEndpoint.calendarType = CalendarType.NATIONAL;
-                    currentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarId = ev.target.value;
                     break;
                 case 'diocesan': {
                     currentEndpoint.calendarType = CalendarType.DIOCESAN;
-                    currentEndpoint.calendarId   = ev.target.value;
+                    currentEndpoint.calendarId = ev.target.value;
                     break;
                 }
                 default:
@@ -150,46 +177,64 @@ export default class PathBuilder {
                     // diocese stays in the path forever and re-selecting the
                     // empty option appears to do nothing.
                     currentEndpoint.calendarType = null;
-                    currentEndpoint.calendarId   = null;
+                    currentEndpoint.calendarId = null;
                     break;
             }
             this.#updatePathValues();
         });
 
-        apiOptions._acceptHeaderInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.return_type = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._acceptHeaderInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.return_type = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
-        apiOptions._yearTypeInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.year_type = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._yearTypeInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.year_type = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
         apiOptions._yearInput._domElement.addEventListener('change', (ev) => {
             currentEndpoint.calendarYear = ev.target.value;
             this.#updatePathValues();
         });
 
-        apiOptions._epiphanyInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.epiphany = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._epiphanyInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.epiphany = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
-        apiOptions._ascensionInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.ascension = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._ascensionInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.ascension = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
-        apiOptions._corpusChristiInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.corpus_christi = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._corpusChristiInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.corpus_christi = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
-        apiOptions._eternalHighPriestInput._domElement.addEventListener('change', (ev) => {
-            requestPayload.eternal_high_priest = ev.target.value;
-            this.#updatePathValues();
-        });
+        apiOptions._eternalHighPriestInput._domElement.addEventListener(
+            'change',
+            (ev) => {
+                requestPayload.eternal_high_priest = ev.target.value;
+                this.#updatePathValues();
+            },
+        );
 
         apiOptions._localeInput._domElement.addEventListener('change', (ev) => {
             requestPayload.locale = ev.target.value;
@@ -207,20 +252,25 @@ export default class PathBuilder {
     }
 
     #updatePathValues() {
-        const finalPath = (this.#base.url + this.#currentEndpoint.serialize());
+        const finalPath = this.#base.url + this.#currentEndpoint.serialize();
         this.#pathCodeElement.textContent = finalPath;
         this.#buttonElement.setAttribute('href', finalPath);
     }
 
     class(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to PathBuilder.class(), must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to PathBuilder.class(), must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(token => {
+        classNames.forEach((token) => {
             if (false === Utils.validateClassName(token)) {
-                throw new Error('Invalid class value passed to buttonClass: ' + token);
+                throw new Error(
+                    'Invalid class value passed to buttonClass: ' + token,
+                );
             }
         });
         this.#domElement.className = classNames.join(' ');
@@ -229,7 +279,10 @@ export default class PathBuilder {
 
     id(id) {
         if (typeof id !== 'string') {
-            throw new Error('Invalid type for value passed to PathBuilder.id(), must be of type string but found type: ' + typeof id);
+            throw new Error(
+                'Invalid type for value passed to PathBuilder.id(), must be of type string but found type: ' +
+                    typeof id,
+            );
         }
         id = Utils.sanitizeInput(id);
         if (Utils.validateId(id)) {
@@ -242,13 +295,18 @@ export default class PathBuilder {
 
     buttonClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to buttonClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to buttonClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(token => {
+        classNames.forEach((token) => {
             if (false === Utils.validateClassName(token)) {
-                throw new Error('Invalid class value passed to buttonClass: ' + token);
+                throw new Error(
+                    'Invalid class value passed to buttonClass: ' + token,
+                );
             }
         });
         this.#buttonElement.className = classNames.join(' ');
@@ -263,13 +321,18 @@ export default class PathBuilder {
 
     buttonWrapperClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to buttonClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to buttonClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(token => {
+        classNames.forEach((token) => {
             if (false === Utils.validateClassName(token)) {
-                throw new Error('Invalid class value passed to buttonClass: ' + token);
+                throw new Error(
+                    'Invalid class value passed to buttonClass: ' + token,
+                );
             }
         });
         this.#buttonWrapper.className = classNames.join(' ');
@@ -278,13 +341,18 @@ export default class PathBuilder {
 
     pathWrapperClass(className = '') {
         if (typeof className !== 'string') {
-            throw new Error('Invalid type for value passed to buttonClass, must be of type string but found type: ' + typeof className);
+            throw new Error(
+                'Invalid type for value passed to buttonClass, must be of type string but found type: ' +
+                    typeof className,
+            );
         }
         className = Utils.sanitizeInput(className);
         const classNames = className.split(/\s+/);
-        classNames.forEach(token => {
+        classNames.forEach((token) => {
             if (false === Utils.validateClassName(token)) {
-                throw new Error('Invalid class value passed to buttonClass: ' + token);
+                throw new Error(
+                    'Invalid class value passed to buttonClass: ' + token,
+                );
             }
         });
         this.#pathWrapper.className = classNames.join(' ');
@@ -294,12 +362,13 @@ export default class PathBuilder {
     appendTo(elementSelector) {
         let domNode;
         if (typeof elementSelector === 'string') {
-            domNode = Utils.validateElementSelector( elementSelector );
-        }
-        else if(elementSelector instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(elementSelector);
+        } else if (elementSelector instanceof HTMLElement) {
             domNode = elementSelector;
         } else {
-            throw new Error('PathBuilder.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement');
+            throw new Error(
+                'PathBuilder.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
         domNode.append(this.#domElement);
     }
@@ -307,12 +376,13 @@ export default class PathBuilder {
     replace(elementSelector) {
         let domNode;
         if (typeof elementSelector === 'string') {
-            domNode = Utils.validateElementSelector( elementSelector );
-        }
-        else if (elementSelector instanceof HTMLElement) {
+            domNode = Utils.validateElementSelector(elementSelector);
+        } else if (elementSelector instanceof HTMLElement) {
             domNode = elementSelector;
         } else {
-            throw new Error('PathBuilder.replace: parameter must be a valid CSS selector or an instance of HTMLElement');
+            throw new Error(
+                'PathBuilder.replace: parameter must be a valid CSS selector or an instance of HTMLElement',
+            );
         }
         domNode.replaceWith(this.#domElement);
     }

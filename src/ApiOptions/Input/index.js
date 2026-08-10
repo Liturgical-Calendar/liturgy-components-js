@@ -23,5 +23,5 @@ export {
     MonthInput,
     YearInput,
     YearTypeInput,
-    CalendarPathInput
-}
+    CalendarPathInput,
+};
