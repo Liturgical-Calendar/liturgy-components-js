@@ -79,9 +79,12 @@ controls.onCalendarFetched((data) => calendar.refetchEvents());
   for: wire only the first and the form reads `ambrosian` while every request goes to
   `/calendar/roman/`.
 - **`onCalendarFetched( cb )` and `onError( cb )`**, replacing the `_eventBus` reach in both examples.
-- **The initial fetch, including the empty-value guard.** An empty calendar id means the General Roman
-  Calendar, not a nation, so it must go to `fetchCalendar()` rather than `fetchNationalCalendar()`.
-  `fullcalendar/script.js:230-241` writes that guard by hand; nothing tests it.
+- **The initial fetch, dispatched three ways.** `CalendarSelect` marks each option with
+  `data-calendartype="national"` or `"diocesan"` (`CalendarSelect.js:369,383`), and an empty value
+  means the General Roman Calendar. So the correct dispatch is empty → `fetchCalendar()`, national →
+  `fetchNationalCalendar()`, diocesan → `fetchDiocesanCalendar()`.
+  `fullcalendar/script.js:230-241` writes only the first two by hand, so a diocesan initial selection
+  calls `fetchNationalCalendar()` with a diocese id. Nothing tests any of it.
 - **Mount ordering** — the rite select is appended first so it reads first in the form.
 - **An optional `messages` slot.** Named, it renders the API's `messages` array; omitted, nothing is
   rendered. It lives here rather than on `CalendarViewer` because the FullCalendar example wants it
