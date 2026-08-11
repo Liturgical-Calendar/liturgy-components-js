@@ -25,30 +25,54 @@ export default class Utils {
     }
 
     /**
-     * Checks if the provided class name is valid.
+     * Checks whether one space-separated class token is usable in a `class` attribute.
      *
-     * The regex pattern used to validate class names:
-     *   - `^` asserts the start of a line
-     *   - `(?!\d|--|-?\d)` is a negative look ahead that prevents the class name
-     *                  from starting with a digit, or a sequence of dashes, or a number with a leading dash
-     *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-     *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore
+     * **This is deliberately permissive, and was deliberately widened.** It previously
+     * demanded `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/` — letters, digits,
+     * underscores and hyphens only, never leading with a digit. That describes a CSS
+     * *identifier*, which is not what a `class` attribute holds: the attribute is a
+     * space-separated token list, and a token may contain any character except
+     * whitespace. Utility-first frameworks rely on exactly the characters the old
+     * pattern excluded, and every one of these is a legitimate class a consumer may
+     * pass:
      *
-     * @param {string} className - The class name to be validated.
-     * @returns {boolean} `true` if the class name is valid, `false` otherwise.
+     * | Token                 | Excluded by the old pattern because |
+     * | --------------------- | ----------------------------------- |
+     * | `md:w-1/2`            | `:` and `/`                         |
+     * | `hover:bg-blue-500`   | `:`                                 |
+     * | `2xl:flex`            | leading digit, and `:`              |
+     * | `p-1.5`               | `.`                                 |
+     * | `bg-[#1da1f2]`        | `[`, `#`, `]`                       |
+     * | `[&>*]:mt-2`          | `[`, `&`, `>`, `*`, `]`, `:`        |
+     * | `w-[calc(100%-2rem)]` | `[`, `(`, `%`, `)`, `]`             |
+     *
+     * Rejecting those did not leave a page unstyled — it THREW, so a Tailwind
+     * consumer could not use this library's components at all.
+     *
+     * **Why relaxing is safe here.** Every call site splits on whitespace, runs each
+     * token through {@link Utils.sanitizeInput} (which parses as HTML and keeps only
+     * the text content, so markup cannot survive), and then assigns via
+     * `setAttribute('class', …)` or `element.className`. Neither is an HTML-string
+     * interpolation, so there is no injection vector for this function to defend.
+     * What remains is catching a caller's mistake, and the mistakes worth catching
+     * are an empty token, a token carrying whitespace the caller forgot to split on,
+     * and a token containing quote characters or `<` — none of which can appear in a
+     * class anyone meant to write, and all of which signal that markup or a quoting
+     * error leaked in.
+     *
+     * `>` is accepted even though `<` is not: `>` occurs inside Tailwind's arbitrary
+     * variants (`[&>*]:mt-2`), while `<` only ever indicates markup.
+     *
+     * @param {string} className - A single class token, already split on whitespace.
+     * @returns {boolean} `true` if the token is usable, `false` otherwise.
      */
     static validateClassName(className) {
-        /**
-         * The regex pattern used to validate class names:
-         *   - `^` asserts the start of a line
-         *   - `(?!\d|--|-?\d)` is a negative look ahead that prevents the class name
-         *                  from starting with a digit, or a sequence of dashes, or a number with a leading dash
-         *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-         *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore at least once
-         *   - `$` asserts the end of a line
-         */
-        const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
-        return pattern.test(className);
+        if (typeof className !== 'string' || '' === className) {
+            return false;
+        }
+        // Whitespace: the caller was supposed to split first. Quotes, backtick and
+        // `<`: markup or a quoting error, never a class anyone intended.
+        return false === /[\s"'`<]/.test(className);
     }
 
     /**

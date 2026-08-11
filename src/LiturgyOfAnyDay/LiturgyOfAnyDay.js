@@ -5,6 +5,7 @@ import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
+import Utils from '../Utils.js';
 
 export default class LiturgyOfAnyDay {
     /**
@@ -86,7 +87,14 @@ export default class LiturgyOfAnyDay {
     #showReadings = true;
 
     /**
-     * Validates the given class name to ensure it is a valid CSS class name.
+     * Validates the given class name to ensure it is usable in a `class` attribute.
+     *
+     * Delegates to {@link Utils.validateClassName} rather than carrying its own copy
+     * of the pattern. It used to inline an identical regex, and `LiturgyOfTheDay`
+     * inlined a third — so widening the rule to accept utility-framework classes
+     * (`md:w-1/2`, `p-1.5`, `bg-[#1da1f2]`) meant changing the same expression in
+     * three places, and a component that missed the change would reject classes its
+     * siblings accepted. One definition, one behaviour.
      *
      * @param {string} className - The class name to validate.
      * @returns {boolean} True if the class name is valid, false otherwise.
@@ -94,8 +102,7 @@ export default class LiturgyOfAnyDay {
      * @private
      */
     static #isValidClassName(className) {
-        const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
-        return pattern.test(className);
+        return Utils.validateClassName(className);
     }
 
     /**
