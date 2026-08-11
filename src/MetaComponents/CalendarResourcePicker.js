@@ -30,8 +30,8 @@ const ACCEPTED_FILTERS = Object.freeze([
 ]);
 
 export default class CalendarResourcePicker {
-    /** @type {CalendarSelect} */
-    #calendarSelect;
+    /** @type {CalendarSelect|null} */
+    #calendarSelect = null;
 
     /** @type {RiteSelect|null} */
     #riteSelect = null;
@@ -131,10 +131,15 @@ export default class CalendarResourcePicker {
     }
 
     /**
-     * The wired `CalendarSelect`. Public so a consumer can reach anything the theme
-     * bag does not cover — an id, a data attribute — without touching a private field.
+     * The wired `CalendarSelect`, or `null` on a failed picker — `mountInto()`
+     * builds no children once construction has thrown, so there is nothing to
+     * return. Mirrors `riteSelect`'s nullability rather than leaving this getter
+     * the only one a failed picker's caller cannot trust.
      *
-     * @returns {CalendarSelect} The calendar select.
+     * Public so a consumer can reach anything the theme bag does not cover — an
+     * id, a data attribute — without touching a private field.
+     *
+     * @returns {CalendarSelect|null} The calendar select, or `null` on a failed picker.
      */
     get calendarSelect() {
         return this.#calendarSelect;
@@ -343,16 +348,26 @@ export default class CalendarResourcePicker {
             options,
             'CalendarResourcePicker',
         );
-        const { errorText, signal, theme, filter } = bag;
+        const { errorText, signal, theme, filter, locale } = bag;
 
         // Validated up front, ahead of the try below, so that every throw inside it
-        // is a runtime failure by construction.
+        // is a runtime failure by construction. `locale` belongs in this list for
+        // the same reason `filter` and `theme` do: canonicalizeLocale() would
+        // otherwise run for the first time inside the constructor, inside the try,
+        // which would turn a caller's typo into a reported "API is down" instead
+        // of a rejection. Mirrors the constructor's own absent-vs-invalid check;
+        // the canonical tag itself is discarded here and recomputed by the
+        // constructor, since this call exists only to let an invalid tag throw
+        // before the try.
         if (false === ACCEPTED_FILTERS.includes(filter)) {
             throw new Error(
                 `CalendarResourcePicker: the filter option must be CalendarSelectFilter.NATIONAL_CALENDARS or CalendarSelectFilter.DIOCESAN_CALENDARS, but found: ${String(filter)}`,
             );
         }
         assertTheme(theme, 'CalendarResourcePicker');
+        if (locale !== undefined && locale !== null) {
+            canonicalizeLocale(locale, 'CalendarResourcePicker');
+        }
 
         const element = CalendarResourcePicker.#requireElement(
             target,

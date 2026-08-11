@@ -117,4 +117,35 @@ describe('CalendarResourcePicker.mountInto', () => {
         });
         expect(picker).toBeNull();
     });
+
+    // Programmer error rejects; runtime failure does not — a bad locale is a
+    // typo, not a down API, and must not be reported as one.
+    it('rejects on an unparseable locale and renders no failure control', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'not a locale!!!',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            }),
+        ).rejects.toThrow();
+        expect(document.querySelector('#mount select')).toBeNull();
+    });
+
+    it('leaves calendarSelect and riteSelect both null on a failed picker', async () => {
+        // An unloaded base is a runtime failure, not a programmer error.
+        ApiBase.reset();
+        const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+        });
+
+        expect(picker.failed).toBe(true);
+        expect(picker.calendarSelect).toBeNull();
+        expect(picker.riteSelect).toBeNull();
+        expect(picker.value).toBe('');
+        errorSpy.mockRestore();
+    });
 });
