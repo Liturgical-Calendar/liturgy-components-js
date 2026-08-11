@@ -37,6 +37,13 @@
     "format:js": "prettier --check \"src/**/*.js\" \"examples/**/*.js\"",
     "format:js:fix": "prettier --write \"src/**/*.js\" \"examples/**/*.js\""
   },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/.claude/",
+      "<rootDir>/.worktrees/"
+    ]
+  },
   "types": "dist/index.d.ts",
   "devDependencies": {
     "@playwright/test": "^1.62.1",
