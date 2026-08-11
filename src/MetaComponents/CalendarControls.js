@@ -333,15 +333,17 @@ export default class CalendarControls {
      * example writes only the first two by hand, so a diocesan selection there
      * calls `fetchNationalCalendar()` with a diocese id.
      *
-     * The returned promise is also handed to `ApiClient#_discardRequest`, the
-     * same seam `LiturgyOfAnyDay` uses for its own fire-and-forget requests.
-     * That is what makes the `console.error` fallback conditional rather than
-     * silent-by-default: `_discardRequest` logs only when the rejection was
-     * never DELIVERED to a `calendarFetchFailed` listener, so a failure reaches
-     * `onError()` subscribers (if any) exactly once via the returned promise,
-     * and is only additionally logged when nothing subscribed. Attaching a
-     * second `.catch` this way does not change what the caller observes —
-     * multiple handlers on one promise are independent.
+     * The promise is returned directly, never routed through
+     * `ApiClient#_discardRequest`. That seam exists for requests the library
+     * fires and drops — `LiturgyOfAnyDay`'s year handling, the `listenTo()`
+     * change listeners — where nothing else could observe the rejection, so it
+     * falls back to `console.error` when no `calendarFetchFailed` listener
+     * received it. A promise `fetch()` HANDS BACK is the opposite case: the
+     * caller holds it and can `.catch()` or `await`/`try` it, so logging on top
+     * of that would report a handled failure twice. `onError()` subscribers are
+     * unaffected by this: the underlying fetch methods emit `calendarFetchFailed`
+     * themselves before rejecting, independently of what this method does with
+     * the returned promise.
      *
      * @returns {Promise<Object>} The fetched calendar data.
      * @throws {Error} If no client has been wired.
@@ -355,17 +357,12 @@ export default class CalendarControls {
         }
         const element = this.#calendarSelect._domElement;
         const value = element.value;
-        let request;
         if ('' === value) {
-            request = this.#apiClient.fetchCalendar();
-        } else {
-            const selected = element.options[element.selectedIndex];
-            request =
-                'diocesan' === selected?.dataset.calendartype
-                    ? this.#apiClient.fetchDiocesanCalendar(value)
-                    : this.#apiClient.fetchNationalCalendar(value);
+            return this.#apiClient.fetchCalendar();
         }
-        this.#apiClient._discardRequest(request);
-        return request;
+        const selected = element.options[element.selectedIndex];
+        return 'diocesan' === selected?.dataset.calendartype
+            ? this.#apiClient.fetchDiocesanCalendar(value)
+            : this.#apiClient.fetchNationalCalendar(value);
     }
 }

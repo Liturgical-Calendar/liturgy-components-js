@@ -119,7 +119,14 @@ describe('CalendarControls event hooks', () => {
         spy.mockRestore();
     });
 
-    it('falls back to console.error when nothing is listening', async () => {
+    // fetch() returns its promise directly rather than routing it through
+    // ApiClient#_discardRequest: that seam is for requests the library fires and
+    // drops (LiturgyOfAnyDay's year handling, the listenTo() change listeners),
+    // where nothing else could observe the rejection. A caller holding the
+    // promise fetch() hands back — and here, actually handling it via try/catch
+    // — is the opposite case, so no console.error fallback applies, with or
+    // without an onError() subscriber.
+    it('does not log to console.error when a caller catches the rejection, even with no onError registered', async () => {
         const apiClient = await ApiClient.init(API_URL);
         const controls = new CalendarControls({ locale: 'en' });
         controls.appendTo('#mount');
@@ -127,8 +134,14 @@ describe('CalendarControls event hooks', () => {
 
         global.fetch = jest.fn(() => Promise.reject(new Error('network down')));
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        await expect(controls.fetch()).rejects.toThrow();
-        expect(spy).toHaveBeenCalled();
+        let caught = null;
+        try {
+            await controls.fetch();
+        } catch (error) {
+            caught = error;
+        }
+        expect(caught).not.toBeNull();
+        expect(spy).not.toHaveBeenCalled();
         spy.mockRestore();
     });
 });
