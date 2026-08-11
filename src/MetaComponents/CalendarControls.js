@@ -475,4 +475,161 @@ export default class CalendarControls {
             ? this.#apiClient.fetchDiocesanCalendar(value)
             : this.#apiClient.fetchNationalCalendar(value);
     }
+
+    /**
+     * Releases this instance's listeners and subscriptions and empties its mounts.
+     *
+     * Precisely what this DOES and does NOT release — the same split
+     * `DayViewer.dispose()` documents, for the same reason:
+     *
+     * - **Released:** every subscription this instance made on the client's event
+     *   bus through `onCalendarFetched()`/`onError()`/`listenTo()` (including the
+     *   messages renderer `#registerMessagesRenderer()` subscribed) — unsubscribed
+     *   via `EventEmitter.off()`, added in this same phase for exactly this
+     *   purpose. The mounted DOM is also emptied: both the controls mount and, if
+     *   named, the messages mount. `#subscriptions`, `#fetchedCallbacks` and
+     *   `#errorCallbacks` are all cleared.
+     * - **NOT released, and cannot be from here:** the `change` listeners
+     *   `ApiClient.listenTo()` attaches to the calendar select, rite select and
+     *   `ApiOptions` inputs. Those are anonymous closures created inside
+     *   `ApiClient`'s own private `#listenToCalendarSelect`/`#listenToRiteSelect`/
+     *   `#listenToApiOptions` methods, attached via `addEventListener`, with no
+     *   reference stored anywhere this class — or `ApiClient` itself — can reach.
+     *   This is a pre-existing gap in the wired components, not something
+     *   `dispose()` papers over by claiming otherwise: a disposed instance's own
+     *   DOM and event-bus footprint are gone, but the `ApiClient` it was wired to
+     *   can still be driven by the same selects if a caller kept a separate
+     *   reference to them and the client.
+     *
+     * Idempotent; further use throws.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        if (true === this.#disposed) {
+            return;
+        }
+        if (null !== this.#apiClient) {
+            for (const { event, listener } of this.#subscriptions) {
+                this.#apiClient._eventBus.off(event, listener);
+            }
+        }
+        this.#subscriptions = [];
+        this.#fetchedCallbacks = [];
+        this.#errorCallbacks = [];
+        this.#mount?.replaceChildren();
+        this.#messagesMount?.replaceChildren();
+        this.#mount = null;
+        this.#messagesMount = null;
+        this.#apiClient = null;
+        this.#disposed = true;
+    }
+
+    /**
+     * Resolves a single-target mount argument to an already-attached element, for
+     * the cancellation check in `mountInto()` only.
+     *
+     * Deliberately narrow: it recognises an `HTMLElement` given directly — either
+     * as the whole `target` or as a slots object's `controls` key — and returns
+     * `null` for everything else, including a CSS selector string. A selector is
+     * resolved fresh by `appendTo()`/`#requireElement()`, and a selector that no
+     * longer matches anything is reported there as "Element not found", which is
+     * the correct REJECT for "this was never there" as much as for "this left the
+     * DOM" — the two are indistinguishable from a selector alone. An already
+     * resolved `HTMLElement` is different: the caller is holding a live reference,
+     * so THIS instance leaving the document is a fact `isConnected` can actually
+     * answer, and answering it is what lets `mountInto()` resolve to `null`
+     * instead of mounting into a detached, invisible node.
+     *
+     * @param {string|HTMLElement|{controls?: (string|HTMLElement)}} target - The `mountInto()` target argument.
+     * @returns {HTMLElement|null} The resolved element, or `null` if none could be determined this way.
+     */
+    static #targetElement(target) {
+        const single =
+            typeof target === 'string' || target instanceof HTMLElement;
+        const candidate = single ? target : target?.controls;
+        return candidate instanceof HTMLElement ? candidate : null;
+    }
+
+    /**
+     * Builds controls, mounts them, wires them to `options.apiClient` when given,
+     * and performs the initial fetch.
+     *
+     * Modelled on `DayViewer.mountInto()`: options are normalised and the
+     * instance is constructed BEFORE the cancellation check, so an invalid
+     * locale or theme rejects even on a mount the caller already cancelled —
+     * and, unlike `CalendarResourcePicker`, that same construction is where an
+     * unloadable API base throws too. **This component has no failure
+     * control.** `CalendarResourcePicker` renders one because it substitutes for
+     * a single required form field, where an empty slot is indistinguishable
+     * from "still loading" and produces an end-to-end timeout with nothing to
+     * point at. A whole form has no equivalent: if the metadata is gone there is
+     * no meaningful partial form to render, so construction is simply left to
+     * throw and this factory rejects with it. See "Reject versus resolve" in
+     * `docs/meta-components.md` for the full rule this follows.
+     *
+     * Resolves to `null`, without throwing or rejecting, when a supplied
+     * `signal` was already aborted, or when `target` (or a slots object's
+     * `controls` element) is an `HTMLElement` that has since left the document —
+     * see `#targetElement()` for why only an already-resolved element can be
+     * checked that way.
+     *
+     * **The initial fetch's rejection.** This factory resolves to the controls,
+     * not to the calendar data, so the initial fetch's promise is dropped here —
+     * exactly the fire-and-forget case `ApiClient#_discardRequest` exists for
+     * (see `LiturgyOfAnyDay`'s three uses of it). It is therefore routed through
+     * that seam rather than reimplemented by hand: `_discardRequest` logs to
+     * `console.error` only when the failure reached no `calendarFetchFailed`
+     * listener, checked against the same `deliveredFailures` bookkeeping every
+     * other fire-and-forget request in this library relies on. `onError()` is
+     * registered (when given) on the line immediately before this call, on the
+     * very same client event bus `_discardRequest` checks, so a failure of this
+     * very first request still reaches it — and is never logged twice. This
+     * differs from `fetch()` itself, whose returned promise is handed directly
+     * to the caller and never routed through `_discardRequest` — see that
+     * method's own doc comment for why the two cases are opposite rather than
+     * inconsistent.
+     *
+     * @param {string|HTMLElement|{controls: (string|HTMLElement), messages?: (string|HTMLElement)}} target - Where to mount.
+     * @param {Object} [options] - As the constructor, plus those below.
+     * @param {Object} [options.apiClient] - The client to wire; when given, this
+     *   instance is wired with `listenTo()` and, unless `initialFetch` is
+     *   `false`, the initial fetch runs.
+     * @param {boolean} [options.initialFetch=true] - Set `false` to wire the
+     *   client without performing the initial fetch. `ApiExplorer` needs this:
+     *   it builds request URLs and never fetches.
+     * @param {AbortSignal} [options.signal] - Cancels the mount; see above.
+     * @param {function(Error): void} [options.onError] - Registered before the
+     *   initial fetch, so a failure of that very first request still reaches it.
+     * @returns {Promise<CalendarControls|null>} The controls, or `null` if cancelled.
+     * @throws {Error} If the options or `target` are invalid, or if the API
+     *   metadata cannot be loaded.
+     */
+    static async mountInto(target, options = {}) {
+        const bag = normalizeComponentOptions(options, 'CalendarControls');
+        const { apiClient, signal, onError, initialFetch } = bag;
+
+        const controls = new CalendarControls(bag);
+        const element = CalendarControls.#targetElement(target);
+        if (
+            true === signal?.aborted ||
+            (null !== element && false === element.isConnected)
+        ) {
+            return null;
+        }
+
+        controls.appendTo(target);
+
+        if (apiClient !== undefined && apiClient !== null) {
+            controls.listenTo(apiClient);
+            if (typeof onError === 'function') {
+                controls.onError(onError);
+            }
+            if (false !== initialFetch) {
+                apiClient._discardRequest(controls.fetch());
+            }
+        }
+
+        return controls;
+    }
 }

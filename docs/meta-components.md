@@ -9,7 +9,7 @@ The library owns wiring, ordering, failure behaviour and defaults. It ships noth
 framework-specific and takes no position on CSS: styling is entirely up to the consumer, through a
 **theme bag** for the common case and the wired child instances for everything else.
 
-This page documents `CalendarResourcePicker` and `DayViewer`.
+This page documents `CalendarResourcePicker`, `DayViewer` and `CalendarControls`.
 
 ## CalendarResourcePicker
 
@@ -530,3 +530,215 @@ const viewer = await DayViewer.mountInto(
     },
 );
 ```
+
+## CalendarControls
+
+Bundles a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` into one mount, wired to one another and
+to an `ApiClient` — with **no renderer**. It exists because the same 45-line wiring block appeared
+byte-for-byte in a `WebCalendar` example and a FullCalendar one, and again, minus the fetching, in an
+API explorer page: the renderer is the axis of variation, and the wiring is not. `CalendarViewer` and
+`ApiExplorer` are both thin compositions of this class with a renderer added.
+
+```javascript
+import { CalendarControls, ApiOptionsFilter } from '@liturgical-calendar/components-js';
+
+const controls = await CalendarControls.mountInto('#calendarOptions', {
+    locale: 'en',
+    apiClient,
+    filter: ApiOptionsFilter.ALL_CALENDARS,
+    theme: {
+        select: 'form-select',
+        label: 'form-label d-block mb-1',
+        riteSelect: { class: 'form-select mb-2' },
+    },
+});
+controls.onCalendarFetched((data) => console.log('Fetched:', data));
+```
+
+### What it bundles
+
+- **The rite's two wires.** `ApiOptions.linkToRiteSelect()` rebuilds the calendar list and disables the
+  temporal options the rite fixes; only `apiClient.listenTo(riteSelect)` turns the rite into a URL path
+  segment. This is the trap the whole meta-component family exists for: wire only the first and the form
+  reads `ambrosian` while every request still goes to `/calendar/roman/`. `listenTo()` installs both,
+  every time.
+- **`onCalendarFetched(cb)` and `onError(cb)`**, replacing `apiClient._eventBus.on('calendarFetched', …)`
+  — a private-field reach that predates `ApiClient.on()` being public, still present in both of the
+  examples this class was extracted from.
+- **The initial fetch, dispatched three ways.** `CalendarSelect` marks each option with
+  `data-calendartype="national"` or `"diocesan"`; an empty value means the General Roman Calendar. So
+  `fetch()` calls `fetchCalendar()` for an empty selection, `fetchNationalCalendar()` for a national one,
+  and `fetchDiocesanCalendar()` for a diocesan one — one of the two examples this class replaces wrote
+  only the first two dispatch branches by hand, so a diocesan initial selection there called
+  `fetchNationalCalendar()` with a diocese id.
+- **Mount ordering.** The rite select is appended first, so it reads first in the form — the same
+  append-then-link convention as `CalendarResourcePicker` and `DayViewer`, kept for form layout, not
+  because `linkToRiteSelect()` requires the rite select to already be attached.
+- **An optional `messages` slot.** Named, it renders the API's `messages` array, one `<tr>` per message,
+  built with `textContent` — not `innerHTML`, unlike both examples this class replaces, so a message
+  containing markup renders as text rather than as elements. Omitted, nothing is rendered. It lives on
+  `CalendarControls` rather than only on `CalendarViewer` because the FullCalendar-style consumer wants
+  it and will never use `CalendarViewer`. A refetch replaces the rows rather than appending to them.
+
+**Two deliberate non-goals:** this class does not call `Input.setGlobalInputClass()` or its siblings —
+those are process-wide mutations that leak onto every other component on the page, and the theme bag is
+the scoped replacement — and it does not absorb any jQuery/Bootstrap-plugin treatment of an individual
+`ApiOptions` input (such as a `multiselect` widget on the holydays-of-obligation input). That stays with
+the consumer, reached through `controls.apiOptions._holydaysOfObligationInput`.
+
+### Constructor options
+
+| Option      | Type                    | Description                                                                                                         |
+| ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `locale`    | `string \| Intl.Locale` | Display locale. `null`/`undefined` take the default `'en'`; anything else throws, naming the type found.            |
+| `filter`    | `ApiOptionsFilter`      | Which `ApiOptions` inputs to show. Default `ApiOptionsFilter.ALL_CALENDARS`.                                        |
+| `theme`     | `Object`                | The theme bag; see below. Omitted, the controls render unstyled markup.                                             |
+| `apiClient` | `ApiClient`             | Binds the `CalendarSelect` and `ApiOptions` to that client's API base. Omitted, binds to the first base registered. |
+
+`mountInto()` additionally accepts:
+
+| Option         | Type                    | Description                                                                                                                           |
+| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiClient`    | `ApiClient`             | Same option, but `mountInto()` also wires it via `listenTo()` and, unless `initialFetch` is `false`, performs the initial fetch.      |
+| `initialFetch` | `boolean`               | Default `true`. Set `false` to wire the client without fetching — `ApiExplorer` needs this: it builds request URLs and never fetches. |
+| `signal`       | `AbortSignal`           | Cancels the mount; see below.                                                                                                         |
+| `onError`      | `function(Error): void` | Registered before the initial fetch, so a failure of that very first request still reaches it.                                        |
+
+### The theme bag
+
+The same HTML-role vocabulary as `CalendarResourcePicker` and `DayViewer` — see
+[that component's section](#the-theme-bags-role-vocabulary) for the general resolution rules, the
+class-name character constraint, and the note on `RiteSelect` having no wrapper concept. Only two flat
+keys and two per-child override keys are understood here:
+
+```javascript
+theme: {
+    select: 'form-select',                       // flat default, applied to riteSelect and calendarSelect
+    label: 'form-label',                          // flat default for their labels
+    riteSelect: { class: 'form-select mb-2', labelText: 'Choose a rite' },
+    calendarSelect: { class: '...', labelClass: '...', wrapperClass: 'col-md-4' },
+}
+```
+
+**`apiOptions` is not a themeable child.** Neither the flat `select`/`label` keys nor a per-child
+`apiOptions` override key reach any of the `ApiOptions` inputs — `filter` controls which inputs render,
+but their styling is untouched by this bag. This is a genuine gap between what `CalendarControls` themes
+and what `DayViewer` themes (its `localeInput` per-child key reaches one specific `ApiOptions` input),
+not an oversight: `ApiOptions` bundles a variable number of inputs depending on `filter`, so there is no
+fixed set of per-child keys to name the way `riteSelect`/`calendarSelect` are named. Reach the individual
+inputs directly through `controls.apiOptions` for anything the theme bag does not cover.
+
+### Public getters
+
+All three throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
+
+| Member           | Returns          | Description                |
+| ---------------- | ---------------- | -------------------------- |
+| `riteSelect`     | `RiteSelect`     | The wired rite select.     |
+| `calendarSelect` | `CalendarSelect` | The wired calendar select. |
+| `apiOptions`     | `ApiOptions`     | The wired `ApiOptions`.    |
+
+### `appendTo()` and its slots
+
+Takes either a single target, mounted into for `controls` only (no messages rendering), or a slots
+object naming `{ controls, messages }`:
+
+```javascript
+controls.appendTo('#calendarOptions'); // controls only
+
+controls.appendTo({
+    controls: '#calendarOptions',
+    messages: '#LitCalMessages tbody',
+});
+```
+
+`controls` is required in the slots form; `messages` is optional, and omitting it means the API's
+`messages` array is never rendered, exactly as omitting it from `mountInto()`'s target does. Callable
+more than once — the children are moved, not copied.
+
+### `mountInto()` versus the constructor
+
+Exactly the same split as `CalendarResourcePicker` and `DayViewer`:
+
+- **`new CalendarControls(options)`** is synchronous and requires an already-initialised `ApiBase`. Pair
+  it with `appendTo(target)`, and wire it separately with `listenTo(apiClient)` if it needs to fetch.
+- **`CalendarControls.mountInto(target, options)`** resolves the target, constructs the controls, mounts
+  them, wires them to `options.apiClient` when given, and — unless `initialFetch` is `false` — performs
+  the initial fetch.
+
+```javascript
+// Constructor + appendTo + listenTo — used when an ApiBase is already known to be ready
+const controls = new CalendarControls({ locale: 'en' });
+controls.appendTo('#mount');
+controls.listenTo(apiClient);
+
+// mountInto — constructs, mounts, wires and fetches in one call
+const controls = await CalendarControls.mountInto('#mount', { locale: 'en', apiClient });
+
+// ApiExplorer's shape — wired, but never fetching
+const controls = await CalendarControls.mountInto('#mount', {
+    locale: 'en',
+    apiClient,
+    initialFetch: false,
+});
+```
+
+### Reject versus resolve
+
+| Kind                                                                                 | Behaviour                                                                                                                                                     |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid options (unparseable locale, malformed theme, a target that matches nothing) | **Rejects.** A typo should not be silently papered over.                                                                                                      |
+| The API metadata cannot be loaded (API down, `ApiClient` never initialised)          | **Rejects.**                                                                                                                                                  |
+| A failed initial fetch (API down mid-session, network error)                         | **Resolves** with mounted, fully wired controls. The failure reaches `onError()` if one was registered, and falls back to `console.error` only when none was. |
+
+`mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was
+already aborted, or when `target` — or a slots object's `controls` element — was passed as an already
+resolved `HTMLElement` that has since left the document.
+
+**Why this component has no failure control.** `CalendarResourcePicker` is the one component in this
+family that renders a stand-in when its metadata cannot load — a disabled, `is-invalid` `<select>`
+carrying an error message — and it does so because it substitutes for a **single required form field**,
+where an empty slot is indistinguishable from "still loading" and produces an end-to-end timeout with
+nothing to point at. `CalendarControls` bundles a whole form, and a whole form has no equivalent
+stand-in: if the metadata is gone there is no meaningful partial form to render — a `RiteSelect` and
+`CalendarSelect` with no calendars to list are not a smaller working form, they are no form at all. So
+construction is simply left to throw, exactly as `DayViewer` already does, and this is a deliberate
+difference from the picker rather than an inconsistency waiting to be "fixed" into agreement with it.
+
+**Why the initial fetch's rejection is different.** `mountInto()` resolves to the controls, not to the
+calendar data, so the initial fetch's promise is dropped — the exact fire-and-forget case
+`ApiClient#_discardRequest` exists for (the same seam `LiturgyOfAnyDay` uses for its own three dropped
+requests). Routing it through that seam, rather than reimplementing the log-or-suppress decision by
+hand, means a dropped initial fetch can never produce an unhandled rejection, and is logged to
+`console.error` only when the failure reached no `calendarFetchFailed` listener — `onError()`, registered
+immediately before the fetch, counts as one. This is the opposite case from `fetch()` itself, whose
+returned promise is handed directly to the caller and never routed through `_discardRequest`: a promise
+the caller holds and can `.catch()` or `await`/`try` would otherwise be logged twice. See `fetch()`'s own
+doc comment in the source for the full reasoning.
+
+### `dispose()`
+
+```javascript
+const controls = await CalendarControls.mountInto('#mount', { locale: 'en', apiClient });
+controls.onError((error) => console.error(error));
+
+// Scope changed: tear down and rebuild.
+controls.dispose();
+```
+
+`dispose()` is idempotent, and a disposed instance throws on further use rather than failing quietly —
+every getter, `appendTo()`, `listenTo()`, `onCalendarFetched()`, `onError()` and `fetch()` all throw
+naming "disposed" once it has run.
+
+**What `dispose()` releases:** every subscription these controls made on the client's event bus through
+`onCalendarFetched()`/`onError()`/`listenTo()` — including the messages renderer, when a `messages` slot
+was named — all unsubscribed via `EventEmitter.off()`. Both mounts (`controls` and, if named, `messages`)
+are emptied.
+
+**What survives `dispose()`, and why it must — the same gap `DayViewer.dispose()` documents:** the
+`change` listeners `ApiClient.listenTo()` attaches internally to the rite select, calendar select and
+`ApiOptions` inputs. These are anonymous closures created inside `ApiClient`'s own private
+`#listenToCalendarSelect`/`#listenToRiteSelect`/`#listenToApiOptions` methods, attached via
+`addEventListener`, with no reference stored anywhere `CalendarControls` — or `ApiClient` itself — can
+reach. A disposed instance's own DOM and event-bus footprint are gone, but the `ApiClient` it was wired
+to can still be driven by the same selects if a caller kept a separate reference to them and the client.
