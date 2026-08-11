@@ -1,12 +1,15 @@
 /** @jest-environment jsdom */
 import { describe, it, expect, beforeEach } from '@jest/globals';
-// `ApiBase` is imported from the published package, NOT from `../ApiClient/ApiBase.js`,
-// and that is load-bearing: `CalendarResourcePicker.render.js` imports the picker from
-// `@liturgical-calendar/components-js`, which resolves to `dist/`, a separate module
-// graph from `src/`. Seeding the `src`-graph `ApiBase` registry would leave the
-// `dist`-graph `ApiBase` the picker actually reads from unloaded — two singletons,
-// not one — and every fetch inside `mountInto()` would see no registered base.
-import { ApiBase } from '@liturgical-calendar/components-js';
+// `ApiBase` is imported from the relative `src/` path, matching
+// `CalendarResourcePicker.render.js`'s own imports (see that file's header comment):
+// both must resolve to the SAME module graph, or seeding this test's `ApiBase`
+// registry would leave the picker's own `ApiBase` singleton unloaded — two
+// singletons, not one — and every fetch inside `mountInto()` would see no
+// registered base. `render.js` deliberately avoids the `@liturgical-calendar/
+// components-js` package specifier (which resolves to `dist/`, absent on a clean
+// checkout before the first `yarn compile`), so this test follows suit rather than
+// reintroducing a `dist/` dependency through its own import instead.
+import ApiBase from '../ApiClient/ApiBase.js';
 import { render } from '../stories/1_CombinedComponents/CalendarResourcePicker.render.js';
 
 // Imports `CalendarResourcePicker.render.js` rather than the sibling
