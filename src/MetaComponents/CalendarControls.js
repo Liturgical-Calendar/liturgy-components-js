@@ -17,7 +17,11 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
-import { normalizeComponentOptions } from '../OptionsValidation.js';
+import {
+    normalizeComponentOptions,
+    assertPlainOptions,
+    describeType,
+} from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { assertTheme, resolveChildTheme } from './Theme.js';
 
@@ -42,6 +46,12 @@ export default class CalendarControls {
 
     /** @type {HTMLElement|null} */
     #mount = null;
+
+    /** @type {HTMLElement|null} */
+    #messagesMount = null;
+
+    /** @type {boolean} */
+    #messagesSubscribed = false;
 
     /** @type {boolean} */
     #disposed = false;
@@ -175,31 +185,37 @@ export default class CalendarControls {
      * Resolves a mount target to an element.
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
+     * @param {string} slot - The slot name, for the message.
      * @param {string} caller - The calling method's name, for the message.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, caller) {
+    static #requireElement(target, slot, caller) {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `CalendarControls.${caller}: target must be a non-empty CSS selector or an HTMLElement.`,
+                `CalendarControls.${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `CalendarControls.${caller}: Element not found: ${target}`,
+                `CalendarControls.${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
     }
 
     /**
-     * Mounts the three children into the target, rite select first so it reads
-     * first in the form.
+     * Mounts the three children, and optionally a messages table, rite select
+     * first so it reads first in the form.
+     *
+     * Takes either a single target — mounted into for `controls` only, with no
+     * messages rendering — or a slots object naming `{ controls, messages }`.
+     * `controls` is required in the slots form; `messages` is optional, and its
+     * absence means the API's `messages` array is never rendered.
      *
      * `linkToRiteSelect()` does NOT require the select to be in the document —
      * it only calls `addEventListener` and reads `.value`, both fine detached —
@@ -207,16 +223,54 @@ export default class CalendarControls {
      *
      * Callable more than once; the children are moved rather than copied.
      *
-     * @param {string|HTMLElement} target - Where to mount.
+     * @param {string|HTMLElement|{controls: (string|HTMLElement), messages?: (string|HTMLElement)}} target - Where to mount.
      * @returns {void}
+     * @throws {Error} If this instance has been disposed, or `target` is
+     *   neither a single target nor a slots object naming `controls`.
      */
     appendTo(target) {
         this.#assertUsable();
-        const element = CalendarControls.#requireElement(target, 'appendTo');
+        const single =
+            typeof target === 'string' || target instanceof HTMLElement;
+
+        // Anything that is neither a single target NOR a plausible slots object
+        // must be rejected here, by name, rather than silently mounting nothing —
+        // see `DayViewer.appendTo()` for the same guard against a bare number or
+        // other malformed target.
+        if (false === single) {
+            try {
+                assertPlainOptions(target, 'CalendarControls.appendTo');
+            } catch {
+                throw new Error(
+                    `CalendarControls.appendTo: target must be a CSS selector, an HTMLElement, or a slots object naming { controls, messages } targets, but found type: ${describeType(target)}`,
+                );
+            }
+        }
+        const slots = single ? { controls: target } : target;
+        if (false === Object.hasOwn(slots, 'controls')) {
+            throw new Error(
+                "CalendarControls.appendTo: a slots object must name a 'controls' target.",
+            );
+        }
+
+        const element = CalendarControls.#requireElement(
+            slots.controls,
+            'controls',
+            'appendTo',
+        );
         this.#mount = element;
         this.#riteSelect.appendTo(element);
         this.#calendarSelect.appendTo(element);
         this.#apiOptions.appendTo(element);
+
+        if (Object.hasOwn(slots, 'messages')) {
+            this.#messagesMount = CalendarControls.#requireElement(
+                slots.messages,
+                'messages',
+                'appendTo',
+            );
+            this.#registerMessagesRenderer();
+        }
     }
 
     /**
@@ -266,6 +320,7 @@ export default class CalendarControls {
         for (const callback of this.#errorCallbacks) {
             this.#subscribe('calendarFetchFailed', callback);
         }
+        this.#registerMessagesRenderer();
 
         return this;
     }
@@ -322,6 +377,61 @@ export default class CalendarControls {
         const listener = (payload) => callback(payload);
         this.#apiClient._eventBus.on(event, listener);
         this.#subscriptions.push({ event, listener });
+    }
+
+    /**
+     * Registers `#renderMessages()` on `calendarFetched`, once a client exists
+     * and a messages slot was named.
+     *
+     * `appendTo()` may run before `listenTo()`, in which case `#subscribe()` is
+     * still a no-op and this leaves `#messagesSubscribed` false; `listenTo()`
+     * calls this again once `#apiClient` is set, which is what actually performs
+     * the registration. Guarded so a call from both places — or a repeated
+     * `appendTo()` naming `messages` again — never double-subscribes.
+     *
+     * @returns {void}
+     */
+    #registerMessagesRenderer() {
+        if (
+            null === this.#messagesMount ||
+            true === this.#messagesSubscribed ||
+            null === this.#apiClient
+        ) {
+            return;
+        }
+        this.#subscribe('calendarFetched', (data) =>
+            this.#renderMessages(data),
+        );
+        this.#messagesSubscribed = true;
+    }
+
+    /**
+     * Renders the API's `messages` array into the messages slot.
+     *
+     * Rows are built with `textContent`, not `innerHTML`. Both downstream
+     * examples interpolate the API's strings into an HTML string, which would
+     * render any markup a message contained.
+     *
+     * Replaces rather than appends, so a refetch does not accumulate rows.
+     *
+     * @param {Object} data - The fetched calendar payload.
+     * @returns {void}
+     */
+    #renderMessages(data) {
+        if (null === this.#messagesMount) {
+            return;
+        }
+        const messages = Array.isArray(data?.messages) ? data.messages : [];
+        const rows = messages.map((message, index) => {
+            const tr = document.createElement('tr');
+            const indexCell = document.createElement('td');
+            indexCell.textContent = String(index);
+            const messageCell = document.createElement('td');
+            messageCell.textContent = String(message);
+            tr.append(indexCell, messageCell);
+            return tr;
+        });
+        this.#messagesMount.replaceChildren(...rows);
     }
 
     /**
