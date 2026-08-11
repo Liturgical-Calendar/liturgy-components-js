@@ -90,6 +90,24 @@ describe('DayViewer slot mounting', () => {
         viewer.appendTo({ rite: '#rite', calendar: '#calendar' });
         expect(viewer.riteSelect._domElement.isConnected).toBe(true);
     });
+
+    // A malformed target must throw, naming DayViewer, rather than either mounting
+    // nothing silently (a number coerces through Object.hasOwn to "no slot named")
+    // or throwing an unnamed raw TypeError (null throws inside Object.hasOwn itself).
+    it('rejects a number target, naming DayViewer', () => {
+        const viewer = new DayViewer({ locale: 'en' });
+        expect(() => viewer.appendTo(42)).toThrow(/DayViewer/);
+    });
+
+    it('rejects a null target, naming DayViewer', () => {
+        const viewer = new DayViewer({ locale: 'en' });
+        expect(() => viewer.appendTo(null)).toThrow(/DayViewer/);
+    });
+
+    it('rejects an array target, naming DayViewer', () => {
+        const viewer = new DayViewer({ locale: 'en' });
+        expect(() => viewer.appendTo(['#single'])).toThrow(/DayViewer/);
+    });
 });
 
 describe('DayViewer title', () => {
@@ -125,10 +143,18 @@ describe('DayViewer labels', () => {
         expect(text).toContain('Anno');
     });
 
-    it('falls back to English for an untranslated locale', () => {
+    // The fallback is per KEY, not per LOCALE: `zh` has no `DAY` translation but
+    // does have `MONTH` ('月'). Asserting only the English fallback ('Day') cannot
+    // distinguish this implementation from a per-locale one that reverts a locale
+    // missing ANY key to English wholesale — that wrong implementation would also
+    // show 'Day', but it would show 'Month' instead of '月'. Asserting both in the
+    // same render is what actually pins the per-key behaviour the design depends on.
+    it('falls back to English per key, not per locale, for an untranslated locale', () => {
         const viewer = new DayViewer({ locale: 'zh' });
         viewer.appendTo('#single');
         const text = document.getElementById('single').textContent;
         expect(text).toContain('Day');
+        expect(text).toContain('月');
+        expect(text).not.toContain('Month');
     });
 });

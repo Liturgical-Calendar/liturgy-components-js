@@ -12,7 +12,11 @@ import ApiOptions from '../ApiOptions/ApiOptions.js';
 import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
-import { normalizeComponentOptions } from '../OptionsValidation.js';
+import {
+    normalizeComponentOptions,
+    assertPlainOptions,
+    describeType,
+} from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { assertTheme, resolveChildTheme } from './Theme.js';
 
@@ -247,6 +251,25 @@ export default class DayViewer {
     appendTo(target) {
         const single =
             typeof target === 'string' || target instanceof HTMLElement;
+
+        // Anything that is neither a single target NOR a plausible slots object
+        // must be rejected here, by name: `Object.hasOwn(42, 'rite')` coerces a
+        // number to an object and returns `false` for every slot name, so without
+        // this guard the mount loop below silently does nothing, and `null`
+        // reaches `Object.hasOwn(null, ...)` and throws an unnamed raw TypeError.
+        // `assertPlainOptions` already rejects null, arrays, and any non-plain
+        // object (an `Intl.Locale`, a `Map`, ...) — exactly the shapes that are
+        // neither a target nor a slots object — so it is reused here rather than
+        // re-implementing the same check.
+        if (false === single) {
+            try {
+                assertPlainOptions(target, 'DayViewer.appendTo');
+            } catch {
+                throw new Error(
+                    `DayViewer.appendTo: target must be a CSS selector, an HTMLElement, or a slots object naming { rite, calendar, locale, liturgy } targets, but found type: ${describeType(target)}`,
+                );
+            }
+        }
         const slots = single
             ? Object.fromEntries(SLOT_NAMES.map((name) => [name, target]))
             : target;
