@@ -5,6 +5,7 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import CalendarControls from '../MetaComponents/CalendarControls.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
+import Messages from '../Messages.js';
 
 const API_URL = 'http://localhost:8000';
 
@@ -79,6 +80,55 @@ describe('CalendarControls construction', () => {
         expect(controls.calendarSelect._domElement.className).toBe(
             'form-select',
         );
+    });
+
+    // Regression coverage for a Critical fix-round finding: theming only the
+    // calendar select's labelClass (no labelText) used to assign `text:
+    // undefined` as an OWN property, which CalendarSelect.label() rejects.
+    it('themes the calendar select label class without a labelText, falling back to the catalogue text', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { calendarSelect: { labelClass: 'form-label' } },
+        });
+        controls.appendTo('#mount');
+        const label =
+            controls.calendarSelect._domElement.previousElementSibling;
+        expect(label.tagName).toBe('LABEL');
+        expect(label.className).toBe('form-label');
+        expect(label.textContent).toBe(Messages['en']['SELECT_A_CALENDAR']);
+    });
+
+    // The flat `{ select, label }` bag is the simplest theme the API accepts —
+    // the canonical first thing a Bootstrap consumer writes — and must not throw.
+    it('themes both selects from the flat { select, label } bag without throwing', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { select: 'form-select', label: 'form-label' },
+        });
+        expect(() => controls.appendTo('#mount')).not.toThrow();
+        const calendarLabel =
+            controls.calendarSelect._domElement.previousElementSibling;
+        expect(calendarLabel.className).toBe('form-label');
+        expect(calendarLabel.textContent).toBe(
+            Messages['en']['SELECT_A_CALENDAR'],
+        );
+    });
+
+    it('still applies a themed labelText on the calendar select', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                calendarSelect: {
+                    labelClass: 'form-label',
+                    labelText: 'Choose a calendar',
+                },
+            },
+        });
+        controls.appendTo('#mount');
+        const label =
+            controls.calendarSelect._domElement.previousElementSibling;
+        expect(label.className).toBe('form-label');
+        expect(label.textContent).toBe('Choose a calendar');
     });
 });
 

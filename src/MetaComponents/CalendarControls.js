@@ -15,6 +15,7 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
+import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
@@ -62,6 +63,9 @@ export default class CalendarControls {
         if (locale !== undefined && locale !== null) {
             this.#locale = canonicalizeLocale(locale, 'CalendarControls');
         }
+        // Used only for the calendar select's default label text fallback below —
+        // its own children receive `this.#locale` directly and derive their own.
+        const language = new Intl.Locale(this.#locale).language;
         assertTheme(theme, 'CalendarControls');
         this.#base = resolveBase(apiClient, 'CalendarControls');
 
@@ -101,9 +105,17 @@ export default class CalendarControls {
             if (Object.hasOwn(calendarTheme, 'labelClass')) {
                 labelOptions.class = calendarTheme.labelClass;
             }
+            // ALWAYS a real string, unlike the rite select above: unlike
+            // `RiteSelect.label()`, `CalendarSelect.label()` has no English
+            // fallback of its own when `text` is omitted — it reads
+            // `Messages[language]['SELECT_A_CALENDAR']` directly, which throws
+            // for any locale outside the catalogue (e.g. `ceb`). Matches
+            // `CalendarResourcePicker`'s and `DayViewer`'s own calendar-select
+            // label handling for the same reason.
             labelOptions.text = Object.hasOwn(calendarTheme, 'labelText')
                 ? calendarTheme.labelText
-                : undefined;
+                : (Messages[language]?.['SELECT_A_CALENDAR'] ??
+                  Messages['en']['SELECT_A_CALENDAR']);
             this.#calendarSelect.label(labelOptions);
         }
         if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
