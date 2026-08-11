@@ -9,6 +9,7 @@
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
+import ApiClient from '../ApiClient/ApiClient.js';
 import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
@@ -47,6 +48,12 @@ export default class DayViewer {
 
     /** @type {HTMLElement[]} */
     #mounts = [];
+
+    /** @type {boolean} */
+    #disposed = false;
+
+    /** @type {ApiClient|null} */
+    #apiClient = null;
 
     /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
@@ -205,6 +212,62 @@ export default class DayViewer {
     /** @returns {LiturgyOfAnyDay} The wired liturgy widget. */
     get liturgy() {
         return this.#liturgy;
+    }
+
+    /**
+     * The locale chosen by the cascade and selected in the locale input.
+     *
+     * @returns {string} The selected locale.
+     */
+    get selectedLocale() {
+        return this.#selectedLocale;
+    }
+
+    /**
+     * Guards every method a disposed viewer cannot honour.
+     *
+     * A disposed component that quietly does nothing is worse than one that
+     * throws: the caller's next assertion then fails somewhere unrelated.
+     *
+     * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
+     */
+    #assertUsable() {
+        if (true === this.#disposed) {
+            throw new Error(
+                'DayViewer: this viewer has been disposed and can no longer be used.',
+            );
+        }
+    }
+
+    /**
+     * Wires this viewer's controls to an `ApiClient`.
+     *
+     * The rite needs BOTH wires, and this is the whole reason the meta-component
+     * exists. `linkToRiteSelect()` rebuilds the calendar list and disables the
+     * temporal options the rite fixes; only `listenTo()` on the client turns the
+     * rite into a path segment. Wire just the first and the failure is silent: the
+     * form reads `ambrosian` while every request still goes to `/calendar/roman/`.
+     *
+     * `linkToRiteSelect()` is called here rather than in the constructor because it
+     * reads the rite select's element to attach its change listener, so the select
+     * must already be mounted.
+     *
+     * @param {ApiClient} apiClient - The client to drive.
+     * @returns {DayViewer} This instance.
+     */
+    listenTo(apiClient) {
+        this.#assertUsable();
+        this.#apiOptions
+            .linkToCalendarSelect(this.#calendarSelect)
+            .linkToRiteSelect(this.#riteSelect);
+        this.#liturgy.listenTo(apiClient);
+        apiClient
+            .listenTo(this.#calendarSelect)
+            .listenTo(this.#riteSelect)
+            .listenTo(this.#apiOptions);
+        this.#apiClient = apiClient;
+        return this;
     }
 
     /**
