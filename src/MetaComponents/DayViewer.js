@@ -157,6 +157,31 @@ export default class DayViewer {
         // because a consumer styling them differently from one another is a case
         // nobody has needed; `liturgy` getter access covers it if that changes.
         const controls = resolveChildTheme(theme, 'dateControls', 'input');
+
+        // `resolveChildTheme` can hand back a `wrapperClass` (from the flat
+        // `theme.wrapper` key, or a `dateControls.wrapperClass` override) with no
+        // `wrapper` element TYPE alongside it — the flat key supplies a class only.
+        // `dayInputConfig()`/`monthInputConfig()`/`yearInputConfig()` each call
+        // `Input.wrapperClass()` only when a wrapper element already exists, and
+        // `DayInput`/`MonthInput`/`YearInput` start with none, so a bare
+        // `{ select, label, wrapper }` bag — the theme bag's own canonical example,
+        // and the shape most consumers reach for first — crashed here with "Wrapper
+        // has not been set". `CalendarResourcePicker` never hits this because none of
+        // its children read `wrapperClass` without first reading `wrapper` too, so
+        // the fix belongs here, at the one call site that has the gap, rather than in
+        // `resolveChildTheme` itself, which every other meta-component also calls and
+        // has no such gap to paper over. `'div'` matches the element
+        // `LiturgyOfAnyDay` already wraps its own date controls in, so this changes
+        // no visual structure a caller could not already have gotten by passing
+        // `dateControls: { wrapper: 'div', wrapperClass: '...' }` explicitly — it
+        // only supplies the same default automatically for the flat key.
+        if (
+            Object.hasOwn(controls, 'wrapperClass') &&
+            false === Object.hasOwn(controls, 'wrapper')
+        ) {
+            controls.wrapper = 'div';
+        }
+
         this.#liturgy
             .dayInputConfig({ ...controls, labelText: this.#message('DAY') })
             .monthInputConfig({

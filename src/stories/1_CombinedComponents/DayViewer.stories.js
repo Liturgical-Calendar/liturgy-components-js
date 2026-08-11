@@ -34,6 +34,7 @@ export const Bootstrap = {
             select: 'form-select',
             label: 'form-label',
             input: 'form-control',
+            wrapper: 'mb-3',
             riteSelect: { class: 'form-select mb-2' },
         },
     },

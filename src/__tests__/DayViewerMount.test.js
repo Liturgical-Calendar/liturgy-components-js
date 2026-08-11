@@ -127,6 +127,58 @@ describe('DayViewer.mountInto', () => {
         expect(seen.length).toBe(1);
     });
 
+    // Finding 2 of fix round 1: the two tests above exercise onError/fetch()
+    // through the MANUAL new DayViewer() + appendTo() + onError() + listenTo() +
+    // fetch() sequence the brief specified, so `mountInto()`'s OWN internal
+    // `viewer.fetch().catch(...)` — including its `console.error` suppression,
+    // which is the entire reason `onError` exists — was never exercised at the
+    // factory level. This pins it there directly.
+    it('mountInto() routes a failed initial fetch to a registered onError without logging to console', async () => {
+        global.fetch = jest.fn(() => Promise.reject(new Error('network down')));
+        const apiClient = await ApiClient.init(API_URL).catch(() => null);
+        const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        const seen = [];
+
+        const viewer = await DayViewer.mountInto('#single', {
+            locale: 'en',
+            apiClient,
+            onError: (error) => seen.push(error),
+        });
+        // mountInto()'s initial fetch is fire-and-forget from the caller's side —
+        // the returned promise resolves to the viewer, not to the fetch outcome —
+        // so its rejection is let settle on a fresh microtask/macrotask turn before
+        // asserting on it.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(viewer).toBeInstanceOf(DayViewer);
+        expect(seen.length).toBeGreaterThan(0);
+        expect(errorSpy).not.toHaveBeenCalled();
+        errorSpy.mockRestore();
+    });
+
+    // The negative space of the test above: with no onError callback registered,
+    // mountInto()'s fallback DOES log — proving the suppression above is actually
+    // conditional on a registered callback, not just always-on.
+    it('mountInto() falls back to console.error when no onError callback is registered', async () => {
+        global.fetch = jest.fn(() => Promise.reject(new Error('network down')));
+        const apiClient = await ApiClient.init(API_URL).catch(() => null);
+        const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+
+        const viewer = await DayViewer.mountInto('#single', {
+            locale: 'en',
+            apiClient,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(viewer).toBeInstanceOf(DayViewer);
+        expect(errorSpy).toHaveBeenCalled();
+        errorSpy.mockRestore();
+    });
+
     it('does not mount when the signal is already aborted', async () => {
         const apiClient = await ApiClient.init(API_URL);
         const controller = new AbortController();

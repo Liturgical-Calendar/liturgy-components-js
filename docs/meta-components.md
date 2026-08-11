@@ -272,7 +272,7 @@ theme: {
     select: 'form-select',                      // flat default, applied to every <select> child
     label: 'form-label',                        // flat default for every child's label
     input: 'form-control',                      // flat default for every text/number input (the date controls)
-    wrapper: 'mb-3',                             // flat default wrapper class — see the caution below
+    wrapper: 'mb-3',                             // flat default wrapper class — see the note below
     riteSelect: { class: 'form-select mb-2' },   // per-child override for the RiteSelect
     calendarSelect: { class: '...' },            // per-child override for the CalendarSelect
     localeInput: { class: '...' },               // per-child override for the ApiOptions locale input
@@ -285,13 +285,16 @@ theme: {
 differently from one another is a case nobody has needed, and the `liturgy` getter (below) reaches the
 individual inputs directly if that changes.
 
-**Caution:** the flat `wrapper` key supplies only a wrapper **class**, not a wrapper **element type**.
-`LiturgyOfAnyDay`'s date inputs require an element type (`wrapper('div')`, say) to already be set before
-a wrapper class can be applied to them — a precondition `DayViewer` does not currently paper over. A
-flat `theme.wrapper` therefore throws once it reaches the date controls unless `dateControls` also
-supplies a `wrapper` key naming the element type. This is a real, load-bearing gap between the two
-components rather than an oversight in this documentation; avoid the flat `wrapper` key with `DayViewer`
-until it is closed, and use `theme.dateControls = { wrapper: 'div', wrapperClass: '...' }` instead.
+**Note on the flat `wrapper` key and the date controls:** the flat `wrapper` key supplies only a wrapper
+**class**, not a wrapper **element type**, and `LiturgyOfAnyDay`'s date inputs need an element type
+(`wrapper('div')`, say) to already exist before a wrapper class can be applied to them. `DayViewer`
+supplies that default (`'div'`) automatically whenever a flat `theme.wrapper` — or a `dateControls`
+override that names `wrapperClass` without `wrapper` — would otherwise reach the date controls with no
+element type, so the flat key works exactly as it does for every other child. `'div'` is also what
+`LiturgyOfAnyDay` already wraps its own date controls container in, so nothing about the rendered
+structure changes from mounting the widget standalone. To use a **different** wrapper element for the
+date controls specifically, name it explicitly: `theme.dateControls = { wrapper: 'span', wrapperClass:
+'...' }`.
 
 ### Public members
 
