@@ -88,15 +88,26 @@ export default class DayViewer {
         this.#language = new Intl.Locale(this.#locale).language;
         assertTheme(theme, 'DayViewer');
 
-        // No `text` on the rite label: omitting it lets RiteSelect supply its own
-        // localized label rather than forcing a hardcoded English one.
+        // No `text` on the rite label when `labelText` was not themed: omitting it
+        // lets RiteSelect supply its own localized label (with its own English
+        // fallback) rather than forcing a hardcoded one.
         const riteTheme = resolveChildTheme(theme, 'riteSelect');
         this.#riteSelect = new RiteSelect({ locale: this.#locale });
         if (Object.hasOwn(riteTheme, 'class')) {
             this.#riteSelect.class(riteTheme.class);
         }
-        if (Object.hasOwn(riteTheme, 'labelClass')) {
-            this.#riteSelect.label({ class: riteTheme.labelClass });
+        if (
+            Object.hasOwn(riteTheme, 'labelClass') ||
+            Object.hasOwn(riteTheme, 'labelText')
+        ) {
+            const riteLabelOptions = {};
+            if (Object.hasOwn(riteTheme, 'labelClass')) {
+                riteLabelOptions.class = riteTheme.labelClass;
+            }
+            if (Object.hasOwn(riteTheme, 'labelText')) {
+                riteLabelOptions.text = riteTheme.labelText;
+            }
+            this.#riteSelect.label(riteLabelOptions);
         }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');
@@ -108,10 +119,17 @@ export default class DayViewer {
         if (Object.hasOwn(calendarTheme, 'class')) {
             this.#calendarSelect.class(calendarTheme.class);
         }
-        if (Object.hasOwn(calendarTheme, 'labelClass')) {
+        if (
+            Object.hasOwn(calendarTheme, 'labelClass') ||
+            Object.hasOwn(calendarTheme, 'labelText')
+        ) {
             this.#calendarSelect.label({
-                class: calendarTheme.labelClass,
-                text: this.#message('SELECT_A_CALENDAR'),
+                ...(Object.hasOwn(calendarTheme, 'labelClass')
+                    ? { class: calendarTheme.labelClass }
+                    : {}),
+                text: Object.hasOwn(calendarTheme, 'labelText')
+                    ? calendarTheme.labelText
+                    : this.#message('SELECT_A_CALENDAR'),
             });
         }
         if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
@@ -129,8 +147,27 @@ export default class DayViewer {
         if (Object.hasOwn(localeTheme, 'labelClass')) {
             this.#apiOptions._localeInput.labelClass(localeTheme.labelClass);
         }
-        this.#apiOptions._localeInput._labelElement.textContent =
-            this.#message('LANGUAGE');
+        // `wrapperClass` can arrive from the flat `theme.wrapper` key too, which —
+        // like the date controls below — supplies a class only, with no wrapper
+        // element TYPE. `Input.wrapperClass()` requires a wrapper element to
+        // already exist, so `'div'` is supplied as the default type whenever an
+        // override does not name one explicitly. This was previously the one
+        // per-child block in this constructor that read `class`/`labelClass` but
+        // never `wrapperClass` at all — `LocaleInput` supports a wrapper exactly as
+        // `CalendarSelect` does, so the flat `theme.wrapper` key silently applied to
+        // every OTHER select-role child and not to this one.
+        if (Object.hasOwn(localeTheme, 'wrapperClass')) {
+            this.#apiOptions._localeInput.wrapper(localeTheme.wrapper ?? 'div');
+            this.#apiOptions._localeInput.wrapperClass(
+                localeTheme.wrapperClass,
+            );
+        }
+        this.#apiOptions._localeInput._labelElement.textContent = Object.hasOwn(
+            localeTheme,
+            'labelText',
+        )
+            ? localeTheme.labelText
+            : this.#message('LANGUAGE');
         this.#apiOptions._localeInput.defaultValue(this.#language);
 
         this.#liturgy = new LiturgyOfAnyDay({ locale: this.#locale });
@@ -321,9 +358,14 @@ export default class DayViewer {
      * rite into a path segment. Wire just the first and the failure is silent: the
      * form reads `ambrosian` while every request still goes to `/calendar/roman/`.
      *
-     * `linkToRiteSelect()` is called here rather than in the constructor because it
-     * reads the rite select's element to attach its change listener, so the select
-     * must already be mounted.
+     * `linkToRiteSelect()` is called here, from `listenTo()`, rather than in the
+     * constructor — matching `mountInto()`'s own append-then-wire order and
+     * `CalendarResourcePicker`'s append-then-link convention for the same pairing.
+     * This is a house convention, not a DOM requirement: `CalendarSelect`'s half of
+     * `linkToRiteSelect()` only calls `addEventListener` and reads `.value`, both of
+     * which work identically on a detached node, and rebuilds its option list
+     * synchronously from the in-memory calendar index rather than reading anything
+     * from the document.
      *
      * @param {ApiClient} apiClient - The client to drive.
      * @returns {DayViewer} This instance.
@@ -364,22 +406,26 @@ export default class DayViewer {
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
      * @param {string} slot - The slot name, for the message.
+     * @param {string} caller - The method name the caller invoked, for the
+     *   message — `'appendTo'` for a direct call, `'mountInto'` when this runs
+     *   inside that factory, so the thrown message names the method the caller
+     *   actually used rather than always naming `appendTo`.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, slot) {
+    static #requireElement(target, slot, caller) {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `DayViewer.appendTo: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `DayViewer.${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `DayViewer.appendTo: Element not found for the ${slot} slot: ${target}`,
+                `DayViewer.${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -398,10 +444,14 @@ export default class DayViewer {
      * Returns `undefined`, matching every other component in this library.
      *
      * @param {string|HTMLElement|Object<string, string|HTMLElement>} target - Slots, or one target.
+     * @param {string} [caller='appendTo'] - Internal only: the method name to
+     *   report in a thrown message. `mountInto()` passes `'mountInto'` here so
+     *   that a bad target it forwards is reported under the name the caller
+     *   actually used, rather than always under `appendTo`.
      * @returns {void}
      * @throws {Error} If this viewer has been disposed.
      */
-    appendTo(target) {
+    appendTo(target, caller = 'appendTo') {
         this.#assertUsable();
         const single =
             typeof target === 'string' || target instanceof HTMLElement;
@@ -417,10 +467,10 @@ export default class DayViewer {
         // re-implementing the same check.
         if (false === single) {
             try {
-                assertPlainOptions(target, 'DayViewer.appendTo');
+                assertPlainOptions(target, `DayViewer.${caller}`);
             } catch {
                 throw new Error(
-                    `DayViewer.appendTo: target must be a CSS selector, an HTMLElement, or a slots object naming { rite, calendar, locale, liturgy } targets, but found type: ${describeType(target)}`,
+                    `DayViewer.${caller}: target must be a CSS selector, an HTMLElement, or a slots object naming { rite, calendar, locale, liturgy } targets, but found type: ${describeType(target)}`,
                 );
             }
         }
@@ -439,7 +489,11 @@ export default class DayViewer {
             if (false === Object.hasOwn(slots, name)) {
                 continue;
             }
-            const element = DayViewer.#requireElement(slots[name], name);
+            const element = DayViewer.#requireElement(
+                slots[name],
+                name,
+                caller,
+            );
             this.#mounts.push(element);
             children[name].appendTo(element);
         }
@@ -512,15 +566,23 @@ export default class DayViewer {
      *   only ever be partial, with these subscriptions still firing against a
      *   detached tree. The mounted DOM is also emptied, and `#errorCallbacks` and
      *   `#subscriptions` are cleared.
-     * - **NOT released, and cannot be from here:** the `change` listeners
-     *   `ApiClient.listenTo()` attaches to the calendar select, rite select and
-     *   `ApiOptions` inputs. Those are anonymous closures created inside
-     *   `ApiClient`'s own private `#listenToCalendarSelect`/`#listenToRiteSelect`/
-     *   `#listenToApiOptions` methods, attached via `addEventListener`, with no
-     *   reference stored anywhere `DayViewer` can reach — not even by `ApiClient`
-     *   itself. This is a pre-existing gap in `ApiClient`, not something this
-     *   method can close, and disposing a viewer does not stop its selects from
-     *   still driving that `ApiClient` if the same client is reused elsewhere.
+     * - **NOT released, and cannot be from here:** two gaps, both pre-existing in
+     *   the wired components and neither closable from `DayViewer` itself:
+     *   - The `change` listeners `ApiClient.listenTo()` attaches to the calendar
+     *     select, rite select and `ApiOptions` inputs. Those are anonymous closures
+     *     created inside `ApiClient`'s own private `#listenToCalendarSelect`/
+     *     `#listenToRiteSelect`/`#listenToApiOptions` methods, attached via
+     *     `addEventListener`, with no reference stored anywhere `DayViewer` can
+     *     reach — not even by `ApiClient` itself.
+     *   - The `calendarFetched` listener `LiturgyOfAnyDay.listenTo()` attaches to
+     *     the client's event bus, for the same reason: an anonymous closure inside
+     *     a method `DayViewer` does not own, with no reference `DayViewer` (or
+     *     `LiturgyOfAnyDay`) can reach to unsubscribe.
+     *
+     *   Disposing a viewer therefore does not stop its selects or its `liturgy`
+     *   widget from still driving the same `ApiClient` if a caller kept a separate
+     *   reference to them and the client — exactly as `CalendarResourcePicker.dispose()`
+     *   documents for the same reason.
      *
      * Idempotent; further use throws.
      *
@@ -577,7 +639,7 @@ export default class DayViewer {
             return null;
         }
 
-        viewer.appendTo(target);
+        viewer.appendTo(target, 'mountInto');
 
         if (apiClient !== undefined && apiClient !== null) {
             viewer.listenTo(apiClient);

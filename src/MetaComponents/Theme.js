@@ -6,9 +6,21 @@
  * components, not public API.
  *
  * The bag's vocabulary is HTML roles — `select`, `input`, `label`, `wrapper` —
- * never framework names, so a Tailwind or vanilla consumer is not writing
- * Bootstrap-shaped keys. Per-child keys are named for the meta-component's public
+ * never framework names, so a Bootstrap or vanilla consumer is not writing
+ * framework-named keys. Per-child keys are named for the meta-component's public
  * getters, so the override key and the escape hatch are the same word.
+ *
+ * **What a class-string VALUE may contain, regardless of key:** every value here
+ * ultimately reaches `Utils.validateClassName()` (or `LiturgyOfAnyDay`'s private
+ * copy of the same pattern), which accepts only
+ * `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/` per space-separated class — letters,
+ * digits, underscores and hyphens, and nothing else. Tailwind's variant prefixes
+ * (`md:flex`, `hover:bg-blue-500`) and fractional utilities (`w-1/2`) both contain a
+ * character (`:` or `/`) outside that set and are therefore rejected outright, not
+ * merely left unstyled. This module takes no position on what a valid class name is
+ * and does not enforce this itself — it is a pre-existing constraint shared with
+ * every other class-taking component in this library, named here so a theme author
+ * learns it before writing a bag that depends on it.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
@@ -90,12 +102,17 @@ export function assertTheme(theme, componentName) {
  *
  * Unset keys are OMITTED rather than set to `undefined`, so a caller can use
  * `Object.hasOwn()` to distinguish "not themed" from "themed as empty" and avoid
- * calling a component's setter with an empty string.
+ * calling a component's setter with an empty string. A per-child override key
+ * explicitly set to `undefined` (`{ riteSelect: { class: undefined } }`, the shape
+ * that results from spreading a config object whose own key is absent) is treated
+ * as not naming that key at all: it falls back to the flat default exactly as an
+ * omitted key would, rather than being copied through and overwriting it with
+ * `undefined`.
  *
  * @param {Object|null|undefined} theme - The meta-component's theme bag.
  * @param {string} childKey - The child's public getter name, e.g. `riteSelect`.
  * @param {'select'|'input'} [role='select'] - Which flat key supplies `class`.
- * @returns {{class?: string, labelClass?: string, wrapperClass?: string, wrapper?: string}} The resolved styling.
+ * @returns {{class?: string, labelClass?: string, labelText?: string, wrapperClass?: string, wrapper?: string}} The resolved styling.
  */
 export function resolveChildTheme(theme, childKey, role = 'select') {
     if (null === theme || undefined === theme) {
@@ -121,8 +138,18 @@ export function resolveChildTheme(theme, childKey, role = 'select') {
     if (null === override || typeof override !== 'object') {
         return resolved;
     }
-    for (const key of ['class', 'labelClass', 'wrapperClass', 'wrapper']) {
-        if (Object.hasOwn(override, key)) {
+    for (const key of [
+        'class',
+        'labelClass',
+        'labelText',
+        'wrapperClass',
+        'wrapper',
+    ]) {
+        // `override[key] !== undefined` is load-bearing, not redundant with
+        // `Object.hasOwn`: a key explicitly present with value `undefined` must
+        // fall back to the flat default below rather than overwrite it with
+        // `undefined` — see the "explicitly-undefined" paragraph above.
+        if (Object.hasOwn(override, key) && override[key] !== undefined) {
             resolved[key] = override[key];
         }
     }

@@ -84,6 +84,17 @@ describe('DayViewer slot mounting', () => {
         expect(() => viewer.appendTo({ calendar: '#nope' })).toThrow(/nope/);
     });
 
+    // M3: a direct `appendTo()` call must still name `appendTo` — only a call
+    // routed through `mountInto()` (see DayViewerMount.test.js) should name that
+    // method instead. `#requireElement`'s `caller` parameter must default correctly
+    // for the direct path, not merely accept an override for the indirect one.
+    it('names appendTo, not mountInto, when called directly', () => {
+        const viewer = new DayViewer({ locale: 'en' });
+        expect(() => viewer.appendTo({ calendar: '#nope' })).toThrow(
+            /DayViewer\.appendTo: Element not found/,
+        );
+    });
+
     // The rite select must be in the DOM before it is linked, so it is mounted first.
     it('mounts the rite select before linking it', () => {
         const viewer = new DayViewer({ locale: 'en' });
@@ -156,5 +167,99 @@ describe('DayViewer labels', () => {
         expect(text).toContain('Day');
         expect(text).toContain('月');
         expect(text).not.toContain('Month');
+    });
+});
+
+// I1: the flat `wrapper` key must reach every child that CAN take a wrapper, not
+// only `calendarSelect`. Asserted on the resulting DOM, not merely `.not.toThrow()`
+// — see `MetaComponentThemeWrapperSymmetry.test.js` for why that distinction
+// matters here.
+describe('DayViewer theme wrapper', () => {
+    it('wraps the locale input, not only the calendar select', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { select: 'form-select', wrapper: 'col-md-3' },
+        });
+        viewer.appendTo('#single');
+
+        const localeSelect = viewer.localeInput._domElement;
+        const localeWrapper = localeSelect.closest('.col-md-3');
+        expect(localeWrapper).not.toBeNull();
+        expect(localeWrapper.tagName).toBe('DIV');
+
+        const calendarWrapper =
+            viewer.calendarSelect._domElement.closest('.col-md-3');
+        expect(calendarWrapper).not.toBeNull();
+    });
+
+    // RiteSelect has no wrapper concept at all: the flat key must not throw or
+    // silently invent one for it, and no wrapper element should appear around it.
+    it('leaves the rite select unwrapped, since RiteSelect has no wrapper concept', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { select: 'form-select', wrapper: 'col-md-3' },
+        });
+        viewer.appendTo('#single');
+        const riteSelect = viewer.riteSelect._domElement;
+        expect(riteSelect.closest('.col-md-3')).toBeNull();
+        expect(riteSelect.parentElement).toBe(
+            document.getElementById('single'),
+        );
+    });
+
+    it('applies a per-child wrapperClass override to the locale input', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { localeInput: { wrapperClass: 'col-lg-6' } },
+        });
+        viewer.appendTo('#single');
+        expect(
+            viewer.localeInput._domElement.closest('.col-lg-6'),
+        ).not.toBeNull();
+    });
+});
+
+// I3: `labelText` is the theme bag's escape hatch for a themed child's label TEXT,
+// since `CalendarSelect.label()`/`RiteSelect.label()` are one-shot and calling them
+// again from the child getter throws once the theme bag has already called them.
+describe('DayViewer theme labelText', () => {
+    it('overrides the calendar select label text', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: {
+                label: 'form-label',
+                calendarSelect: { labelText: 'Choose a calendar' },
+            },
+        });
+        viewer.appendTo('#single');
+        expect(
+            viewer.calendarSelect._domElement.previousElementSibling
+                .textContent,
+        ).toBe('Choose a calendar');
+    });
+
+    it('overrides the rite select label text', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: {
+                label: 'form-label',
+                riteSelect: { labelText: 'Choose a rite' },
+            },
+        });
+        viewer.appendTo('#single');
+        expect(
+            viewer.riteSelect._domElement.previousElementSibling.textContent,
+        ).toBe('Choose a rite');
+    });
+
+    it('overrides the locale input label text', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { localeInput: { labelText: 'Preferred language' } },
+        });
+        viewer.appendTo('#single');
+        expect(viewer.localeInput._labelElement.textContent).toBe(
+            'Preferred language',
+        );
     });
 });

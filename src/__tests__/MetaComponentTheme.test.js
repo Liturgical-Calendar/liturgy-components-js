@@ -69,6 +69,46 @@ describe('resolveChildTheme', () => {
             wrapperClass: 'col',
         });
     });
+
+    // I7: an explicitly-`undefined` override key (the shape that results from
+    // `{ riteSelect: { class: config.riteClass } }` when `config.riteClass` is
+    // absent — an ordinary way to build a theme programmatically, not a contrived
+    // input) must be treated as though the key were never named at all, falling
+    // back to the flat default. Before the fix, `Object.hasOwn` alone copied the
+    // `undefined` through, which crashed a class-taking setter downstream and,
+    // separately, overwrote an already-resolved flat default with `undefined`.
+    it('falls back to the flat default when a per-child key is explicitly undefined', () => {
+        const theme = {
+            select: 'form-select',
+            riteSelect: { class: undefined },
+        };
+        expect(resolveChildTheme(theme, 'riteSelect')).toEqual({
+            class: 'form-select',
+        });
+    });
+
+    it('does not lose the flat label default when a per-child labelClass is explicitly undefined', () => {
+        const theme = {
+            label: 'form-label',
+            calendarSelect: { labelClass: undefined },
+        };
+        expect(resolveChildTheme(theme, 'calendarSelect')).toEqual({
+            labelClass: 'form-label',
+        });
+    });
+
+    it('omits a key entirely when it is explicitly undefined with no flat default to fall back to', () => {
+        const theme = { riteSelect: { class: undefined } };
+        const result = resolveChildTheme(theme, 'riteSelect');
+        expect(Object.hasOwn(result, 'class')).toBe(false);
+    });
+
+    it('reads the labelText per-child key', () => {
+        const theme = { riteSelect: { labelText: 'Choose a rite' } };
+        expect(resolveChildTheme(theme, 'riteSelect').labelText).toBe(
+            'Choose a rite',
+        );
+    });
 });
 
 describe('assertTheme', () => {

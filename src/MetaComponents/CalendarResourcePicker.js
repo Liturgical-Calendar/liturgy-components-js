@@ -12,6 +12,7 @@
 
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
+import Messages from '../Messages.js';
 import { CalendarSelectFilter } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
@@ -45,6 +46,22 @@ export default class CalendarResourcePicker {
     /** @type {string|null} */
     #placeholderText = null;
 
+    /**
+     * The theme bag, kept only for a failed picker so that a later `appendTo()` can
+     * re-render the same failure control it started with. Unused on a working
+     * picker, whose children have already had the theme applied.
+     *
+     * @type {Object|undefined}
+     */
+    #theme = undefined;
+
+    /**
+     * The failure control's message, kept for the same reason as `#theme`.
+     *
+     * @type {string|undefined}
+     */
+    #errorText = undefined;
+
     /** @type {function|null} */
     #riteChangeListener = null;
 
@@ -77,6 +94,13 @@ export default class CalendarResourcePicker {
                 ? locale
                 : canonicalizeLocale(locale, 'CalendarResourcePicker');
 
+        // Used only to compute the fallback label text below (`#message`,
+        // I4) — the children themselves receive `resolvedLocale` directly and
+        // derive their own language.
+        const language = resolvedLocale
+            ? new Intl.Locale(resolvedLocale).language
+            : 'en';
+
         if (false === ACCEPTED_FILTERS.includes(filter)) {
             throw new Error(
                 `CalendarResourcePicker: the filter option must be CalendarSelectFilter.NATIONAL_CALENDARS or CalendarSelectFilter.DIOCESAN_CALENDARS, but found: ${String(filter)}`,
@@ -85,10 +109,15 @@ export default class CalendarResourcePicker {
         assertTheme(theme, 'CalendarResourcePicker');
 
         // Set only by `mountInto()`, and only when the real construction already
-        // threw. The instance exists to answer `failed` and `value`; it builds no
-        // children, because building them is exactly what just failed.
+        // threw. The instance exists to answer `failed`, `value`, `onChange()` and
+        // `appendTo()`; it builds no children, because building them is exactly
+        // what just failed. `theme`/`errorText` are kept so a later `appendTo()`
+        // call (see below) can render the same failure control this picker started
+        // with, rather than crashing or rendering an unstyled default.
         if (true === options._failed) {
             this.#failed = true;
+            this.#theme = theme;
+            this.#errorText = options.errorText;
             return;
         }
 
@@ -109,10 +138,22 @@ export default class CalendarResourcePicker {
             if (Object.hasOwn(riteTheme, 'class')) {
                 this.#riteSelect.class(riteTheme.class);
             }
-            if (Object.hasOwn(riteTheme, 'labelClass')) {
-                // No `text`: omitting it lets RiteSelect supply its own localized
-                // label rather than forcing the caller to hardcode English.
-                this.#riteSelect.label({ class: riteTheme.labelClass });
+            if (
+                Object.hasOwn(riteTheme, 'labelClass') ||
+                Object.hasOwn(riteTheme, 'labelText')
+            ) {
+                const riteLabelOptions = {};
+                if (Object.hasOwn(riteTheme, 'labelClass')) {
+                    riteLabelOptions.class = riteTheme.labelClass;
+                }
+                if (Object.hasOwn(riteTheme, 'labelText')) {
+                    riteLabelOptions.text = riteTheme.labelText;
+                }
+                // No `text` when `labelText` was not themed: omitting it lets
+                // `RiteSelect` supply its own localized label (which already falls
+                // back to English for a locale outside the catalogue) rather than
+                // forcing the caller to hardcode one.
+                this.#riteSelect.label(riteLabelOptions);
             }
         }
 
@@ -126,8 +167,29 @@ export default class CalendarResourcePicker {
         if (Object.hasOwn(calendarTheme, 'class')) {
             this.#calendarSelect.class(calendarTheme.class);
         }
-        if (Object.hasOwn(calendarTheme, 'labelClass')) {
-            this.#calendarSelect.label({ class: calendarTheme.labelClass });
+        if (
+            Object.hasOwn(calendarTheme, 'labelClass') ||
+            Object.hasOwn(calendarTheme, 'labelText')
+        ) {
+            const calendarLabelOptions = {};
+            if (Object.hasOwn(calendarTheme, 'labelClass')) {
+                calendarLabelOptions.class = calendarTheme.labelClass;
+            }
+            // `text` is ALWAYS supplied here, unlike the rite select above:
+            // `CalendarSelect.label()`, unlike `RiteSelect.label()`, has no English
+            // fallback of its own when `text` is omitted — it reads
+            // `Messages[language]['SELECT_A_CALENDAR']` directly, which throws for
+            // any locale outside the catalogue (e.g. `ceb`). Supplying `text`
+            // unconditionally sidesteps that gap here rather than in
+            // `CalendarSelect` itself.
+            calendarLabelOptions.text = Object.hasOwn(
+                calendarTheme,
+                'labelText',
+            )
+                ? calendarTheme.labelText
+                : (Messages[language]?.['SELECT_A_CALENDAR'] ??
+                  Messages['en']['SELECT_A_CALENDAR']);
+            this.#calendarSelect.label(calendarLabelOptions);
         }
         if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
             this.#calendarSelect.wrapper({
@@ -234,10 +296,17 @@ export default class CalendarResourcePicker {
     /**
      * Mounts the picker's children into the target element.
      *
-     * The rite select is appended FIRST, and that ordering is load-bearing twice
-     * over: it reads first in the form, and `linkToRiteSelect()` requires the rite
-     * select to already be in the DOM, because it reads the element to attach its
-     * change listener.
+     * On a FAILED picker (see `mountInto()`), there are no children to mount: this
+     * re-renders the same failure control the picker started with into the new
+     * target instead, using the `theme`/`errorText` the failed instance was built
+     * with. This is what keeps `appendTo()` safe to call on whatever `mountInto()`
+     * resolved to — the documented worked example guards only `null !== picker`,
+     * not `picker.failed`.
+     *
+     * On a working picker, the rite select is appended FIRST — form reading order
+     * is one reason, and `linkToRiteSelect()` right below reads the rite select's
+     * element to attach its change listener, so the ordering is load-bearing there
+     * too.
      *
      * Returns `undefined`, matching every other component in this library.
      *
@@ -251,6 +320,16 @@ export default class CalendarResourcePicker {
             'appendTo',
         );
         this.#mount = element;
+
+        if (true === this.#failed) {
+            CalendarResourcePicker.#renderFailure(
+                element,
+                this.#theme,
+                this.#errorText,
+            );
+            return;
+        }
+
         if (null !== this.#riteSelect) {
             this.#riteSelect.appendTo(element);
         }
@@ -304,6 +383,12 @@ export default class CalendarResourcePicker {
     /**
      * Registers a callback for changes to the selected calendar.
      *
+     * A no-op on a FAILED picker: its failure control is a disabled `<select>`
+     * (see `mountInto()`), which the user cannot interact with, so there is no
+     * change to observe. It still returns `this` rather than throwing — a caller
+     * following the documented `if ( null !== picker )` guard must be able to call
+     * this unconditionally on whatever `mountInto()` resolved to.
+     *
      * Chainable, unlike `appendTo()`.
      *
      * @param {function(string): void} callback - Receives the selected calendar id.
@@ -311,6 +396,9 @@ export default class CalendarResourcePicker {
      */
     onChange(callback) {
         this.#assertUsable();
+        if (true === this.#failed) {
+            return this;
+        }
         const listener = () => callback(this.value);
         this.#calendarSelect._domElement.addEventListener('change', listener);
         this.#listeners.push({
@@ -477,7 +565,16 @@ export default class CalendarResourcePicker {
                 error,
             );
             CalendarResourcePicker.#renderFailure(element, theme, errorText);
-            return new CalendarResourcePicker({ filter, theme, _failed: true });
+            // `errorText` is threaded through alongside `theme` so that a later
+            // `appendTo()` call on the returned picker (see C1) re-renders the
+            // SAME failure control, rather than one that has silently lost its
+            // message.
+            return new CalendarResourcePicker({
+                filter,
+                theme,
+                errorText,
+                _failed: true,
+            });
         }
     }
 }

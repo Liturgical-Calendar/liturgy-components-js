@@ -97,6 +97,16 @@ describe('DayViewer.mountInto', () => {
         ).rejects.toThrow(/DayViewer/);
     });
 
+    // M3: `#requireElement`'s thrown message must name the method the CALLER
+    // actually used. `appendTo()` is invoked internally by `mountInto()`, so a bad
+    // target reported here must say `mountInto`, not `appendTo` — which the caller
+    // never called and would have no idea to look for.
+    it('rejects a missing slot target naming mountInto, not appendTo', async () => {
+        await expect(
+            DayViewer.mountInto('#nope', { locale: 'en' }),
+        ).rejects.toThrow(/DayViewer\.mountInto: Element not found/);
+    });
+
     it('reports a failed initial fetch through onError rather than console', async () => {
         global.fetch = jest.fn(() => Promise.reject(new Error('network down')));
         const apiClient = await ApiClient.init(API_URL).catch(() => null);

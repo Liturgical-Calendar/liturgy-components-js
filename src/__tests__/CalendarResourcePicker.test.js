@@ -278,3 +278,101 @@ describe('CalendarResourcePicker onChange', () => {
         expect(bubbled).toBe(true);
     });
 });
+
+// I3: `labelText` is the theme bag's escape hatch for a themed child's label TEXT.
+// `CalendarSelect.label()`/`RiteSelect.label()` are one-shot, so once the theme bag
+// has already called `label()` (because `label`/`labelClass` was themed), reaching
+// `picker.calendarSelect.label({ text: … })` afterwards throws — `labelText` is the
+// only way to set custom text on an already-themed child.
+describe('CalendarResourcePicker theme labelText', () => {
+    it('overrides the calendar select label text', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            theme: {
+                label: 'form-label',
+                calendarSelect: { labelText: 'Choose a calendar' },
+            },
+        });
+        picker.appendTo('#mount');
+        expect(
+            picker.calendarSelect._domElement.previousElementSibling
+                .textContent,
+        ).toBe('Choose a calendar');
+    });
+
+    it('overrides the rite select label text', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            theme: {
+                label: 'form-label',
+                riteSelect: { labelText: 'Choose a rite' },
+            },
+        });
+        picker.appendTo('#mount');
+        expect(
+            picker.riteSelect._domElement.previousElementSibling.textContent,
+        ).toBe('Choose a rite');
+    });
+});
+
+// I4: `CalendarSelect.label()`, unlike `RiteSelect.label()`, has no English
+// fallback of its own — it reads `Messages[language]['SELECT_A_CALENDAR']`
+// directly, which throws for a locale outside the catalogue. The picker must
+// never reach that code path with no `text`, whatever locale it was built with.
+// I7: an explicitly-`undefined` per-child override key is the ordinary shape
+// `theme: { riteSelect: { class: config.riteClass } }` takes when `config.riteClass`
+// is absent — not a contrived input. It must fall back to the flat default rather
+// than reach `RiteSelect.class( undefined )`, which throws.
+describe('CalendarResourcePicker with an explicitly-undefined theme override', () => {
+    it('falls back to the flat class default instead of throwing', () => {
+        expect(() => {
+            const picker = new CalendarResourcePicker({
+                locale: 'en',
+                filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+                theme: {
+                    select: 'form-select',
+                    riteSelect: { class: undefined },
+                },
+            });
+            picker.appendTo('#mount');
+        }).not.toThrow();
+    });
+
+    it('applies the flat class to the rite select in that case', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            theme: { select: 'form-select', riteSelect: { class: undefined } },
+        });
+        picker.appendTo('#mount');
+        expect(picker.riteSelect._domElement.className).toBe('form-select');
+    });
+});
+
+describe('CalendarResourcePicker with a locale outside the message catalogue', () => {
+    it('does not throw when the theme sets a flat label class', () => {
+        expect(() => {
+            const picker = new CalendarResourcePicker({
+                locale: 'ceb',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                theme: { label: 'form-label' },
+            });
+            picker.appendTo('#mount');
+        }).not.toThrow();
+    });
+
+    it('falls back to the English label text', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'ceb',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            theme: { label: 'form-label' },
+        });
+        picker.appendTo('#mount');
+        expect(
+            picker.calendarSelect._domElement.previousElementSibling
+                .textContent,
+        ).toBe('Select a calendar');
+    });
+});

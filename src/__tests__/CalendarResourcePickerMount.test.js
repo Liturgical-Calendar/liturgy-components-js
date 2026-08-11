@@ -150,6 +150,75 @@ describe('CalendarResourcePicker.mountInto', () => {
     });
 });
 
+// C1: a failed picker's ACTION methods must be safe to call, not only its
+// getters. `docs/meta-components.md`'s worked example guards only
+// `null !== picker` before calling `onChange()` and (indirectly, through
+// `appendTo()`-based remounting) reaching `appendTo()` — both used to throw a raw
+// `TypeError` because `#calendarSelect` is `null` on a failed picker.
+describe('CalendarResourcePicker failed-picker safety', () => {
+    /** @returns {Promise<CalendarResourcePicker>} A picker whose construction failed. */
+    const mountFailed = async () => {
+        ApiBase.reset();
+        const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            errorText: 'Could not load calendars',
+            theme: { select: 'form-select perm-object-id' },
+        });
+        errorSpy.mockRestore();
+        return picker;
+    };
+
+    it('does not throw when onChange() is called on a failed picker', async () => {
+        const picker = await mountFailed();
+        expect(() => picker.onChange(() => {})).not.toThrow();
+    });
+
+    it('returns this from onChange() on a failed picker, so it stays chainable', async () => {
+        const picker = await mountFailed();
+        expect(picker.onChange(() => {})).toBe(picker);
+    });
+
+    it('never invokes an onChange() callback registered on a failed picker', async () => {
+        const picker = await mountFailed();
+        let fired = false;
+        picker.onChange(() => (fired = true));
+        // The failure control's own <select> is disabled and carries no working
+        // CalendarSelect to dispatch through; nothing should ever call back.
+        const control = document.querySelector('#mount select');
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(fired).toBe(false);
+    });
+
+    it('does not throw when appendTo() is called again on a failed picker', async () => {
+        const picker = await mountFailed();
+        const other = document.createElement('div');
+        other.id = 'other-mount';
+        document.body.appendChild(other);
+        expect(() => picker.appendTo('#other-mount')).not.toThrow();
+    });
+
+    it('re-renders the same failure control when appendTo() is called again on a failed picker', async () => {
+        const picker = await mountFailed();
+        const other = document.createElement('div');
+        other.id = 'other-mount';
+        document.body.appendChild(other);
+
+        picker.appendTo('#other-mount');
+
+        const control = other.querySelector('select');
+        expect(control).not.toBeNull();
+        expect(control.disabled).toBe(true);
+        expect(control.classList.contains('is-invalid')).toBe(true);
+        expect(control.classList.contains('perm-object-id')).toBe(true);
+        expect(control.dataset.loadFailed).toBe('true');
+        expect(control.textContent).toContain('Could not load calendars');
+    });
+});
+
 describe('CalendarResourcePicker.dispose', () => {
     it('empties the mount', async () => {
         const picker = await CalendarResourcePicker.mountInto('#mount', {
