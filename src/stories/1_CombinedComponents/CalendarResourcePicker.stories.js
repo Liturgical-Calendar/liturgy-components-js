@@ -1,8 +1,5 @@
-import {
-    CalendarResourcePicker,
-    CalendarSelectFilter,
-} from '@liturgical-calendar/components-js';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { render } from './CalendarResourcePicker.render.js';
 
 /**
  * `CalendarResourcePicker`
@@ -16,18 +13,12 @@ import 'bootstrap/dist/css/bootstrap.min.css';
  * Two stories, one render function, two theme bags. The Bootstrap and unstyled
  * variants differ ONLY by the `theme` argument, which is the claim the theme bag
  * exists to make: nothing framework-specific is baked into the component.
+ *
+ * `render` is async and awaits `CalendarResourcePicker.mountInto()` before
+ * returning the mount — see `CalendarResourcePicker.render.js` for why the mount is
+ * briefly attached to `document.body` while mounting, and why the logic lives in its
+ * own module.
  */
-const render = (args) => {
-    const mount = document.createElement('div');
-    CalendarResourcePicker.mountInto(mount, {
-        locale: 'en',
-        filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
-        placeholderText: 'Select calendar ID...',
-        theme: args.theme,
-    });
-    return mount;
-};
-
 const meta = {
     title: 'Combined Components/CalendarResourcePicker',
     tags: ['autodocs'],

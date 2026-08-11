@@ -88,6 +88,8 @@ it does not name falls back to the flat default.
 
 ### Public getters
 
+All four throw once this picker has been disposed — see [`dispose()`](#dispose) below.
+
 | Member           | Returns                  | Description                                                                               |
 | ---------------- | ------------------------ | ----------------------------------------------------------------------------------------- |
 | `calendarSelect` | `CalendarSelect \| null` | The wired `CalendarSelect`, or `null` on a failed picker.                                 |
@@ -162,9 +164,18 @@ picker.dispose();
 ```
 
 `dispose()` is idempotent — calling it twice is safe and does nothing the second time. A disposed
-picker throws on further use rather than failing quietly: `appendTo()` and `onChange()` both throw
-naming "disposed" once `dispose()` has run, so a stale reference used by mistake fails loudly at the
-point of misuse instead of leaving the caller's next assertion to fail somewhere unrelated.
+picker throws on further use rather than failing quietly, and that covers every public member, not
+only the two DOM-facing methods: `appendTo()`, `onChange()`, and the `calendarSelect`, `riteSelect`,
+`value` and `failed` getters all throw naming "disposed" once `dispose()` has run. `dispose()` also
+drops the picker's own references to the wired `CalendarSelect` and `RiteSelect`, so a stale reference
+used by mistake fails loudly at the point of misuse instead of leaving the caller's next assertion to
+fail somewhere unrelated.
+
+This only makes the _picker_ inert — it does not reach into a child instance the caller separately
+kept a reference to before disposing. `const cs = picker.calendarSelect; picker.dispose();` leaves
+`cs` itself fully functional; only `picker.calendarSelect` (a second read, after disposal) throws.
+Nothing currently gives a meta-component a way to revoke a reference it has already handed out, so
+"disposed" is a property of the picker you call it on, not of every value it ever returned.
 
 ## Worked Bootstrap example
 

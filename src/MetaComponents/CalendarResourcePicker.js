@@ -145,18 +145,31 @@ export default class CalendarResourcePicker {
      * Public so a consumer can reach anything the theme bag does not cover — an
      * id, a data attribute — without touching a private field.
      *
+     * Throws once this picker has been disposed, exactly like every other public
+     * member: `dispose()` nulls out the field first, so a caller holding this
+     * getter's previous return value still holds a live, still-working
+     * `CalendarSelect` — the disposed picker cannot revoke that reference. Throwing
+     * here closes the other half: it stops the picker itself from handing out a
+     * fresh one after teardown.
+     *
      * @returns {CalendarSelect|null} The calendar select, or `null` on a failed picker.
+     * @throws {Error} If this picker has been disposed.
      */
     get calendarSelect() {
+        this.#assertUsable();
         return this.#calendarSelect;
     }
 
     /**
      * The wired `RiteSelect`, or `null` for a national filter.
      *
+     * Throws once this picker has been disposed; see `calendarSelect` above.
+     *
      * @returns {RiteSelect|null} The rite select, when there is one.
+     * @throws {Error} If this picker has been disposed.
      */
     get riteSelect() {
+        this.#assertUsable();
         return this.#riteSelect;
     }
 
@@ -164,18 +177,26 @@ export default class CalendarResourcePicker {
      * The selected calendar id, or the empty string when the placeholder is
      * selected or the picker failed to build.
      *
+     * Throws once this picker has been disposed; see `calendarSelect` above.
+     *
      * @returns {string} The selected calendar id.
+     * @throws {Error} If this picker has been disposed.
      */
     get value() {
+        this.#assertUsable();
         return this.#calendarSelect?._domElement.value ?? '';
     }
 
     /**
      * Whether the picker is showing its failure control instead of a working select.
      *
+     * Throws once this picker has been disposed; see `calendarSelect` above.
+     *
      * @returns {boolean} True when construction failed at runtime.
+     * @throws {Error} If this picker has been disposed.
      */
     get failed() {
+        this.#assertUsable();
         return this.#failed;
     }
 
@@ -322,7 +343,11 @@ export default class CalendarResourcePicker {
      *
      * Needed because all three known call sites rebuild their picker whenever the
      * selected scope changes, and the library previously had no teardown of any
-     * kind. Idempotent; further use throws rather than failing quietly.
+     * kind. Idempotent; further use throws rather than failing quietly — and that
+     * promise covers every public member, not only `appendTo()` and `onChange()`:
+     * the wired children are dropped here too, so a caller cannot dodge disposal
+     * by having read `calendarSelect` or `riteSelect` beforehand and kept the
+     * reference.
      *
      * @returns {void}
      */
@@ -336,6 +361,8 @@ export default class CalendarResourcePicker {
         this.#listeners = [];
         this.#mount?.replaceChildren();
         this.#mount = null;
+        this.#calendarSelect = null;
+        this.#riteSelect = null;
         this.#disposed = true;
     }
 

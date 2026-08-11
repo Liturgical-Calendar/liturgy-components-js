@@ -192,4 +192,36 @@ describe('CalendarResourcePicker.dispose', () => {
         expect(() => picker.appendTo('#mount')).toThrow(/disposed/);
         expect(() => picker.onChange(() => {})).toThrow(/disposed/);
     });
+
+    // Pins the fuller contract: EVERY public member throws once disposed, not only
+    // appendTo() and onChange(). A caller who read calendarSelect/riteSelect before
+    // dispose() and kept the reference gets a fully live child otherwise — dispose()
+    // cannot revoke a reference already handed out, so it must stop handing out new
+    // ones, and every getter must refuse to serve a stale value too.
+    it('throws on every getter after dispose, not only appendTo and onChange', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+        });
+        picker.dispose();
+        expect(() => picker.calendarSelect).toThrow(/disposed/);
+        expect(() => picker.riteSelect).toThrow(/disposed/);
+        expect(() => picker.value).toThrow(/disposed/);
+        expect(() => picker.failed).toThrow(/disposed/);
+    });
+
+    it('drops its references to the wired children, so a reference held before dispose does not resurrect their getters', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        const heldCalendarSelect = picker.calendarSelect;
+        picker.dispose();
+        // The picker's own getter throws (pinned above); the child instance itself
+        // is untouched by this test, on purpose — dispose() promises to make the
+        // PICKER inert, not to reach into a component the caller might still be
+        // holding for an unrelated reason.
+        expect(heldCalendarSelect).not.toBeNull();
+        expect(() => picker.calendarSelect).toThrow(/disposed/);
+    });
 });
