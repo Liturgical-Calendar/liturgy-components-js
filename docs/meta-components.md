@@ -9,7 +9,8 @@ The library owns wiring, ordering, failure behaviour and defaults. It ships noth
 framework-specific and takes no position on CSS: styling is entirely up to the consumer, through a
 **theme bag** for the common case and the wired child instances for everything else.
 
-This page documents `CalendarResourcePicker`, `DayViewer`, `CalendarControls` and `CalendarViewer`.
+This page documents `CalendarResourcePicker`, `DayViewer`, `CalendarControls`, `CalendarViewer` and
+`ApiExplorer`.
 
 ## CalendarResourcePicker
 
@@ -896,3 +897,154 @@ section](#dispose-2) for exactly what it releases — and additionally empties t
 it and the client; only the mounted DOM can be reclaimed from here, and it is. This is the same
 pre-existing gap `CalendarControls.dispose()` and `DayViewer.dispose()` document for their own
 anonymously-wired children.
+
+## ApiExplorer
+
+A `CalendarControls` paired with a `PathBuilder`, with fetching turned off — the whole "explore the API"
+page in one call. It is the last new component in this family, and deliberately the odd one out: every
+other meta-component here adds a renderer that reacts to fetched calendar data, while `ApiExplorer` never
+fetches at all. Its only job is to let a visitor build and preview an API request URL.
+
+```javascript
+import { ApiExplorer } from '@liturgical-calendar/components-js';
+
+const explorer = await ApiExplorer.mountInto(
+    {
+        pathBuilder: '#pathBuilderOptions',
+        basePath: '#basePathOptions',
+        allPaths: '#allPathsOptions',
+        riteSelect: '#riteSelectContainer',
+        builder: '#pathBuilderOutput',
+    },
+    { locale: 'en', apiClient },
+);
+```
+
+### Why this is the awkward member of the family
+
+`CalendarControls.appendTo()` mounts `riteSelect`, `calendarSelect` and `apiOptions` into ONE target.
+That layout does not fit the page this class was extracted from
+(`LiturgicalCalendarFrontend/assets/js/index.js`), which spreads the SAME `ApiOptions` instance across
+three separate containers under three different filters, and positions the calendar select relative to
+one specific input rather than inside a container of its own. `ApiExplorer` therefore bypasses
+`CalendarControls.appendTo()` entirely and drives `controls.riteSelect`, `controls.calendarSelect` and
+`controls.apiOptions` directly through `CalendarControls`' own getters.
+
+### The three-filter layout
+
+| Slot          | Filter                          | Inputs shown                                                                             |
+| ------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `pathBuilder` | `ApiOptionsFilter.PATH_BUILDER` | The calendar-path and year inputs, plus (via `insertAfter()`) the calendar select itself |
+| `basePath`    | `ApiOptionsFilter.BASE_PATH`    | Epiphany, Ascension, Corpus Christi, Eternal High Priest, holydays-of-obligation         |
+| `allPaths`    | `ApiOptionsFilter.ALL_PATHS`    | Locale, year type, and (when relevant) the Accept header input                           |
+
+`ApiOptions.filter()` may be called more than once on the same instance — each call switches which of its
+underlying inputs the NEXT `appendTo()` call moves — so this is not three separate `ApiOptions` objects
+appearing to duplicate a single field. It is one instance, its inputs distributed across three panels by
+three successive `filter().appendTo()` pairs, exactly as the extracted page does by hand.
+
+**The calendar select has no slot of its own.** It is positioned with
+`calendarSelect.insertAfter( apiOptions._calendarPathInput )`, landing as a DOM sibling immediately after
+the calendar-path input inside the `pathBuilder` container — matching the page this was extracted from,
+not a container `ApiExplorer` names separately. Because `insertAfter()` needs the calendar-path input
+already in the document to insert next to, this positioning only happens when the `pathBuilder` slot
+itself is named.
+
+### It never fetches
+
+`ApiExplorer.listenTo()` (and `mountInto()`'s `apiClient` option, which calls it) wires `controls` to the
+`ApiClient` — including BOTH of the rite's wires, `ApiOptions.linkToRiteSelect()` and
+`apiClient.listenTo( riteSelect )`, needed here even though nothing fetches, because
+`linkToRiteSelect()` is what rebuilds the calendar list whenever the rite changes — but at no point does
+this class call `controls.fetch()`. Unlike every other meta-component's `mountInto()`, there is no
+`initialFetch` option: it would have nothing to control, since a fetch never runs under any circumstance.
+`ApiClient.init()` itself still performs its own `/calendars` metadata request — that is how the selects
+learn which calendars exist — but no `/calendar/...` request is ever issued on this class' behalf.
+
+### Two things this does NOT absorb
+
+Reached through `explorer.controls.apiOptions`, both deliberately left to the consumer, the same way
+`CalendarControls`' own two non-goals are:
+
+- **The per-input `id()` calls** the extracted page makes on individual `ApiOptions` inputs — page-specific
+  anchors used by that page's own CSS/JS, not something a reusable component should assume every consumer
+  wants.
+- **The label-after tooltip nodes** the extracted page splices into some of those inputs' label elements —
+  page-specific help text markup, not a themed or generic capability this library models.
+
+### Constructor options
+
+As `CalendarControls` — `locale`, `theme`, `apiClient` — forwarded to it unchanged. `filter` is accepted
+but has no lasting effect: `appendTo()` overwrites it three times regardless of what was passed.
+
+### Public getters
+
+Both throw once this explorer has been disposed — see [`dispose()`](#dispose-4) below.
+
+| Member        | Returns            | Description                                                                              |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------- |
+| `controls`    | `CalendarControls` | The wired rite select, calendar select and API options — see [above](#calendarcontrols). |
+| `pathBuilder` | `PathBuilder`      | The wired path builder, reading its state from the same `apiOptions`/`calendarSelect`.   |
+
+### `appendTo()` and its slots
+
+Takes a slots object naming up to five targets — `pathBuilder`, `basePath`, `allPaths`, `riteSelect`,
+`builder` — all optional. An omitted slot simply skips that append (and, for `pathBuilder`, skips
+positioning the calendar select too, since that positioning depends on it). A named slot that matches
+nothing throws, naming `ApiExplorer` and the slot:
+
+```javascript
+explorer.appendTo({
+    pathBuilder: '#pathBuilderOptions',
+    basePath: '#basePathOptions',
+    allPaths: '#allPathsOptions',
+    riteSelect: '#riteSelectContainer',
+    builder: '#pathBuilderOutput',
+});
+```
+
+### `mountInto()` versus the constructor
+
+The same split as every other meta-component in this family:
+
+- **`new ApiExplorer(options)`** is synchronous and requires an already-initialised `ApiBase` — it builds
+  both the controls and the path builder but mounts neither.
+- **`ApiExplorer.mountInto(slots, options)`** resolves every named slot, constructs the explorer, mounts
+  it, and wires it to `options.apiClient` when given. It never fetches.
+
+```javascript
+// Constructor + appendTo + listenTo — used when an ApiBase is already known to be ready
+const explorer = new ApiExplorer({ locale: 'en' });
+explorer.appendTo({ pathBuilder: '#pathBuilderOptions', builder: '#pathBuilderOutput' });
+explorer.listenTo(apiClient);
+
+// mountInto — constructs, mounts and wires in one call, still without fetching
+const explorer = await ApiExplorer.mountInto(slots, { locale: 'en', apiClient });
+```
+
+### Reject versus resolve
+
+| Kind                                                                                     | Behaviour                                                |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Invalid options (unparseable locale, malformed theme, a named slot that matches nothing) | **Rejects.** A typo should not be silently papered over. |
+| The API metadata cannot be loaded (API down, `ApiClient` never initialised)              | **Rejects.**                                             |
+
+`mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was already
+aborted, or when a slot was passed as an already-resolved `HTMLElement` that has since left the document.
+There is no "failed initial fetch" row in this table, unlike `CalendarControls`' and `CalendarViewer`'s own
+— there is no initial fetch to fail.
+
+### `dispose()`
+
+```javascript
+const explorer = await ApiExplorer.mountInto(slots, { locale: 'en', apiClient });
+
+// Scope changed: tear down and rebuild.
+explorer.dispose();
+```
+
+Delegates the controls half entirely to `CalendarControls.dispose()` — see [that section](#dispose-2) for
+exactly what it releases — and additionally empties every slot this explorer itself mounted into. `PathBuilder`
+has no `dispose()` of its own and no way to unsubscribe the `change` listeners it attaches internally to the
+underlying inputs; only its mounted DOM (the `builder` slot) can be reclaimed from here, and it is — the same
+pre-existing gap `CalendarViewer.dispose()` documents for `WebCalendar`.

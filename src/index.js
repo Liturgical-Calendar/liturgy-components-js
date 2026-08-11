@@ -12,6 +12,7 @@ import CalendarResourcePicker from './MetaComponents/CalendarResourcePicker.js';
 import DayViewer from './MetaComponents/DayViewer.js';
 import CalendarControls from './MetaComponents/CalendarControls.js';
 import CalendarViewer from './MetaComponents/CalendarViewer.js';
+import ApiExplorer from './MetaComponents/ApiExplorer.js';
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
 import {
@@ -43,6 +44,7 @@ export {
     DayViewer,
     CalendarControls,
     CalendarViewer,
+    ApiExplorer,
     Input,
     Utils,
     Grouping,
