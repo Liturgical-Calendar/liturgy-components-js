@@ -48,6 +48,12 @@ export default class CalendarResourcePicker {
     /** @type {function|null} */
     #riteChangeListener = null;
 
+    /** @type {boolean} */
+    #disposed = false;
+
+    /** @type {Array<{target: EventTarget, type: string, listener: function}>} */
+    #listeners = [];
+
     /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
@@ -218,6 +224,7 @@ export default class CalendarResourcePicker {
      * @returns {void}
      */
     appendTo(target) {
+        this.#assertUsable();
         const element = CalendarResourcePicker.#requireElement(
             target,
             'appendTo',
@@ -237,6 +244,11 @@ export default class CalendarResourcePicker {
                 'change',
                 this.#riteChangeListener,
             );
+            this.#listeners.push({
+                target: this.#riteSelect._domElement,
+                type: 'change',
+                listener: this.#riteChangeListener,
+            });
         }
         this.#applyPlaceholder();
     }
@@ -277,10 +289,54 @@ export default class CalendarResourcePicker {
      * @returns {CalendarResourcePicker} This instance.
      */
     onChange(callback) {
-        this.#calendarSelect._domElement.addEventListener('change', () =>
-            callback(this.value),
-        );
+        this.#assertUsable();
+        const listener = () => callback(this.value);
+        this.#calendarSelect._domElement.addEventListener('change', listener);
+        this.#listeners.push({
+            target: this.#calendarSelect._domElement,
+            type: 'change',
+            listener,
+        });
         return this;
+    }
+
+    /**
+     * Guards every method that a disposed picker cannot honour.
+     *
+     * A disposed component that quietly does nothing is worse than one that
+     * throws: the caller's next assertion fails somewhere unrelated.
+     *
+     * @returns {void}
+     * @throws {Error} If this picker has been disposed.
+     */
+    #assertUsable() {
+        if (true === this.#disposed) {
+            throw new Error(
+                'CalendarResourcePicker: this picker has been disposed and can no longer be used.',
+            );
+        }
+    }
+
+    /**
+     * Releases this picker's listeners and empties its mount.
+     *
+     * Needed because all three known call sites rebuild their picker whenever the
+     * selected scope changes, and the library previously had no teardown of any
+     * kind. Idempotent; further use throws rather than failing quietly.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        if (true === this.#disposed) {
+            return;
+        }
+        for (const { target, type, listener } of this.#listeners) {
+            target.removeEventListener(type, listener);
+        }
+        this.#listeners = [];
+        this.#mount?.replaceChildren();
+        this.#mount = null;
+        this.#disposed = true;
     }
 
     /**

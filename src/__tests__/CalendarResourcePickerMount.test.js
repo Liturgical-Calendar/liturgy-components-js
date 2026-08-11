@@ -149,3 +149,47 @@ describe('CalendarResourcePicker.mountInto', () => {
         errorSpy.mockRestore();
     });
 });
+
+describe('CalendarResourcePicker.dispose', () => {
+    it('empties the mount', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.dispose();
+        expect(document.getElementById('mount').children.length).toBe(0);
+    });
+
+    it('stops onChange callbacks from firing', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        let fired = false;
+        picker.onChange(() => (fired = true));
+        const element = picker.calendarSelect._domElement;
+        picker.dispose();
+
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(fired).toBe(false);
+    });
+
+    it('is idempotent', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.dispose();
+        expect(() => picker.dispose()).not.toThrow();
+    });
+
+    it('throws on use after dispose rather than failing quietly', async () => {
+        const picker = await CalendarResourcePicker.mountInto('#mount', {
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.dispose();
+        expect(() => picker.appendTo('#mount')).toThrow(/disposed/);
+        expect(() => picker.onChange(() => {})).toThrow(/disposed/);
+    });
+});
