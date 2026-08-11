@@ -9,7 +9,7 @@ The library owns wiring, ordering, failure behaviour and defaults. It ships noth
 framework-specific and takes no position on CSS: styling is entirely up to the consumer, through a
 **theme bag** for the common case and the wired child instances for everything else.
 
-This page documents `CalendarResourcePicker`.
+This page documents `CalendarResourcePicker` and `DayViewer`.
 
 ## CalendarResourcePicker
 
@@ -199,4 +199,235 @@ if (null !== picker) {
         console.log('Selected calendar id:', value);
     });
 }
+```
+
+## DayViewer
+
+Bundles a complete "liturgy of any day" page into one mount: a `RiteSelect`, a `CalendarSelect`, an
+`ApiOptions` locale input and the `LiturgyOfAnyDay` widget, wired to one another and to an `ApiClient`.
+It exists because the rite needs **two** separate wires to work correctly —
+`ApiOptions.linkToRiteSelect()` (which rebuilds the calendar list and disables the temporal options
+the rite fixes) and `apiClient.listenTo(riteSelect)` (which is the only one of the two that turns the
+rite into a path segment) — and wiring only the first fails silently: the form reads `ambrosian` while
+every request still goes to `/calendar/roman/`. See "Rite Wiring" in the project `CLAUDE.md` for the
+general shape of this trap; `DayViewer` is the fix for it.
+
+```javascript
+import { DayViewer } from '@liturgical-calendar/components-js';
+
+const viewer = await DayViewer.mountInto('#liturgyOfAnyDayMount', {
+    locale: 'en',
+    apiClient,
+    theme: {
+        select: 'form-select',
+        label: 'form-label',
+        riteSelect: { class: 'form-select mb-2' },
+    },
+});
+```
+
+### Slots
+
+`appendTo()` (called internally by `mountInto()`) accepts either a single target, which receives all
+four children, or a slots object naming a target per child:
+
+```javascript
+viewer.appendTo({
+    rite: '#riteContainer',
+    calendar: '#calendarContainer',
+    locale: '#localeContainer',
+    liturgy: '#liturgyContainer',
+});
+```
+
+An omitted slot means that child is not rendered. The rite select is always mounted before the
+calendar select is linked to it, mirroring `CalendarResourcePicker`'s own append-then-link ordering
+requirement — `linkToRiteSelect()` reads the rite select's element to attach its change listener, so
+the select must already be in the DOM.
+
+### Constructor options
+
+| Option      | Type                    | Description                                                                                                                                               |
+| ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `locale`    | `string \| Intl.Locale` | Display locale. `null`/`undefined` take the default `'en'`; anything else throws, naming the type found.                                                  |
+| `theme`     | `Object`                | The theme bag; see below. Omitted, the viewer renders unstyled markup.                                                                                    |
+| `showTitle` | `boolean`               | Default `true`. `false` hides the `LiturgyOfAnyDay` widget's own heading, for a page that supplies its own.                                               |
+| `apiClient` | `ApiClient`             | Binds the viewer's `CalendarSelect` to that client's API base. `mountInto()` only: also wires the viewer via `listenTo()` and performs the initial fetch. |
+
+`mountInto()` additionally accepts:
+
+| Option    | Type                    | Description                                                                                    |
+| --------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `signal`  | `AbortSignal`           | Cancels the mount before it happens; see below.                                                |
+| `onError` | `function(Error): void` | Registered before the initial fetch, so a failure of that very first request still reaches it. |
+
+### The theme bag
+
+The same HTML-role vocabulary as `CalendarResourcePicker` — see
+[that component's section](#the-theme-bags-role-vocabulary) for the general rules of resolution. Four
+flat keys and five per-child override keys are understood:
+
+```javascript
+theme: {
+    select: 'form-select',                      // flat default, applied to every <select> child
+    label: 'form-label',                        // flat default for every child's label
+    input: 'form-control',                      // flat default for every text/number input (the date controls)
+    wrapper: 'mb-3',                             // flat default wrapper class — see the caution below
+    riteSelect: { class: 'form-select mb-2' },   // per-child override for the RiteSelect
+    calendarSelect: { class: '...' },            // per-child override for the CalendarSelect
+    localeInput: { class: '...' },               // per-child override for the ApiOptions locale input
+    liturgy: { class: '...' },                   // per-child override for the LiturgyOfAnyDay widget's own root
+    dateControls: { class: '...' },              // per-child override for all three date inputs together
+}
+```
+
+`dateControls` is shared by the day, month and year inputs rather than split three ways: styling them
+differently from one another is a case nobody has needed, and the `liturgy` getter (below) reaches the
+individual inputs directly if that changes.
+
+**Caution:** the flat `wrapper` key supplies only a wrapper **class**, not a wrapper **element type**.
+`LiturgyOfAnyDay`'s date inputs require an element type (`wrapper('div')`, say) to already be set before
+a wrapper class can be applied to them — a precondition `DayViewer` does not currently paper over. A
+flat `theme.wrapper` therefore throws once it reaches the date controls unless `dateControls` also
+supplies a `wrapper` key naming the element type. This is a real, load-bearing gap between the two
+components rather than an oversight in this documentation; avoid the flat `wrapper` key with `DayViewer`
+until it is closed, and use `theme.dateControls = { wrapper: 'div', wrapperClass: '...' }` instead.
+
+### Public members
+
+All getters below, `appendTo()`, `onError()` and `fetch()` throw once this viewer has been disposed —
+see [`dispose()`](#dispose-1) below.
+
+| Member           | Returns                                  | Description                                                                                                                |
+| ---------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `calendarSelect` | `CalendarSelect`                         | The wired calendar select.                                                                                                 |
+| `riteSelect`     | `RiteSelect`                             | The wired rite select.                                                                                                     |
+| `localeInput`    | The `ApiOptions` locale input's own type | The wired locale input.                                                                                                    |
+| `liturgy`        | `LiturgyOfAnyDay`                        | The wired liturgy widget — the escape hatch for anything the theme bag does not cover, such as the individual date inputs. |
+| `selectedLocale` | `string`                                 | The locale chosen by the cascade below, and currently selected in the locale input.                                        |
+
+### The locale cascade
+
+`appendTo()` picks the locale the viewer requests from those the _selected calendar_ supports — not
+necessarily the `locale` the viewer was constructed with, since a national or diocesan calendar may not
+serve every locale the library does. The order is: an exact match, then a language-prefix match (so a
+viewer constructed with `it-CH` gets Italian rather than English), then the first available option,
+then finally the constructed `locale` itself. `selectedLocale` reports the result, and the locale input
+is pre-selected to match it.
+
+### `showTitle` and labels
+
+`showTitle: false` hides only `LiturgyOfAnyDay`'s own heading — everything else (the rite, calendar and
+locale selects) is unaffected, for a page embedding the viewer under its own heading.
+
+The date controls (`DAY`, `YEAR`) and the locale input's label (`LANGUAGE`) are translated for the same
+12 locales that carry `SELECT_A_RITE`, while `MONTH` and `SELECT_A_CALENDAR` are translated for all 84
+locales the library ships messages for. The fallback to English is per **key**, not per **locale**: a
+locale missing only `DAY` still shows its own translation for `MONTH` rather than reverting the whole
+viewer to English.
+
+### `mountInto()` versus the constructor
+
+Exactly the same split as `CalendarResourcePicker`:
+
+- **`new DayViewer(options)`** is synchronous and requires an already-initialised `ApiBase`. Pair it
+  with `appendTo(target)`, and wire it separately with `listenTo(apiClient)` if it needs to fetch.
+- **`DayViewer.mountInto(target, options)`** resolves the target, constructs the viewer, mounts it,
+  wires it to `options.apiClient` when given, and performs the initial fetch.
+
+```javascript
+// Constructor + appendTo + listenTo — used when an ApiBase is already known to be ready
+const viewer = new DayViewer({ locale: 'en' });
+viewer.appendTo('#mount');
+viewer.listenTo(apiClient);
+
+// mountInto — constructs, mounts, wires and fetches in one call
+const viewer = await DayViewer.mountInto('#mount', { locale: 'en', apiClient });
+```
+
+### Reject versus resolve
+
+| Kind                                                                                      | Behaviour                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid options (unparseable locale, malformed theme, a slot target that matches nothing) | **Rejects.** A typo should not be silently papered over.                                                                                                        |
+| A failed initial fetch (API down, network error)                                          | **Resolves** with a mounted, fully working viewer. The failure reaches `onError()` if one was registered, and falls back to `console.error` only when none was. |
+
+`mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was
+already aborted before mounting could happen.
+
+### `onError()` and `fetch()`
+
+```javascript
+const viewer = new DayViewer({ locale: 'en' });
+viewer.appendTo('#mount');
+viewer.onError((error) => console.error('Could not load the calendar:', error.message));
+viewer.listenTo(apiClient);
+await viewer.fetch();
+```
+
+`onError(callback)` subscribes `callback` to the client's `calendarFetchFailed` event. Subscribing here
+is what stops the library falling back to `console.error` behind the caller's back — `ApiClient` logs a
+failure only when nothing is listening for that event. A callback registered before `listenTo()` is
+replayed once `listenTo()` runs; a callback registered after a client is already wired subscribes
+immediately. Either way each callback is attached exactly once.
+
+`fetch()` performs a calendar fetch using `selectedLocale`, and returns the same promise
+`ApiClient.fetchCalendar()` does. That promise is the caller's to handle — rejections also reach any
+`onError()` callbacks, but the rejection itself is never swallowed. Calling `fetch()` before
+`listenTo()` throws, naming the missing wiring.
+
+### `dispose()`
+
+```javascript
+const viewer = await DayViewer.mountInto('#mount', { locale: 'en', apiClient });
+viewer.onError((error) => console.error(error));
+
+// Page navigated away, or the viewer is being rebuilt:
+viewer.dispose();
+```
+
+`dispose()` is idempotent, and a disposed viewer throws on further use rather than failing quietly —
+every getter, `appendTo()`, `onError()` and `fetch()` all throw naming "disposed" once it has run.
+
+**What `dispose()` releases:** every subscription the viewer itself made on the client's event bus
+through `onError()`/`listenTo()` — unsubscribed via `EventEmitter.off()`, added in this same phase for
+exactly this purpose — and the DOM: every element the viewer was mounted into is emptied.
+
+**What survives `dispose()`, and why it must:** the `change` listeners `ApiClient.listenTo()` attaches
+internally to the rite select, calendar select and `ApiOptions` inputs, and the `calendarFetched`
+listener `LiturgyOfAnyDay.listenTo()` attaches to the client's event bus. All of these are anonymous
+closures created inside methods `DayViewer` does not own, attached via `addEventListener`/`on()` with
+no reference stored anywhere `DayViewer` — or, for the `ApiClient` ones, even `ApiClient` itself — can
+reach. This is a pre-existing gap in the wired components, not something `dispose()` papers over by
+claiming otherwise: a disposed viewer's own DOM and event-bus footprint are gone, but the `ApiClient` it
+was wired to can still be driven by the same selects if a caller kept a separate reference to them and
+the client, exactly as `CalendarResourcePicker.dispose()` documents for the same reason.
+
+## Worked Bootstrap example — DayViewer
+
+```javascript
+import { ApiClient, DayViewer } from '@liturgical-calendar/components-js';
+
+const apiClient = await ApiClient.init('https://litcal.johnromanodorazio.com/api/dev');
+
+const viewer = await DayViewer.mountInto(
+    {
+        rite: '#riteContainer',
+        calendar: '#calendarContainer',
+        locale: '#localeContainer',
+        liturgy: '#liturgyContainer',
+    },
+    {
+        locale: 'en',
+        apiClient,
+        theme: {
+            select: 'form-select',
+            label: 'form-label',
+            riteSelect: { class: 'form-select mb-2' },
+        },
+        onError: (error) => {
+            console.error('Could not load the calendar:', error.message);
+        },
+    },
+);
 ```

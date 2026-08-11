@@ -56,6 +56,17 @@ export default class DayViewer {
     #apiClient = null;
 
     /**
+     * Every subscription this viewer made on the client's event bus, kept so that
+     * `dispose()` can pass the exact same references back to `off()`.
+     *
+     * @type {Array<{event: string, listener: function}>}
+     */
+    #subscriptions = [];
+
+    /** @type {Array<function(Error): void>} */
+    #errorCallbacks = [];
+
+    /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
@@ -194,32 +205,68 @@ export default class DayViewer {
         return exact ?? language ?? options[0] ?? this.#locale;
     }
 
-    /** @returns {CalendarSelect} The wired calendar select. */
+    /**
+     * The wired `CalendarSelect`.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {CalendarSelect} The wired calendar select.
+     * @throws {Error} If this viewer has been disposed.
+     */
     get calendarSelect() {
+        this.#assertUsable();
         return this.#calendarSelect;
     }
 
-    /** @returns {RiteSelect} The wired rite select. */
+    /**
+     * The wired `RiteSelect`.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {RiteSelect} The wired rite select.
+     * @throws {Error} If this viewer has been disposed.
+     */
     get riteSelect() {
+        this.#assertUsable();
         return this.#riteSelect;
     }
 
-    /** @returns {Object} The `ApiOptions` locale input. */
+    /**
+     * The `ApiOptions` locale input.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {Object} The `ApiOptions` locale input.
+     * @throws {Error} If this viewer has been disposed.
+     */
     get localeInput() {
+        this.#assertUsable();
         return this.#apiOptions._localeInput;
     }
 
-    /** @returns {LiturgyOfAnyDay} The wired liturgy widget. */
+    /**
+     * The wired `LiturgyOfAnyDay` widget.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {LiturgyOfAnyDay} The wired liturgy widget.
+     * @throws {Error} If this viewer has been disposed.
+     */
     get liturgy() {
+        this.#assertUsable();
         return this.#liturgy;
     }
 
     /**
      * The locale chosen by the cascade and selected in the locale input.
      *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
      * @returns {string} The selected locale.
+     * @throws {Error} If this viewer has been disposed.
      */
     get selectedLocale() {
+        this.#assertUsable();
         return this.#selectedLocale;
     }
 
@@ -267,6 +314,23 @@ export default class DayViewer {
             .listenTo(this.#riteSelect)
             .listenTo(this.#apiOptions);
         this.#apiClient = apiClient;
+
+        // Replays every callback registered through `onError()` BEFORE a client was
+        // wired: `onError()` only subscribes directly once `#apiClient` is already
+        // set, so a callback registered earlier would otherwise never be attached to
+        // the bus at all. The two paths are mutually exclusive — this loop replays
+        // only what was registered before `listenTo()` ran, and `onError()` subscribes
+        // directly only once a client already exists — so no callback is ever
+        // subscribed twice.
+        for (const callback of this.#errorCallbacks) {
+            const listener = (error) => callback(error);
+            apiClient._eventBus.on('calendarFetchFailed', listener);
+            this.#subscriptions.push({
+                event: 'calendarFetchFailed',
+                listener,
+            });
+        }
+
         return this;
     }
 
@@ -310,8 +374,10 @@ export default class DayViewer {
      *
      * @param {string|HTMLElement|Object<string, string|HTMLElement>} target - Slots, or one target.
      * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
      */
     appendTo(target) {
+        this.#assertUsable();
         const single =
             typeof target === 'string' || target instanceof HTMLElement;
 
@@ -362,5 +428,149 @@ export default class DayViewer {
         // and are not present until it is built.
         this.#selectedLocale = this.#matchLocale();
         this.#apiOptions._localeInput._domElement.value = this.#selectedLocale;
+    }
+
+    /**
+     * Registers a callback for calendar fetch failures.
+     *
+     * Subscribing here is what stops the library falling back to `console.error`
+     * behind the caller's back: `ApiClient` logs a failure only when nothing is
+     * listening for `calendarFetchFailed`.
+     *
+     * @param {function(Error): void} callback - Receives the ApiClientError.
+     * @returns {DayViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onError(callback) {
+        this.#assertUsable();
+        this.#errorCallbacks.push(callback);
+        if (null !== this.#apiClient) {
+            const listener = (error) => callback(error);
+            this.#apiClient._eventBus.on('calendarFetchFailed', listener);
+            this.#subscriptions.push({
+                event: 'calendarFetchFailed',
+                listener,
+            });
+        }
+        return this;
+    }
+
+    /**
+     * Performs a calendar fetch using the locale chosen by the cascade.
+     *
+     * The returned promise is the caller's to handle. Rejections also reach any
+     * `onError()` callbacks, so a page that registered one does not have to handle
+     * the promise as well — but the rejection is never swallowed.
+     *
+     * @returns {Promise<Object>} The fetched calendar data.
+     * @throws {Error} If this viewer has been disposed, or if no client has been
+     *   wired with `listenTo()`.
+     */
+    fetch() {
+        this.#assertUsable();
+        if (null === this.#apiClient) {
+            throw new Error(
+                'DayViewer.fetch: no ApiClient is wired. Call listenTo( apiClient ) first, or pass apiClient to mountInto().',
+            );
+        }
+        return this.#apiClient.fetchCalendar(this.#selectedLocale);
+    }
+
+    /**
+     * Releases this viewer's listeners and subscriptions and empties its mounts.
+     *
+     * Precisely what this DOES and does NOT release:
+     *
+     * - **Released:** every subscription this viewer made on the client's event
+     *   bus through `onError()`/`listenTo()` — the `off()` calls this makes are why
+     *   `EventEmitter.off()` was added in this same phase. Without it teardown could
+     *   only ever be partial, with these subscriptions still firing against a
+     *   detached tree. The mounted DOM is also emptied, and `#errorCallbacks` and
+     *   `#subscriptions` are cleared.
+     * - **NOT released, and cannot be from here:** the `change` listeners
+     *   `ApiClient.listenTo()` attaches to the calendar select, rite select and
+     *   `ApiOptions` inputs. Those are anonymous closures created inside
+     *   `ApiClient`'s own private `#listenToCalendarSelect`/`#listenToRiteSelect`/
+     *   `#listenToApiOptions` methods, attached via `addEventListener`, with no
+     *   reference stored anywhere `DayViewer` can reach — not even by `ApiClient`
+     *   itself. This is a pre-existing gap in `ApiClient`, not something this
+     *   method can close, and disposing a viewer does not stop its selects from
+     *   still driving that `ApiClient` if the same client is reused elsewhere.
+     *
+     * Idempotent; further use throws.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        if (true === this.#disposed) {
+            return;
+        }
+        if (null !== this.#apiClient) {
+            for (const { event, listener } of this.#subscriptions) {
+                this.#apiClient._eventBus.off(event, listener);
+            }
+        }
+        this.#subscriptions = [];
+        this.#errorCallbacks = [];
+        for (const mount of this.#mounts) {
+            mount.replaceChildren();
+        }
+        this.#mounts = [];
+        this.#apiClient = null;
+        this.#disposed = true;
+    }
+
+    /**
+     * Builds a viewer, mounts it, wires it and performs the initial fetch.
+     *
+     * Programmer error and runtime failure are answered differently, exactly as in
+     * `CalendarResourcePicker.mountInto()`: invalid options or an unusable target
+     * REJECT, while a failed calendar fetch reaches `onError()` (and, absent one,
+     * `console.error`) and leaves a working, mounted form behind — a page whose
+     * fetch failed is still a page the user can correct their selection on.
+     *
+     * Resolves to `null` when a supplied signal aborted before mounting could
+     * happen.
+     *
+     * @param {string|HTMLElement|Object<string, string|HTMLElement>} target - Slots, or one target.
+     * @param {Object} [options] - As the constructor, plus those below.
+     * @param {Object} [options.apiClient] - The client to wire; when given, the initial fetch runs.
+     * @param {AbortSignal} [options.signal] - Cancels the mount.
+     * @param {function(Error): void} [options.onError] - Registered before the initial fetch.
+     * @returns {Promise<DayViewer|null>} The viewer, or `null` if cancelled.
+     * @throws {Error} If the options or any slot target are invalid.
+     */
+    static async mountInto(target, options = {}) {
+        const bag = normalizeComponentOptions(options, 'DayViewer');
+        const { apiClient, signal, onError } = bag;
+
+        // Constructed BEFORE the abort check so that an invalid locale or theme
+        // rejects even on an aborted mount: a typo should be reported whether or
+        // not the caller changed their mind.
+        const viewer = new DayViewer(bag);
+        if (true === signal?.aborted) {
+            return null;
+        }
+
+        viewer.appendTo(target);
+
+        if (apiClient !== undefined && apiClient !== null) {
+            viewer.listenTo(apiClient);
+            if (typeof onError === 'function') {
+                viewer.onError(onError);
+            }
+            // The rejection is handled here rather than returned, because this
+            // factory's promise resolves to the viewer. Callers wanting the fetch
+            // result await `viewer.fetch()` themselves.
+            viewer.fetch().catch((error) => {
+                if (0 === viewer.#errorCallbacks.length) {
+                    console.error(
+                        `DayViewer: could not load the calendar: ${error.message}`,
+                    );
+                }
+            });
+        }
+
+        return viewer;
     }
 }

@@ -9,6 +9,7 @@ import LiturgyOfTheDay from './LiturgyOfTheDay/LiturgyOfTheDay.js';
 import LiturgyOfAnyDay from './LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 import PathBuilder from './PathBuilder/PathBuilder.js';
 import CalendarResourcePicker from './MetaComponents/CalendarResourcePicker.js';
+import DayViewer from './MetaComponents/DayViewer.js';
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
 import {
@@ -37,6 +38,7 @@ export {
     LiturgyOfAnyDay,
     PathBuilder,
     CalendarResourcePicker,
+    DayViewer,
     Input,
     Utils,
     Grouping,
