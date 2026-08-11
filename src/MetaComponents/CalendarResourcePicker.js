@@ -78,6 +78,14 @@ export default class CalendarResourcePicker {
         }
         assertTheme(theme, 'CalendarResourcePicker');
 
+        // Set only by `mountInto()`, and only when the real construction already
+        // threw. The instance exists to answer `failed` and `value`; it builds no
+        // children, because building them is exactly what just failed.
+        if (true === options._failed) {
+            this.#failed = true;
+            return;
+        }
+
         if (typeof placeholderText === 'string' && '' !== placeholderText) {
             this.#placeholderText = placeholderText;
         }
@@ -142,12 +150,13 @@ export default class CalendarResourcePicker {
     }
 
     /**
-     * The selected calendar id, or the empty string when the placeholder is selected.
+     * The selected calendar id, or the empty string when the placeholder is
+     * selected or the picker failed to build.
      *
      * @returns {string} The selected calendar id.
      */
     get value() {
-        return this.#calendarSelect._domElement.value;
+        return this.#calendarSelect?._domElement.value ?? '';
     }
 
     /**
@@ -267,5 +276,110 @@ export default class CalendarResourcePicker {
             callback(this.value),
         );
         return this;
+    }
+
+    /**
+     * Renders the stand-in control shown when the picker cannot be built.
+     *
+     * It deliberately keeps the theme's classes, so the control the rest of the
+     * form — and the E2E suite — waits for does appear. It is disabled and carries
+     * no selectable value, so submit validation still blocks, but the failure now
+     * reads as "this broke" rather than as an element that never arrived.
+     *
+     * @param {HTMLElement} element - The mount.
+     * @param {Object|undefined} theme - The theme bag.
+     * @param {string} [errorText] - The message to show.
+     * @returns {void}
+     */
+    static #renderFailure(element, theme, errorText) {
+        const { class: themedClass } = resolveChildTheme(
+            theme,
+            'calendarSelect',
+        );
+        const select = document.createElement('select');
+        select.className = `${themedClass ?? ''} is-invalid`.trim();
+        select.disabled = true;
+        select.required = true;
+        select.dataset.loadFailed = 'true';
+
+        const option = document.createElement('option');
+        option.value = '';
+        option.selected = true;
+        option.textContent =
+            errorText ?? 'Could not load calendars — try reloading the page';
+        select.appendChild(option);
+
+        element.replaceChildren(select);
+    }
+
+    /**
+     * Builds a picker and mounts it, handling the two things every real call site
+     * needs and none of them should re-derive: the failure control, and cancellation.
+     *
+     * Programmer error and runtime failure are answered differently, on purpose:
+     *
+     * - Invalid options, or a target that matches nothing, REJECT. Absent and
+     *   invalid are different things, and a typo should not be papered over.
+     * - A runtime failure — the API down, metadata unparseable — RESOLVES with a
+     *   picker whose `failed` is true and whose failure control is in the DOM.
+     *   These mount into forms where an empty container is indistinguishable from
+     *   "still loading"; the only symptom is a Playwright `waitFor` timing out ten
+     *   seconds later with nothing to point at.
+     *
+     * Resolves to `null` when the mount was cancelled, either by an aborted signal
+     * or because the target left the DOM while the client was resolving. The three
+     * known call sites all guard against a scope change landing mid-await, each
+     * differently; a standard `AbortSignal` covers all three.
+     *
+     * @param {string|HTMLElement} target - Where to mount.
+     * @param {Object} [options] - As the constructor, plus those below.
+     * @param {string} [options.errorText] - Text for the failure control.
+     * @param {AbortSignal} [options.signal] - Cancels the mount.
+     * @returns {Promise<CalendarResourcePicker|null>} The picker, or `null` if cancelled.
+     * @throws {Error} If the options or the target are invalid.
+     */
+    static async mountInto(target, options = {}) {
+        const bag = normalizeComponentOptions(
+            options,
+            'CalendarResourcePicker',
+        );
+        const { errorText, signal, theme, filter } = bag;
+
+        // Validated up front, ahead of the try below, so that every throw inside it
+        // is a runtime failure by construction.
+        if (false === ACCEPTED_FILTERS.includes(filter)) {
+            throw new Error(
+                `CalendarResourcePicker: the filter option must be CalendarSelectFilter.NATIONAL_CALENDARS or CalendarSelectFilter.DIOCESAN_CALENDARS, but found: ${String(filter)}`,
+            );
+        }
+        assertTheme(theme, 'CalendarResourcePicker');
+
+        const element = CalendarResourcePicker.#requireElement(
+            target,
+            'mountInto',
+        );
+
+        if (true === signal?.aborted || false === element.isConnected) {
+            return null;
+        }
+
+        try {
+            const picker = new CalendarResourcePicker(bag);
+            // Re-checked after construction: the scope may have changed while the
+            // base was being read.
+            if (true === signal?.aborted || false === element.isConnected) {
+                return null;
+            }
+            element.replaceChildren();
+            picker.appendTo(element);
+            return picker;
+        } catch (error) {
+            console.error(
+                'CalendarResourcePicker: could not build the calendar select:',
+                error,
+            );
+            CalendarResourcePicker.#renderFailure(element, theme, errorText);
+            return new CalendarResourcePicker({ filter, theme, _failed: true });
+        }
     }
 }
