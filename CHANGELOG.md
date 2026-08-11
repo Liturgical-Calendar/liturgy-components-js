@@ -4,6 +4,169 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.2.0
+
+Two meta-components — `CalendarResourcePicker` and `DayViewer` — plus the infrastructure they needed:
+`EventEmitter.off()`, three `Messages` keys, and an internal theme resolver. Purely additive: nothing
+existing changes API or behaviour, and every test that existed before this release still passes
+unmodified.
+
+The problem was duplication with teeth. `LiturgicalCalendarFrontend` had five call sites re-deriving the
+same wiring by hand, each carrying a paragraph-long comment explaining a trap the library documented but
+could not enforce — most sharply, that a `RiteSelect` needs **two** separate wires
+(`linkToRiteSelect()` and `apiClient.listenTo(riteSelect)`) or the form reads `ambrosian` while every
+request still goes to `/calendar/roman/`. A meta-component owns that wiring once, in the library, so
+every consumer gets it correctly by construction instead of by careful copying.
+
+### Added
+
+- **`CalendarResourcePicker`**, bundling a `RiteSelect` and a filtered `CalendarSelect` into one mount —
+  a rite select for choosing Roman or Ambrosian, and a calendar select scoped to national or diocesan
+  calendars. It absorbs four behaviours that three frontend call sites previously duplicated: the rite
+  select appears only for a diocesan filter (the Ambrosian rite has no national tier, so a
+  `NATIONAL_CALENDARS` select under it would strand the user with a required field it cannot fill);
+  append-then-link ordering; placeholder re-application after every rite change, which
+  `linkToRiteSelect()` would otherwise silently discard by rebuilding the option list from scratch; and a
+  visible failure control — a disabled, `is-invalid` select carrying an error message and
+  `dataset.loadFailed = 'true'` — so a runtime failure (the API down, metadata unparseable) never leaves
+  a container an end-to-end test can only fail to find ten seconds later, indistinguishable from "still
+  loading".
+
+- **`DayViewer`**, bundling a `RiteSelect`, a filtered `CalendarSelect`, an `ApiOptions(LOCALE_ONLY)`
+  locale input and `LiturgyOfAnyDay` into one wired unit, mounted through either a single target or a
+  slots object (`{ rite, calendar, locale, liturgy }`) naming one target per child — the page this was
+  extracted from mounts its four parts into four separate containers, which a single `appendTo()` target
+  cannot express. It absorbs the rite's two-wire requirement (the whole reason this component exists),
+  General Roman Calendar as the default selection rather than Vatican, and the locale-matching cascade
+  (exact match, then language-prefix match, then the first available option) that every consumer
+  previously wrote out by hand — exposed as `viewer.selectedLocale`.
+
+- **The theme bag**, resolved internally by `src/MetaComponents/Theme.js` (not exported — same reasoning
+  as `LocaleValidation.js` and `OptionsValidation.js`: internal contract, not public API) and shared by
+  both meta-components. Its vocabulary is HTML roles, never framework names: a flat `select`/`label`/
+  `wrapper`/`input` key styles every child of that role, and a per-child override
+  (`riteSelect: { class: '...' }`, named for the meta-component's own public getter) wins per-key over
+  the flat default rather than replacing a child's styling wholesale. `labelText` is a per-child-only key
+  with no flat equivalent, setting a themed child's label TEXT — needed because `CalendarSelect.label()`
+  and `RiteSelect.label()` are one-shot, so reaching `picker.calendarSelect.label({ text: '...' })` after
+  the theme bag has already themed that child's label throws. Two constraints are worth stating plainly
+  rather than discovering by trial:
+
+  - **Every class-string value, flat or per-child, is validated by the same shared
+    `Utils.validateClassName()`** every other class-taking method in this library already uses — which
+    this release widened; see Changed below. Utility-framework classes work as written.
+  - **`RiteSelect` has no wrapper concept**, so the flat `wrapper` key and a `riteSelect.wrapperClass`
+    override are both silently unused for it. `CalendarSelect` and, on `DayViewer`, the `ApiOptions`
+    locale input both support one.
+
+- **`CalendarResourcePicker.required()`**, and a matching `required` constructor option, marking the
+  working select `required`. Without it, a form needing a mandatory calendar field had to write
+  `picker.calendarSelect._domElement.required = true` — reaching through the component into a private
+  field, which is the pattern the meta-components exist to retire. It is deliberately never applied to
+  the failure control: that control is `disabled`, and a disabled element is barred from constraint
+  validation and excluded from submission entirely, so `required` on it would be inert. A form that must
+  not submit without a calendar therefore needs `required` for the ordinary case and its own check of
+  `picker.failed` for the case where the calendar list could not be loaded at all.
+
+- **Construction and mounting**: each meta-component has a synchronous constructor — requiring an
+  already-initialised `ApiBase`, exactly as `CalendarSelect` does today — paired with `appendTo()`, and a
+  static async factory, `X.mountInto(target, options)`, which awaits the client, constructs, mounts, and
+  installs the failure control on a runtime failure. Programmer error and runtime failure are handled
+  differently, on purpose, and this is the one place in this release where "resolves" rather than
+  "rejects" is deliberate rather than a gap: an invalid option (an unparseable locale, an unknown filter,
+  a target that matches nothing) **rejects**, matching this library's 2.0.0 direction, while a runtime
+  failure — the API down, metadata unparseable — **resolves** with the component in a failed state and
+  its failure control already rendered. These mount into forms where an empty container is
+  indistinguishable from "still loading", with nothing for a `waitFor` to point at ten seconds later.
+  `mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was
+  already aborted or the target left the DOM while the client was resolving — a scope change landing
+  mid-await, which three frontend call sites previously guarded against three different ways.
+
+- **`dispose()`** on both meta-components: idempotent, and a disposed instance throws on further use
+  rather than failing quietly, across every public member — not only the DOM-facing ones. What it
+  releases: every listener and subscription the meta-component itself attached, and the mounted DOM,
+  which is emptied. **What it cannot release, and why:** the `change` listeners `ApiClient.listenTo()`
+  attaches internally to the rite select, calendar select and `ApiOptions` inputs, and (on `DayViewer`)
+  the `calendarFetched` listener `LiturgyOfAnyDay.listenTo()` attaches to the client's event bus. Both are
+  anonymous closures created inside methods the meta-component does not own, attached via
+  `addEventListener`/`on()` with no reference stored anywhere reachable — not even by `ApiClient` itself.
+  This is a pre-existing gap in the wired components, not something `dispose()` papers over by claiming
+  otherwise: a disposed meta-component's own DOM and event-bus footprint are gone, but the same
+  `ApiClient` can still be driven by the same selects if a caller kept a separate reference to them.
+
+- **`EventEmitter.off(event, listener)`**, purely additive and useful on its own. Without it,
+  `DayViewer.dispose()` could only ever be partial — dropping its own DOM listeners and child references
+  while its `ApiClient` subscriptions kept firing against a detached tree. Removes one registration per
+  call, mirroring `on()`, which appends unconditionally; a listener added twice must be removed twice.
+  Unknown events and unregistered listeners are no-ops.
+
+- **Three `Messages` keys** — `DAY`, `YEAR` and `LANGUAGE` — added for the same 12 locales that already
+  carry `SELECT_A_RITE` (`de en es fr hu id it la nl pt sk vi`), with English fallback beyond, matching
+  that key's existing coverage rule rather than inventing a second one. This deletes the 90-line hand-
+  copied translation map `liturgyOfAnyDay.js` carried for exactly these three concepts, because `Messages`
+  itself is not exported — `DayViewer` is what consumes it internally now. The fallback is per **key**,
+  not per **locale**: a locale missing only `DAY` still shows its own translation for `MONTH`, which is
+  translated for all 84 locales, rather than reverting the whole viewer to English.
+
+### Changed
+
+- **`Utils.validateClassName()` now accepts utility-framework class names**, across every component that
+  takes a class — not only the meta-components. It previously demanded
+  `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`, which describes a CSS _identifier_. A `class`
+  attribute does not hold identifiers; it holds a space-separated token list, and a token may contain
+  any character except whitespace. The old rule therefore rejected `md:w-1/2`, `hover:bg-blue-500`,
+  `2xl:flex`, `p-1.5`, `bg-[#1da1f2]`, `w-[calc(100%-2rem)]` and `[&>*]:mt-2` — and rejected them by
+  **throwing**, so a Tailwind consumer could not use these components at all rather than merely seeing
+  them unstyled.
+
+  A token is now accepted when it is non-empty and contains no whitespace, quote character, backtick or
+  `<` — the characters that can only arrive from a caller's mistake, such as forgetting to split on
+  whitespace or letting markup leak into a class string. Those still throw `Invalid class name: …`.
+
+  This widens what is accepted and rejects nothing that was previously accepted, so no working code
+  changes behaviour. `LiturgyOfAnyDay` and `LiturgyOfTheDay` each carried a private copy of the old
+  regex; both now delegate to `Utils.validateClassName()`, so the rule has one definition rather than
+  three that could drift apart.
+
+- **`assertTheme()` validates the values inside a per-child override, not only its shape.**
+  `{ calendarSelect: { class: 42 } }` previously passed the theme guard and failed later inside
+  `CalendarSelect.class()`, reporting the caller's mistake under the child's name — the same
+  misattribution the meta-components validate locale and filter themselves to avoid. It now throws
+  under the meta-component's own name, identifying the exact key:
+
+  ```text
+  DayViewer: theme.calendarSelect.class must be of type `string` but found type: number
+  ```
+
+  An explicitly `undefined` value is still accepted and resolves as absent.
+
+- **`CalendarResourcePicker.appendTo()` may be called more than once.** A second call previously threw
+  `Current CalendarSelect instance is already linked to a RiteSelect instance`, from a child the caller
+  never touched, because `linkToRiteSelect()` is one-shot. The link is between the two component
+  instances rather than their positions in the document, so it now happens once per pairing and
+  survives a move; the picker's own placeholder listener is released and re-registered, leaving one
+  mount's worth of listeners live at a time. Re-mounting a failed picker no longer strands its previous
+  failure control in the old container.
+
+- **`DayViewer.listenTo()` refuses to rebind**, and refuses a client bound to a different `ApiBase` than
+  its own children, both **before** any wiring happens — so a rejected call leaves the viewer exactly as
+  it was. A second call already failed, but only by accident of `ApiOptions.linkToCalendarSelect()`
+  being one-shot, and it failed under `ApiOptions`' name. A mismatched base was not checked at all, and
+  would have produced a viewer whose selects list one API's calendars while its requests went to
+  another.
+
+- The failure control no longer carries a `required` attribute. It is `disabled`, which bars it from
+  constraint validation entirely, so the attribute was inert and its accompanying comment — claiming
+  submit validation would still block — was wrong.
+
+### Notes
+
+- Two Storybook stories, one per meta-component, each rendered twice from one source with a Bootstrap and
+  an unstyled theme bag — replacing the duplicate-story pattern `0_Components/` used for the same purpose.
+- `Messages` remains unexported. Translating the three new keys beyond the 12 locales listed above is
+  explicitly out of scope: machine-translated liturgical UI is not worth the risk, matching the same
+  decision `SELECT_A_RITE` made when it landed.
+
 ## 2.1.0
 
 A new way to wire a `RiteSelect` into an `ApiOptions`, and two path builder bugs that were reaching real pages.

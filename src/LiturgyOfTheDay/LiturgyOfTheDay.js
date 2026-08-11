@@ -4,6 +4,7 @@ import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
+import Utils from '../Utils.js';
 
 export default class LiturgyOfTheDay {
     /**
@@ -64,10 +65,14 @@ export default class LiturgyOfTheDay {
     #showReadings = true;
 
     /**
-     * Validates the given class name to ensure it is a valid CSS class name.
+     * Validates the given class name to ensure it is usable in a `class` attribute.
      *
-     * A valid CSS class name is a string that starts with a letter, underscore or dash,
-     * followed by any number of alphanumeric characters, dashes or underscores.
+     * Delegates to {@link Utils.validateClassName} rather than carrying its own copy
+     * of the pattern. It used to inline an identical regex, and `LiturgyOfAnyDay`
+     * inlined a third — so widening the rule to accept utility-framework classes
+     * (`md:w-1/2`, `p-1.5`, `bg-[#1da1f2]`) meant changing the same expression in
+     * three places, and a component that missed the change would reject classes its
+     * siblings accepted. One definition, one behaviour.
      *
      * @param {string} className - The class name to validate.
      * @returns {boolean} True if the class name is valid, false otherwise.
@@ -75,17 +80,7 @@ export default class LiturgyOfTheDay {
      * @private
      */
     static #isValidClassName(className) {
-        /**
-         * The regex pattern used to validate class names:
-         *   - `^` asserts the start of a line
-         *   - `(?!\d|--|-?\d)` is a negative look ahead that prevents the class name
-         *                  from starting with a digit, or a sequence of dashes, or a number with a leading dash
-         *   - `[a-zA-Z_-]` matches any character that is a letter, a dash or an underscore
-         *   - `[a-zA-Z\d_-]{1,}` matches any alphanumeric character, a dash or an underscore at least once
-         *   - `$` asserts the end of a line
-         */
-        const pattern = /^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/;
-        return pattern.test(className);
+        return Utils.validateClassName(className);
     }
 
     /**

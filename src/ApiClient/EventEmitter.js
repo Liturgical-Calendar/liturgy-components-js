@@ -25,6 +25,44 @@ export default class EventEmitter {
     }
 
     /**
+     * Removes a previously registered listener for the specified event.
+     *
+     * Removes ONE registration, so a listener added twice must be removed twice.
+     * This mirrors `on()`, which appends unconditionally.
+     *
+     * The array is REPLACED rather than spliced in place, and that is load-bearing:
+     * `emit()` iterates with `forEach`, and an in-place removal during that
+     * iteration shifts the remaining entries down so `forEach` skips the next one.
+     * Replacing the array leaves the in-flight iteration holding the old one, which
+     * completes intact.
+     *
+     * An emptied event keeps its (now empty) array rather than deleting the key.
+     * `ApiClient#emitCalendarFetchFailed` reads `_events[ event ]?.length > 0`, for
+     * which an empty array and an absent key are equivalent.
+     *
+     * Unknown events and unregistered listeners are no-ops: unsubscribing something
+     * already gone is not an error.
+     *
+     * @param {string} event - The event to stop listening for.
+     * @param {function} listener - The exact listener reference passed to `on()`.
+     * @returns {void}
+     */
+    off(event, listener) {
+        const listeners = this.#events[event];
+        if (undefined === listeners) {
+            return;
+        }
+        const index = listeners.indexOf(listener);
+        if (-1 === index) {
+            return;
+        }
+        this.#events[event] = [
+            ...listeners.slice(0, index),
+            ...listeners.slice(index + 1),
+        ];
+    }
+
+    /**
      * Emits a specified event, invoking all registered listeners with the provided data.
      *
      * @param {string} event - The name of the event to emit.
