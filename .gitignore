@@ -20,3 +20,6 @@ node_modules
 # skill-driven development. Working notes, not project documentation.
 # (docs/superpowers/ IS tracked — the design spec and plan live there.)
 .superpowers/
+
+# Native worktree tooling creates isolated checkouts here.
+.claude/worktrees/
