@@ -32,15 +32,21 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
 picker.calendarSelect.id('grantObjectId');
 ```
 
+This minimal snippet omits failure handling for brevity — see the
+[worked example](#worked-bootstrap-example) below for the `picker.failed` guard a real call site needs
+before touching `calendarSelect`.
+
 ### What it bundles
 
 - **The rite select is offered only for a diocesan filter.** The Ambrosian rite has no national
   tier, so a `NATIONAL_CALENDARS`-filtered select under it would hold only the rite-level calendar
   and hide itself, stranding a required field the user cannot fill. This is derived from `filter`,
   not left for the caller to remember.
-- **Append-then-link ordering.** The rite select is appended to the DOM before the calendar select
-  is linked to it, because `linkToRiteSelect()` reads the rite select's element to attach its change
-  listener.
+- **Append-then-link ordering.** The rite select is appended to the DOM before the calendar select is
+  linked to it, so that it reads first in the form. This is not because `linkToRiteSelect()` requires
+  the rite select to already be attached: it only calls `addEventListener` and reads `.value`, both of
+  which work identically on a detached node. The ordering is kept for form layout, not because the
+  wiring would otherwise fail.
 - **Placeholder re-application on every rite change.** `allowNull(true)` plus a disabled, selected,
   empty placeholder option is the default — an empty value means "General Roman Calendar", which is
   never a valid national or diocesan resource id. `linkToRiteSelect()` rebuilds the calendar select's
@@ -69,8 +75,8 @@ standalone.
 
 ### The theme bag's role vocabulary
 
-The theme bag is written in HTML roles, never framework names, so a Tailwind or unstyled consumer is
-never forced to write Bootstrap-shaped keys:
+The theme bag is written in HTML roles, never framework names, so a Bootstrap or unstyled consumer is
+never forced to write framework-shaped keys:
 
 ```javascript
 theme: {
@@ -80,11 +86,36 @@ theme: {
 }
 ```
 
-`CalendarResourcePicker` only has `select`-role children — a `select` and a `label` key are the only
-flat defaults that apply. Per-child keys are named for the picker's public getters (`calendarSelect`,
+`CalendarResourcePicker` has `select`- and `label`-role children, plus one `wrapper`-role child
+(`calendarSelect`, via its `wrapperClass` — see below) — `select`, `label` and `wrapper` are the flat
+defaults that apply. Per-child keys are named for the picker's public getters (`calendarSelect`,
 `riteSelect`), so the override key and the escape-hatch getter are the same word. Resolution is
 per-key and most specific first: a per-child override supplies whichever keys it names, and every key
 it does not name falls back to the flat default.
+
+**`labelText`, a per-child-only key with no flat equivalent,** sets a child's label TEXT rather than
+its class — `riteSelect: { labelText: 'Choose a rite' }`. It exists because `CalendarSelect.label()`
+and `RiteSelect.label()` are one-shot: once the theme bag has called either (which it does whenever
+`label`/`labelClass` themes that child), calling `picker.calendarSelect.label({ text: '...' })`
+afterwards throws `Label has already been set`. `labelText` is therefore the only way to set custom
+label text on a themed child — the escape-hatch getters below still work for anything the theme bag
+left untouched (an id, a data attribute, a child the theme never themed at all), but not for
+re-configuring something the theme bag already configured.
+
+**What a class-string value may contain:** every class string in this bag — flat or per-child —
+ultimately reaches the same validator every other class-taking method in this library uses
+(`Utils.validateClassName()`), which accepts only letters, digits, underscores and hyphens per
+space-separated class: `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`. Tailwind's variant prefixes
+(`md:flex`, `hover:bg-blue-500`) and fractional utilities (`w-1/2`) both contain a character (`:` or
+`/`) outside that set and are rejected outright — not left unstyled, but thrown as
+`Invalid class name: md:flex`. This is a pre-existing, shared constraint the theme bag does not relax
+or work around; a build step that strips those characters before the string reaches the component is
+the only way to use them today.
+
+**`RiteSelect` has no wrapper concept.** The flat `wrapper` key and any `riteSelect.wrapperClass`
+override are silently unused for the rite select — there is no `RiteSelect.wrapper()` method to apply
+them to. `calendarSelect` and, on `DayViewer`, `localeInput` both support a wrapper; `riteSelect` does
+not, on either meta-component.
 
 ### Public getters
 
@@ -96,6 +127,14 @@ All four throw once this picker has been disposed — see [`dispose()`](#dispose
 | `riteSelect`     | `RiteSelect \| null`     | The wired `RiteSelect`, or `null` for a national filter or a failed picker.               |
 | `value`          | `string`                 | The selected calendar id, or `''` while the placeholder is selected or the picker failed. |
 | `failed`         | `boolean`                | `true` when the failure control is mounted instead of a working select.                   |
+
+**A failed picker's ACTION methods are safe, not just its getters.** `onChange()` is a no-op on a failed
+picker — its failure control is a disabled `<select>` that never changes, so there is nothing to
+subscribe to, but the call does not throw. `appendTo()` re-renders the same failure control into the new
+target rather than crashing on the missing `calendarSelect`. Both let the documented
+[worked example](#worked-bootstrap-example)'s `if ( null !== picker )` guard call them unconditionally;
+only reaching into `calendarSelect`/`riteSelect` themselves needs the additional `picker.failed` check,
+because those two getters return `null` on a failed picker.
 
 ### `mountInto()` versus the constructor
 
@@ -194,10 +233,17 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
     },
 });
 if (null !== picker) {
-    picker.calendarSelect.id('grantObjectId');
+    // `onChange()` is always safe to call — it is a no-op on a failed picker,
+    // since the failure control's `<select>` is disabled and never changes.
     picker.onChange((value) => {
         console.log('Selected calendar id:', value);
     });
+    // `calendarSelect` is `null` on a failed picker (its failure control is a
+    // bare `<select>`, not a wired `CalendarSelect` instance), so anything that
+    // reaches into it — `.id(...)` here — must be guarded by `picker.failed` too.
+    if (false === picker.failed) {
+        picker.calendarSelect.id('grantObjectId');
+    }
 }
 ```
 
@@ -241,9 +287,10 @@ viewer.appendTo({
 ```
 
 An omitted slot means that child is not rendered. The rite select is always mounted before the
-calendar select is linked to it, mirroring `CalendarResourcePicker`'s own append-then-link ordering
-requirement — `linkToRiteSelect()` reads the rite select's element to attach its change listener, so
-the select must already be in the DOM.
+calendar select is linked to it, mirroring `CalendarResourcePicker`'s own append-then-link convention —
+kept for form layout (the rite select reads first), not because `linkToRiteSelect()` requires the rite
+select to already be attached to the document. It only calls `addEventListener` and reads `.value`,
+both of which work identically on a detached node.
 
 ### Constructor options
 
@@ -264,8 +311,11 @@ the select must already be in the DOM.
 ### The theme bag
 
 The same HTML-role vocabulary as `CalendarResourcePicker` — see
-[that component's section](#the-theme-bags-role-vocabulary) for the general rules of resolution. Four
-flat keys and five per-child override keys are understood:
+[that component's section](#the-theme-bags-role-vocabulary) for the general rules of resolution,
+including the class-name character constraint and the note on `RiteSelect` having no wrapper concept
+(true here too: `riteSelect.wrapperClass` and the flat `wrapper` key are both silently unused for the
+rite select). Four flat keys and five per-child override keys are understood, plus the `labelText`
+per-child key documented below:
 
 ```javascript
 theme: {
@@ -273,9 +323,9 @@ theme: {
     label: 'form-label',                        // flat default for every child's label
     input: 'form-control',                      // flat default for every text/number input (the date controls)
     wrapper: 'mb-3',                             // flat default wrapper class — see the note below
-    riteSelect: { class: 'form-select mb-2' },   // per-child override for the RiteSelect
+    riteSelect: { class: 'form-select mb-2', labelText: 'Choose a rite' }, // labelText: see below
     calendarSelect: { class: '...' },            // per-child override for the CalendarSelect
-    localeInput: { class: '...' },               // per-child override for the ApiOptions locale input
+    localeInput: { class: '...', wrapperClass: 'col-md-4' }, // wrapperClass: see below
     liturgy: { class: '...' },                   // per-child override for the LiturgyOfAnyDay widget's own root
     dateControls: { class: '...' },              // per-child override for all three date inputs together
 }
@@ -285,16 +335,22 @@ theme: {
 differently from one another is a case nobody has needed, and the `liturgy` getter (below) reaches the
 individual inputs directly if that changes.
 
+**The flat `wrapper` key applies to `calendarSelect` and `localeInput`, not to `riteSelect`.** Both of
+the first two support a wrapper (`CalendarSelect.wrapper()`, `Input.wrapper()`/`wrapperClass()`); the
+rite select has no equivalent method to apply it to, so `theme.wrapper` and any `riteSelect.wrapperClass`
+override are both silently no-ops for it — this is a genuine capability limit of `RiteSelect`, not an
+omission in `DayViewer`.
+
 **Note on the flat `wrapper` key and the date controls:** the flat `wrapper` key supplies only a wrapper
 **class**, not a wrapper **element type**, and `LiturgyOfAnyDay`'s date inputs need an element type
 (`wrapper('div')`, say) to already exist before a wrapper class can be applied to them. `DayViewer`
 supplies that default (`'div'`) automatically whenever a flat `theme.wrapper` — or a `dateControls`
 override that names `wrapperClass` without `wrapper` — would otherwise reach the date controls with no
-element type, so the flat key works exactly as it does for every other child. `'div'` is also what
-`LiturgyOfAnyDay` already wraps its own date controls container in, so nothing about the rendered
-structure changes from mounting the widget standalone. To use a **different** wrapper element for the
-date controls specifically, name it explicitly: `theme.dateControls = { wrapper: 'span', wrapperClass:
-'...' }`.
+element type, so the flat key works exactly as it does for every other child. The locale input's wrapper
+gets the same default, for the same reason. `'div'` is also what `LiturgyOfAnyDay` already wraps its own
+date controls container in, so nothing about the rendered structure changes from mounting the widget
+standalone. To use a **different** wrapper element for the date controls specifically, name it
+explicitly: `theme.dateControls = { wrapper: 'span', wrapperClass: '...' }`.
 
 ### Public members
 
