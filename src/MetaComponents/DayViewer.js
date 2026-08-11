@@ -10,6 +10,7 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
@@ -56,6 +57,18 @@ export default class DayViewer {
     #apiClient = null;
 
     /**
+     * The API base this viewer's children were bound to at construction.
+     *
+     * Resolved once and held, matching `CalendarSelect`: whichever base the
+     * `apiClient` option named — or the default in force at the time — is the one
+     * this viewer keeps for its lifetime, whatever is registered later. Held so
+     * `listenTo()` can refuse a client bound to a different base.
+     *
+     * @type {import('../ApiClient/ApiBase.js').default}
+     */
+    #base;
+
+    /**
      * Every subscription this viewer made on the client's event bus, kept so that
      * `dispose()` can pass the exact same references back to `off()`.
      *
@@ -87,6 +100,11 @@ export default class DayViewer {
         }
         this.#language = new Intl.Locale(this.#locale).language;
         assertTheme(theme, 'DayViewer');
+
+        // Resolved here, under this component's own name, so an `apiClient` that
+        // carries no base is reported as a DayViewer problem rather than by whichever
+        // child happens to construct first.
+        this.#base = resolveBase(apiClient, 'DayViewer');
 
         // No `text` on the rite label when `labelText` was not themed: omitting it
         // lets RiteSelect supply its own localized label (with its own English
@@ -372,6 +390,31 @@ export default class DayViewer {
      */
     listenTo(apiClient) {
         this.#assertUsable();
+
+        // Rebinding is refused BEFORE anything is wired, so a rejected call leaves
+        // the original client and its subscriptions exactly as they were.
+        //
+        // A second call already failed — `ApiOptions.linkToCalendarSelect()` is
+        // one-shot and throws — but it threw under `ApiOptions`' name, naming a
+        // component the caller never touched, and only by accident of being the
+        // first statement. Refusing here states the rule instead of relying on a
+        // child to enforce it.
+        if (null !== this.#apiClient) {
+            throw new Error(
+                'DayViewer.listenTo: this viewer is already wired to an ApiClient. A viewer drives one client for its lifetime; build a second DayViewer to drive a second client.',
+            );
+        }
+
+        // Checked before any wiring for the same reason. A client bound to a
+        // different API base than the children would otherwise produce a viewer
+        // whose selects list one API's calendars while its requests go to another.
+        assertSameBase(
+            this.#base,
+            apiClient?.base,
+            'DayViewer.listenTo: this viewer and the ApiClient passed to it',
+            'A viewer whose selects are filled from one API while its requests go to another would describe neither.',
+        );
+
         this.#apiOptions
             .linkToCalendarSelect(this.#calendarSelect)
             .linkToRiteSelect(this.#riteSelect);

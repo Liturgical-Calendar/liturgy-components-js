@@ -11,16 +11,19 @@
  * getters, so the override key and the escape hatch are the same word.
  *
  * **What a class-string VALUE may contain, regardless of key:** every value here
- * ultimately reaches `Utils.validateClassName()` (or `LiturgyOfAnyDay`'s private
- * copy of the same pattern), which accepts only
- * `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/` per space-separated class — letters,
- * digits, underscores and hyphens, and nothing else. Tailwind's variant prefixes
- * (`md:flex`, `hover:bg-blue-500`) and fractional utilities (`w-1/2`) both contain a
- * character (`:` or `/`) outside that set and are therefore rejected outright, not
- * merely left unstyled. This module takes no position on what a valid class name is
- * and does not enforce this itself — it is a pre-existing constraint shared with
- * every other class-taking component in this library, named here so a theme author
- * learns it before writing a bag that depends on it.
+ * ultimately reaches `Utils.validateClassName()`, which accepts any non-empty
+ * space-separated token that carries no whitespace, quote character, backtick or
+ * `<`. Utility-framework classes are therefore usable as they are written —
+ * `md:w-1/2`, `hover:bg-blue-500`, `2xl:flex`, `p-1.5`, `bg-[#1da1f2]`,
+ * `w-[calc(100%-2rem)]` and `[&>*]:mt-2` all pass.
+ *
+ * That was not always true. The validator previously demanded a CSS *identifier*
+ * (`/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`), which a `class` attribute token
+ * is not, so every one of the examples above THREW rather than merely failing to
+ * style anything — a Tailwind consumer could not use these components at all. This
+ * module still takes no position on what a valid class name is and does not enforce
+ * anything itself; the rule lives in `Utils`, shared with every class-taking
+ * component in this library.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
@@ -51,11 +54,31 @@ const CLASS_KEY_BY_ROLE = Object.freeze({
 const FLAT_KEYS = Object.freeze(['select', 'input', 'label', 'wrapper']);
 
 /**
+ * The keys a per-child override may carry, and which {@link resolveChildTheme}
+ * copies through. Every one of them is handed to a child's setter as a string, so
+ * every one of them must be a string here.
+ *
+ * @type {Readonly<string[]>}
+ */
+const OVERRIDE_KEYS = Object.freeze([
+    'class',
+    'labelClass',
+    'labelText',
+    'wrapperClass',
+    'wrapper',
+]);
+
+/**
  * Validates a theme bag's shape, throwing with the component's name and the type
  * actually found.
  *
- * Shape only. Class strings are never inspected: this module takes no position on
- * what a valid class name is, which is the whole point of the role vocabulary.
+ * Checks shape and value TYPES, both at the top level and inside a per-child
+ * override — so `{ calendarSelect: { class: 42 } }` is rejected here, under the
+ * meta-component's name, rather than later under the child's.
+ *
+ * It does not inspect class-string CONTENT: this module takes no position on what a
+ * valid class name is (that lives in `Utils.validateClassName()`), which is the
+ * whole point of the role vocabulary.
  *
  * @param {unknown} theme - The candidate theme bag.
  * @param {string} componentName - The rejecting component's class name.
@@ -86,6 +109,27 @@ export function assertTheme(theme, componentName) {
             throw new Error(
                 `${componentName}: theme.${key} must be a class string or an object but found type: ${describeType(value)}`,
             );
+        }
+        // The override's own VALUES are checked here too, not only its shape.
+        // Without this, `{ calendarSelect: { class: 42 } }` passed this guard and
+        // failed later inside `CalendarSelect.class()` — reporting the caller's
+        // mistake under the CHILD's name, which is precisely the misattribution the
+        // meta-components validate locales and filters here to avoid. An explicit
+        // `undefined` is allowed: `resolveChildTheme()` treats it as absent and
+        // falls back to the flat default.
+        for (const overrideKey of OVERRIDE_KEYS) {
+            if (false === Object.hasOwn(value, overrideKey)) {
+                continue;
+            }
+            const overrideValue = value[overrideKey];
+            if (
+                undefined !== overrideValue &&
+                typeof overrideValue !== 'string'
+            ) {
+                throw new Error(
+                    `${componentName}: theme.${key}.${overrideKey} must be of type \`string\` but found type: ${describeType(overrideValue)}`,
+                );
+            }
         }
     }
 }

@@ -14,7 +14,10 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import Messages from '../Messages.js';
 import { CalendarSelectFilter } from '../Enums.js';
-import { normalizeComponentOptions } from '../OptionsValidation.js';
+import {
+    normalizeComponentOptions,
+    describeType,
+} from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { assertTheme, resolveChildTheme } from './Theme.js';
 
@@ -47,6 +50,23 @@ export default class CalendarResourcePicker {
     #placeholderText = null;
 
     /**
+     * Whether the working select is marked `required`.
+     *
+     * Exists because the admin forms this component was extracted from need a
+     * required calendar field, and without an option for it they were reduced to
+     * `picker.calendarSelect._domElement.required = true` — the private-field reach
+     * this component was built to retire.
+     *
+     * Deliberately NOT applied to the failure control. A `disabled` element is
+     * barred from constraint validation entirely, so `required` on it is inert: it
+     * cannot block a submit, and setting it only suggests otherwise to whoever reads
+     * the code next.
+     *
+     * @type {boolean}
+     */
+    #required = false;
+
+    /**
      * The theme bag, kept only for a failed picker so that a later `appendTo()` can
      * re-render the same failure control it started with. Unused on a working
      * picker, whose children have already had the theme applied.
@@ -65,6 +85,20 @@ export default class CalendarResourcePicker {
     /** @type {function|null} */
     #riteChangeListener = null;
 
+    /**
+     * Whether `linkToRiteSelect()` has already been called for this pairing.
+     *
+     * `CalendarSelect.linkToRiteSelect()` is one-shot and THROWS on a second call,
+     * so without this flag a second `appendTo()` failed with
+     * "Current CalendarSelect instance is already linked to a RiteSelect instance" —
+     * naming a child the caller never touched, for what is a perfectly reasonable
+     * request. The link is between the two component instances, not between their
+     * positions in the document, so it survives a move and must not be redone.
+     *
+     * @type {boolean}
+     */
+    #riteLinked = false;
+
     /** @type {boolean} */
     #disposed = false;
 
@@ -82,7 +116,8 @@ export default class CalendarResourcePicker {
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarResourcePicker');
-        const { locale, filter, theme, apiClient, placeholderText } = options;
+        const { locale, filter, theme, apiClient, placeholderText, required } =
+            options;
 
         // Validated here, by name, rather than left to whichever child happens to
         // construct first: `CalendarSelect` and `RiteSelect` each reject an invalid
@@ -123,6 +158,15 @@ export default class CalendarResourcePicker {
 
         if (typeof placeholderText === 'string' && '' !== placeholderText) {
             this.#placeholderText = placeholderText;
+        }
+
+        if (undefined !== required && null !== required) {
+            if (typeof required !== 'boolean') {
+                throw new Error(
+                    `CalendarResourcePicker: the required option must be of type \`boolean\` but found type: ${describeType(required)}`,
+                );
+            }
+            this.#required = required;
         }
 
         // The rite select is offered for diocesan filters ONLY. The Ambrosian rite
@@ -303,10 +347,13 @@ export default class CalendarResourcePicker {
      * resolved to — the documented worked example guards only `null !== picker`,
      * not `picker.failed`.
      *
-     * On a working picker, the rite select is appended FIRST — form reading order
-     * is one reason, and `linkToRiteSelect()` right below reads the rite select's
-     * element to attach its change listener, so the ordering is load-bearing there
-     * too.
+     * On a working picker, the rite select is appended FIRST, so that it reads first
+     * in the form. That is the whole reason: `linkToRiteSelect()` below does NOT
+     * require it to be in the document — it only calls `addEventListener` and reads
+     * `.value`, both of which work on a detached node, and it rebuilds the option
+     * list synchronously from the in-memory calendar index.
+     *
+     * Calling this more than once is safe: see `#releaseRiteWiring()`.
      *
      * Returns `undefined`, matching every other component in this library.
      *
@@ -319,9 +366,14 @@ export default class CalendarResourcePicker {
             target,
             'appendTo',
         );
-        this.#mount = element;
-
         if (true === this.#failed) {
+            // Emptied first so that re-mounting a failed picker to a DIFFERENT
+            // element does not leave a second, orphaned failure control behind in
+            // the old one. A working picker needs no such step: `appendTo()` on its
+            // children MOVES their nodes, whereas the failure control is built fresh
+            // each time and would otherwise be copied.
+            this.#mount?.replaceChildren();
+            this.#mount = element;
             CalendarResourcePicker.#renderFailure(
                 element,
                 this.#theme,
@@ -330,15 +382,33 @@ export default class CalendarResourcePicker {
             return;
         }
 
+        // Re-mounting is idempotent. Appending the children again merely MOVES their
+        // nodes, but the rite wiring below is not self-cancelling: `linkToRiteSelect()`
+        // registers a fresh listener inside `CalendarSelect` on every call, and this
+        // method registers its own placeholder listener, so a second `appendTo()`
+        // would leave the calendar list rebuilt twice per rite change and the
+        // placeholder re-applied twice. Releasing the previous wiring first keeps one
+        // mount's worth of listeners live at a time, and keeps `#listeners` — which
+        // `dispose()` walks — describing only the active mount.
+        this.#releaseRiteWiring();
+        this.#mount = element;
+
         if (null !== this.#riteSelect) {
             this.#riteSelect.appendTo(element);
         }
         this.#calendarSelect.appendTo(element);
 
-        // Linked only AFTER both children are in the DOM: linkToRiteSelect() reads
-        // the rite select's element to attach its change listener.
+        // Linked only AFTER both children are appended, so the rite select reads
+        // first in the form. `linkToRiteSelect()` itself does not require it: that
+        // method only calls `addEventListener` and reads `.value`, both of which work
+        // on a detached node, and it rebuilds the option list synchronously from the
+        // in-memory calendar index rather than from the document.
         if (null !== this.#riteSelect) {
-            this.#calendarSelect.linkToRiteSelect(this.#riteSelect);
+            // Linked once per pairing, not once per mount: see `#riteLinked`.
+            if (false === this.#riteLinked) {
+                this.#calendarSelect.linkToRiteSelect(this.#riteSelect);
+                this.#riteLinked = true;
+            }
             this.#riteChangeListener = () => this.#applyPlaceholder();
             this.#riteSelect._domElement.addEventListener(
                 'change',
@@ -351,6 +421,45 @@ export default class CalendarResourcePicker {
             });
         }
         this.#applyPlaceholder();
+        this.#applyRequired();
+    }
+
+    /**
+     * Removes the placeholder listener this picker attached to the rite select.
+     *
+     * Split out so `appendTo()` can be called more than once without accumulating a
+     * listener per call. Only this picker's own registration is removed —
+     * `linkToRiteSelect()`'s internal listener belongs to `CalendarSelect` and is not
+     * exposed, which is why re-mounting is bounded rather than free.
+     *
+     * @returns {void}
+     */
+    #releaseRiteWiring() {
+        if (null === this.#riteChangeListener || null === this.#riteSelect) {
+            return;
+        }
+        this.#riteSelect._domElement.removeEventListener(
+            'change',
+            this.#riteChangeListener,
+        );
+        this.#listeners = this.#listeners.filter(
+            (entry) => entry.listener !== this.#riteChangeListener,
+        );
+        this.#riteChangeListener = null;
+    }
+
+    /**
+     * Applies the `required` option to the working select.
+     *
+     * Never applied to the failure control: a `disabled` element is barred from
+     * constraint validation, so `required` there is inert.
+     *
+     * @returns {void}
+     */
+    #applyRequired() {
+        if (null !== this.#calendarSelect) {
+            this.#calendarSelect._domElement.required = this.#required;
+        }
     }
 
     /**
@@ -378,6 +487,38 @@ export default class CalendarResourcePicker {
         option.textContent = this.#placeholderText;
         option.disabled = true;
         option.selected = true;
+    }
+
+    /**
+     * Marks the working select `required`, or clears the mark.
+     *
+     * The admin forms this component was extracted from need a required calendar
+     * field. Without this they had to write
+     * `picker.calendarSelect._domElement.required = true` — reaching through the
+     * component into a private field, which is the pattern the meta-components were
+     * built to retire. May also be passed as the `required` constructor option.
+     *
+     * A no-op on a FAILED picker, and deliberately so: the failure control is
+     * `disabled`, which bars it from constraint validation entirely, so `required`
+     * on it could not block anything. A form that must not submit without a calendar
+     * should check `picker.failed` in its own submit handler.
+     *
+     * Chainable, unlike `appendTo()`.
+     *
+     * @param {boolean} [required=true] - Whether the select is required.
+     * @returns {CalendarResourcePicker} This instance.
+     * @throws {Error} If `required` is not a boolean, or the picker is disposed.
+     */
+    required(required = true) {
+        this.#assertUsable();
+        if (typeof required !== 'boolean') {
+            throw new Error(
+                `CalendarResourcePicker.required: must be of type \`boolean\` but found type: ${describeType(required)}`,
+            );
+        }
+        this.#required = required;
+        this.#applyRequired();
+        return this;
     }
 
     /**
@@ -458,9 +599,15 @@ export default class CalendarResourcePicker {
      * Renders the stand-in control shown when the picker cannot be built.
      *
      * It deliberately keeps the theme's classes, so the control the rest of the
-     * form — and the E2E suite — waits for does appear. It is disabled and carries
-     * no selectable value, so submit validation still blocks, but the failure now
-     * reads as "this broke" rather than as an element that never arrived.
+     * form — and the E2E suite — waits for does appear, and the failure reads as
+     * "this broke" rather than as an element that never arrived.
+     *
+     * It is `disabled`, which means it is **barred from constraint validation and
+     * excluded from submission entirely** — it is not a control that blocks submit,
+     * it is a control the form no longer sees. It carries no `required` attribute
+     * for that reason: `required` on a disabled element is inert, and setting it
+     * would imply a guarantee this control cannot make. A form that must not submit
+     * without a calendar needs its own check for `picker.failed`.
      *
      * @param {HTMLElement} element - The mount.
      * @param {Object|undefined} theme - The theme bag.
@@ -475,7 +622,6 @@ export default class CalendarResourcePicker {
         const select = document.createElement('select');
         select.className = `${themedClass ?? ''} is-invalid`.trim();
         select.disabled = true;
-        select.required = true;
         select.dataset.loadFailed = 'true';
 
         const option = document.createElement('option');
@@ -564,17 +710,23 @@ export default class CalendarResourcePicker {
                 'CalendarResourcePicker: could not build the calendar select:',
                 error,
             );
-            CalendarResourcePicker.#renderFailure(element, theme, errorText);
             // `errorText` is threaded through alongside `theme` so that a later
             // `appendTo()` call on the returned picker (see C1) re-renders the
             // SAME failure control, rather than one that has silently lost its
             // message.
-            return new CalendarResourcePicker({
+            const failed = new CalendarResourcePicker({
                 filter,
                 theme,
                 errorText,
                 _failed: true,
             });
+            // Rendered THROUGH `appendTo()` rather than by calling `#renderFailure()`
+            // directly, so the failed picker records this element as its mount. A
+            // failed picker that never recorded one would, on a later `appendTo()` to
+            // a different target, leave this first control orphaned in the document —
+            // and `dispose()` would never clear it.
+            failed.appendTo(element);
+            return failed;
         }
     }
 }

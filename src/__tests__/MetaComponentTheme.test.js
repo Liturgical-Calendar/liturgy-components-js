@@ -131,4 +131,60 @@ describe('assertTheme', () => {
             assertTheme({ riteSelect: 42 }, 'CalendarResourcePicker'),
         ).toThrow(/riteSelect.*number/);
     });
+
+    // Without this the mistake surfaced later, from inside `CalendarSelect.class()`,
+    // reporting the caller's typo under the CHILD's name — the same misattribution
+    // the meta-components validate locale and filter themselves to avoid.
+    it.each([
+        ['class', { calendarSelect: { class: 42 } }, /number/],
+        ['labelClass', { calendarSelect: { labelClass: [] } }, /array/],
+        ['labelText', { riteSelect: { labelText: 7 } }, /number/],
+        // `describeType({})` names the constructor, so this reads `Object`, not `object`.
+        ['wrapperClass', { localeInput: { wrapperClass: {} } }, /Object/],
+        ['wrapper', { dateControls: { wrapper: false } }, /boolean/],
+    ])(
+        'rejects a non-string %s inside an override, naming the meta-component',
+        (key, bag, typePattern) => {
+            let message = '';
+            try {
+                assertTheme(bag, 'DayViewer');
+            } catch (error) {
+                message = error.message;
+            }
+            expect(message).toMatch(new RegExp(key));
+            expect(message).toMatch(typePattern);
+            // Attribution is the point: the message must be OWNED by the
+            // meta-component. A child's own error reads "… on CalendarSelect
+            // instance with locale en", so checking the prefix proves the guard
+            // caught it here rather than letting it escape to the child.
+            expect(message.startsWith('DayViewer: theme.')).toBe(true);
+            expect(message).not.toMatch(/ instance/);
+        },
+    );
+
+    it('accepts an explicitly undefined override value, which resolves as absent', () => {
+        expect(() =>
+            assertTheme(
+                { select: 'form-select', riteSelect: { class: undefined } },
+                'CalendarResourcePicker',
+            ),
+        ).not.toThrow();
+    });
+
+    it('accepts valid string override values', () => {
+        expect(() =>
+            assertTheme(
+                {
+                    select: 'form-select',
+                    calendarSelect: {
+                        class: 'form-select mb-2',
+                        labelText: 'Calendar',
+                        wrapper: 'div',
+                        wrapperClass: 'col-md-3',
+                    },
+                },
+                'CalendarResourcePicker',
+            ),
+        ).not.toThrow();
+    });
 });
