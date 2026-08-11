@@ -9,7 +9,7 @@ The library owns wiring, ordering, failure behaviour and defaults. It ships noth
 framework-specific and takes no position on CSS: styling is entirely up to the consumer, through a
 **theme bag** for the common case and the wired child instances for everything else.
 
-This page documents `CalendarResourcePicker`, `DayViewer` and `CalendarControls`.
+This page documents `CalendarResourcePicker`, `DayViewer`, `CalendarControls` and `CalendarViewer`.
 
 ## CalendarResourcePicker
 
@@ -742,3 +742,157 @@ are emptied.
 `addEventListener`, with no reference stored anywhere `CalendarControls` — or `ApiClient` itself — can
 reach. A disposed instance's own DOM and event-bus footprint are gone, but the `ApiClient` it was wired
 to can still be driven by the same selects if a caller kept a separate reference to them and the client.
+
+## CalendarViewer
+
+A `CalendarControls` paired with a `WebCalendar` — the whole `WebCalendar` example page in one call. It
+exists so that a page using the table renderer no longer has to re-derive `CalendarControls`' own wiring,
+mount ordering and fetch dispatch by hand around a `WebCalendar` it owns separately.
+
+```javascript
+import { CalendarViewer, Grouping, DateFormat } from '@liturgical-calendar/components-js';
+
+const viewer = await CalendarViewer.mountInto(
+    { controls: '#calendarOptions', calendar: '#calendarTable', messages: '#LitCalMessages tbody' },
+    {
+        locale: 'en',
+        apiClient,
+        theme: {
+            select: 'form-select',
+            label: 'form-label d-block mb-1',
+            riteSelect: { class: 'form-select mb-2' },
+        },
+        webCalendar: {
+            class: 'table table-striped',
+            firstColumnGrouping: Grouping.BY_LITURGICAL_SEASON,
+            dateFormat: DateFormat.FULL,
+        },
+    },
+);
+```
+
+### What it adds over `CalendarControls`
+
+Everything about the form — the rite's two wires, the three-way fetch dispatch, the messages slot, mount
+ordering — is exactly `CalendarControls`, reached through `viewer.controls`; this class does not
+reimplement any of it. It adds exactly two things:
+
+- **A `calendar` slot**, holding a `WebCalendar` wired to the same `ApiClient` via `listenTo()`, so the
+  table renders and re-renders on every fetch `CalendarControls` triggers.
+- **A `webCalendar` option bag**, applying named `WebCalendar` methods by key — see below.
+
+### The `webCalendar` bag
+
+Unlike the theme bag's HTML-role vocabulary, this bag is named directly for `WebCalendar`'s own chainable
+methods, because `WebCalendar` is a single child with no styling/behaviour split to express:
+
+```javascript
+webCalendar: {
+    class: 'table table-striped',
+    id: 'LitCalTable',
+    dateFormat: DateFormat.FULL,
+    removeCaption: false,
+    removeHeaderRow: false,
+    firstColumnGrouping: Grouping.BY_MONTH,
+    columnOrder: ColumnOrder.EVENT_DETAILS_FIRST,
+    psalterWeekColumn: true,
+    eventColor: ColorAs.INDICATOR,
+    seasonColor: ColorAs.BACKGROUND,
+    seasonColorColumns: Column.EVENT,
+    eventColorColumns: Column.EVENT,
+    monthHeader: true,
+    gradeDisplay: GradeDisplay.FULL,
+    latinInterface: LatinInterface.ECCLESIASTICAL,
+    locale: 'en-US',
+}
+```
+
+Each present key is applied as `webCalendar[key](bag[key])`. Naming any key outside this list — a typo,
+or a `WebCalendar` method this bag does not expose — rejects immediately, naming the offending key:
+
+```text
+CalendarViewer: unknown webCalendar option `notAMethod`
+```
+
+**`rite` is deliberately not one of these keys, even though `WebCalendar` has a `rite()` method.**
+`WebCalendar.listenTo()` reassigns its rite from each fetch's OWN metadata, taking the rite the _request_
+was made under rather than the client's current rite — precisely so that two in-flight requests landing
+out of order cannot caption one rite's data with the other rite's name (see `WebCalendar.js`'s own doc
+comment on `listenTo()`). A static `rite` supplied through this bag would be overwritten by the very first
+fetch, appearing to work right up until data actually arrived; the rite this table captions with comes
+from the rite select, through the client, never from a fixed bag value.
+
+### Constructor options
+
+As `CalendarControls`, plus:
+
+| Option        | Type     | Description                                                                                       |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `webCalendar` | `Object` | `WebCalendar` methods to call, by name — see above. Omitted, the table renders with its defaults. |
+
+`mountInto()` accepts the same additional options as `CalendarControls.mountInto()` — `initialFetch`,
+`signal` and `onError` — applied to the controls half exactly as documented [there](#constructor-options-2).
+
+### Public getters
+
+Both throw once this viewer has been disposed — see [`dispose()`](#dispose-3) below.
+
+| Member        | Returns            | Description                                                                                       |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
+| `controls`    | `CalendarControls` | The wired rite select, calendar select and API options, bundled — see [above](#calendarcontrols). |
+| `webCalendar` | `WebCalendar`      | The wired table renderer.                                                                         |
+
+### `mountInto()` versus the constructor
+
+The same split as every other meta-component in this family:
+
+- **`new CalendarViewer(options)`** is synchronous and requires an already-initialised `ApiBase` — it
+  builds both halves but mounts neither.
+- **`CalendarViewer.mountInto(slots, options)`** resolves both targets, constructs the viewer, mounts
+  both halves, wires them to `options.apiClient` when given, and — unless `initialFetch` is `false` —
+  performs the initial fetch.
+
+```javascript
+const slots = { controls: '#calendarOptions', calendar: '#calendarTable' };
+
+// mountInto — constructs, mounts, wires and fetches in one call
+const viewer = await CalendarViewer.mountInto(slots, { locale: 'en', apiClient });
+```
+
+**Registration order, and why it matters.** `listenTo()` wires `controls` to the `ApiClient` before it
+wires `webCalendar` to it. `EventEmitter.emit()` is a synchronous `forEach` over listeners in registration
+order, and `WebCalendar`'s own `calendarFetched` listener throws on malformed or empty calendar data (see
+`WebCalendar.js`) — a throw that would abort the iteration for any listener registered after it. Wiring
+`controls` first means its own `calendarFetched` listeners — including the messages renderer, when a
+`messages` slot was named — always run before `webCalendar`'s, so a `WebCalendar` failure can never
+suppress a messages render that was already due to happen. The dropped initial-fetch promise is routed
+through `apiClient._discardRequest()`, exactly as `CalendarControls.mountInto()` routes its own — see that
+method's [reject-versus-resolve section](#reject-versus-resolve-2) for what that seam does and does not log.
+
+### Reject versus resolve
+
+Exactly `CalendarControls`' own table — see [that section](#reject-versus-resolve-2) — extended with one
+more invalid-options case: an unknown `webCalendar` key rejects for the same reason an unparseable locale
+or a malformed theme does. `mountInto()` resolves to `null`, without throwing or rejecting, under the same
+condition as `CalendarControls.mountInto()`: a supplied `signal` already aborted, or either slot passed as
+an already-resolved `HTMLElement` that has since left the document.
+
+### `dispose()`
+
+```javascript
+const viewer = await CalendarViewer.mountInto(slots, { locale: 'en', apiClient });
+
+// Scope changed: tear down and rebuild.
+viewer.dispose();
+```
+
+Delegates the controls half entirely to `CalendarControls.dispose()` — see [that
+section](#dispose-2) for exactly what it releases — and additionally empties the `calendar` mount.
+
+**What survives `dispose()`, and why it must.** `WebCalendar` has no `dispose()` of its own, and the
+`calendarFetched` listener its `listenTo()` attaches is an anonymous closure with no reference this class
+— or `WebCalendar` itself — can reach to unsubscribe. Disposing a viewer therefore does not stop its
+`webCalendar` from still redrawing against the same `ApiClient` if a caller kept a separate reference to
+it and the client; only the mounted DOM can be reclaimed from here, and it is. This is the same
+pre-existing gap `CalendarControls.dispose()` and `DayViewer.dispose()` document for their own
+anonymously-wired children.

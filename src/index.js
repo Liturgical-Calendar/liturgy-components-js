@@ -11,6 +11,7 @@ import PathBuilder from './PathBuilder/PathBuilder.js';
 import CalendarResourcePicker from './MetaComponents/CalendarResourcePicker.js';
 import DayViewer from './MetaComponents/DayViewer.js';
 import CalendarControls from './MetaComponents/CalendarControls.js';
+import CalendarViewer from './MetaComponents/CalendarViewer.js';
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
 import {
@@ -41,6 +42,7 @@ export {
     CalendarResourcePicker,
     DayViewer,
     CalendarControls,
+    CalendarViewer,
     Input,
     Utils,
     Grouping,
