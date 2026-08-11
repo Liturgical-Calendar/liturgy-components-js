@@ -70,8 +70,33 @@ standalone.
 | `theme`           | `Object`                | The theme bag; see below. Omitted, the picker renders unstyled markup.                                                                      |
 | `apiClient`       | `ApiClient`             | Binds this picker's `CalendarSelect` to that client's API base. Omitted, binds to the first base registered.                                |
 | `placeholderText` | `string`                | Text for the disabled placeholder option. Omitted, the empty option keeps its normal label.                                                 |
+| `required`        | `boolean`               | Marks the working select `required`. Default `false`. See the note below on the failure control.                                            |
 | `errorText`       | `string`                | `mountInto()` only. Text shown in the failure control on a runtime failure.                                                                 |
 | `signal`          | `AbortSignal`           | `mountInto()` only. Cancels the mount; see below.                                                                                           |
+
+#### `required` and the failure control
+
+`required` may be passed as a constructor option or set later with the chainable `required(bool)`.
+Either way it applies to the **working** select only.
+
+It is deliberately never applied to the failure control, because it could not do anything there: that
+control is `disabled`, and a disabled element is barred from constraint validation and excluded from
+form submission entirely. Setting `required` on it would imply a guarantee it cannot make.
+
+So a form that must not submit without a calendar needs two things — `required` for the ordinary case,
+and its own check of `picker.failed` for the case where the calendar list could not be loaded at all:
+
+```javascript
+form.addEventListener('submit', (event) => {
+    if (picker.failed) {
+        event.preventDefault(); // the field is disabled, so the browser will not stop this for you
+        showMessage('The calendar list could not be loaded. Reload and try again.');
+    }
+});
+```
+
+This exists so that a form needing a required calendar field no longer has to reach through the
+component with `picker.calendarSelect._domElement.required = true`.
 
 ### The theme bag's role vocabulary
 
@@ -103,14 +128,29 @@ left untouched (an id, a data attribute, a child the theme never themed at all),
 re-configuring something the theme bag already configured.
 
 **What a class-string value may contain:** every class string in this bag — flat or per-child —
-ultimately reaches the same validator every other class-taking method in this library uses
-(`Utils.validateClassName()`), which accepts only letters, digits, underscores and hyphens per
-space-separated class: `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`. Tailwind's variant prefixes
-(`md:flex`, `hover:bg-blue-500`) and fractional utilities (`w-1/2`) both contain a character (`:` or
-`/`) outside that set and are rejected outright — not left unstyled, but thrown as
-`Invalid class name: md:flex`. This is a pre-existing, shared constraint the theme bag does not relax
-or work around; a build step that strips those characters before the string reaches the component is
-the only way to use them today.
+reaches the same validator every other class-taking method in this library uses
+(`Utils.validateClassName()`). It accepts any non-empty, space-separated token that contains no
+whitespace, quote character, backtick or `<`. Utility-framework classes work as written:
+
+| Framework style      | Example               |
+| -------------------- | --------------------- |
+| Bootstrap            | `form-select`         |
+| Tailwind variant     | `hover:bg-blue-500`   |
+| Tailwind responsive  | `md:w-1/2`            |
+| Tailwind breakpoint  | `2xl:flex`            |
+| Tailwind decimal     | `p-1.5`               |
+| Arbitrary value      | `bg-[#1da1f2]`        |
+| Arbitrary expression | `w-[calc(100%-2rem)]` |
+| Arbitrary variant    | `[&>*]:mt-2`          |
+
+The rejected characters are the ones that can only arrive by mistake — whitespace you forgot to split
+on, or a quote or `<` that means markup leaked into a class string. Those still throw
+`Invalid class name: …`.
+
+This was not always so. Before 2.2.0 the validator demanded a CSS _identifier_
+(`/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`), which is not what a `class` attribute holds, so
+every Tailwind example above threw rather than merely failing to style anything. The rule was widened
+across the whole library, not just for the theme bag.
 
 **`RiteSelect` has no wrapper concept.** The flat `wrapper` key and any `riteSelect.wrapperClass`
 override are silently unused for the rite select — there is no `RiteSelect.wrapper()` method to apply

@@ -53,16 +53,20 @@ every consumer gets it correctly by construction instead of by careful copying.
   rather than discovering by trial:
 
   - **Every class-string value, flat or per-child, is validated by the same shared
-    `Utils.validateClassName()`** every other class-taking method in this library already uses:
-    `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/` per space-separated class — letters, digits,
-    underscores and hyphens, nothing else. Tailwind's variant prefixes (`md:flex`, `hover:bg-blue-500`)
-    and fractional utilities (`w-1/2`) both contain a character (`:` or `/`) outside that set and are
-    rejected outright, not left unstyled. This is a pre-existing, shared constraint the theme bag does
-    not relax — it is a constraint on what a class name is throughout this library, not something new
-    here.
+    `Utils.validateClassName()`** every other class-taking method in this library already uses — which
+    this release widened; see Changed below. Utility-framework classes work as written.
   - **`RiteSelect` has no wrapper concept**, so the flat `wrapper` key and a `riteSelect.wrapperClass`
     override are both silently unused for it. `CalendarSelect` and, on `DayViewer`, the `ApiOptions`
     locale input both support one.
+
+- **`CalendarResourcePicker.required()`**, and a matching `required` constructor option, marking the
+  working select `required`. Without it, a form needing a mandatory calendar field had to write
+  `picker.calendarSelect._domElement.required = true` — reaching through the component into a private
+  field, which is the pattern the meta-components exist to retire. It is deliberately never applied to
+  the failure control: that control is `disabled`, and a disabled element is barred from constraint
+  validation and excluded from submission entirely, so `required` on it would be inert. A form that must
+  not submit without a calendar therefore needs `required` for the ordinary case and its own check of
+  `picker.failed` for the case where the calendar list could not be loaded at all.
 
 - **Construction and mounting**: each meta-component has a synchronous constructor — requiring an
   already-initialised `ApiBase`, exactly as `CalendarSelect` does today — paired with `appendTo()`, and a
@@ -103,6 +107,57 @@ every consumer gets it correctly by construction instead of by careful copying.
   itself is not exported — `DayViewer` is what consumes it internally now. The fallback is per **key**,
   not per **locale**: a locale missing only `DAY` still shows its own translation for `MONTH`, which is
   translated for all 84 locales, rather than reverting the whole viewer to English.
+
+### Changed
+
+- **`Utils.validateClassName()` now accepts utility-framework class names**, across every component that
+  takes a class — not only the meta-components. It previously demanded
+  `/^(?!\d|--|-?\d)[a-zA-Z_-][a-zA-Z\d_-]{1,}$/`, which describes a CSS _identifier_. A `class`
+  attribute does not hold identifiers; it holds a space-separated token list, and a token may contain
+  any character except whitespace. The old rule therefore rejected `md:w-1/2`, `hover:bg-blue-500`,
+  `2xl:flex`, `p-1.5`, `bg-[#1da1f2]`, `w-[calc(100%-2rem)]` and `[&>*]:mt-2` — and rejected them by
+  **throwing**, so a Tailwind consumer could not use these components at all rather than merely seeing
+  them unstyled.
+
+  A token is now accepted when it is non-empty and contains no whitespace, quote character, backtick or
+  `<` — the characters that can only arrive from a caller's mistake, such as forgetting to split on
+  whitespace or letting markup leak into a class string. Those still throw `Invalid class name: …`.
+
+  This widens what is accepted and rejects nothing that was previously accepted, so no working code
+  changes behaviour. `LiturgyOfAnyDay` and `LiturgyOfTheDay` each carried a private copy of the old
+  regex; both now delegate to `Utils.validateClassName()`, so the rule has one definition rather than
+  three that could drift apart.
+
+- **`assertTheme()` validates the values inside a per-child override, not only its shape.**
+  `{ calendarSelect: { class: 42 } }` previously passed the theme guard and failed later inside
+  `CalendarSelect.class()`, reporting the caller's mistake under the child's name — the same
+  misattribution the meta-components validate locale and filter themselves to avoid. It now throws
+  under the meta-component's own name, identifying the exact key:
+
+  ```text
+  DayViewer: theme.calendarSelect.class must be of type `string` but found type: number
+  ```
+
+  An explicitly `undefined` value is still accepted and resolves as absent.
+
+- **`CalendarResourcePicker.appendTo()` may be called more than once.** A second call previously threw
+  `Current CalendarSelect instance is already linked to a RiteSelect instance`, from a child the caller
+  never touched, because `linkToRiteSelect()` is one-shot. The link is between the two component
+  instances rather than their positions in the document, so it now happens once per pairing and
+  survives a move; the picker's own placeholder listener is released and re-registered, leaving one
+  mount's worth of listeners live at a time. Re-mounting a failed picker no longer strands its previous
+  failure control in the old container.
+
+- **`DayViewer.listenTo()` refuses to rebind**, and refuses a client bound to a different `ApiBase` than
+  its own children, both **before** any wiring happens — so a rejected call leaves the viewer exactly as
+  it was. A second call already failed, but only by accident of `ApiOptions.linkToCalendarSelect()`
+  being one-shot, and it failed under `ApiOptions`' name. A mismatched base was not checked at all, and
+  would have produced a viewer whose selects list one API's calendars while its requests went to
+  another.
+
+- The failure control no longer carries a `required` attribute. It is `disabled`, which bars it from
+  constraint validation entirely, so the attribute was inert and its accompanying comment — claiming
+  submit validation would still block — was wrong.
 
 ### Notes
 
