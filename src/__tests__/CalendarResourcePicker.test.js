@@ -162,3 +162,119 @@ describe('CalendarResourcePicker mounting', () => {
         expect(picker.failed).toBe(false);
     });
 });
+
+describe('CalendarResourcePicker placeholder', () => {
+    /**
+     * @returns {CalendarResourcePicker} A mounted diocesan picker with a placeholder.
+     */
+    const mountDiocesan = () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            placeholderText: 'Select calendar ID...',
+        });
+        picker.appendTo('#mount');
+        return picker;
+    };
+
+    it('renders the placeholder as a disabled, selected empty option', () => {
+        const picker = mountDiocesan();
+        const option =
+            picker.calendarSelect._domElement.querySelector('option[value=""]');
+        expect(option).not.toBeNull();
+        expect(option.textContent).toBe('Select calendar ID...');
+        expect(option.disabled).toBe(true);
+        expect(option.selected).toBe(true);
+    });
+
+    // linkToRiteSelect() rebuilds the option list from scratch, which discards the
+    // placeholder customization. Three frontend files re-register this by hand.
+    it('re-applies the placeholder after a rite change', () => {
+        const picker = mountDiocesan();
+        picker.riteSelect._domElement.value = 'ambrosian';
+        picker.riteSelect._domElement.dispatchEvent(
+            new Event('change', { bubbles: true }),
+        );
+
+        const option =
+            picker.calendarSelect._domElement.querySelector('option[value=""]');
+        expect(option).not.toBeNull();
+        expect(option.textContent).toBe('Select calendar ID...');
+        expect(option.disabled).toBe(true);
+    });
+
+    it('rebuilds the calendar options for the selected rite', () => {
+        const picker = mountDiocesan();
+        const idsBefore = Array.from(
+            picker.calendarSelect._domElement.options,
+        ).map((o) => o.value);
+        expect(idsBefore).toContain('romamo_it');
+
+        picker.riteSelect._domElement.value = 'ambrosian';
+        picker.riteSelect._domElement.dispatchEvent(
+            new Event('change', { bubbles: true }),
+        );
+
+        const idsAfter = Array.from(
+            picker.calendarSelect._domElement.options,
+        ).map((o) => o.value);
+        expect(idsAfter).not.toContain('romamo_it');
+        expect(idsAfter).toContain('milano_it');
+    });
+
+    it('leaves no placeholder text when none was supplied', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.appendTo('#mount');
+        const option =
+            picker.calendarSelect._domElement.querySelector('option[value=""]');
+        expect(option.disabled).toBe(false);
+    });
+});
+
+describe('CalendarResourcePicker onChange', () => {
+    it('fires with the selected id when the calendar select changes', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.appendTo('#mount');
+        const seen = [];
+        picker.onChange((value) => seen.push(value));
+
+        picker.calendarSelect._domElement.value = 'IT';
+        picker.calendarSelect._domElement.dispatchEvent(
+            new Event('change', { bubbles: true }),
+        );
+
+        expect(seen).toEqual(['IT']);
+    });
+
+    it('is chainable', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        expect(picker.onChange(() => {})).toBe(picker);
+    });
+
+    // admin-tests.js:692 listens on the mount, not on the select.
+    it('lets change events bubble to the mount', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+        });
+        picker.appendTo('#mount');
+        let bubbled = false;
+        document
+            .getElementById('mount')
+            .addEventListener('change', () => (bubbled = true));
+
+        picker.calendarSelect._domElement.dispatchEvent(
+            new Event('change', { bubbles: true }),
+        );
+        expect(bubbled).toBe(true);
+    });
+});

@@ -42,17 +42,24 @@ export default class CalendarResourcePicker {
     /** @type {boolean} */
     #failed = false;
 
+    /** @type {string|null} */
+    #placeholderText = null;
+
+    /** @type {function|null} */
+    #riteChangeListener = null;
+
     /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} options.filter - `CalendarSelectFilter.NATIONAL_CALENDARS` or `.DIOCESAN_CALENDARS`.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.apiClient] - Binds this picker to that client's API base.
+     * @param {string} [options.placeholderText] - Text for a disabled placeholder option.
      * @throws {Error} If the filter is absent or not one of the two accepted values.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarResourcePicker');
-        const { locale, filter, theme, apiClient } = options;
+        const { locale, filter, theme, apiClient, placeholderText } = options;
 
         // Validated here, by name, rather than left to whichever child happens to
         // construct first: `CalendarSelect` and `RiteSelect` each reject an invalid
@@ -70,6 +77,10 @@ export default class CalendarResourcePicker {
             );
         }
         assertTheme(theme, 'CalendarResourcePicker');
+
+        if (typeof placeholderText === 'string' && '' !== placeholderText) {
+            this.#placeholderText = placeholderText;
+        }
 
         // The rite select is offered for diocesan filters ONLY. The Ambrosian rite
         // has no national tier, so a `nations` filtered select under it holds only
@@ -202,5 +213,59 @@ export default class CalendarResourcePicker {
             this.#riteSelect.appendTo(element);
         }
         this.#calendarSelect.appendTo(element);
+
+        // Linked only AFTER both children are in the DOM: linkToRiteSelect() reads
+        // the rite select's element to attach its change listener.
+        if (null !== this.#riteSelect) {
+            this.#calendarSelect.linkToRiteSelect(this.#riteSelect);
+            this.#riteChangeListener = () => this.#applyPlaceholder();
+            this.#riteSelect._domElement.addEventListener(
+                'change',
+                this.#riteChangeListener,
+            );
+        }
+        this.#applyPlaceholder();
+    }
+
+    /**
+     * Turns the calendar select's empty option into a disabled placeholder.
+     *
+     * `allowNull` adds an empty option whose meaning is "no nation or diocese",
+     * i.e. the General Roman Calendar — which is never a valid national or diocesan
+     * resource id. Disabling it forces a concrete choice while keeping the select
+     * unselected until the user makes one.
+     *
+     * Idempotent, and re-run after every rite change: `linkToRiteSelect()` rebuilds
+     * the option list from scratch and discards this customization.
+     *
+     * @returns {void}
+     */
+    #applyPlaceholder() {
+        if (null === this.#placeholderText) {
+            return;
+        }
+        const option =
+            this.#calendarSelect._domElement.querySelector('option[value=""]');
+        if (null === option) {
+            return;
+        }
+        option.textContent = this.#placeholderText;
+        option.disabled = true;
+        option.selected = true;
+    }
+
+    /**
+     * Registers a callback for changes to the selected calendar.
+     *
+     * Chainable, unlike `appendTo()`.
+     *
+     * @param {function(string): void} callback - Receives the selected calendar id.
+     * @returns {CalendarResourcePicker} This instance.
+     */
+    onChange(callback) {
+        this.#calendarSelect._domElement.addEventListener('change', () =>
+            callback(this.value),
+        );
+        return this;
     }
 }
