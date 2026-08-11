@@ -39,8 +39,18 @@ describe('day/year/language keys', () => {
     // existing precedent rather than invent a second coverage rule, and because
     // they are exactly the languages the frontend serves.
     const TRANSLATED = [
-        'de', 'en', 'es', 'fr', 'hu', 'id',
-        'it', 'la', 'nl', 'pt', 'sk', 'vi',
+        'de',
+        'en',
+        'es',
+        'fr',
+        'hu',
+        'id',
+        'it',
+        'la',
+        'nl',
+        'pt',
+        'sk',
+        'vi',
     ];
 
     it.each(TRANSLATED)('defines DAY, YEAR and LANGUAGE for %s', (lang) => {
