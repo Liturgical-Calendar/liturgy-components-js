@@ -13,13 +13,25 @@
  * `riteSelect`/`calendarSelect`/`apiOptions` directly through `CalendarControls`'
  * own getters instead.
  *
+ * **This class never calls `CalendarControls.listenTo()`.** That method wires
+ * TWO separate things under one name: the rite -> calendar chain
+ * (`apiOptions.linkToCalendarSelect().linkToRiteSelect()`, which rebuilds the
+ * calendar list and disables fixed-temporal-option inputs — no `ApiClient`
+ * involved) AND `apiClient.listenTo( calendarSelect ).listenTo( riteSelect
+ * ).listenTo( apiOptions )` — which is what turns every rite, calendar and
+ * option change into a live `/calendar/...` request. `ApiExplorer` needs only
+ * the first half: it links the rite -> calendar chain directly in its
+ * constructor, and never touches `apiClient.listenTo()` at all, so an
+ * `ApiClient` passed to this class is used solely to populate the selects from
+ * `/calendars` metadata (via `resolveBase()`, inside `CalendarControls`'
+ * own constructor) — never to fetch a calendar.
+ *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
  */
 
 import CalendarControls from './CalendarControls.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
-import ApiClient from '../ApiClient/ApiClient.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import {
     normalizeComponentOptions,
@@ -57,11 +69,23 @@ export default class ApiExplorer {
      *   forwarded to `CalendarControls` as-is.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
-     * @param {Object} [options.apiClient] - Binds to that client's API base.
+     * @param {Object} [options.apiClient] - Binds the controls to that client's
+     *   API base, so the selects populate from `/calendars` metadata. Never used
+     *   to fetch a calendar — see the class doc comment above.
      */
     constructor(options) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
         this.#controls = new CalendarControls(bag);
+        // The rite -> calendar chain, wired directly rather than through
+        // `CalendarControls.listenTo()` — see the class doc comment above for
+        // why: that method also installs `apiClient.listenTo( … )`, which is
+        // what fetches on every change. `linkToRiteSelect()` rebuilds the
+        // calendar list and disables the fixed-temporal-option inputs entirely
+        // on its own, with no `ApiClient` involved, so this line preserves that
+        // behaviour without opening the door to any fetch.
+        this.#controls.apiOptions
+            .linkToCalendarSelect(this.#controls.calendarSelect)
+            .linkToRiteSelect(this.#controls.riteSelect);
         this.#pathBuilder = new PathBuilder(
             this.#controls.apiOptions,
             this.#controls.calendarSelect,
@@ -222,33 +246,14 @@ export default class ApiExplorer {
     }
 
     /**
-     * Wires this explorer's controls to an `ApiClient` — WITHOUT ever fetching a
-     * calendar. `ApiExplorer` builds request URLs; it has no renderer to feed, so
-     * there is nothing for a fetch to be for.
+     * Releases every mount this explorer used, and delegates to
+     * `CalendarControls.dispose()` for its own half.
      *
-     * Delegates entirely to `CalendarControls.listenTo()`, which is what installs
-     * BOTH of the rite's wires: `ApiOptions.linkToRiteSelect()` (rebuilds the
-     * calendar list for the selected rite) and `apiClient.listenTo( riteSelect )`
-     * (turns the rite into a URL path segment). Both are needed here even though
-     * nothing fetches — omitting either would leave the calendar list, or the
-     * built path, out of sync with the rite select.
-     *
-     * @param {ApiClient} apiClient - The client to wire.
-     * @returns {ApiExplorer} This instance.
-     */
-    listenTo(apiClient) {
-        this.#assertUsable();
-        this.#controls.listenTo(apiClient);
-        return this;
-    }
-
-    /**
-     * Releases the controls' listeners and subscriptions, and empties every mount
-     * this explorer used.
-     *
-     * Delegates the controls half entirely to `CalendarControls.dispose()` — see
-     * that method's own doc comment for exactly what it releases and what
-     * survives it, for the same reason `CalendarViewer.dispose()` documents.
+     * This class never calls `CalendarControls.listenTo()` (see the class doc
+     * comment above), so `controls`' own client-subscription bookkeeping is
+     * always empty by the time this runs — `CalendarControls.dispose()` is still
+     * called for symmetry and in case a caller reached `controls` directly and
+     * wired it themselves, but ordinarily it has nothing to unsubscribe.
      * `PathBuilder` has no `dispose()` of its own and no way to unsubscribe its
      * internally-attached `change` listeners; only its mounted DOM (`builder`) can
      * be reclaimed from here, and it is.
@@ -304,18 +309,17 @@ export default class ApiExplorer {
     }
 
     /**
-     * Builds an explorer, mounts it, and wires it to `options.apiClient` when
-     * given — but NEVER fetches. See `listenTo()`'s own doc comment for why: this
-     * class has no renderer, only a `PathBuilder` that reads request state
-     * straight off the same `ApiOptions`/`CalendarSelect` `CalendarControls`
-     * already wires, with no fetch involved at any point.
+     * Builds an explorer and mounts it. `options.apiClient`, when given, is used
+     * only to construct the controls against that client's API base (so the
+     * selects populate from `/calendars` metadata) — see the class doc comment
+     * above for why this class has no client-wiring step of its own and never
+     * fetches a calendar, under any circumstance.
      *
      * Modelled on `CalendarViewer.mountInto()`: the explorer is constructed BEFORE
      * `slots` is validated and the cancellation check runs, so an invalid locale
      * or theme rejects even on a mount the caller already cancelled. Unlike every
-     * other meta-component's `mountInto()`, there is no `initialFetch` option here
-     * — it would have nothing to control, since this method never calls
-     * `controls.fetch()` at all, under any circumstances.
+     * other meta-component's `mountInto()`, there is no `initialFetch` option and
+     * no `onError` option here — both concern a fetch this class never performs.
      *
      * Resolves to `null`, without throwing or rejecting, when a supplied `signal`
      * was already aborted, or when a slot's target was passed as an already
@@ -324,9 +328,7 @@ export default class ApiExplorer {
      * that way.
      *
      * @param {{pathBuilder?: (string|HTMLElement), basePath?: (string|HTMLElement), allPaths?: (string|HTMLElement), riteSelect?: (string|HTMLElement), builder?: (string|HTMLElement)}} slots - Where to mount each piece.
-     * @param {Object} [options] - As the constructor, plus those below.
-     * @param {Object} [options.apiClient] - The client to wire; when given, this
-     *   instance is wired with `listenTo()`. No fetch ever runs.
+     * @param {Object} [options] - As the constructor.
      * @param {AbortSignal} [options.signal] - Cancels the mount; see above.
      * @returns {Promise<ApiExplorer|null>} The explorer, or `null` if cancelled.
      * @throws {Error} If the options or `slots` are invalid, or if the API
@@ -334,7 +336,7 @@ export default class ApiExplorer {
      */
     static async mountInto(slots, options = {}) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
-        const { apiClient, signal } = bag;
+        const { signal } = bag;
 
         const explorer = new ApiExplorer(bag);
 
@@ -355,10 +357,6 @@ export default class ApiExplorer {
         }
 
         explorer.appendTo(slots);
-
-        if (apiClient !== undefined && apiClient !== null) {
-            explorer.listenTo(apiClient);
-        }
 
         return explorer;
     }

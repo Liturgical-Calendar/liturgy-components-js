@@ -74,6 +74,36 @@ describe('ApiExplorer', () => {
         expect(calls.some((u) => /\/calendar(\/|\?|$)/.test(u))).toBe(false);
     });
 
+    it('rebuilds the calendar list on a rite change without ever fetching a calendar', async () => {
+        const explorer = await mountExplorer();
+        const calendarSelectEl = explorer.controls.calendarSelect._domElement;
+        const riteSelectEl = explorer.controls.riteSelect._domElement;
+
+        const beforeOptions = Array.from(calendarSelectEl.options).map(
+            (option) => option.value,
+        );
+
+        riteSelectEl.value = 'ambrosian';
+        riteSelectEl.dispatchEvent(new Event('change'));
+
+        const afterOptions = Array.from(calendarSelectEl.options).map(
+            (option) => option.value,
+        );
+
+        // The replacement wiring (`linkToCalendarSelect().linkToRiteSelect()`,
+        // called directly rather than through `CalendarControls.listenTo()`)
+        // must still rebuild the calendar list for the new rite ...
+        expect(afterOptions).not.toEqual(beforeOptions);
+
+        // ... while issuing no `/calendar/...` request at any point, even after
+        // the interaction. `/calendars` (the metadata index, requested once by
+        // `ApiClient.init()` in `mountExplorer()` above) is legitimate and must
+        // still be permitted — the regex below only rejects a `/calendar` segment
+        // followed by `/`, `?`, or end of string, never `/calendars`.
+        const calls = global.fetch.mock.calls.map((c) => String(c[0]));
+        expect(calls.some((u) => /\/calendar(\/|\?|$)/.test(u))).toBe(false);
+    });
+
     it('exposes the path builder', async () => {
         const explorer = await mountExplorer();
         expect(explorer.pathBuilder).not.toBeNull();

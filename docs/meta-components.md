@@ -537,8 +537,13 @@ const viewer = await DayViewer.mountInto(
 Bundles a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` into one mount, wired to one another and
 to an `ApiClient` — with **no renderer**. It exists because the same 45-line wiring block appeared
 byte-for-byte in a `WebCalendar` example and a FullCalendar one, and again, minus the fetching, in an
-API explorer page: the renderer is the axis of variation, and the wiring is not. `CalendarViewer` and
-`ApiExplorer` are both thin compositions of this class with a renderer added.
+API explorer page: the renderer is the axis of variation for two of this class' three compositions.
+`CalendarViewer` is a thin composition of this class with a renderer (`WebCalendar`) added, driven
+through `listenTo()` exactly as documented below. `ApiExplorer` is the odd one out: it reuses this
+class' CONSTRUCTION (the rite select, calendar select and `ApiOptions`, and the direct
+`linkToCalendarSelect().linkToRiteSelect()` call that rebuilds the calendar list on a rite change) but
+never calls `listenTo()` — because that method also wires the `ApiClient` to fetch on every change, which
+a page that only builds request URLs must never do. See `ApiExplorer`'s own section below for the detail.
 
 ```javascript
 import { CalendarControls, ApiOptionsFilter } from '@liturgical-calendar/components-js';
@@ -598,12 +603,12 @@ the consumer, reached through `controls.apiOptions._holydaysOfObligationInput`.
 
 `mountInto()` additionally accepts:
 
-| Option         | Type                    | Description                                                                                                                           |
-| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiClient`    | `ApiClient`             | Same option, but `mountInto()` also wires it via `listenTo()` and, unless `initialFetch` is `false`, performs the initial fetch.      |
-| `initialFetch` | `boolean`               | Default `true`. Set `false` to wire the client without fetching — `ApiExplorer` needs this: it builds request URLs and never fetches. |
-| `signal`       | `AbortSignal`           | Cancels the mount; see below.                                                                                                         |
-| `onError`      | `function(Error): void` | Registered before the initial fetch, so a failure of that very first request still reaches it.                                        |
+| Option         | Type                    | Description                                                                                                                                                                                                                                                                                                       |
+| -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiClient`    | `ApiClient`             | Same option, but `mountInto()` also wires it via `listenTo()` and, unless `initialFetch` is `false`, performs the initial fetch.                                                                                                                                                                                  |
+| `initialFetch` | `boolean`               | Default `true`. Set `false` to wire the client without performing the INITIAL fetch — subsequent changes still fetch normally, since `listenTo()` also wires `apiClient.listenTo( calendarSelect ).listenTo( riteSelect ).listenTo( apiOptions )`. See the note below on why this is not what `ApiExplorer` uses. |
+| `signal`       | `AbortSignal`           | Cancels the mount; see below.                                                                                                                                                                                                                                                                                     |
+| `onError`      | `function(Error): void` | Registered before the initial fetch, so a failure of that very first request still reaches it.                                                                                                                                                                                                                    |
 
 ### The theme bag
 
@@ -676,13 +681,22 @@ controls.listenTo(apiClient);
 // mountInto — constructs, mounts, wires and fetches in one call
 const controls = await CalendarControls.mountInto('#mount', { locale: 'en', apiClient });
 
-// ApiExplorer's shape — wired, but never fetching
+// initialFetch: false — wires the client (so subsequent changes DO fetch) but skips
+// the one fetch that would otherwise happen immediately on mount
 const controls = await CalendarControls.mountInto('#mount', {
     locale: 'en',
     apiClient,
     initialFetch: false,
 });
 ```
+
+**`initialFetch: false` is NOT what `ApiExplorer` uses, and does not by itself produce a
+"never fetches" component.** It only ever suppresses the ONE fetch `mountInto()` would otherwise perform
+immediately; `listenTo()` — called either way — still wires `apiClient.listenTo( calendarSelect ).listenTo(
+riteSelect ).listenTo( apiOptions )`, so a rite, calendar or option change fetches exactly as it would
+without the option. `ApiExplorer` needs every change to be fetch-free, not only the first one, so it never
+calls `CalendarControls.listenTo()` — or, by extension, `CalendarControls.mountInto()` — at all. See its
+own section [below](#apiexplorer) for how it links the rite -> calendar chain directly instead.
 
 ### Reject versus resolve
 
@@ -952,14 +966,23 @@ itself is named.
 
 ### It never fetches
 
-`ApiExplorer.listenTo()` (and `mountInto()`'s `apiClient` option, which calls it) wires `controls` to the
-`ApiClient` — including BOTH of the rite's wires, `ApiOptions.linkToRiteSelect()` and
-`apiClient.listenTo( riteSelect )`, needed here even though nothing fetches, because
-`linkToRiteSelect()` is what rebuilds the calendar list whenever the rite changes — but at no point does
-this class call `controls.fetch()`. Unlike every other meta-component's `mountInto()`, there is no
-`initialFetch` option: it would have nothing to control, since a fetch never runs under any circumstance.
-`ApiClient.init()` itself still performs its own `/calendars` metadata request — that is how the selects
-learn which calendars exist — but no `/calendar/...` request is ever issued on this class' behalf.
+`ApiExplorer` never calls `CalendarControls.listenTo()`, and has no `listenTo()` of its own. That method
+wires TWO different things under one name: the rite -> calendar chain
+(`apiOptions.linkToCalendarSelect().linkToRiteSelect()` — rebuilds the calendar list and disables the
+fixed-temporal-option inputs, with no `ApiClient` involved) AND `apiClient.listenTo( calendarSelect
+).listenTo( riteSelect ).listenTo( apiOptions )` — which is what turns every rite, calendar and option
+change into a live `/calendar/...` request. `ApiExplorer` needs only the first half, so its constructor
+calls `apiOptions.linkToCalendarSelect( calendarSelect ).linkToRiteSelect( riteSelect )` directly, and
+never touches `apiClient.listenTo()` at all.
+
+The `apiClient` constructor option therefore does one job only: it binds the controls to that client's API
+base (via `resolveBase()`, inside `CalendarControls`' own constructor) so the selects populate from
+`/calendars` metadata — the same request `ApiClient.init()` already makes for every other meta-component.
+It is never used to fetch a calendar. Unlike every other meta-component's `mountInto()`, there is no
+`initialFetch` option here, and no `onError` option: both concern a fetch this class never performs, under
+any circumstance — including after a rite, calendar or option change, not only at mount time. A
+`/calendars` request is legitimate and expected; no `/calendar/...` request is ever issued on this class'
+behalf.
 
 ### Two things this does NOT absorb
 
@@ -1008,17 +1031,18 @@ explorer.appendTo({
 The same split as every other meta-component in this family:
 
 - **`new ApiExplorer(options)`** is synchronous and requires an already-initialised `ApiBase` — it builds
-  both the controls and the path builder but mounts neither.
-- **`ApiExplorer.mountInto(slots, options)`** resolves every named slot, constructs the explorer, mounts
-  it, and wires it to `options.apiClient` when given. It never fetches.
+  the controls (linking the rite -> calendar chain directly, as described above) and the path builder, but
+  mounts neither.
+- **`ApiExplorer.mountInto(slots, options)`** resolves every named slot, constructs the explorer, and
+  mounts it. There is no separate wiring step — the rite -> calendar chain is already linked by the
+  constructor above — and no fetch, ever.
 
 ```javascript
-// Constructor + appendTo + listenTo — used when an ApiBase is already known to be ready
-const explorer = new ApiExplorer({ locale: 'en' });
+// Constructor + appendTo — used when an ApiBase is already known to be ready
+const explorer = new ApiExplorer({ locale: 'en', apiClient });
 explorer.appendTo({ pathBuilder: '#pathBuilderOptions', builder: '#pathBuilderOutput' });
-explorer.listenTo(apiClient);
 
-// mountInto — constructs, mounts and wires in one call, still without fetching
+// mountInto — constructs and mounts in one call, without fetching
 const explorer = await ApiExplorer.mountInto(slots, { locale: 'en', apiClient });
 ```
 
