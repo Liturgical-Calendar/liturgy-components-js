@@ -108,6 +108,37 @@ Each meta-component has a **sync constructor** and a **static async factory**:
 constructor, so a late theme swap would mean rebuilding them. Post-construction changes go through the
 getters.
 
+### Teardown
+
+Meta-components gain `dispose()`. They are the first things in this library that are genuinely
+remounted at runtime — all three picker call sites rebuild on every scope change with
+`mount.innerHTML = ''` — and the library currently has no teardown of any kind: `EventEmitter`
+(`src/ApiClient/EventEmitter.js`) exposes `on()` and `emit()` and no `off()`, and nothing under `src/`
+ever calls `removeEventListener`. `listenTo()` is therefore a permanent one-way subscription.
+
+So this phase also adds `EventEmitter.off(event, listener)`, without which `DayViewer.dispose()` could
+only ever be partial — it could drop its DOM listeners and child references while its `ApiClient`
+subscriptions kept firing against a detached tree. `off()` is purely additive and useful on its own.
+
+`dispose()` is idempotent, and a disposed meta-component throws on further use rather than failing
+quietly.
+
+`appendTo()` on the meta-components stays **void**, matching the other seven components. Two return
+conventions inside one library would be worse than one imperfect convention, and `mountInto()` already
+resolves to the component, so `appendTo()`'s return value is not load-bearing for the new code.
+
+That said, the existing contract is worth naming honestly, because it guards a symptom rather than the
+hazard: `appendTo() → undefined` blocks `x.appendTo(el).wrapper(…)` but not the equally broken and
+equally silent `x.appendTo(el); x.wrapper(…)`. The hazard is narrow — only the structural methods
+(`wrapper()`, `label()`, `after()`) are order-dependent, because they build elements that should have
+enclosed an already-inserted node. `class()`, `id()`, `disabled()` and `value()` all work correctly
+post-mount.
+
+The better long-term answer is to return `this` everywhere and have the structural methods throw when
+called after mount. That is non-breaking for every correct caller — nobody depends on receiving
+`undefined` — but it changes a documented contract, so it belongs to 3.0.0 and is explicitly out of
+scope here. Nothing in this phase forecloses it.
+
 ### Error handling
 
 Programmer error and runtime failure are treated differently:
@@ -180,6 +211,7 @@ both; the picker additionally self-cancels if its mount has left the DOM.
 | `failed`           | `true` when the failure control is mounted              |
 | `onChange(cb)`     | selection changes                                       |
 | `appendTo(target)` | returns `undefined`, per library convention             |
+| `dispose()`        | removes listeners, empties the mount; idempotent        |
 
 Native change events continue to bubble to the mount; `admin-tests.js:692` depends on that.
 
@@ -258,6 +290,7 @@ machine-translated liturgical UI is not worth the risk.
 | `selectedLocale`                                         | result of the matching cascade |
 | `onError(cb)`                                            | fetch failures                 |
 | `appendTo(target)`                                       | returns `undefined`            |
+| `dispose()`                                              | unsubscribes and tears down    |
 
 ## Testing
 
@@ -297,5 +330,7 @@ translates `SELECT_A_RITE` "for en and it so far". It is 12 locales.
 - Exporting `Messages`.
 - Translating the new keys beyond the 12 locales.
 - Parity work in `liturgy-components-php` or `liturgy-components-react`.
-- Any change to existing component APIs.
+- Any change to existing component APIs, beyond the purely additive `EventEmitter.off()`.
+- Flipping `appendTo()` to return `this` and making the structural methods throw after mount — the
+  better long-term contract, but a 3.0.0 change across seven components.
 - Bootstrap or other framework presets shipped from the library.
