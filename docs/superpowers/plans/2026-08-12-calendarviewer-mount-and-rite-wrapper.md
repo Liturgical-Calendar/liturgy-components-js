@@ -14,7 +14,7 @@ the same three-line block they already run for their calendar select. Finally `C
 public members, and its existing `mountInto()` is refactored to call them instead of duplicating their
 bodies.
 
-**Tech Stack:** ES2022 JavaScript modules, Jest 29 with jsdom, TypeScript 5.7 for declaration emit only (`checkJs` is off), prettier + markdownlint, Yarn 4.6.
+**Tech Stack:** ES2022 JavaScript modules, Jest 30 with jsdom, TypeScript 5.7 for declaration emit only (`checkJs` is off), prettier + markdownlint, Yarn 4.6.
 
 ## Global Constraints
 
