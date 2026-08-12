@@ -535,9 +535,10 @@ const viewer = await DayViewer.mountInto(
 ## CalendarControls
 
 Bundles a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` into one mount, wired to one another and
-to an `ApiClient` — with **no renderer**. It exists because the same 45-line wiring block appeared
-byte-for-byte in a `WebCalendar` example and a FullCalendar one, and again, minus the fetching, in an
-API explorer page: the renderer is the axis of variation for two of this class' three compositions.
+to an `ApiClient` — with **no renderer**. It exists because the same 45-line wiring block appeared,
+structurally identical (differing only in locale source, comment wording and minor content), in a
+`WebCalendar` example and a FullCalendar one, and again, minus the fetching, in an API explorer page: the
+renderer is the axis of variation for two of this class' three compositions.
 `CalendarViewer` is a thin composition of this class with a renderer (`WebCalendar`) added, driven
 through `listenTo()` exactly as documented below. `ApiExplorer` is the odd one out: it reuses this
 class' CONSTRUCTION (the rite select, calendar select and `ApiOptions`, and the direct
@@ -585,6 +586,10 @@ controls.onCalendarFetched((data) => console.log('Fetched:', data));
   containing markup renders as text rather than as elements. Omitted, nothing is rendered. It lives on
   `CalendarControls` rather than only on `CalendarViewer` because the FullCalendar-style consumer wants
   it and will never use `CalendarViewer`. A refetch replaces the rows rather than appending to them.
+- **The locale cascade.** Ported from `DayViewer` — see [its own section](#the-locale-cascade) for the
+  rule — so requests actually carry the locale these controls were constructed with, instead of
+  whichever `Accept-Language` (none, on the first request) happened to already be in force. See
+  [below](#the-locale-cascade-1) for the `CalendarControls`-specific detail.
 
 **Two deliberate non-goals:** this class does not call `Input.setGlobalInputClass()` or its siblings —
 those are process-wide mutations that leak onto every other component on the page, and the theme bag is
@@ -597,9 +602,18 @@ the consumer, reached through `controls.apiOptions._holydaysOfObligationInput`.
 | Option      | Type                    | Description                                                                                                         |
 | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `locale`    | `string \| Intl.Locale` | Display locale. `null`/`undefined` take the default `'en'`; anything else throws, naming the type found.            |
-| `filter`    | `ApiOptionsFilter`      | Which `ApiOptions` inputs to show. Default `ApiOptionsFilter.ALL_CALENDARS`.                                        |
+| `filter`    | `ApiOptionsFilter`      | Which `ApiOptions` inputs to show. Default (on `undefined` only — see below) `ApiOptionsFilter.ALL_CALENDARS`.      |
 | `theme`     | `Object`                | The theme bag; see below. Omitted, the controls render unstyled markup.                                             |
 | `apiClient` | `ApiClient`             | Binds the `CalendarSelect` and `ApiOptions` to that client's API base. Omitted, binds to the first base registered. |
+
+**`filter` defaults to `ApiOptionsFilter.ALL_CALENDARS` only when it is `undefined` — an explicitly-passed
+`ApiOptionsFilter.NONE` (itself `null`) is honoured as its own, distinct choice, not silently converted to
+`ALL_CALENDARS`.** `NONE` renders every `ApiOptions` input unfiltered — both the calendar-related set
+(locale, year type, accept header, year) and the general-Roman-specific set (epiphany, ascension, corpus
+christi, eternal high priest, holydays of obligation) — which is what the FullCalendar-style consumer this
+class was extracted from actually wants. An unrecognised `filter` value is rejected here, naming
+`CalendarControls`, rather than surfacing from `ApiOptions.filter()`'s own "Invalid filter: …" message,
+which names neither class.
 
 `mountInto()` additionally accepts:
 
@@ -636,13 +650,25 @@ inputs directly through `controls.apiOptions` for anything the theme bag does no
 
 ### Public getters
 
-All three throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
+All four throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
 
-| Member           | Returns          | Description                |
-| ---------------- | ---------------- | -------------------------- |
-| `riteSelect`     | `RiteSelect`     | The wired rite select.     |
-| `calendarSelect` | `CalendarSelect` | The wired calendar select. |
-| `apiOptions`     | `ApiOptions`     | The wired `ApiOptions`.    |
+| Member           | Returns          | Description                                                                         |
+| ---------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| `riteSelect`     | `RiteSelect`     | The wired rite select.                                                              |
+| `calendarSelect` | `CalendarSelect` | The wired calendar select.                                                          |
+| `apiOptions`     | `ApiOptions`     | The wired `ApiOptions`.                                                             |
+| `selectedLocale` | `string`         | The locale chosen by the cascade below, and currently selected in the locale input. |
+
+### The locale cascade
+
+Ported from `DayViewer` — see [that component's section](#the-locale-cascade) for the full rule — so the
+two components behave alike rather than each inventing their own version of the same behaviour.
+`appendTo()` picks the locale these controls request from those the selected calendar supports: an exact
+match, then a language-prefix match, then the first available option, then finally the constructed
+`locale` itself. `selectedLocale` reports the result, the locale input is pre-selected to match it, and
+`fetch()` requests that locale on every call — including the very first one, which is the case that was
+broken before this existed: a `CalendarControls` constructed with `locale: 'it'` used to show `it` nowhere
+and send no `Accept-Language` at all, silently falling back to Latin.
 
 ### `appendTo()` and its slots
 
@@ -974,8 +1000,10 @@ three successive `filter().appendTo()` pairs, exactly as the extracted page does
 `calendarSelect.insertAfter( apiOptions._calendarPathInput )`, landing as a DOM sibling immediately after
 the calendar-path input inside the `pathBuilder` container — matching the page this was extracted from,
 not a container `ApiExplorer` names separately. Because `insertAfter()` needs the calendar-path input
-already in the document to insert next to, this positioning only happens when the `pathBuilder` slot
-itself is named.
+already in the document to insert next to, **`pathBuilder` is therefore the one slot `appendTo()`
+requires**: `insertAdjacentElement('afterend', …)` on a node with no parent is a silent no-op, so omitting
+`pathBuilder` used to leave the calendar select permanently detached from the document with nothing to
+show for it. Omitting it is now rejected instead — see [below](#appendto-and-its-slots-1).
 
 ### It never fetches
 
@@ -1025,9 +1053,12 @@ Both throw once this explorer has been disposed — see [`dispose()`](#dispose-4
 ### `appendTo()` and its slots
 
 Takes a slots object naming up to five targets — `pathBuilder`, `basePath`, `allPaths`, `riteSelect`,
-`builder` — all optional. An omitted slot simply skips that append (and, for `pathBuilder`, skips
-positioning the calendar select too, since that positioning depends on it). A named slot that matches
-nothing throws, naming `ApiExplorer` and the slot:
+`builder`. **`pathBuilder` is required** — the calendar select has no slot of its own and can only be
+positioned as a side effect of mounting it, so omitting it is rejected rather than silently leaving the
+calendar select detached. The other four stay optional; an omitted one simply skips that append. A named
+slot that matches nothing throws, naming `ApiExplorer` and the slot, and a slots object naming no key from
+the five above at all — an empty object, or every key misspelled — is rejected too, by name, rather than
+resolving having silently mounted nothing:
 
 ```javascript
 explorer.appendTo({
@@ -1061,10 +1092,10 @@ const explorer = await ApiExplorer.mountInto(slots, { locale: 'en', apiClient })
 
 ### Reject versus resolve
 
-| Kind                                                                                     | Behaviour                                                |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Invalid options (unparseable locale, malformed theme, a named slot that matches nothing) | **Rejects.** A typo should not be silently papered over. |
-| The API metadata cannot be loaded (API down, `ApiClient` never initialised)              | **Rejects.**                                             |
+| Kind                                                                                                                                                                  | Behaviour                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Invalid options (unparseable locale, malformed theme, a named slot that matches nothing, an unknown slot key, `pathBuilder` omitted, or every slots key unrecognised) | **Rejects.** A typo should not be silently papered over. |
+| The API metadata cannot be loaded (API down, `ApiClient` never initialised)                                                                                           | **Rejects.**                                             |
 
 `mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was already
 aborted, or when a slot was passed as an already-resolved `HTMLElement` that has since left the document.

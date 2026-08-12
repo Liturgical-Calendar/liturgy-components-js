@@ -11,7 +11,8 @@ Three more meta-components — `CalendarControls`, `CalendarViewer` and `ApiExpl
 before this release still passes unmodified.
 
 Where 2.2.0's two components each wrapped a fixed page, this release starts from the wiring two of those
-pages shared byte-for-byte and lets the renderer vary on top of it. A `WebCalendar` example, a FullCalendar
+pages shared, structurally identical apart from locale source, comment wording and minor content, and lets
+the renderer vary on top of it. A `WebCalendar` example, a FullCalendar
 one, and an API-explorer page all build the same rite select, calendar select and `ApiOptions`, wired the
 same way to the same client, and then diverge only in what they do with the fetched data — one renders a
 table, one hands the data to a third-party calendar library the components package has no business

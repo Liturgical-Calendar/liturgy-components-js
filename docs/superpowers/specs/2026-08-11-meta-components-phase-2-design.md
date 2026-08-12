@@ -14,12 +14,12 @@ is a fourth consumer phase 1 never catalogued.
 The shared block is **form plus client wiring**, and it appears in four places — but only one of them
 renders with `WebCalendar`:
 
-| Consumer                          | Shared wiring block               | Renders via            | Fetches? |
-| --------------------------------- | --------------------------------- | ---------------------- | -------- |
-| `examples/javascript/main.js`     | lines 111-156                     | `WebCalendar`          | yes      |
-| `examples/fullcalendar/script.js` | lines 111-156, **byte-identical** | FullCalendar           | yes      |
-| `assets/js/index.js`              | lines 16-86, `PATH_BUILDER`       | `PathBuilder`          | **no**   |
-| `assets/js/usage.js`              | —                                 | hand-rolled URL string | no       |
+| Consumer                          | Shared wiring block                       | Renders via            | Fetches? |
+| --------------------------------- | ----------------------------------------- | ---------------------- | -------- |
+| `examples/javascript/main.js`     | lines 111-156                             | `WebCalendar`          | yes      |
+| `examples/fullcalendar/script.js` | lines 111-156, **structurally identical** | FullCalendar           | yes      |
+| `assets/js/index.js`              | lines 16-86, `PATH_BUILDER`               | `PathBuilder`          | **no**   |
+| `assets/js/usage.js`              | —                                         | hand-rolled URL string | no       |
 
 Bundling `WebCalendar` into the shared wiring would serve `main.js` and exclude
 `fullcalendar/script.js`, even though the FullCalendar example needs the identical 45-line block. The
@@ -31,9 +31,12 @@ Two further duplications the survey turned up:
   `fullcalendar/script.js:156` — although `ApiClient.on()` has been public since 2.0.0
   (`src/ApiClient/ApiClient.js:1093`). The private reach was never necessary. A meta-component should
   make the supported path the obvious one.
-- **Both render the messages table with byte-identical code** — `main.js:98-104`,
+- **Both render the messages table with the same shape of code** — `main.js:98-104`,
   `fullcalendar/script.js:182-188` — same `#LitCalMessages tbody` target, same row shape, and both
-  build rows with `innerHTML` from API-supplied strings.
+  build rows with `innerHTML` from API-supplied strings. ("Structurally identical" is the right word for
+  both of these blocks, not "byte-identical": they differ in locale source, comment wording and minor
+  content between the two files. The shape they share — and the conclusion drawn from it above — is
+  unaffected by that difference.)
 
 ## Approach
 
@@ -92,14 +95,14 @@ controls.onCalendarFetched((data) => calendar.refetchEvents());
 
 ### Options
 
-| Option         | Type                    | Notes                                                       |
-| -------------- | ----------------------- | ----------------------------------------------------------- |
-| `locale`       | `string \| Intl.Locale` | As every component; `null`/`undefined` take `'en'`.         |
-| `apiClient`    | `ApiClient`             | Binds to that client's base and drives it.                  |
-| `filter`       | `ApiOptionsFilter`      | Which `ApiOptions` inputs to show. Default `ALL_CALENDARS`. |
-| `theme`        | `Object`                | The phase 1 theme bag, unchanged.                           |
-| `initialFetch` | `boolean`               | Default `true`. `ApiExplorer` sets `false` — see below.     |
-| `signal`       | `AbortSignal`           | `mountInto()` only, as phase 1.                             |
+| Option         | Type                    | Notes                                                                                                                               |
+| -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `locale`       | `string \| Intl.Locale` | As every component; `null`/`undefined` take `'en'`.                                                                                 |
+| `apiClient`    | `ApiClient`             | Binds to that client's base and drives it.                                                                                          |
+| `filter`       | `ApiOptionsFilter`      | Which `ApiOptions` inputs to show. Default `ALL_CALENDARS`.                                                                         |
+| `theme`        | `Object`                | The phase 1 theme bag, unchanged.                                                                                                   |
+| `initialFetch` | `boolean`               | Default `true`. Skips only `mountInto()`'s own initial fetch — see `ApiExplorer`'s own section for why it does not use this at all. |
+| `signal`       | `AbortSignal`           | `mountInto()` only, as phase 1.                                                                                                     |
 
 ### Two deliberate non-goals
 
@@ -165,8 +168,14 @@ itself. The calendar select is positioned with `insertAfter( apiOptions._calenda
 than into a container of its own, which the component reproduces.
 
 **`ApiExplorer` never fetches.** It builds URLs; `index.js` initialises an `ApiClient` only for the
-metadata its selects read. This is why `CalendarControls` needs `initialFetch: false` — the one place
-the shared core bends for a composition, stated here rather than discovered mid-implementation.
+metadata its selects read. `CalendarControls.mountInto()`'s own `initialFetch: false` option is NOT how
+this is achieved — that option only ever suppresses the ONE fetch `mountInto()` would otherwise perform
+immediately, while `listenTo()` (called either way) still wires every subsequent rite, calendar or option
+change to fetch. `ApiExplorer` needs every change to be fetch-free, not only the first one, so it never
+calls `CalendarControls.listenTo()` — or, by extension, `mountInto()` — at all: its constructor links the
+rite -> calendar chain directly (`apiOptions.linkToCalendarSelect().linkToRiteSelect()`, with no
+`ApiClient` involved), the one place the shared core bends for a composition, stated here rather than
+discovered mid-implementation.
 
 Two things it does **not** absorb, staying with the consumer through getters: the per-input `id()`
 calls (page-specific anchors), and the label-after tooltip nodes `index.js:73-78` splices into label
