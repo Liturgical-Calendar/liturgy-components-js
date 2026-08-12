@@ -68,12 +68,38 @@ const riteSelect = new RiteSelect('en-US')
 riteSelect.appendTo('#riteOptions');
 ```
 
-| Method             | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `class(className)` | CSS class(es) for the select element                                        |
-| `id(id)`           | ID for the select element (without '#')                                     |
-| `name(name)`       | Name attribute for the select element                                       |
-| `label(options)`   | Configure the label element (`text`, `class`, `id`), or `null` to remove it |
+| Method             | Description                                                                       |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `class(className)` | CSS class(es) for the select element                                              |
+| `id(id)`           | ID for the select element (without '#')                                           |
+| `name(name)`       | Name attribute for the select element                                             |
+| `label(options)`   | Configure the label element (`text`, `class`, `id`), or `null` to remove it       |
+| `wrapper(options)` | Configure a wrapper element (`as`, `class`, `id`), or `null` for none — see below |
+
+### `wrapper(wrapperOptions)`
+
+Wraps the select — and its label, when one is set — in a container element. Chainable.
+
+```javascript
+const riteSelect = new RiteSelect('en')
+    .class('form-select')
+    .wrapper({ as: 'div', class: 'form-group col col-md-2' });
+riteSelect.appendTo('#calendarOptions');
+```
+
+| Option  | Type     | Notes                                       |
+| ------- | -------- | ------------------------------------------- |
+| `as`    | `string` | `'div'` or `'td'`. Defaults to `'div'`.     |
+| `class` | `string` | Each class name is sanitized and validated. |
+| `id`    | `string` | Sanitized and validated as a CSS selector.  |
+
+Pass `null` for no wrapper, which is also the default when the method is never called. The
+options object must name at least one of `as`, `class` or `id`.
+
+This is one-shot: a second call throws rather than replacing a wrapper already configured. The
+signature matches `CalendarSelect.wrapper()` exactly, so the meta-components' theme bag drives
+one contract for both selects. `ApiOptions`' `Input.wrapper()` still takes a bare tag name and
+pairs with a separate `wrapperClass()`; converging it is tracked in issue #46.
 
 ### DOM Insertion Methods (non-chainable)
 

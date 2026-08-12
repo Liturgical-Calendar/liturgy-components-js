@@ -23,6 +23,7 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import DayViewer from '../MetaComponents/DayViewer.js';
 import CalendarResourcePicker from '../MetaComponents/CalendarResourcePicker.js';
+import CalendarControls from '../MetaComponents/CalendarControls.js';
 import { CalendarSelectFilter } from '../Enums.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
@@ -71,29 +72,28 @@ describe('Theme bag symmetry: { select, label, wrapper }', () => {
     // structure instead: which children actually got wrapped, and which did not.
     // Found this way: with `{ select, label, wrapper }`, `DayViewer` wrapped its
     // `calendarSelect` but silently skipped `localeInput`, even though `LocaleInput`
-    // supports a wrapper exactly as `CalendarSelect` does — an omission, not a
-    // capability limit (unlike `riteSelect`, which genuinely has none).
+    // supports a wrapper exactly as `CalendarSelect` does.
+    //
+    // `riteSelect` was the third such omission and was pinned here as a genuine
+    // capability limit, `RiteSelect` having had no `wrapper()` at all. It has one
+    // now (see `RiteSelect.wrapper()`), so the flat key must reach it too: a
+    // `wrapper` role honoured for one of two selects is not a role vocabulary.
     it('wraps every DayViewer child that can take a wrapper, and only those', () => {
         const viewer = new DayViewer({ locale: 'en', theme: FLAT_BAG });
         viewer.appendTo('#mount');
 
-        const calendarWrapper =
-            viewer.calendarSelect._domElement.closest('.col-md-3');
-        expect(calendarWrapper).not.toBeNull();
-
-        const localeWrapper =
-            viewer.localeInput._domElement.closest('.col-md-3');
-        expect(localeWrapper).not.toBeNull();
-
-        // RiteSelect has no wrapper concept: the flat key must not invent one for
-        // it, and the select's parent must be the mount itself.
-        expect(viewer.riteSelect._domElement.closest('.col-md-3')).toBeNull();
-        expect(viewer.riteSelect._domElement.parentElement).toBe(
-            document.getElementById('mount'),
-        );
+        expect(
+            viewer.calendarSelect._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+        expect(
+            viewer.localeInput._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+        expect(
+            viewer.riteSelect._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
     });
 
-    it('wraps only the calendar select for CalendarResourcePicker, since RiteSelect has none', () => {
+    it('wraps both selects for CalendarResourcePicker', () => {
         const picker = new CalendarResourcePicker({
             locale: 'en',
             filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
@@ -104,6 +104,36 @@ describe('Theme bag symmetry: { select, label, wrapper }', () => {
         expect(
             picker.calendarSelect._domElement.closest('.col-md-3'),
         ).not.toBeNull();
-        expect(picker.riteSelect._domElement.closest('.col-md-3')).toBeNull();
+        expect(
+            picker.riteSelect._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+    });
+
+    it('wraps both selects for CalendarControls', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: FLAT_BAG,
+        });
+        controls.appendTo('#mount');
+
+        expect(
+            controls.calendarSelect._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+        expect(
+            controls.riteSelect._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+    });
+
+    it('honours an explicit riteSelect.wrapperClass override over the flat key', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { ...FLAT_BAG, riteSelect: { wrapperClass: 'col-md-2' } },
+        });
+        controls.appendTo('#mount');
+
+        expect(
+            controls.riteSelect._domElement.closest('.col-md-2'),
+        ).not.toBeNull();
+        expect(controls.riteSelect._domElement.closest('.col-md-3')).toBeNull();
     });
 });

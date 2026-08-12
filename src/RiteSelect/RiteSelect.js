@@ -3,6 +3,7 @@ import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import { buildWrapperElement } from '../WrapperOptions.js';
 
 /**
  * A select menu for the liturgical rite a calendar request is computed under.
@@ -24,6 +25,9 @@ export default class RiteSelect {
     #labelElement = null;
     #hasLabel = false;
     #labelSet = false;
+    #wrapperElement = null;
+    #hasWrapper = false;
+    #wrapperSet = false;
     #locale = 'en';
     #idSet = false;
     #nameSet = false;
@@ -35,13 +39,17 @@ export default class RiteSelect {
      * @param {string} [options.id] The id attribute for the select element.
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
+     * @param {object} [options.label] Label options, forwarded to {@link RiteSelect#label}.
+     * @param {?object} [options.wrapper] Wrapper options, forwarded to {@link RiteSelect#wrapper}.
      * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `label` or `wrapper` carries an invalid value; the same errors
+     *         the corresponding method throws when called directly.
      */
     constructor(options = 'en') {
         options = normalizeComponentOptions(options, 'RiteSelect');
 
-        const { locale: inputLocale, id, name } = options;
+        const { locale: inputLocale, id, name, label, wrapper } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             this.#locale = canonicalizeLocale(inputLocale, 'RiteSelect');
         }
@@ -52,8 +60,12 @@ export default class RiteSelect {
         this.#domElement.innerHTML = Object.values(Rite)
             .map((rite) => {
                 const key = 'RITE_' + rite.toUpperCase();
-                const label = Messages[language]?.[key] ?? Messages['en'][key];
-                return `<option value="${rite}">${label}</option>`;
+                // Not `label`: that name now belongs to the destructured option
+                // below. The shadowing was harmless while nothing outside this
+                // callback used it, and stops being obvious the moment something does.
+                const optionLabel =
+                    Messages[language]?.[key] ?? Messages['en'][key];
+                return `<option value="${rite}">${optionLabel}</option>`;
             })
             .join('');
         this.#domElement.value = Rite.ROMAN;
@@ -66,6 +78,18 @@ export default class RiteSelect {
         }
         if (name) {
             this.name(name);
+        }
+        // `label` before `wrapper`, mirroring `CalendarSelect`'s constructor. Both
+        // were silently DROPPED here until 2.4.0 — the bag accepted them, because
+        // `normalizeComponentOptions()` rejects no unknown keys, and then nothing
+        // read them. `CalendarSelect` has honoured both since it gained them, and
+        // the two selects are documented as interchangeable in this respect, so a
+        // caller reaching for the bag form on a rite select got silence.
+        if (label) {
+            this.label(label);
+        }
+        if (wrapper) {
+            this.wrapper(wrapper);
         }
     }
 
@@ -103,6 +127,41 @@ export default class RiteSelect {
         } else {
             this.#domElement.setAttribute('class', className);
         }
+        return this;
+    }
+
+    /**
+     * Wraps the select (and its label, when one is set) in a container element.
+     *
+     * Mirrors `CalendarSelect.wrapper()` exactly, rather than `Input.wrapper()`:
+     * a rite select is a select, and `Input`'s split `wrapper()` /
+     * `wrapperClass()` shape would give the meta-components' theme bag two
+     * different contracts to drive for its two selects. `Input`'s convergence
+     * onto this shape is tracked separately in issue #46.
+     *
+     * One-shot: a second call throws rather than silently replacing a wrapper
+     * a previous call already configured.
+     *
+     * @param {?{as?: string, class?: string, id?: string}} [wrapperOptions=null] The wrapper
+     *        configuration, or `null` for no wrapper. `as` is `'div'` or `'td'` and defaults
+     *        to `'div'`.
+     * @throws {Error} If a wrapper has already been set on this instance.
+     * @throws {Error} If `wrapperOptions` is an array or a non-object, names none of
+     *         `as`/`class`/`id`, or carries an invalid `as`, `class` or `id` value.
+     * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
+     */
+    wrapper(wrapperOptions = null) {
+        if (this.#wrapperSet) {
+            throw new Error(
+                'Wrapper has already been set on RiteSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
+        }
+        const element = buildWrapperElement(wrapperOptions, 'RiteSelect');
+        this.#wrapperElement = element;
+        this.#hasWrapper = null !== element;
+        this.#wrapperSet = true;
         return this;
     }
 
@@ -315,7 +374,12 @@ export default class RiteSelect {
                 'RiteSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
             );
         }
-        domNode.appendChild(this.#domElement);
+        if (this.#hasWrapper) {
+            domNode.appendChild(this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
+        } else {
+            domNode.appendChild(this.#domElement);
+        }
         if (this.#hasLabel) {
             // Matches CalendarSelect.appendTo(): the select is appended first,
             // then the label is placed immediately before it via

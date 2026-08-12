@@ -58,6 +58,17 @@ const WEB_CALENDAR_KEYS = Object.freeze([
     'locale',
 ]);
 
+/**
+ * The slot names `appendTo()` accepts.
+ *
+ * `controls` and `calendar` are both required — a viewer has two mandatory
+ * mounts. `messages` is optional and is forwarded to `CalendarControls`, which
+ * owns the renderer.
+ *
+ * @type {Readonly<string[]>}
+ */
+const SLOT_NAMES = Object.freeze(['controls', 'calendar', 'messages']);
+
 export default class CalendarViewer {
     /** @type {CalendarControls} */
     #controls;
@@ -156,26 +167,205 @@ export default class CalendarViewer {
     }
 
     /**
+     * Mounts both halves: the controls into `slots.controls`, the calendar into
+     * `slots.calendar`, and — when named — the messages table into
+     * `slots.messages`, which `CalendarControls` renders.
+     *
+     * **Both required targets are resolved before either is mounted.** Resolving
+     * `calendar` after mounting the controls meant an unusable `calendar`
+     * selector threw with the controls already in the document — a partial mount
+     * the caller never asked for and, from `mountInto()`, cannot easily undo,
+     * since the rejected promise hands back no viewer to `dispose()`.
+     *
+     * Unlike `CalendarControls.appendTo()`, this does NOT accept a single bare
+     * target. A viewer has two mandatory mounts, and a lone target would have to
+     * choose one of them silently.
+     *
+     * Callable more than once; the children are moved rather than copied.
+     *
+     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {string} [caller='CalendarViewer.appendTo'] - Internal only: the
+     *   `Class.method` prefix to report in a thrown message. `mountInto()`
+     *   passes its own name so a bad target is reported under the entry point
+     *   the caller actually used.
+     * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
+     * @throws {Error} If `slots` is not an object, names an unknown slot, omits
+     *   `controls` or `calendar`, or names a target matching nothing.
+     */
+    appendTo(slots, caller = 'CalendarViewer.appendTo') {
+        this.#assertUsable();
+        CalendarViewer.#assertSlots(slots, caller);
+
+        // Resolved BEFORE either half is mounted — see the doc comment above.
+        const calendarElement = CalendarViewer.#requireElement(
+            slots.calendar,
+            'calendar',
+            caller,
+        );
+
+        const controlsSlots = { controls: slots.controls };
+        if (Object.hasOwn(slots, 'messages')) {
+            controlsSlots.messages = slots.messages;
+        }
+        // The caller's own name is passed down so a bad `controls`/`messages`
+        // target is reported as this class' method, not as
+        // `CalendarControls.appendTo` — a class the caller never touched.
+        this.#controls.appendTo(controlsSlots, caller);
+
+        this.#calendarMount = calendarElement;
+        this.#webCalendar.appendTo(calendarElement);
+    }
+
+    /**
+     * Wires both halves to an `ApiClient`, controls first.
+     *
+     * **The order is the whole point of this method.** `EventEmitter.emit()` is
+     * a synchronous `forEach` over listeners in registration order, and
+     * `WebCalendar`'s own `calendarFetched` listener throws on malformed or
+     * empty `litcal` (see `WebCalendar.js`) — a throw that aborts the iteration
+     * for every listener registered after it. Registering the controls first
+     * means their `calendarFetched` listeners, including the messages renderer
+     * when a `messages` slot was named, always run before `WebCalendar`'s, so a
+     * `WebCalendar` failure can never suppress a messages render that was
+     * already due. A caller wiring `controls` and `webCalendar` by hand has to
+     * know that and reproduce it; this method is what removes that trap, the
+     * same way `CalendarControls.listenTo()` removes the rite's two-wire trap.
+     *
+     * @param {import('../ApiClient/ApiClient.js').default} apiClient - The client to drive.
+     *   Written as an inline `import(...)` type rather than a top-level import: this
+     *   file needs `ApiClient` only as a TYPE, and a real import would make it a
+     *   runtime module dependency for nothing. `CalendarControls` and `DayViewer`
+     *   import it properly because they also use it as a value.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed, or if the controls are
+     *   already wired to a client.
+     */
+    listenTo(apiClient) {
+        this.#assertUsable();
+        this.#controls.listenTo(apiClient);
+        this.#webCalendar.listenTo(apiClient);
+        return this;
+    }
+
+    /**
+     * Fetches the calendar the select currently names, through the controls'
+     * own three-way dispatch.
+     *
+     * The promise is returned to the caller and is never routed through
+     * `ApiClient#_discardRequest` — the rule `CalendarControls.fetch()`'s own
+     * doc comment states, which a delegate must not quietly change. A caller
+     * holding this promise can `.catch()` or `await` it, so logging on top of
+     * that would report a handled failure twice.
+     *
+     * @returns {Promise<Object>} The fetched calendar data.
+     * @throws {Error} If this viewer has been disposed, or no client is wired.
+     */
+    fetch() {
+        this.#assertUsable();
+        return this.#controls.fetch();
+    }
+
+    /**
+     * Registers a callback for successfully fetched calendar data.
+     *
+     * Callbacks registered before `listenTo()` are replayed by it, so the order
+     * of the two calls does not matter.
+     *
+     * @param {function(Object): void} callback - Receives the calendar data.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onCalendarFetched(callback) {
+        this.#assertUsable();
+        this.#controls.onCalendarFetched(callback);
+        return this;
+    }
+
+    /**
+     * Registers a callback for calendar fetch failures.
+     *
+     * Subscribing is what stops `ApiClient` falling back to `console.error`: it
+     * logs only when nothing is listening for `calendarFetchFailed`.
+     *
+     * @param {function(Error): void} callback - Receives the ApiClientError.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onError(callback) {
+        this.#assertUsable();
+        this.#controls.onError(callback);
+        return this;
+    }
+
+    /**
+     * Validates a `slots` argument: must be a plain object, name no key outside
+     * {@link SLOT_NAMES}, and include both `controls` and `calendar`.
+     *
+     * Shared by `appendTo()` and `mountInto()` so the rules have a single source
+     * of truth. `mountInto()` calls this BEFORE resolving any element or checking
+     * for cancellation — a typo in `slots` must surface even on a mount the
+     * caller already cancelled, per that method's own doc comment — and
+     * `appendTo()` calls it again as its own first act, since it is a public
+     * entry point in its own right and cannot assume its caller already
+     * validated. Re-validating when `mountInto()` already did is harmless and
+     * cheap.
+     *
+     * @param {unknown} slots - The candidate slots argument.
+     * @param {string} caller - The `Class.method` prefix to report, so a bad
+     *   `slots` names whichever entry point the caller actually used.
+     * @returns {void}
+     * @throws {Error} If `slots` is not an object, names an unknown slot, or
+     *   omits `controls` or `calendar`.
+     */
+    static #assertSlots(slots, caller) {
+        try {
+            assertPlainOptions(slots, caller);
+        } catch {
+            throw new Error(
+                `${caller}: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
+            );
+        }
+
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, calendar, messages }.`,
+            );
+        }
+        if (false === Object.hasOwn(slots, 'controls')) {
+            throw new Error(`${caller}: slots must name a 'controls' target.`);
+        }
+        if (false === Object.hasOwn(slots, 'calendar')) {
+            throw new Error(`${caller}: slots must name a 'calendar' target.`);
+        }
+    }
+
+    /**
      * Resolves a mount target to an element.
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
      * @param {string} slot - The slot name, for the message.
+     * @param {string} caller - The `Class.method` prefix to report, so a bad
+     *   target names whichever entry point the caller actually used.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, slot) {
+    static #requireElement(target, slot, caller) {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `CalendarViewer.mountInto: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `CalendarViewer.mountInto: Element not found for the ${slot} slot: ${target}`,
+                `${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -246,24 +436,33 @@ export default class CalendarViewer {
      * `EventEmitter.emit()` is a synchronous `forEach`; `WebCalendar`'s listener
      * throws on a malformed or empty `litcal` (see `WebCalendar.js`), which would
      * otherwise abort the iteration before a listener registered AFTER it ever
-     * ran. Registering the controls first means that throw — routed to
-     * `apiClient._discardRequest()` below, exactly as `CalendarControls.mountInto()`
+     * ran. Registering the controls first means that throw — routed to the
+     * controls' own error delivery below, exactly as `CalendarControls.mountInto()`
      * routes its own dropped initial fetch — can never suppress the messages
      * render; it can only ever affect listeners registered after `WebCalendar`'s
      * own, and none are.
      *
      * Modelled on `CalendarControls.mountInto()`: the viewer is constructed before
      * the cancellation check, so an invalid `webCalendar` key, theme or locale
-     * rejects even on a mount the caller already cancelled. This factory calls
-     * `this.#controls`'s own `appendTo()`/`listenTo()`/`fetch()` directly — the
-     * exact same instance `CalendarControls.mountInto()` would have built and
-     * driven internally — rather than delegating to that factory itself, so that
-     * `controls` never resolves to a second, separately-constructed instance from
-     * the one this viewer already holds. `apiClient._discardRequest()` is called
-     * exactly once, on `this.#controls.fetch()`'s own promise: `fetch()` itself
-     * never routes through it (a caller holding the promise must be able to handle
-     * it), so a second discard or catch layered on top here would be exactly the
-     * duplicate `CalendarControls.fetch()`'s own doc comment warns against.
+     * rejects even on a mount the caller already cancelled. Slot validation runs
+     * next — see `#assertSlots()` — BEFORE either cancellation check, so a typo
+     * in `slots` still surfaces even on a mount the caller already cancelled.
+     * Two cancellation checks follow, exactly as many as `#targetElement()`
+     * alone can cover: the first, right after validation, catches an already-
+     * disconnected `controls` or `calendar` element passed directly; the second,
+     * after `calendar` is resolved, catches the case the first cannot —  a
+     * CONNECTED `controls` paired with a DISCONNECTED `calendar`, since
+     * `#targetElement()` returns whichever element it finds and prefers
+     * `controls`. Only then does this factory call `appendTo()` to mount both
+     * halves (re-validating and re-resolving `calendar` is harmless and cheap;
+     * see `#assertSlots()`'s own doc comment), followed by this class' own
+     * public `listenTo()`/`fetch()`/`onError()` to wire the client and perform
+     * the initial fetch. That fetch's rejection is routed through the controls'
+     * own deduplicated error delivery — NOT through `apiClient._discardRequest()`,
+     * which this factory used to call and which cannot reach `onError()`; see the
+     * comment at the call site for the full reasoning. `fetch()` itself never
+     * routes through either path, because a caller holding that promise must be
+     * able to handle it, so nothing is ever reported twice.
      *
      * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
@@ -276,7 +475,8 @@ export default class CalendarViewer {
      * @param {function(Error): void} [options.onError] - Registered before the
      *   initial fetch, so a failure of that very first request still reaches it.
      * @returns {Promise<CalendarViewer|null>} The viewer, or `null` if cancelled.
-     * @throws {Error} If the options or `slots` are invalid, or if the API
+     * @throws {Error} If the options are invalid, if `slots` is not an object,
+     *   names an unknown slot, or omits `controls` or `calendar`, or if the API
      *   metadata cannot be loaded.
      */
     static async mountInto(slots, options = {}) {
@@ -285,23 +485,9 @@ export default class CalendarViewer {
 
         const viewer = new CalendarViewer(bag);
 
-        try {
-            assertPlainOptions(slots, 'CalendarViewer.mountInto');
-        } catch {
-            throw new Error(
-                `CalendarViewer.mountInto: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
-            );
-        }
-        if (false === Object.hasOwn(slots, 'controls')) {
-            throw new Error(
-                "CalendarViewer.mountInto: slots must name a 'controls' target.",
-            );
-        }
-        if (false === Object.hasOwn(slots, 'calendar')) {
-            throw new Error(
-                "CalendarViewer.mountInto: slots must name a 'calendar' target.",
-            );
-        }
+        // A typo in `slots` must surface even on a mount the caller already
+        // cancelled — validated BEFORE either cancellation check below.
+        CalendarViewer.#assertSlots(slots, 'CalendarViewer.mountInto');
 
         const element = CalendarViewer.#targetElement(slots);
         if (
@@ -311,57 +497,62 @@ export default class CalendarViewer {
             return null;
         }
 
-        // BOTH required targets are resolved before EITHER is mounted. Resolving
-        // `calendar` after mounting the controls meant an unusable `calendar`
-        // selector threw with the controls already in the document — a partial
-        // mount the caller never asked for and cannot easily undo, since the
-        // rejected promise hands back no viewer to `dispose()`. Measured before
-        // this change: a bad `calendar` target left ten control elements mounted.
+        // BOTH required targets are resolved before EITHER is mounted, and this
+        // SECOND cancellation check is what catches the case `#targetElement()`
+        // cannot: a CONNECTED `controls` paired with a DISCONNECTED `calendar` —
+        // `#targetElement()` returns whichever element it finds and prefers
+        // `controls`, so the check above alone would miss it and mount the
+        // `WebCalendar` into a detached node.
         const calendarElement = CalendarViewer.#requireElement(
             slots.calendar,
             'calendar',
+            'CalendarViewer.mountInto',
         );
         if (true === signal?.aborted || false === calendarElement.isConnected) {
             return null;
         }
 
-        const controlsSlots = { controls: slots.controls };
-        if (Object.hasOwn(slots, 'messages')) {
-            controlsSlots.messages = slots.messages;
-        }
-        // Passed explicitly so a bad `controls`/`messages` target is reported
-        // as `CalendarViewer.mountInto`, not `CalendarControls.appendTo` — a
-        // class the caller of THIS factory never directly touched.
-        viewer.#controls.appendTo(controlsSlots, 'CalendarViewer.mountInto');
-
-        viewer.#calendarMount = calendarElement;
-        viewer.#webCalendar.appendTo(calendarElement);
+        // Passed explicitly so a bad target, an unknown slot name or a missing
+        // required slot is reported as `CalendarViewer.mountInto` — the entry
+        // point the caller actually used — rather than as `appendTo`.
+        viewer.appendTo(slots, 'CalendarViewer.mountInto');
 
         if (apiClient !== undefined && apiClient !== null) {
-            // See this method's own doc comment above: controls FIRST, so the
-            // messages renderer (if any) is registered ahead of WebCalendar's
-            // listener on the same `calendarFetched` event.
-            viewer.#controls.listenTo(apiClient);
-            viewer.#webCalendar.listenTo(apiClient);
+            // Controls FIRST, so the messages renderer (if any) is registered
+            // ahead of WebCalendar's listener on the same `calendarFetched`
+            // event — see `listenTo()`'s own doc comment for why.
+            viewer.listenTo(apiClient);
             if (typeof onError === 'function') {
-                viewer.#controls.onError(onError);
+                viewer.onError(onError);
             }
             if (false !== initialFetch) {
-                // `_discardRequest` is what CalendarControls.mountInto() itself
-                // uses for this exact promise, and it is called exactly once here
-                // — see the doc comment above for why a second discard would be
-                // wrong. The `.catch(() => {})` below is NOT a second discard: it
-                // is a second, independent subscriber on the SAME promise, added
-                // only so this factory can `await` the request's settlement —
-                // success or failure — before resolving, rather than resolving
-                // while the request (and, on the fixtures every test here uses, the
-                // WebCalendar listener's throw on an empty `litcal`, and the
-                // messages render that must complete before it) is still pending.
-                // It changes nothing about whether `_discardRequest` logs: that
-                // decision is already made, independently, by its own `.catch`.
-                const fetchPromise = viewer.#controls.fetch();
-                apiClient._discardRequest(fetchPromise);
-                await fetchPromise.catch(() => {});
+                // Routed through the controls' own error delivery, NOT through
+                // `apiClient._discardRequest()` which this used to call. That seam
+                // logs whatever the event bus never delivered — correct for a
+                // dropped promise — but it cannot reach `onError()`, and a failure
+                // raised BEFORE the request goes out never reaches the bus either,
+                // so `onError()` silently missed that whole class of failure. This
+                // is the same defect #43 closed in `CalendarControls.mountInto()`
+                // and `DayViewer`; `CalendarViewer` was missed at the time and kept
+                // the old seam, along with a comment claiming `CalendarControls`
+                // still used it, which had stopped being true.
+                //
+                // `_deliverError()` tries the callbacks and reports whether any
+                // received the error; only when nothing did does this fall back to
+                // the console, so a failure is never silent and never double-reported.
+                //
+                // The `await` is retained deliberately and is not a second discard:
+                // a viewer's reason to exist is its populated table, so this factory
+                // must not resolve while the request — and, on an empty `litcal`,
+                // the WebCalendar listener's throw and the messages render that must
+                // precede it — are still pending.
+                await viewer.fetch().catch((error) => {
+                    if (false === viewer.#controls._deliverError(error)) {
+                        console.error(
+                            `CalendarViewer: could not load the calendar: ${error.message}`,
+                        );
+                    }
+                });
             }
         }
 

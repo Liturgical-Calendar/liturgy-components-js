@@ -5,6 +5,7 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import { buildWrapperElement } from '../WrapperOptions.js';
 import Utils from '../Utils.js';
 
 /**
@@ -1013,91 +1014,10 @@ export default class CalendarSelect {
                     '.',
             );
         }
-        if (null === wrapperOptions) {
-            this.#hasWrapper = false;
-            this.#wrapperElement = null;
-            this.#wrapperSet = true;
-            return this;
-        } else if (
-            typeof wrapperOptions !== 'object' ||
-            Array.isArray(wrapperOptions)
-        ) {
-            const wrapperOptionsType = Array.isArray(wrapperOptions)
-                ? 'array'
-                : typeof wrapperOptions;
-            throw new Error(
-                'Invalid type for wrapper options, must be of type object (not null or array) but found type: ' +
-                    wrapperOptionsType,
-            );
-        } else if (
-            Object.keys(wrapperOptions).length === 0 ||
-            false ===
-                Object.keys(wrapperOptions).some((key) =>
-                    ['as', 'class', 'id'].includes(key),
-                )
-        ) {
-            throw new Error(
-                'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
-            );
-        }
-
-        if (Object.hasOwn(wrapperOptions, 'as')) {
-            if (typeof wrapperOptions.as !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper `as` property, must be of type string but found type: ' +
-                        typeof wrapperOptions.as,
-                );
-            }
-            if (false === ['div', 'td'].includes(wrapperOptions.as)) {
-                throw new Error(
-                    'Invalid value for wrapper `as` property, must be one of `div` or `td` but found: ' +
-                        wrapperOptions.as,
-                );
-            }
-        } else {
-            wrapperOptions.as = 'div';
-        }
-
-        this.#wrapperElement = document.createElement(wrapperOptions.as);
-        this.#hasWrapper = true;
+        const element = buildWrapperElement(wrapperOptions, 'CalendarSelect');
+        this.#wrapperElement = element;
+        this.#hasWrapper = null !== element;
         this.#wrapperSet = true;
-
-        if (Object.hasOwn(wrapperOptions, 'class')) {
-            if (typeof wrapperOptions.class !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper class, must be of type string but found type: ' +
-                        typeof wrapperOptions.class,
-                );
-            }
-            let classNames = wrapperOptions.class.split(/\s+/);
-            classNames = classNames.map((className) =>
-                Utils.sanitizeInput(className),
-            );
-            classNames.forEach((className) => {
-                if (false === Utils.validateClassName(className)) {
-                    throw new Error('Invalid class name: ' + className);
-                }
-            });
-            wrapperOptions.class = classNames.join(' ');
-            this.#wrapperElement.className = wrapperOptions.class;
-        }
-
-        if (Object.hasOwn(wrapperOptions, 'id')) {
-            if (typeof wrapperOptions.id !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper id, must be of type string but found type: ' +
-                        typeof wrapperOptions.id,
-                );
-            }
-            wrapperOptions.id = Utils.sanitizeInput(wrapperOptions.id);
-            if (false === Utils.validateId(wrapperOptions.id)) {
-                throw new Error(
-                    'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
-                        wrapperOptions.id,
-                );
-            }
-            this.#wrapperElement.id = wrapperOptions.id;
-        }
         return this;
     }
 

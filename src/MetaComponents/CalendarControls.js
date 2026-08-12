@@ -50,6 +50,18 @@ const ACCEPTED_FILTERS = Object.freeze([
     ApiOptionsFilter.NONE,
 ]);
 
+/**
+ * The slot names `appendTo()` accepts.
+ *
+ * Enumerated so a typo is rejected with the offending key named, rather than
+ * mounting nothing and returning successfully — the silent-failure shape this
+ * family exists to close, and the same rule `ApiExplorer.appendTo()` and
+ * `CalendarViewer`'s `webCalendar` bag already apply.
+ *
+ * @type {Readonly<string[]>}
+ */
+const SLOT_NAMES = Object.freeze(['controls', 'messages']);
+
 export default class CalendarControls {
     /** @type {string} */
     #locale = 'en';
@@ -144,6 +156,9 @@ export default class CalendarControls {
                 labelOptions.text = riteTheme.labelText;
             }
             this.#riteSelect.label(labelOptions);
+        }
+        if (Object.hasOwn(riteTheme, 'wrapperClass')) {
+            this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
         }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');
@@ -338,6 +353,7 @@ export default class CalendarControls {
      * @returns {void}
      * @throws {Error} If this instance has been disposed, or `target` is
      *   neither a single target nor a slots object naming `controls`.
+     * @throws {Error} If `target` names a slot outside `{ controls, messages }`.
      */
     appendTo(target, caller = 'CalendarControls.appendTo') {
         this.#assertUsable();
@@ -358,6 +374,14 @@ export default class CalendarControls {
             }
         }
         const slots = single ? { controls: target } : target;
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, messages }.`,
+            );
+        }
         if (false === Object.hasOwn(slots, 'controls')) {
             throw new Error(
                 `${caller}: a slots object must name a 'controls' target.`,
@@ -551,6 +575,28 @@ export default class CalendarControls {
             callback(error);
         }
         return true;
+    }
+
+    /**
+     * Internal seam onto {@link CalendarControls##deliverError}, for a composing
+     * class whose own `mountInto()` drops an initial fetch.
+     *
+     * `CalendarViewer` holds a `CalendarControls` and forwards `onError()` to it,
+     * so the callbacks live in THIS instance's `#errorCallbacks` — which a private
+     * field puts out of that class' reach. Without this seam its factory had to
+     * fall back to `apiClient._discardRequest()`, and that is exactly the bug #43
+     * closed here: `_discardRequest` logs what the event bus never delivered, but
+     * it cannot reach `onError()`, and a failure raised BEFORE the request goes out
+     * never reaches the bus at all — so `onError()` silently missed that whole class
+     * of failure. `_`-prefixed by this codebase's convention for internal-but-reachable
+     * members (`_domElement`, `_discardRequest`); not part of the public API.
+     *
+     * @param {Error} error - The error to deliver.
+     * @returns {boolean} `true` if a callback received it (or already had),
+     *   `false` if nothing is subscribed and the caller should log instead.
+     */
+    _deliverError(error) {
+        return this.#deliverError(error);
     }
 
     /**
