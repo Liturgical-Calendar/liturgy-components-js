@@ -3,6 +3,7 @@ import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import { buildWrapperElement } from '../WrapperOptions.js';
 
 /**
  * A select menu for the liturgical rite a calendar request is computed under.
@@ -24,6 +25,9 @@ export default class RiteSelect {
     #labelElement = null;
     #hasLabel = false;
     #labelSet = false;
+    #wrapperElement = null;
+    #hasWrapper = false;
+    #wrapperSet = false;
     #locale = 'en';
     #idSet = false;
     #nameSet = false;
@@ -103,6 +107,41 @@ export default class RiteSelect {
         } else {
             this.#domElement.setAttribute('class', className);
         }
+        return this;
+    }
+
+    /**
+     * Wraps the select (and its label, when one is set) in a container element.
+     *
+     * Mirrors `CalendarSelect.wrapper()` exactly, rather than `Input.wrapper()`:
+     * a rite select is a select, and `Input`'s split `wrapper()` /
+     * `wrapperClass()` shape would give the meta-components' theme bag two
+     * different contracts to drive for its two selects. `Input`'s convergence
+     * onto this shape is tracked separately in issue #46.
+     *
+     * One-shot: a second call throws rather than silently replacing a wrapper
+     * a previous call already configured.
+     *
+     * @param {?{as?: string, class?: string, id?: string}} [wrapperOptions=null] The wrapper
+     *        configuration, or `null` for no wrapper. `as` is `'div'` or `'td'` and defaults
+     *        to `'div'`.
+     * @throws {Error} If a wrapper has already been set on this instance.
+     * @throws {Error} If `wrapperOptions` is an array or a non-object, names none of
+     *         `as`/`class`/`id`, or carries an invalid `as`, `class` or `id` value.
+     * @returns {RiteSelect} The current `RiteSelect` instance for chaining.
+     */
+    wrapper(wrapperOptions = null) {
+        if (this.#wrapperSet) {
+            throw new Error(
+                'Wrapper has already been set on RiteSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
+        }
+        const element = buildWrapperElement(wrapperOptions, 'RiteSelect');
+        this.#wrapperElement = element;
+        this.#hasWrapper = null !== element;
+        this.#wrapperSet = true;
         return this;
     }
 
@@ -315,7 +354,12 @@ export default class RiteSelect {
                 'RiteSelect.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
             );
         }
-        domNode.appendChild(this.#domElement);
+        if (this.#hasWrapper) {
+            domNode.appendChild(this.#wrapperElement);
+            this.#wrapperElement.appendChild(this.#domElement);
+        } else {
+            domNode.appendChild(this.#domElement);
+        }
         if (this.#hasLabel) {
             // Matches CalendarSelect.appendTo(): the select is appended first,
             // then the label is placed immediately before it via
