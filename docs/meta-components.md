@@ -112,9 +112,10 @@ theme: {
 }
 ```
 
-`CalendarResourcePicker` has `select`- and `label`-role children, plus one `wrapper`-role child
-(`calendarSelect`, via its `wrapperClass` — see below) — `select`, `label` and `wrapper` are the flat
-defaults that apply. Per-child keys are named for the picker's public getters (`calendarSelect`,
+`CalendarResourcePicker` has `select`- and `label`-role children, plus two `wrapper`-role children
+(`calendarSelect` and `riteSelect`, each via its own `wrapperClass` — see below) — `select`, `label`
+and `wrapper` are the flat defaults that apply. Per-child keys are named for the picker's public
+getters (`calendarSelect`,
 `riteSelect`), so the override key and the escape-hatch getter are the same word. Resolution is
 per-key and most specific first: a per-child override supplies whichever keys it names, and every key
 it does not name falls back to the flat default.
@@ -174,10 +175,10 @@ This was not always so. Before 2.2.0 the validator demanded a CSS _identifier_
 every Tailwind example above threw rather than merely failing to style anything. The rule was widened
 across the whole library, not just for the theme bag.
 
-**`RiteSelect` has no wrapper concept.** The flat `wrapper` key and any `riteSelect.wrapperClass`
-override are silently unused for the rite select — there is no `RiteSelect.wrapper()` method to apply
-them to. `calendarSelect` and, on `DayViewer`, `localeInput` both support a wrapper; `riteSelect` does
-not, on either meta-component.
+**The flat `wrapper` key, and any `riteSelect.wrapperClass` override, now reach the rite select too.**
+`RiteSelect.wrapper()` takes the same `{ as, class, id }` bag as `CalendarSelect.wrapper()` (see
+[`rite-select.md`](rite-select.md#wrapperwrapperoptions)), so `calendarSelect` and `riteSelect` both
+support a wrapper here, resolved the same way as every other role.
 
 ### Public getters
 
@@ -374,10 +375,10 @@ both of which work identically on a detached node.
 
 The same HTML-role vocabulary as `CalendarResourcePicker` — see
 [that component's section](#the-theme-bags-role-vocabulary) for the general rules of resolution,
-including the class-name character constraint and the note on `RiteSelect` having no wrapper concept
-(true here too: `riteSelect.wrapperClass` and the flat `wrapper` key are both silently unused for the
-rite select). Four flat keys and five per-child override keys are understood, plus the `labelText`
-per-child key documented below:
+including the class-name character constraint. `riteSelect.wrapperClass` and the flat `wrapper` key
+reach the rite select here too, the same as `calendarSelect` and `localeInput` — see below. Four flat
+keys and five per-child override keys are understood, plus the `labelText` per-child key documented
+below:
 
 ```javascript
 theme: {
@@ -397,11 +398,10 @@ theme: {
 differently from one another is a case nobody has needed, and the `liturgy` getter (below) reaches the
 individual inputs directly if that changes.
 
-**The flat `wrapper` key applies to `calendarSelect` and `localeInput`, not to `riteSelect`.** Both of
-the first two support a wrapper (`CalendarSelect.wrapper()`, `Input.wrapper()`/`wrapperClass()`); the
-rite select has no equivalent method to apply it to, so `theme.wrapper` and any `riteSelect.wrapperClass`
-override are both silently no-ops for it — this is a genuine capability limit of `RiteSelect`, not an
-omission in `DayViewer`.
+**The flat `wrapper` key applies to `calendarSelect`, `riteSelect` and `localeInput` alike.** All three
+support a wrapper — `CalendarSelect.wrapper()` and `RiteSelect.wrapper()` take the same `{ as, class,
+id }` bag, and `Input.wrapper()`/`wrapperClass()` covers the locale input — so `theme.wrapper` and any
+per-child `wrapperClass` override reach all three the same way.
 
 **Note on the flat `wrapper` key and the date controls:** the flat `wrapper` key supplies only a wrapper
 **class**, not a wrapper **element type**, and `LiturgyOfAnyDay`'s date inputs need an element type
@@ -656,15 +656,15 @@ which names neither class.
 ### The theme bag
 
 The same HTML-role vocabulary as `CalendarResourcePicker` and `DayViewer` — see
-[that component's section](#the-theme-bags-role-vocabulary) for the general resolution rules, the
-class-name character constraint, and the note on `RiteSelect` having no wrapper concept. Only two flat
-keys and two per-child override keys are understood here:
+[that component's section](#the-theme-bags-role-vocabulary) for the general resolution rules and the
+class-name character constraint. Only two flat keys and two per-child override keys are understood
+here, and `wrapperClass` reaches both children — `riteSelect` as well as `calendarSelect`:
 
 ```javascript
 theme: {
     select: 'form-select',                       // flat default, applied to riteSelect and calendarSelect
     label: 'form-label',                          // flat default for their labels
-    riteSelect: { class: 'form-select mb-2', labelText: 'Choose a rite' },
+    riteSelect: { class: 'form-select mb-2', labelText: 'Choose a rite', wrapperClass: 'col col-md-2' },
     calendarSelect: { class: '...', labelClass: '...', wrapperClass: 'col-md-4' },
 }
 ```
@@ -715,7 +715,8 @@ controls.appendTo({
 
 `controls` is required in the slots form; `messages` is optional, and omitting it means the API's
 `messages` array is never rendered, exactly as omitting it from `mountInto()`'s target does. Callable
-more than once — the children are moved, not copied.
+more than once — the children are moved, not copied. A slots object naming a key other than `controls`
+or `messages` throws, naming the offending key, rather than silently mounting nothing for it.
 
 ### `mountInto()` versus the constructor
 
@@ -755,11 +756,11 @@ own section [below](#apiexplorer) for how it links the rite -> calendar chain di
 
 ### Reject versus resolve
 
-| Kind                                                                                 | Behaviour                                                                                                                                                     |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Invalid options (unparseable locale, malformed theme, a target that matches nothing) | **Rejects.** A typo should not be silently papered over.                                                                                                      |
-| The API metadata cannot be loaded (API down, `ApiClient` never initialised)          | **Rejects.**                                                                                                                                                  |
-| A failed initial fetch (API down mid-session, network error)                         | **Resolves** with mounted, fully wired controls. The failure reaches `onError()` if one was registered, and falls back to `console.error` only when none was. |
+| Kind                                                                                                      | Behaviour                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid options (unparseable locale, malformed theme, a target that matches nothing, an unknown slot key) | **Rejects.** A typo should not be silently papered over.                                                                                                      |
+| The API metadata cannot be loaded (API down, `ApiClient` never initialised)                               | **Rejects.**                                                                                                                                                  |
+| A failed initial fetch (API down mid-session, network error)                                              | **Resolves** with mounted, fully wired controls. The failure reaches `onError()` if one was registered, and falls back to `console.error` only when none was. |
 
 `mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was
 already aborted, or when `target` — or a slots object's `controls` element — was passed as an already
@@ -903,21 +904,55 @@ As `CalendarControls`, plus:
 `mountInto()` accepts the same additional options as `CalendarControls.mountInto()` — `initialFetch`,
 `signal` and `onError` — applied to the controls half exactly as documented [there](#constructor-options-2).
 
-### Public getters
+### Public members
 
-Both throw once this viewer has been disposed — see [`dispose()`](#dispose-3) below.
+Every member below throws once this viewer has been disposed — see [`dispose()`](#dispose-3).
 
-| Member        | Returns            | Description                                                                                       |
-| ------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
-| `controls`    | `CalendarControls` | The wired rite select, calendar select and API options, bundled — see [above](#calendarcontrols). |
-| `webCalendar` | `WebCalendar`      | The wired table renderer.                                                                         |
+| Member                  | Returns            | Description                                                                 |
+| ----------------------- | ------------------ | --------------------------------------------------------------------------- |
+| `controls`              | `CalendarControls` | The wired rite select, calendar select and API options, bundled.            |
+| `webCalendar`           | `WebCalendar`      | The wired table renderer.                                                   |
+| `appendTo(slots)`       | `void`             | Mounts both halves. See below.                                              |
+| `listenTo(apiClient)`   | `CalendarViewer`   | Wires the controls, then the calendar, to a client — in that order.         |
+| `fetch()`               | `Promise<Object>`  | Fetches the calendar the select names. The promise is yours; handle it.     |
+| `onCalendarFetched(cb)` | `CalendarViewer`   | Registers a callback for fetched data.                                      |
+| `onError(cb)`           | `CalendarViewer`   | Registers a callback for fetch failures.                                    |
+| `dispose()`             | `void`             | Releases listeners and empties both mounts. Idempotent; further use throws. |
+
+### `appendTo()` and its slots
+
+```javascript
+const viewer = new CalendarViewer({ locale: 'en' });
+viewer.controls.apiOptions._acceptHeaderInput.hide(); // read at append time
+viewer.appendTo({
+    controls: '#calendarOptions',
+    calendar: '#litcalWebcalendar',
+    messages: '#LitCalMessages tbody', // optional
+});
+viewer.listenTo(apiClient);
+viewer.fetch().catch((error) => console.error(error.message));
+```
+
+`controls` and `calendar` are both required, and unlike `CalendarControls.appendTo()` a single bare
+target is **not** accepted — a viewer has two mandatory mounts, and a lone target would have to pick
+one of them silently. An unknown slot name throws, naming the key.
+
+Both required targets are resolved before either is mounted, so an unusable `calendar` selector
+leaves nothing in the document rather than a half-mounted form. `appendTo()` returns `undefined`, per
+the library-wide contract: nothing can be chained off it, and its result must never be assigned. It is
+callable more than once, and moves its children rather than copying them.
+
+**Use the constructor path when something must happen between construction and the mount.** The
+motivating case is above: `AcceptHeaderInput.hide()` sets a flag that `ApiOptions.appendTo()` reads,
+so it is only meaningful before the append — a window `mountInto()` does not have.
 
 ### `mountInto()` versus the constructor
 
 The same split as every other meta-component in this family:
 
-- **`new CalendarViewer(options)`** is synchronous and requires an already-initialised `ApiBase` — it
-  builds both halves but mounts neither.
+- **`new CalendarViewer(options)`** is synchronous and requires an already-initialised `ApiBase`. Pair
+  it with `appendTo(slots)`, and wire it separately with `listenTo(apiClient)` if it needs to fetch —
+  see [above](#appendto-and-its-slots-1).
 - **`CalendarViewer.mountInto(slots, options)`** resolves both targets, constructs the viewer, mounts
   both halves, wires them to `options.apiClient` when given, and — unless `initialFetch` is `false` —
   performs the initial fetch.
@@ -1032,7 +1067,7 @@ not a container `ApiExplorer` names separately. Because `insertAfter()` needs th
 already in the document to insert next to, **`pathBuilder` is therefore the one slot `appendTo()`
 requires**: `insertAdjacentElement('afterend', …)` on a node with no parent is a silent no-op, so omitting
 `pathBuilder` used to leave the calendar select permanently detached from the document with nothing to
-show for it. Omitting it is now rejected instead — see [below](#appendto-and-its-slots-1).
+show for it. Omitting it is now rejected instead — see [below](#appendto-and-its-slots-2).
 
 ### It never fetches
 

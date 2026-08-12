@@ -4,6 +4,51 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.4.0
+
+`CalendarViewer` gains the public mount path its documentation already described, and `RiteSelect`
+gains the `wrapper()` every other select in the library already had.
+
+`RiteSelect.wrapper()` takes the same `{ as, class, id }` bag as `CalendarSelect.wrapper()`, and the two
+now share one internal validator, so the bag can never drift between them. `CalendarSelect.wrapper()`'s
+observable behaviour — every accepted value and every error message — is unchanged; a characterization
+suite added before the extraction pins it.
+
+`CalendarViewer` was the only meta-component with no `appendTo()` and no `listenTo()`, so its
+documented constructor path — "builds both halves but mounts neither" — was a dead end, and anything
+that has to happen between construction and the mount was unreachable. `AcceptHeaderInput.hide()` is
+the case that surfaced it: `ApiOptions.appendTo()` reads that flag when it decides whether to render
+the input, so `hide()` is only meaningful beforehand, and `mountInto()` offers no such window. It now
+has `appendTo()`, `listenTo()`, `fetch()`, `onCalendarFetched()` and `onError()`, and `mountInto()`
+is implemented on top of them rather than duplicating their bodies. `listenTo()` exists as its own
+method rather than being left to callers because the order is load-bearing: the controls must be
+wired before the calendar, or a `WebCalendar` throw on empty data aborts the synchronous listener
+loop before the messages renderer runs.
+
+`RiteSelect.wrapper({ as, class, id })` matches `CalendarSelect.wrapper()` exactly. Its absence had
+reached the meta-components' theme bag, whose `wrapper` role was resolved for the rite select and
+then silently discarded by `CalendarResourcePicker`, `DayViewer` and `CalendarControls` alike,
+because there was no method to pass it to.
+
+### Behaviour changes
+
+Two, both deliberate:
+
+- **The theme bag's `wrapper` role now reaches the rite select.** A page passing flat
+  `theme: { wrapper: '…' }` to `CalendarResourcePicker`, `DayViewer`, `CalendarControls`,
+  `CalendarViewer` or `ApiExplorer` previously got that class on its calendar select only; its rite
+  select is now wrapped too. A `wrapper` role honoured for one of two selects is not a role
+  vocabulary. Pass `{ riteSelect: { wrapperClass: … } }` to give the two selects different wrappers.
+- **`CalendarControls.appendTo()` and `CalendarViewer.appendTo()` reject unknown slot names**, naming
+  the offending key, as `ApiExplorer.appendTo()` already did. `{ contorls: '#x' }` previously mounted
+  nothing and returned successfully.
+- **A rejected `CalendarSelect.wrapper()` call no longer poisons the instance.** The wrapper bag is now
+  validated in full before anything is assigned, so a call that throws leaves the select exactly as it
+  was and a retry with a valid bag succeeds. Previously the "wrapper has been set" flag was raised
+  before `class` and `id` were validated, so a throw from either left the select permanently unable to
+  accept a wrapper — reporting `"Wrapper has already been set"` about one that never was. Relatedly,
+  the method no longer mutates the options object it is handed.
+
 ## 2.3.0
 
 Three more meta-components — `CalendarControls`, `CalendarViewer` and `ApiExplorer` — completing the family
