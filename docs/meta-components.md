@@ -964,6 +964,8 @@ A two-row Bootstrap form — the path and temporal inputs on one row, the parame
 diocesan calendar predetermines on another:
 
 ```javascript
+import { CalendarViewer, ApiOptionsFilter } from '@liturgical-calendar/components-js';
+
 const viewer = new CalendarViewer({
     locale: 'en',
     filter: ApiOptionsFilter.ALL_CALENDARS,
