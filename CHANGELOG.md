@@ -4,6 +4,64 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.5.0
+
+One user action now issues one request. This settles the cost 2.4.1 recorded as known and deferred, and
+removes a rendering flicker that measurement had not attributed to it.
+
+### Fixed
+
+- **A single user action no longer issues several requests.** `ApiClient.listenTo()` attaches a `change`
+  listener per input, and each one decided on its own to fetch. But a single action moves several inputs:
+  a rite change makes `ApiOptions` rewrite the year floor, the calendar path, the locale options and the
+  calendar select, each dispatching its own `change`. Those listeners ran in attachment order while the
+  client's own state was still half-updated, so the leading requests described the state the user had just
+  **left** — the previous rite, or the previous calendar. They now mark the client dirty instead, and one
+  refetch runs on a microtask, built from the state the batch settled on. Every dispatch in the batch is
+  synchronous, so the whole burst has landed before the flush and nothing beyond the current turn is
+  swallowed.
+
+- **The calendar no longer flashes the rite the user just switched away from.** This was the same defect,
+  and measuring requests had hidden it. `#requestRevision` already dropped a superseded response before the
+  `calendarFetched` emit, so a slow stale response could never overwrite a fresh one — but a wasted request
+  answered **from cache** emits synchronously, at an instant when it _is_ the newest revision, so that guard
+  had nothing to catch. The wasted requests were precisely the ones most likely to be cached, so a rite
+  switch could deliver `roman`, `roman`, `ambrosian` to a `WebCalendar` while issuing only one request. The
+  waste had to be removed at its source rather than filtered out on arrival; `#requestRevision` still earns
+  its place for the overlap that remains, a user acting again before the previous response lands.
+
+### Behaviour changes
+
+- **Listener-driven fetches are deferred by one microtask.** A test or consumer that drives an input
+  programmatically must let the flush run before asserting on `fetch`:
+
+  ```javascript
+  select.dispatchEvent(new Event('change'));
+  await Promise.resolve(); // let the coalesced refetch go out
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  ```
+
+  Only the listener path is affected. `fetchCalendar()`, `fetchNationalCalendar()`,
+  `fetchDiocesanCalendar()` and `refetchCalendarData()` stay immediate, so consumers holding those promises
+  — `LiturgyOfAnyDay` calls `refetchCalendarData()` three times — see no timing change. This is the split
+  every data-fetching library draws between an automatic refetch and an explicit one.
+
+- **Actions in separate turns still produce separate requests.** Coalescing collapses one action, never two.
+
+### Not done, deliberately
+
+Superseded requests are **not** aborted. After coalescing, requests overlap only when a user acts again
+before the previous response lands; that response is already ignored before the emit, and letting it land
+populates the cache, which makes switching back instant. `AbortController` would also need an `AbortError`
+branch that must not emit `calendarFetchFailed` or reject the caller's promise as a failure.
+
+Gating on the `isTrusted` event property was weighed and rejected. It distinguishes a user-originated event
+from a dispatched one, but not a _settled_ state from an unsettled one: the trusted event runs last only
+because `ApiOptions` is attached before `ApiClient`, so the guarantee would be listener attachment order
+wearing a different name. It would also silence the documented `calendarSelect.value('')` path, which is a
+synthetic dispatch, and it cannot be tested — jsdom reports `isTrusted: false` for `dispatchEvent()` and for
+`element.click()` alike, and the property cannot be forged with `Object.defineProperty`.
+
 ## 2.4.1
 
 ### Fixed
