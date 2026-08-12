@@ -93,6 +93,16 @@ export default class CalendarControls {
     /** @type {Array<function(Error): void>} */
     #errorCallbacks = [];
 
+    /**
+     * Errors already handed to the `onError()` callbacks, so a failure that
+     * travelled the event bus is not delivered a second time by `#deliverError()`.
+     * A `WeakSet` because it holds error objects only to answer "seen this one?",
+     * and must not keep them alive.
+     *
+     * @type {WeakSet<object>}
+     */
+    #deliveredErrors = new WeakSet();
+
     /** @type {Array<{event: string, listener: function}>} */
     #subscriptions = [];
 
@@ -500,9 +510,47 @@ export default class CalendarControls {
         if (null === this.#apiClient) {
             return;
         }
-        const listener = (payload) => callback(payload);
+        const listener = (payload) => {
+            // Recorded so `#deliverError()` can tell an error the bus already
+            // delivered from one it never will — see that method.
+            if ('calendarFetchFailed' === event && null !== payload) {
+                this.#deliveredErrors.add(payload);
+            }
+            callback(payload);
+        };
         this.#apiClient._eventBus.on(event, listener);
         this.#subscriptions.push({ event, listener });
+    }
+
+    /**
+     * Hands an error to the `onError()` callbacks if the event bus has not already
+     * done so, and reports whether anything received it.
+     *
+     * `onError()` subscribes to `calendarFetchFailed`, and `ApiClient` deliberately
+     * does NOT emit that event for a failure raised BEFORE a request goes out — an
+     * unserviceable rite, an unusable locale — on the reasoning that it reports a
+     * request that failed, not one that was never made. That reasoning holds for the
+     * client. It left the meta-components saying `onError()` means "you will hear
+     * about failures" while that whole class of failure bypassed it silently.
+     *
+     * So the bus is one delivery path and this is the other, and the `WeakSet` is
+     * what stops an error travelling both and firing a callback twice.
+     *
+     * @param {Error} error - The failure to deliver.
+     * @returns {boolean} True if any callback received it, here or via the bus.
+     */
+    #deliverError(error) {
+        if (this.#deliveredErrors.has(error)) {
+            return true;
+        }
+        if (0 === this.#errorCallbacks.length) {
+            return false;
+        }
+        this.#deliveredErrors.add(error);
+        for (const callback of this.#errorCallbacks) {
+            callback(error);
+        }
+        return true;
     }
 
     /**
@@ -769,7 +817,23 @@ export default class CalendarControls {
                 controls.onError(onError);
             }
             if (false !== initialFetch) {
-                apiClient._discardRequest(controls.fetch());
+                // Handled here rather than through `apiClient._discardRequest()`,
+                // which this used to call. That seam logs anything the event bus
+                // never delivered, which covers a dropped promise correctly — but
+                // it cannot reach `onError()`, and a failure raised BEFORE the
+                // request goes out never reaches the bus either. The result was
+                // that `onError()` silently missed that whole class of failure.
+                //
+                // `#deliverError()` tries the callbacks; only if nothing received
+                // the error at all does it fall back to the console, so a failure
+                // is never silent and never double-reported.
+                controls.fetch().catch((error) => {
+                    if (false === controls.#deliverError(error)) {
+                        console.error(
+                            `CalendarControls: could not load the calendar: ${error.message}`,
+                        );
+                    }
+                });
             }
         }
 

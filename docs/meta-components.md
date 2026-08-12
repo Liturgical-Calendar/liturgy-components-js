@@ -492,6 +492,14 @@ failure only when nothing is listening for that event. A callback registered bef
 replayed once `listenTo()` runs; a callback registered after a client is already wired subscribes
 immediately. Either way each callback is attached exactly once.
 
+**Failures raised before a request is issued reach it too.** `ApiClient` deliberately emits no
+`calendarFetchFailed` for an error thrown before anything goes over the wire — an unserviceable rite,
+an unusable locale — because that event reports a request that failed, not one that was never made.
+`mountInto()`'s initial fetch therefore hands such a failure to the callbacks directly, and falls back
+to `console.error` only when nothing received it. Before 2.3.0 it did neither: the callback was bound
+to an event that never fired, the log was skipped because a callback existed, and the rejection was
+swallowed — so registering `onError()` made that class of failure _less_ visible than omitting it.
+
 `fetch()` performs a calendar fetch using `selectedLocale`, and returns the same promise
 `ApiClient.fetchCalendar()` does. That promise is the caller's to handle — rejections also reach any
 `onError()` callbacks, but the rejection itself is never swallowed. Calling `fetch()` before

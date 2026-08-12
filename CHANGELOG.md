@@ -215,6 +215,20 @@ every consumer gets it correctly by construction instead of by careful copying.
   throw and no warning — the reporter only noticed because an end-to-end selector broke. The allow-list
   is now per role, and `LiturgyOfAnyDay` has its own.
 
+- **`onError()` now hears about failures raised before the request goes out** ([#43], second defect).
+  `ApiClient` deliberately emits no `calendarFetchFailed` for an error thrown before a request is
+  issued — an unserviceable rite, an unusable locale — on the reasoning that the event reports a
+  request that failed, not one that was never made. But `onError()` callbacks subscribe to exactly
+  that event, and `DayViewer.mountInto()` skipped its console fallback whenever a callback was
+  registered, assuming the callback would handle it. The three combined into total silence: no
+  callback, no log, and the rejection swallowed by the factory's own `.catch()`. Passing `onError()`
+  was therefore strictly WORSE than omitting it — omit it and the console line at least appeared.
+
+  `DayViewer` and `CalendarControls` now deliver such a failure to their callbacks directly, and fall
+  back to the console only when nothing received it at all. An error that did travel the event bus is
+  still delivered exactly once. `ApiClient`'s own behaviour is unchanged — the fix belongs in the
+  meta-components, which are the ones making the promise.
+
 - **An unrecognised per-child theme key now throws, naming it.** Silence is what made the above
   invisible: the keys passed validation, were discarded, and the markup simply rendered with defaults.
   A key valid for one role but named on a child of another is still dropped rather than rejected —

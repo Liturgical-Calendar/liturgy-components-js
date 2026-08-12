@@ -80,6 +80,14 @@ export default class DayViewer {
     #errorCallbacks = [];
 
     /**
+     * Errors already handed to the `onError()` callbacks, so a failure that
+     * travelled the event bus is not delivered a second time by `#deliverError()`.
+     *
+     * @type {WeakSet<object>}
+     */
+    #deliveredErrors = new WeakSet();
+
+    /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
@@ -438,7 +446,14 @@ export default class DayViewer {
         // directly only once a client already exists — so no callback is ever
         // subscribed twice.
         for (const callback of this.#errorCallbacks) {
-            const listener = (error) => callback(error);
+            const listener = (error) => {
+                // Recorded so `#deliverError()` can tell a failure the bus already
+                // delivered from one it never will.
+                if (null !== error) {
+                    this.#deliveredErrors.add(error);
+                }
+                callback(error);
+            };
             apiClient._eventBus.on('calendarFetchFailed', listener);
             this.#subscriptions.push({
                 event: 'calendarFetchFailed',
@@ -558,6 +573,37 @@ export default class DayViewer {
     }
 
     /**
+     * Hands an error to the `onError()` callbacks if the event bus has not already
+     * done so, and reports whether anything received it.
+     *
+     * `onError()` subscribes to `calendarFetchFailed`, and `ApiClient` deliberately
+     * does NOT emit that event for a failure raised BEFORE a request goes out — an
+     * unserviceable rite, an unusable locale — on the reasoning that it reports a
+     * request that failed, not one that was never made. That reasoning holds for the
+     * client, but it left this class promising through `onError()` that a caller
+     * would hear about failures while that whole class of failure bypassed it.
+     *
+     * The `WeakSet` is what stops an error travelling both paths and firing a
+     * callback twice.
+     *
+     * @param {Error} error - The failure to deliver.
+     * @returns {boolean} True if any callback received it, here or via the bus.
+     */
+    #deliverError(error) {
+        if (this.#deliveredErrors.has(error)) {
+            return true;
+        }
+        if (0 === this.#errorCallbacks.length) {
+            return false;
+        }
+        this.#deliveredErrors.add(error);
+        for (const callback of this.#errorCallbacks) {
+            callback(error);
+        }
+        return true;
+    }
+
+    /**
      * Registers a callback for calendar fetch failures.
      *
      * Subscribing here is what stops the library falling back to `console.error`
@@ -572,7 +618,12 @@ export default class DayViewer {
         this.#assertUsable();
         this.#errorCallbacks.push(callback);
         if (null !== this.#apiClient) {
-            const listener = (error) => callback(error);
+            const listener = (error) => {
+                if (null !== error) {
+                    this.#deliveredErrors.add(error);
+                }
+                callback(error);
+            };
             this.#apiClient._eventBus.on('calendarFetchFailed', listener);
             this.#subscriptions.push({
                 event: 'calendarFetchFailed',
@@ -698,7 +749,14 @@ export default class DayViewer {
             // factory's promise resolves to the viewer. Callers wanting the fetch
             // result await `viewer.fetch()` themselves.
             viewer.fetch().catch((error) => {
-                if (0 === viewer.#errorCallbacks.length) {
+                // The guard here used to be `0 === viewer.#errorCallbacks.length`,
+                // which assumed "a callback exists, therefore it will handle this".
+                // That is exactly false for a failure raised before the request goes
+                // out: no `calendarFetchFailed` is emitted, so the bus-bound callback
+                // never runs, the log was skipped because a callback existed, and
+                // this `.catch()` swallowed the rejection — total silence, and
+                // registering `onError()` made it strictly worse than omitting it.
+                if (false === viewer.#deliverError(error)) {
                     console.error(
                         `DayViewer: could not load the calendar: ${error.message}`,
                     );
