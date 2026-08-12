@@ -192,19 +192,18 @@ describe('DayViewer theme wrapper', () => {
         expect(calendarWrapper).not.toBeNull();
     });
 
-    // RiteSelect has no wrapper concept at all: the flat key must not throw or
-    // silently invent one for it, and no wrapper element should appear around it.
-    it('leaves the rite select unwrapped, since RiteSelect has no wrapper concept', () => {
+    // RiteSelect now honours the `wrapper` role too (see `RiteSelect.wrapper()`),
+    // so the flat key must wrap it exactly as it wraps the calendar and locale
+    // selects — a `wrapper` role honoured for some children but not others is not
+    // a role vocabulary.
+    it('wraps the rite select as well, since RiteSelect now supports wrapper()', () => {
         const viewer = new DayViewer({
             locale: 'en',
             theme: { select: 'form-select', wrapper: 'col-md-3' },
         });
         viewer.appendTo('#single');
         const riteSelect = viewer.riteSelect._domElement;
-        expect(riteSelect.closest('.col-md-3')).toBeNull();
-        expect(riteSelect.parentElement).toBe(
-            document.getElementById('single'),
-        );
+        expect(riteSelect.closest('.col-md-3')).not.toBeNull();
     });
 
     it('applies a per-child wrapperClass override to the locale input', () => {

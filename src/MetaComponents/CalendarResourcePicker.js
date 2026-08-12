@@ -199,6 +199,9 @@ export default class CalendarResourcePicker {
                 // forcing the caller to hardcode one.
                 this.#riteSelect.label(riteLabelOptions);
             }
+            if (Object.hasOwn(riteTheme, 'wrapperClass')) {
+                this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
+            }
         }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');

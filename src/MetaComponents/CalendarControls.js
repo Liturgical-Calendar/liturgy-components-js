@@ -145,6 +145,9 @@ export default class CalendarControls {
             }
             this.#riteSelect.label(labelOptions);
         }
+        if (Object.hasOwn(riteTheme, 'wrapperClass')) {
+            this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
+        }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');
         this.#calendarSelect = new CalendarSelect({
