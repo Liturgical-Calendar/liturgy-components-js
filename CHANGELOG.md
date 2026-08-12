@@ -11,8 +11,9 @@ gains the `wrapper()` every other select in the library already had.
 
 `RiteSelect.wrapper()` takes the same `{ as, class, id }` bag as `CalendarSelect.wrapper()`, and the two
 now share one internal validator, so the bag can never drift between them. `CalendarSelect.wrapper()`'s
-observable behaviour — every accepted value and every error message — is unchanged; a characterization
-suite added before the extraction pins it.
+observable behaviour — every accepted value and every error message — is unchanged, pinned by a
+characterization suite added before the extraction, with two deliberate exceptions to its instance-state
+and argument-mutation behaviour, listed under Behaviour changes below.
 
 `CalendarViewer` was the only meta-component with no `appendTo()` and no `listenTo()`, so its
 documented constructor path — "builds both halves but mounts neither" — was a dead end, and anything

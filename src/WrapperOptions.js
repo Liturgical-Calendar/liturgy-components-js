@@ -24,7 +24,9 @@ import Utils from './Utils.js';
  *
  * @param {?{as?: string, class?: string, id?: string}} wrapperOptions The wrapper
  *        configuration, or `null` for no wrapper.
- * @param {string} componentName The calling class' name, for error messages.
+ * @param {string} componentName The calling class' name. Currently unused by this
+ *        function — none of the thrown messages below interpolate it — reserved so a
+ *        future message can name the caller without touching either call site.
  * @returns {HTMLElement|null} The configured element, or `null` when
  *          `wrapperOptions` is `null` (meaning "no wrapper").
  * @throws {Error} If `wrapperOptions` is an array or a non-object, names none of
