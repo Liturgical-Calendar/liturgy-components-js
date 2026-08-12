@@ -32,7 +32,7 @@ because there was no method to pass it to.
 
 ### Behaviour changes
 
-Two, both deliberate:
+Four, all deliberate:
 
 - **The theme bag's `wrapper` role now reaches the rite select.** A page passing flat
   `theme: { wrapper: '…' }` to `CalendarResourcePicker`, `DayViewer`, `CalendarControls`,
@@ -46,8 +46,10 @@ Two, both deliberate:
   validated in full before anything is assigned, so a call that throws leaves the select exactly as it
   was and a retry with a valid bag succeeds. Previously the "wrapper has been set" flag was raised
   before `class` and `id` were validated, so a throw from either left the select permanently unable to
-  accept a wrapper — reporting `"Wrapper has already been set"` about one that never was. Relatedly,
-  the method no longer mutates the options object it is handed.
+  accept a wrapper — reporting `"Wrapper has already been set"` about one that never was.
+- **`CalendarSelect.wrapper()` no longer mutates the options object it is handed.** A caller that passed
+  in a bag and kept a reference to it used to see that reference altered as a side effect of the call;
+  it is now left exactly as passed.
 
 ## 2.3.0
 
