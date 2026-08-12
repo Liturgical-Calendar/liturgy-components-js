@@ -269,6 +269,56 @@ export default class CalendarViewer {
     }
 
     /**
+     * Fetches the calendar the select currently names, through the controls'
+     * own three-way dispatch.
+     *
+     * The promise is returned to the caller and is never routed through
+     * `ApiClient#_discardRequest` — the rule `CalendarControls.fetch()`'s own
+     * doc comment states, which a delegate must not quietly change. A caller
+     * holding this promise can `.catch()` or `await` it, so logging on top of
+     * that would report a handled failure twice.
+     *
+     * @returns {Promise<Object>} The fetched calendar data.
+     * @throws {Error} If this viewer has been disposed, or no client is wired.
+     */
+    fetch() {
+        this.#assertUsable();
+        return this.#controls.fetch();
+    }
+
+    /**
+     * Registers a callback for successfully fetched calendar data.
+     *
+     * Callbacks registered before `listenTo()` are replayed by it, so the order
+     * of the two calls does not matter.
+     *
+     * @param {function(Object): void} callback - Receives the calendar data.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onCalendarFetched(callback) {
+        this.#assertUsable();
+        this.#controls.onCalendarFetched(callback);
+        return this;
+    }
+
+    /**
+     * Registers a callback for calendar fetch failures.
+     *
+     * Subscribing is what stops `ApiClient` falling back to `console.error`: it
+     * logs only when nothing is listening for `calendarFetchFailed`.
+     *
+     * @param {function(Error): void} callback - Receives the ApiClientError.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onError(callback) {
+        this.#assertUsable();
+        this.#controls.onError(callback);
+        return this;
+    }
+
+    /**
      * Resolves a mount target to an element.
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
@@ -370,14 +420,13 @@ export default class CalendarViewer {
      * Modelled on `CalendarControls.mountInto()`: the viewer is constructed before
      * the cancellation check, so an invalid `webCalendar` key, theme or locale
      * rejects even on a mount the caller already cancelled. This factory calls
-     * `this.#controls`'s own `appendTo()`/`listenTo()`/`fetch()` directly — the
-     * exact same instance `CalendarControls.mountInto()` would have built and
-     * driven internally — rather than delegating to that factory itself, so that
-     * `controls` never resolves to a second, separately-constructed instance from
-     * the one this viewer already holds. `apiClient._discardRequest()` is called
-     * exactly once, on `this.#controls.fetch()`'s own promise: `fetch()` itself
-     * never routes through it (a caller holding the promise must be able to handle
-     * it), so a second discard or catch layered on top here would be exactly the
+     * this class' own public `appendTo()`/`listenTo()`/`fetch()`/`onError()`
+     * methods — the validation, the unknown-slot and required-slot checks, and
+     * the two mount calls all live in `appendTo()`; the cancellation check stays
+     * here because only `mountInto()` takes a `signal`. `apiClient._discardRequest()`
+     * is called exactly once, on `fetch()`'s own promise: `fetch()` itself never
+     * routes through it (a caller holding the promise must be able to handle it),
+     * so a second discard or catch layered on top here would be exactly the
      * duplicate `CalendarControls.fetch()`'s own doc comment warns against.
      *
      * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
@@ -391,7 +440,8 @@ export default class CalendarViewer {
      * @param {function(Error): void} [options.onError] - Registered before the
      *   initial fetch, so a failure of that very first request still reaches it.
      * @returns {Promise<CalendarViewer|null>} The viewer, or `null` if cancelled.
-     * @throws {Error} If the options or `slots` are invalid, or if the API
+     * @throws {Error} If the options are invalid, if `slots` is not an object,
+     *   names an unknown slot, or omits `controls` or `calendar`, or if the API
      *   metadata cannot be loaded.
      */
     static async mountInto(slots, options = {}) {
@@ -399,24 +449,6 @@ export default class CalendarViewer {
         const { apiClient, signal, onError, initialFetch } = bag;
 
         const viewer = new CalendarViewer(bag);
-
-        try {
-            assertPlainOptions(slots, 'CalendarViewer.mountInto');
-        } catch {
-            throw new Error(
-                `CalendarViewer.mountInto: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
-            );
-        }
-        if (false === Object.hasOwn(slots, 'controls')) {
-            throw new Error(
-                "CalendarViewer.mountInto: slots must name a 'controls' target.",
-            );
-        }
-        if (false === Object.hasOwn(slots, 'calendar')) {
-            throw new Error(
-                "CalendarViewer.mountInto: slots must name a 'calendar' target.",
-            );
-        }
 
         const element = CalendarViewer.#targetElement(slots);
         if (
@@ -426,56 +458,31 @@ export default class CalendarViewer {
             return null;
         }
 
-        // BOTH required targets are resolved before EITHER is mounted. Resolving
-        // `calendar` after mounting the controls meant an unusable `calendar`
-        // selector threw with the controls already in the document — a partial
-        // mount the caller never asked for and cannot easily undo, since the
-        // rejected promise hands back no viewer to `dispose()`. Measured before
-        // this change: a bad `calendar` target left ten control elements mounted.
-        const calendarElement = CalendarViewer.#requireElement(
-            slots.calendar,
-            'calendar',
-            'CalendarViewer.mountInto',
-        );
-        if (true === signal?.aborted || false === calendarElement.isConnected) {
-            return null;
-        }
-
-        const controlsSlots = { controls: slots.controls };
-        if (Object.hasOwn(slots, 'messages')) {
-            controlsSlots.messages = slots.messages;
-        }
-        // Passed explicitly so a bad `controls`/`messages` target is reported
-        // as `CalendarViewer.mountInto`, not `CalendarControls.appendTo` — a
-        // class the caller of THIS factory never directly touched.
-        viewer.#controls.appendTo(controlsSlots, 'CalendarViewer.mountInto');
-
-        viewer.#calendarMount = calendarElement;
-        viewer.#webCalendar.appendTo(calendarElement);
+        // Passed explicitly so a bad target, an unknown slot name or a missing
+        // required slot is reported as `CalendarViewer.mountInto` — the entry
+        // point the caller actually used — rather than as `appendTo`.
+        viewer.appendTo(slots, 'CalendarViewer.mountInto');
 
         if (apiClient !== undefined && apiClient !== null) {
-            // See this method's own doc comment above: controls FIRST, so the
-            // messages renderer (if any) is registered ahead of WebCalendar's
-            // listener on the same `calendarFetched` event.
-            viewer.#controls.listenTo(apiClient);
-            viewer.#webCalendar.listenTo(apiClient);
+            // Controls FIRST, so the messages renderer (if any) is registered
+            // ahead of WebCalendar's listener on the same `calendarFetched`
+            // event — see `listenTo()`'s own doc comment for why.
+            viewer.listenTo(apiClient);
             if (typeof onError === 'function') {
-                viewer.#controls.onError(onError);
+                viewer.onError(onError);
             }
             if (false !== initialFetch) {
                 // `_discardRequest` is what CalendarControls.mountInto() itself
-                // uses for this exact promise, and it is called exactly once here
-                // — see the doc comment above for why a second discard would be
-                // wrong. The `.catch(() => {})` below is NOT a second discard: it
-                // is a second, independent subscriber on the SAME promise, added
-                // only so this factory can `await` the request's settlement —
-                // success or failure — before resolving, rather than resolving
-                // while the request (and, on the fixtures every test here uses, the
-                // WebCalendar listener's throw on an empty `litcal`, and the
-                // messages render that must complete before it) is still pending.
-                // It changes nothing about whether `_discardRequest` logs: that
-                // decision is already made, independently, by its own `.catch`.
-                const fetchPromise = viewer.#controls.fetch();
+                // uses for this exact promise, and it is called exactly once
+                // here: `fetch()` never routes through it, so a second discard
+                // would be the duplicate `CalendarControls.fetch()`'s own doc
+                // comment warns against. The `.catch(() => {})` below is NOT a
+                // second discard — it is an independent subscriber on the SAME
+                // promise, added only so this factory can `await` the request's
+                // settlement before resolving, rather than resolving while the
+                // WebCalendar listener's throw on an empty `litcal` and the
+                // messages render that must precede it are still pending.
+                const fetchPromise = viewer.fetch();
                 apiClient._discardRequest(fetchPromise);
                 await fetchPromise.catch(() => {});
             }

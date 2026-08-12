@@ -32,6 +32,54 @@ const EMPTY_WITH_MESSAGES = {
     messages: ['First message', 'Second message'],
 };
 
+/**
+ * One real `litcal` entry alongside the same two messages, shaped like
+ * `CalendarViewer.test.js`'s own `NON_EMPTY_CALENDAR_DATA`. Unlike
+ * `EMPTY_WITH_MESSAGES`, `WebCalendar`'s `calendarFetched` listener does not
+ * throw on this payload, so the promise `fetch()` hands back actually
+ * resolves — needed by the tests below that assert on that promise's
+ * resolution, or on a callback registered AFTER `listenTo()` (and therefore
+ * after `WebCalendar`'s own listener on the same event bus): with an empty
+ * `litcal`, `WebCalendar`'s throw would abort `EventEmitter.emit()`'s
+ * synchronous `forEach` before such a late-registered callback ever ran.
+ */
+const NON_EMPTY_WITH_MESSAGES = {
+    litcal: [
+        {
+            event_key: 'Advent1',
+            event_idx: 1,
+            name: 'Dominica I in Adventu Domini',
+            color: ['morello'],
+            color_lcl: ['violaceus'],
+            grade: 7,
+            grade_lcl: 'sollemnitas',
+            grade_abbr: 'S',
+            grade_display: '',
+            common: [],
+            common_lcl: '',
+            type: 'mobile',
+            date: '2026-11-15T00:00:00+00:00',
+            year: 2026,
+            month: 11,
+            month_short: 'Nov.',
+            month_long: 'November',
+            day: 15,
+            day_of_the_week_iso8601: 7,
+            day_of_the_week_short: 'Sun',
+            day_of_the_week_long: 'Sunday',
+            liturgical_year: 'A',
+            is_vigil_mass: false,
+            psalter_week: 1,
+            liturgical_season: 'ADVENT',
+            liturgical_season_lcl: 'Advent',
+            holy_day_of_obligation: false,
+        },
+    ],
+    settings: { year: 2026, locale: 'en', year_type: 'LITURGICAL' },
+    metadata: { version: 'test' },
+    messages: ['First message', 'Second message'],
+};
+
 const respondWith = (payload) => {
     global.fetch = jest.fn(() =>
         Promise.resolve({
@@ -173,5 +221,72 @@ describe('CalendarViewer — the constructor path', () => {
         expect(document.querySelectorAll('#controls2 select').length).toBe(
             firstCount,
         );
+    });
+
+    it('fetch() hands its promise to the caller', async () => {
+        respondWith(NON_EMPTY_WITH_MESSAGES);
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        viewer.listenTo(apiClient);
+        await expect(viewer.fetch()).resolves.toBeDefined();
+    });
+
+    it('fetch() throws when no client is wired', () => {
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        expect(() => viewer.fetch()).toThrow(/no ApiClient is wired/);
+    });
+
+    it('onError() and onCalendarFetched() return this', async () => {
+        respondWith(EMPTY_WITH_MESSAGES);
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        viewer.listenTo(apiClient);
+        expect(viewer.onError(() => {})).toBe(viewer);
+        expect(viewer.onCalendarFetched(() => {})).toBe(viewer);
+    });
+
+    it('onCalendarFetched() receives the fetched data', async () => {
+        respondWith(NON_EMPTY_WITH_MESSAGES);
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        viewer.onCalendarFetched(() => {});
+        viewer.listenTo(apiClient);
+
+        const seen = [];
+        viewer.onCalendarFetched((data) => seen.push(data));
+        await viewer.fetch().catch(() => {});
+        expect(seen.length).toBe(1);
+        expect(seen[0].messages).toEqual(['First message', 'Second message']);
+    });
+
+    it('throws from every public member once disposed', async () => {
+        respondWith(EMPTY_WITH_MESSAGES);
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        viewer.listenTo(apiClient);
+        viewer.dispose();
+
+        const disposed = /has been disposed/;
+        expect(() => viewer.controls).toThrow(disposed);
+        expect(() => viewer.webCalendar).toThrow(disposed);
+        expect(() =>
+            viewer.appendTo({ controls: '#controls', calendar: '#calendar' }),
+        ).toThrow(disposed);
+        expect(() => viewer.listenTo(apiClient)).toThrow(disposed);
+        expect(() => viewer.fetch()).toThrow(disposed);
+        expect(() => viewer.onError(() => {})).toThrow(disposed);
+        expect(() => viewer.onCalendarFetched(() => {})).toThrow(disposed);
+    });
+
+    it('dispose() is idempotent', () => {
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#controls', calendar: '#calendar' });
+        viewer.dispose();
+        expect(() => viewer.dispose()).not.toThrow();
     });
 });
