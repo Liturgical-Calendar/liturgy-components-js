@@ -106,6 +106,24 @@ export default class WebCalendar {
     #attachedElement = null;
 
     /**
+     * The client this calendar is listening to, held so `dispose()` can reach its
+     * event bus. `null` until `listenTo()` runs.
+     *
+     * @type {ApiClient|null}
+     * @private
+     */
+    #apiClient = null;
+
+    /**
+     * The exact `calendarFetched` listener `listenTo()` registered, held so
+     * `dispose()` can pass the same reference to `EventEmitter.off()`.
+     *
+     * @type {function|null}
+     * @private
+     */
+    #calendarFetchedListener = null;
+
+    /**
      * The liturgical rite the rendered calendar belongs to.
      *
      * Cannot be derived from the calendar data: the API response carries no rite
@@ -1766,7 +1784,21 @@ export default class WebCalendar {
                     '.',
             );
         }
-        apiClient._eventBus.on('calendarFetched', (data, meta) => {
+        // Any previous subscription is released BEFORE the two references are
+        // overwritten. Assigning over them would orphan the old listener on the old
+        // client's bus with nothing left holding its reference — measured: after
+        // `listenTo(a)` then `listenTo(b)`, client `a` kept its listener, and
+        // `dispose()` could then only ever remove `b`'s, so `a` stayed subscribed
+        // for the lifetime of the page and would keep rendering into this calendar.
+        this.#unsubscribe();
+
+        // Kept, along with the client, so `dispose()` can hand the exact same
+        // reference back to `EventEmitter.off()`. Before this the closure was
+        // unreachable, so nothing could ever stop a mounted `WebCalendar`
+        // re-rendering — a meta-component's `dispose()` could empty the mount and
+        // the next fetch would silently refill it.
+        this.#apiClient = apiClient;
+        this.#calendarFetchedListener = (data, meta) => {
             // Take the rite the REQUEST was made under, not the client's current
             // rite. A rite change can leave two requests in flight — one through
             // the calendar select, one through the rite listener — and if the
@@ -1815,8 +1847,59 @@ export default class WebCalendar {
                     console.error('WebCalendar: No table to attach.');
                 }
             }
-        });
+        };
+        apiClient._eventBus.on(
+            'calendarFetched',
+            this.#calendarFetchedListener,
+        );
         return this;
+    }
+
+    /**
+     * Stops this calendar reacting to its client, and forgets its mount.
+     *
+     * Purely additive, and added because a meta-component's `dispose()` could
+     * previously empty the mounted DOM only for the next `calendarFetched` to
+     * refill it: the listener `listenTo()` attached was an anonymous closure with
+     * no reference stored anywhere, so nothing could unsubscribe it.
+     * `EventEmitter.off()` needs the exact same function reference, which is now
+     * retained.
+     *
+     * Idempotent, and safe on an instance that never called `listenTo()`.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        this.#unsubscribe();
+        this.#attachedElement = null;
+    }
+
+    /**
+     * Releases the `calendarFetched` subscription, if there is one, and clears the
+     * two references it needed.
+     *
+     * Shared by `dispose()` and by `listenTo()`, which must release a previous
+     * subscription before overwriting the references that identify it. Deliberately
+     * does NOT touch `#attachedElement`: forgetting the mount is `dispose()`'s
+     * business, while re-listening keeps rendering to the same place.
+     *
+     * Idempotent, and safe when `listenTo()` was never called.
+     *
+     * @returns {void}
+     * @private
+     */
+    #unsubscribe() {
+        if (
+            null !== this.#apiClient &&
+            null !== this.#calendarFetchedListener
+        ) {
+            this.#apiClient._eventBus.off(
+                'calendarFetched',
+                this.#calendarFetchedListener,
+            );
+        }
+        this.#apiClient = null;
+        this.#calendarFetchedListener = null;
     }
 
     /**

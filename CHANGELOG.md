@@ -4,6 +4,102 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.3.0
+
+Three more meta-components — `CalendarControls`, `CalendarViewer` and `ApiExplorer` — completing the family
+2.2.0 started. Purely additive: nothing existing changes API or behaviour, and every test that existed
+before this release still passes unmodified.
+
+Where 2.2.0's two components each wrapped a fixed page, this release starts from the wiring two of those
+pages shared, structurally identical apart from locale source, comment wording and minor content, and lets
+the renderer vary on top of it. A `WebCalendar` example, a FullCalendar
+one, and an API-explorer page all build the same rite select, calendar select and `ApiOptions`, wired the
+same way to the same client, and then diverge only in what they do with the fetched data — one renders a
+table, one hands the data to a third-party calendar library the components package has no business
+depending on, and one never fetches at all. `CalendarControls` is that shared wiring with no renderer
+bundled in; `CalendarViewer` adds a `WebCalendar` to it; `ApiExplorer` adds a `PathBuilder` and turns
+fetching off. Bundling `WebCalendar` into `CalendarControls` itself would have solved two of the three call
+sites and permanently excluded the fourth, so the renderer stayed out of the shared class instead of
+becoming an assumption baked into it.
+
+### Added
+
+- **`CalendarControls`**, bundling a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` into one mount,
+  wired to one another and — through `listenTo()` — to an `ApiClient`. It absorbs the rite's two-wire
+  requirement (`ApiOptions.linkToRiteSelect()` plus `apiClient.listenTo(riteSelect)`, the whole reason this
+  component family exists) and an optional `messages` slot rendering the API's `messages` array as
+  `<tr>` rows built with `textContent` — not `innerHTML`, unlike both examples this class replaces, so a
+  message containing markup renders as text rather than as live elements.
+
+  - **`onCalendarFetched(cb)` and `onError(cb)`** replace `apiClient._eventBus.on('calendarFetched', …)`, a
+    private-field reach present in both of the examples this class was extracted from — despite
+    `ApiClient.on()` having been public since 2.0.0. Neither example had been updated to use it.
+  - **The initial fetch dispatches three ways.** `CalendarSelect` marks each option
+    `data-calendartype="national"` or `"diocesan"`, and an empty value is the General Roman Calendar, so
+    `fetch()` calls `fetchCalendar()`, `fetchNationalCalendar()` or `fetchDiocesanCalendar()` accordingly.
+    One of the two examples this class replaces wrote only the first two branches by hand: a diocesan
+    calendar selected as the initial value called `fetchNationalCalendar()` with a diocese id, silently
+    requesting the wrong resource. The three-way dispatch is not a new feature so much as a bug fix folded
+    into the extraction.
+  - **`initialFetch: false`** wires the client — so a subsequent rite, calendar or option change still
+    fetches — while skipping only the one fetch `mountInto()` would otherwise perform immediately. It does
+    not by itself produce a component that never fetches at all; `ApiExplorer` (below) needs exactly that
+    stronger guarantee and gets it a different way, by never calling `listenTo()` in the first place.
+
+- **`CalendarViewer`**, a `CalendarControls` paired with a `WebCalendar` wired to the same `ApiClient` —
+  the whole `WebCalendar` example page in one mount call. It adds nothing to `CalendarControls`' own
+  wiring, ordering or fetch dispatch, reached unchanged through `viewer.controls`; it adds only the
+  `calendar` slot and a `webCalendar` option bag applying named `WebCalendar` methods by key, rejecting
+  immediately on a key outside that list. `controls.listenTo()` is wired before `webCalendar.listenTo()`,
+  so the messages renderer (when named) always runs before `WebCalendar`'s own `calendarFetched` listener —
+  which throws on malformed or empty calendar data — and so can never be suppressed by that throw.
+
+  `CalendarViewer.mountInto()` additionally `await`s its dropped initial-fetch promise before resolving,
+  unlike `CalendarControls.mountInto()` and `DayViewer.mountInto()`, which resolve immediately and let the
+  fetch keep running in the background. This is deliberate, not an inconsistency: a viewer's whole reason
+  to exist is its populated table, and resolving before the fetch's promise chain — including the
+  `WebCalendar` listener and the messages render — has run at all would hand back a viewer whose table is
+  still empty for a caller who had no reason to expect that.
+
+- **`ApiExplorer`**, a `CalendarControls` paired with a `PathBuilder`, with fetching turned off — the whole
+  "explore the API" page in one call, and the odd member of the family: every other meta-component adds a
+  renderer that reacts to fetched data, while this one never fetches at all. Its constructor reuses only
+  `CalendarControls`' construction and its direct `linkToCalendarSelect().linkToRiteSelect()` call, never
+  `listenTo()` — which wires the rite → calendar chain AND turns every change into a live request under one
+  name, and this class needs only the first half. It bypasses `CalendarControls.appendTo()` entirely too,
+  since the page it was extracted from spreads one `ApiOptions` instance across three differently-filtered
+  containers and positions the calendar select relative to one specific input rather than inside a
+  container of its own — a layout `CalendarControls.appendTo()`'s single `controls` target cannot express.
+
+- **Construction and mounting** for all three, following the same split 2.2.0 established: a synchronous
+  constructor requiring an already-initialised `ApiBase`, paired with `appendTo()`, plus a static async
+  `X.mountInto(target, options)`. `CalendarControls.mountInto()` and `CalendarViewer.mountInto()` **reject**
+  when the API metadata cannot be loaded, with no failure control — a deliberate difference from
+  `CalendarResourcePicker`, not an inconsistency waiting to be "fixed" into agreement with it. That picker
+  substitutes for a single required form field, where an empty slot is indistinguishable from "still
+  loading" and a disabled stand-in select is a meaningful thing to render. These two bundle a whole form: a
+  `RiteSelect` and `CalendarSelect` with no calendars to list are not a smaller working form, they are no
+  form at all, so there is no meaningful partial stand-in and construction is simply left to throw, exactly
+  as `DayViewer` already does. `ApiExplorer` rejects the same way for the same reason, and never has a
+  "failed initial fetch" case to resolve through at all, since it never fetches.
+
+- **A `CalendarViewer` Storybook story** (`src/stories/1_CombinedComponents/`), following the CSS-free
+  `.render.js` / `.stories.js` split 2.2.0's two stories established, with Bootstrap and unstyled variants
+  differing only by the `theme` argument. `CalendarControls` gets no story of its own — it is already
+  exercised through `CalendarViewer`'s — and neither does `ApiExplorer`, which needs five containers a
+  single story cannot usefully show.
+
+### Fixed
+
+- **Jest was discovering two copies of every test file** whenever a worktree existed under
+  `.claude/worktrees/` alongside the checkout, because `testPathIgnorePatterns` was unset. Measured during
+  the 2.2.0 release as 43 of 86 files discovered twice, producing a phantom 1818-test run; CI never saw it,
+  having no worktree, but any local run during worktree-based work silently doubled and produced at least
+  one incorrect implementation report during phase 1 of this family. `package.json` now anchors
+  `<rootDir>/.claude/` and `<rootDir>/.worktrees/` in `testPathIgnorePatterns`, so only files nested beneath
+  the project root's own worktree directories are filtered, leaving the project's actual tests discoverable
+  from either location.
+
 ## 2.2.0
 
 Two meta-components — `CalendarResourcePicker` and `DayViewer` — plus the infrastructure they needed:
@@ -107,6 +203,39 @@ every consumer gets it correctly by construction instead of by careful copying.
   itself is not exported — `DayViewer` is what consumes it internally now. The fallback is per **key**,
   not per **locale**: a locale missing only `DAY` still shows its own translation for `MONTH`, which is
   translated for all 84 locales, rather than reverting the whole viewer to English.
+
+### Fixed
+
+- **`DayViewer`'s eight `LiturgyOfAnyDay` styling keys now reach the widget** ([#43]). The theme
+  resolver's per-child allow-list was written for `<select>`-shaped children and never widened, so
+  `titleClass`, `dateClass`, `dateControlsClass`, `eventsWrapperClass`, `eventClass`,
+  `eventGradeClass`, `eventCommonClass` and `eventYearCycleClass` were stripped in transit. The loop
+  in `DayViewer`'s constructor that names all eight and calls the matching setter was therefore
+  unreachable, and a consumer theming the event rows or the date header got library defaults with no
+  throw and no warning — the reporter only noticed because an end-to-end selector broke. The allow-list
+  is now per role, and `LiturgyOfAnyDay` has its own.
+
+- **`onError()` now hears about failures raised before the request goes out** ([#43], second defect).
+  `ApiClient` deliberately emits no `calendarFetchFailed` for an error thrown before a request is
+  issued — an unserviceable rite, an unusable locale — on the reasoning that the event reports a
+  request that failed, not one that was never made. But `onError()` callbacks subscribe to exactly
+  that event, and `DayViewer.mountInto()` skipped its console fallback whenever a callback was
+  registered, assuming the callback would handle it. The three combined into total silence: no
+  callback, no log, and the rejection swallowed by the factory's own `.catch()`. Passing `onError()`
+  was therefore strictly WORSE than omitting it — omit it and the console line at least appeared.
+
+  `DayViewer` and `CalendarControls` now deliver such a failure to their callbacks directly, and fall
+  back to the console only when nothing received it at all. An error that did travel the event bus is
+  still delivered exactly once. `ApiClient`'s own behaviour is unchanged — the fix belongs in the
+  meta-components, which are the ones making the promise.
+
+- **An unrecognised per-child theme key now throws, naming it.** Silence is what made the above
+  invisible: the keys passed validation, were discarded, and the markup simply rendered with defaults.
+  A key valid for one role but named on a child of another is still dropped rather than rejected —
+  `assertTheme()` validates a bag without knowing which children a given component has, so it catches a
+  misspelling but not a misplacement.
+
+[#43]: https://github.com/Liturgical-Calendar/liturgy-components-js/issues/43
 
 ### Changed
 
