@@ -146,14 +146,51 @@ apiOptions._acceptHeaderInput.hide();
 | `name(name)`              | Name attribute                                                     |
 | `labelClass(className)`   | CSS class(es) for the label                                        |
 | `labelAfter(htmlString)`  | HTML to append after label text                                    |
-| `wrapper(tagName)`        | Wrapper element ('div' or 'td')                                    |
+| `wrapper(bag \| tagName)` | Wrapper element — `{ as, class, id }` or a bare `'div'`/`'td'`     |
 | `wrapperClass(className)` | CSS class(es) for wrapper                                          |
 | `disabled(disabled=true)` | Set disabled state                                                 |
 | `data(dataMap)`           | Set data attributes                                                |
 | `defaultValue(value)`     | Set initial/default value                                          |
 | `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
 | `options()`               | Returns array of option values (for select elements only)          |
-| `hide(hide=true)`         | Hide the control                                                   |
+
+### The wrapper bag
+
+`wrapper()` takes the same `{ as, class, id }` bag `CalendarSelect.wrapper()` and `RiteSelect.wrapper()`
+take, validated by the same shared helper, so one call does what previously took two:
+
+```javascript
+apiOptions._yearInput.wrapper({
+    as: 'div', // 'div' (default) or 'td'
+    class: 'form-group col col-md-3',
+    id: 'year-wrapper', // not available before 2.6.0, and not available on the globals
+});
+```
+
+The bare tag name it has always taken still works — `wrapper('td')` is `wrapper({ as: 'td' })` — so
+existing code needs no change, and `wrapperClass()` remains for callers already using it.
+
+**`id` is per-instance only.** `setGlobalWrapper()` deliberately takes no `id`: the globals apply to every
+`Input` a page builds, and `ApiOptions` alone builds more than a dozen, so one global id would be stamped
+onto every wrapper and emit invalid HTML with duplicate ids.
+
+**`wrapper()` may be called once.** A second call throws. Previously it silently replaced the element and
+reset its class to the _global_ wrapper class, so a class set through `wrapperClass()` was discarded without
+a word and the next `wrapperClass()` call threw an error naming a class the caller had never set:
+
+```javascript
+input.wrapperClass('form-group col-md-3'); // ok
+input.wrapper('div'); // before 2.6.0: silently discarded that class
+input.wrapperClass('form-group col-md-3'); // before 2.6.0: threw, naming the global class
+```
+
+`setGlobalWrapper()` does not consume that one allowance. It makes the _constructor_ build a wrapper, which
+is not the caller's own, so a page that sets the global still gets one per-instance `wrapper()` call.
+
+A `class` named in the bag beats `setGlobalWrapperClass()` and counts as the class being set, so a later
+`wrapperClass()` naming something different throws. A bag naming no class still inherits the global one and
+leaves `wrapperClass()` free — the pairing pages built on the globals rely on.
+| `hide(hide=true)` | Hide the control |
 
 ## Linking to CalendarSelect
 

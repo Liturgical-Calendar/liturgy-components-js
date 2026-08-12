@@ -293,6 +293,30 @@ The shared implementations are `src/LocaleValidation.js` (what a locale is) and 
 (what shape an options argument may take). Neither is exported from `src/index.js`: they are internal contract
 between the components, not public API.
 
+### How components take a wrapper
+
+`CalendarSelect.wrapper()`, `RiteSelect.wrapper()` and `Input.wrapper()` all take an `{ as, class, id }` bag
+through `src/WrapperOptions.js` — internal, and not exported from `src/index.js`, on the same reasoning as
+the two validators above. `Input.wrapper()` additionally accepts the bare tag name it has always taken and
+normalizes it to `{ as: tagName }`; that form is kept rather than deprecated because `DayViewer`,
+`LiturgyOfAnyDay` and both example apps all pass one.
+
+Two `Input`-only subtleties, both easy to "simplify" wrongly:
+
+- **The one-shot guard counts explicit calls, via `#wrapperSet` — not `#hasWrapper`.** The constructor
+  builds a wrapper of its own whenever `Input.setGlobalWrapper()` has been called, which
+  `LiturgicalCalendarFrontend` and six examples do at module scope. Keying the guard on "a wrapper exists"
+  would refuse the caller's **first** explicit `wrapper()` call on every such page, including this library's
+  own call for `DayViewer`'s locale input. `CalendarSelect` has no equivalent constructor path, which is why
+  its `#wrapperSet` can be simpler.
+- **A bag's `class` beats `setGlobalWrapperClass()` and marks the class as set; an inherited global does
+  not.** `buildWrapperElement()` knows nothing about the globals, so that precedence lives in
+  `Input.wrapper()`. Leaving an inherited global unmarked is what keeps `wrapperClass()` free afterwards —
+  the globals-plus-per-input-override pairing every consuming page is built on.
+
+`setGlobalWrapper()` takes a bare tag name and must never accept an `id`: the globals apply to every `Input`
+on the page, so one id would be stamped onto all of them and emit invalid HTML.
+
 ## ApiClient
 
 The `ApiClient` is the central hub for API communication. It fetches calendar data and emits events that other components listen to.

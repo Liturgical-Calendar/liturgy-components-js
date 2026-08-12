@@ -1,4 +1,5 @@
 import Utils from '../../Utils.js';
+import { buildWrapperElement } from '../../WrapperOptions.js';
 
 export default class Input {
     /** @type {string | null} */
@@ -50,6 +51,22 @@ export default class Input {
     #dataSet = false;
     #labelClassSet = false;
     #hasWrapper = false;
+
+    /**
+     * Whether `wrapper()` has been called on this instance.
+     *
+     * Deliberately NOT set by the constructor's global-wrapper branch below.
+     * `#hasWrapper` answers "is there a wrapper element", which becomes true for
+     * every instance as soon as `setGlobalWrapper()` has been called anywhere on
+     * the page — `LiturgicalCalendarFrontend` and six of this repo's examples all
+     * do so at module scope. Guarding the one-shot on that would refuse the
+     * caller's FIRST explicit `wrapper()` call on those pages, including this
+     * library's own call for `DayViewer`'s locale input. This field answers the
+     * different question the guard actually needs: has the caller set one.
+     *
+     * @type {boolean}
+     */
+    #wrapperSet = false;
     #wrapperClassSet = false;
     #defaultValue = '';
 
@@ -118,6 +135,14 @@ export default class Input {
      *
      * Validates the wrapper element to ensure it is a string and is one of the valid values.
      * The input wrapper element is sanitized and assigned to the global wrapper element.
+     *
+     * Takes a bare tag name only, deliberately. If this is ever given an
+     * `{ … }` bag to match the per-instance `wrapper()`, it must be `{ as, class }`
+     * and must NOT accept `id`: these globals apply to every `Input` a page builds
+     * — `ApiOptions` alone builds more than a dozen — so one global id would be
+     * stamped onto every wrapper and emit invalid HTML with duplicate ids. An id
+     * identifies a single element, which is exactly why it belongs on the
+     * per-instance call and nowhere else.
      *
      * @param {string} [wrapper] - The wrapper element, currently only 'div' and 'td' are supported.
      * @throws {Error} If the wrapper is not a string, or if the wrapper is not one of the valid values.
@@ -564,37 +589,85 @@ export default class Input {
     }
 
     /**
-     * Sets the type of HTML element to use as the wrapper element.
+     * Sets the wrapper element this input is rendered inside.
      *
-     * If the `wrapper` argument is not provided, the wrapper element will be set to `div`.
-     * If the `wrapper` argument is provided but is not a string, an error will be thrown.
-     * If the `wrapper` argument is provided and is a string, it must be one of the following valid values:
-     * - 'div'
-     * - 'td'
+     * Takes either an `{ as, class, id }` bag — the same one
+     * `CalendarSelect.wrapper()` and `RiteSelect.wrapper()` accept, validated by
+     * the same shared helper — or the bare tag name this method has always taken.
+     * `wrapper( 'td' )` and `wrapper( { as: 'td' } )` are the same call. The
+     * string form is kept, not deprecated: `DayViewer` and `LiturgyOfAnyDay` both
+     * pass one, as do the example apps.
      *
-     * @param {string} [wrapper='div'] The type of HTML element to use as the wrapper element.
+     * `as` defaults to `div` and must be `div` or `td`. `class` and `id` are
+     * optional; `id` is available only here, never on `setGlobalWrapper()`, because
+     * the globals apply to every `Input` a page builds — `ApiOptions` alone builds
+     * more than a dozen — so a global id would stamp one value onto every wrapper
+     * and emit invalid HTML.
+     *
+     * **This may be called once.** A second call throws rather than silently
+     * replacing the element: the old behaviour discarded any class set through
+     * `wrapperClass()` without a word, then made the NEXT `wrapperClass()` call
+     * throw an error naming the global class the caller had never set.
+     * `setGlobalWrapper()` does not consume this allowance — the wrapper the
+     * constructor builds from it is not the caller's own.
+     *
+     * A `class` named in the bag beats `setGlobalWrapperClass()`, and marks the
+     * class as set, so a later `wrapperClass()` naming something different throws.
+     * A bag that names no class still inherits the global one and leaves
+     * `wrapperClass()` free — the pairing every consuming page is built on.
+     *
+     * @param {string|{as?: string, class?: string, id?: string}} [wrapper='div'] The
+     *        wrapper configuration, or the bare tag name.
      *
      * @return {Input} The current instance for method chaining.
      *
-     * @throws {Error} If the `wrapper` argument is not a string or is not one of the valid values.
+     * @throws {Error} If a wrapper has already been set on this instance, if
+     *         `wrapper` is `null`, or if the tag name or bag is invalid.
      */
     wrapper(wrapper = 'div') {
-        if (typeof wrapper !== 'string') {
+        if (this.#wrapperSet) {
             throw new Error(
-                'Invalid type for wrapper, must be of type string but found type: ' +
-                    typeof wrapper,
+                'Wrapper has already been set on Input instance, and cannot be set twice.',
             );
         }
-        wrapper = Utils.sanitizeInput(wrapper);
-        if (false === ['div', 'td'].includes(wrapper)) {
+        if (null === wrapper) {
             throw new Error(
-                'Invalid wrapper: ' + wrapper + ', valid values are: div, td',
+                'Invalid wrapper on Input instance: `null` means "no wrapper" for CalendarSelect and RiteSelect, but an Input has no wrapper until this method is called, so there is nothing to unset.',
             );
         }
-        this.#wrapperElement = document.createElement(wrapper);
+
+        // Two accepted forms, and the bare string is the older one. It is kept
+        // working rather than deprecated because two callers inside this library
+        // pass it — `DayViewer` for the locale input, `LiturgyOfAnyDay` for its
+        // date inputs — as do both example apps. `{ as }` is the same thing said
+        // in the bag's vocabulary.
+        const bag = typeof wrapper === 'string' ? { as: wrapper } : wrapper;
+
+        // Shared with `CalendarSelect.wrapper()` and `RiteSelect.wrapper()`, so
+        // the three cannot drift: one definition of which tags are allowed, and
+        // one set of messages for an invalid `as`, `class` or `id`. Before this,
+        // `Input` validated `as` itself and had no notion of `id` at all.
+        const element = buildWrapperElement(bag, 'Input');
+
+        // The global class is a DEFAULT, so a bag that names its own class beats
+        // it; `buildWrapperElement()` has already applied that one and knows
+        // nothing about the globals. A bag that names no class still inherits,
+        // exactly as the bare-string form always did.
+        const bagNamesClass = Object.hasOwn(bag, 'class');
+        if (false === bagNamesClass && Input.#globalWrapperClass !== null) {
+            element.className = Input.#globalWrapperClass;
+        }
+
+        this.#wrapperElement = element;
         this.#hasWrapper = true;
-        if (Input.#globalWrapperClass !== null) {
-            this.#wrapperElement.className = Input.#globalWrapperClass;
+        this.#wrapperSet = true;
+        // Only an explicitly named class counts as "set", so a later
+        // `wrapperClass()` naming something different is the caller contradicting
+        // themselves and is reported. A class inherited from the global is NOT
+        // the caller's own, and must leave `wrapperClass()` free — that pairing
+        // is what every consuming page is built on.
+        if (bagNamesClass) {
+            this.#wrapperClassSet = true;
         }
         return this;
     }
