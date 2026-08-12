@@ -185,21 +185,33 @@ export default class DayViewer {
         if (Object.hasOwn(localeTheme, 'labelClass')) {
             this.#apiOptions._localeInput.labelClass(localeTheme.labelClass);
         }
-        // `wrapperClass` can arrive from the flat `theme.wrapper` key too, which —
-        // like the date controls below — supplies a class only, with no wrapper
-        // element TYPE, so `'div'` is the default whenever an override does not
-        // name one. This used to be a two-call dance — `wrapper( type )` then
-        // `wrapperClass( class )`, because `wrapperClass()` requires a wrapper
-        // element to already exist — which issue #46 collapsed into the single bag
-        // call below. This was previously the one
+        // Two keys, and they mean different things. The FLAT `theme.wrapper` key
+        // supplies a CLASS — `resolveChildTheme()` maps it onto `wrapperClass` —
+        // while a per-child `wrapper` names the element TYPE, so `'div'` is the
+        // default whenever an override does not name one. Either alone is a
+        // complete instruction, hence the `||`: a theme naming only the type used
+        // to be dropped in silence, because this block was entered on
+        // `wrapperClass` alone. This used to be a two-call dance —
+        // `wrapper( type )` then `wrapperClass( class )`, because `wrapperClass()`
+        // requires a wrapper element to already exist — which issue #46 collapsed
+        // into the single bag call below. This was previously the one
         // per-child block in this constructor that read `class`/`labelClass` but
         // never `wrapperClass` at all — `LocaleInput` supports a wrapper exactly as
         // `CalendarSelect` does, so the flat `theme.wrapper` key silently applied to
         // every OTHER select-role child and not to this one.
-        if (Object.hasOwn(localeTheme, 'wrapperClass')) {
+        if (
+            Object.hasOwn(localeTheme, 'wrapper') ||
+            Object.hasOwn(localeTheme, 'wrapperClass')
+        ) {
             this.#apiOptions._localeInput.wrapper({
                 as: localeTheme.wrapper ?? 'div',
-                class: localeTheme.wrapperClass,
+                // Spread rather than always present: a bag naming `class` is a
+                // class the CALLER set, which `Input.wrapper()` then treats as
+                // final. Passing `class: undefined` for a wrapper-only theme
+                // would instead throw on the type check.
+                ...(Object.hasOwn(localeTheme, 'wrapperClass')
+                    ? { class: localeTheme.wrapperClass }
+                    : {}),
             });
         }
         this.#apiOptions._localeInput._labelElement.textContent = Object.hasOwn(
