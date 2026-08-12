@@ -777,15 +777,21 @@ construction is simply left to throw, exactly as `DayViewer` already does, and t
 difference from the picker rather than an inconsistency waiting to be "fixed" into agreement with it.
 
 **Why the initial fetch's rejection is different.** `mountInto()` resolves to the controls, not to the
-calendar data, so the initial fetch's promise is dropped — the exact fire-and-forget case
-`ApiClient#_discardRequest` exists for (the same seam `LiturgyOfAnyDay` uses for its own three dropped
-requests). Routing it through that seam, rather than reimplementing the log-or-suppress decision by
-hand, means a dropped initial fetch can never produce an unhandled rejection, and is logged to
-`console.error` only when the failure reached no `calendarFetchFailed` listener — `onError()`, registered
-immediately before the fetch, counts as one. This is the opposite case from `fetch()` itself, whose
-returned promise is handed directly to the caller and never routed through `_discardRequest`: a promise
-the caller holds and can `.catch()` or `await`/`try` would otherwise be logged twice. See `fetch()`'s own
-doc comment in the source for the full reasoning.
+calendar data, so the initial fetch's promise is dropped rather than returned. It is caught here and
+offered to the `onError()` callbacks first; only when none of them received it does it fall back to
+`console.error`. So a dropped initial fetch can never produce an unhandled rejection, is never silent,
+and is never reported twice.
+
+This deliberately does **not** use `ApiClient#_discardRequest`, which earlier versions called. That seam
+logs whatever the event bus never delivered — correct for a fire-and-forget request, and still what
+`LiturgyOfAnyDay` uses for its own three — but it cannot reach `onError()`, and a failure raised _before_
+the request goes out emits no `calendarFetchFailed` at all, so it never reaches the bus either. Between
+them, `onError()` silently missed that whole class of failure. See
+[issue #43](https://github.com/Liturgical-Calendar/liturgy-components-js/issues/43).
+
+This is the opposite case from `fetch()` itself, whose returned promise is handed directly to the caller
+and routed through neither path: a promise the caller holds and can `.catch()` or `await`/`try` would
+otherwise be reported twice. See `fetch()`'s own doc comment in the source for the full reasoning.
 
 ### `dispose()`
 
@@ -947,6 +953,55 @@ callable more than once, and moves its children rather than copying them.
 motivating case is above: `AcceptHeaderInput.hide()` sets a flag that `ApiOptions.appendTo()` reads,
 so it is only meaningful before the append — a window `mountInto()` does not have.
 
+### Multi-row option layouts
+
+`controls` is a single container, and by default every input lands in it. That is **not** a limit on how
+many rows the form can occupy: `ApiOptions` is one object whose `appendTo()` **moves** the inputs its
+current filter selects, so calling `filter().appendTo()` again splits the form across as many containers
+as you name. `viewer.controls.apiOptions` is that same object, so a viewer inherits the ability free.
+
+A two-row Bootstrap form — the path and temporal inputs on one row, the parameters a national or
+diocesan calendar predetermines on another:
+
+```javascript
+const viewer = new CalendarViewer({
+    locale: 'en',
+    filter: ApiOptionsFilter.ALL_CALENDARS,
+    theme: { select: 'form-select', label: 'form-label', wrapper: 'form-group col col-md-2' },
+});
+viewer.controls.apiOptions._acceptHeaderInput.hide();
+
+// Row one: rite select, calendar select, and the ALL_CALENDARS inputs.
+viewer.appendTo({ controls: '#calendarOptions', calendar: '#litcalWebcalendar' });
+
+// Row two: the five General Roman parameters, MOVED out of row one's container.
+viewer.controls.apiOptions
+    .filter(ApiOptionsFilter.GENERAL_ROMAN)
+    .appendTo('#generalRomanOptions');
+
+viewer.listenTo(apiClient);
+```
+
+| Container              | Receives                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `#calendarOptions`     | rite select, calendar select, `locale`, `year_type`, `year`                                |
+| `#generalRomanOptions` | `epiphany`, `ascension`, `corpus_christi`, `eternal_high_priest`, `holydays_of_obligation` |
+
+Three rules make this work, and each is load-bearing:
+
+- **The second pass runs after `appendTo()`**, so it moves inputs the viewer has already mounted rather
+  than racing it.
+- **The filters must not overlap.** `ALL_CALENDARS` and `GENERAL_ROMAN` select disjoint sets, so the
+  second pass leaves row one's inputs where they are. Two passes naming the same input would move it to
+  whichever container went last.
+- **`ApiOptionsFilter.NONE` cannot participate** — a filter may be set more than once only while none of
+  the values is `NONE`.
+
+This is the same mechanism [`ApiExplorer`](#the-three-filter-layout) uses for its three-container layout;
+nothing about it is specific to that component. Reach for it rather than for CSS line-break hacks, and
+rather than expecting a slot per row — slots position a component's own parts, while the filter is what
+expresses _which inputs_ belong together.
+
 ### `mountInto()` versus the constructor
 
 The same split as every other meta-component in this family:
@@ -972,8 +1027,10 @@ order, and `WebCalendar`'s own `calendarFetched` listener throws on malformed or
 `controls` first means its own `calendarFetched` listeners — including the messages renderer, when a
 `messages` slot was named — always run before `webCalendar`'s, so a `WebCalendar` failure can never
 suppress a messages render that was already due to happen. The dropped initial-fetch promise is routed
-through `apiClient._discardRequest()`, exactly as `CalendarControls.mountInto()` routes its own — see that
-method's [reject-versus-resolve section](#reject-versus-resolve-2) for what that seam does and does not log.
+through the controls' own deduplicated error delivery — **not** through `apiClient._discardRequest()`,
+which this factory used to call and which cannot reach `onError()` — exactly as
+`CalendarControls.mountInto()` routes its own. See that method's
+[reject-versus-resolve section](#reject-versus-resolve-2) for what is and is not logged.
 
 ### Reject versus resolve
 
@@ -985,10 +1042,10 @@ Which cases reject and which resolve is exactly `CalendarControls`' own table �
 already-resolved `HTMLElement` that has since left the document.
 
 **The TIMING is not the same, on purpose.** `CalendarControls.mountInto()` and `DayViewer.mountInto()`
-both drop the initial fetch's promise into `apiClient._discardRequest()` and resolve immediately,
-without waiting for it to settle — the fetch keeps running after the returned promise has already
-resolved. `CalendarViewer.mountInto()` instead `await`s that same dropped promise (wrapped in
-`.catch(() => {})` so a rejection cannot reach this factory) before resolving. This is deliberate, not
+both drop the initial fetch's promise and resolve immediately, without waiting for it to settle — the
+fetch keeps running after the returned promise has already resolved. `CalendarViewer.mountInto()` instead
+`await`s that same dropped promise (its rejection already handled, so it cannot reach this factory)
+before resolving. This is deliberate, not
 an oversight to reconcile: a viewer's whole reason to exist is the rendered table, so `mountInto()`
 resolving before the fetch's promise chain — including `WebCalendar`'s `calendarFetched` listener and
 the messages render — has even run would hand back a `CalendarViewer` whose table is still empty for a
@@ -1060,6 +1117,13 @@ one specific input rather than inside a container of its own. `ApiExplorer` ther
 underlying inputs the NEXT `appendTo()` call moves — so this is not three separate `ApiOptions` objects
 appearing to duplicate a single field. It is one instance, its inputs distributed across three panels by
 three successive `filter().appendTo()` pairs, exactly as the extracted page does by hand.
+
+**This mechanism is general, not an `ApiExplorer` quirk.** Any component holding an `ApiOptions` can
+split its form across as many containers as it names, because `appendTo()` moves the inputs the current
+filter selects rather than copying them. `CalendarViewer` uses the same technique for a two-row layout —
+see [Multi-row option layouts](#multi-row-option-layouts) — and the rules that make it safe (run the later
+passes after the first mount, keep the filters disjoint, never involve `ApiOptionsFilter.NONE`) are
+written out there.
 
 **The calendar select has no slot of its own.** It is positioned with
 `calendarSelect.insertAfter( apiOptions._calendarPathInput )`, landing as a DOM sibling immediately after
