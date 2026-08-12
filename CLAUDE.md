@@ -416,8 +416,10 @@ calls — it is internal and deliberately **not exported** from `src/index.js`, 
 **`mountInto()` versus the constructor.** Like every component in this library, each meta-component has a
 synchronous constructor — usable when an `ApiBase` is already known to be ready, paired with
 `appendTo(target)` — plus a static async `mountInto(target, options)`, which resolves the target,
-constructs the component, mounts it, and (for every one of the five except `ApiExplorer`) wires it to an
-`ApiClient` and performs the initial fetch. `appendTo()` returns `undefined`, per the library-wide
+constructs the component and mounts it. Three of the five then wire an `ApiClient` and perform an
+initial calendar fetch: `CalendarControls`, `CalendarViewer` and `DayViewer`. `CalendarResourcePicker`
+never fetches at all — it is a form field, and has no `listenTo()` — and `ApiExplorer` deliberately
+does not, because it composes request URLs rather than issuing them. `appendTo()` returns `undefined`, per the library-wide
 contract: nothing can be chained off it, and its result must never be assigned.
 
 **Reject for programmer error, resolve for runtime failure — except where there is no form left to

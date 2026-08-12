@@ -185,11 +185,19 @@ elements.
 
 Phase 1's rule, with one asymmetry made explicit rather than left to look like drift.
 
-| Kind                               | Behaviour                           |
-| ---------------------------------- | ----------------------------------- |
-| Invalid options, unusable target   | **Rejects**                         |
-| Calendar metadata cannot be loaded | **Rejects**                         |
-| A calendar _fetch_ fails           | **Resolves**; routed to `onError()` |
+| Kind                                    | Behaviour                                   |
+| --------------------------------------- | ------------------------------------------- |
+| Invalid options, unusable target        | **Rejects**                                 |
+| Calendar metadata cannot be loaded      | **Rejects**                                 |
+| A public `fetch()` call fails           | **Rejects** — the caller holds that promise |
+| `mountInto()`'s own initial fetch fails | **Resolves**; routed to `onError()`         |
+
+The last two rows are one distinction, not two behaviours of the same call. `fetch()` hands its
+promise to the caller, so it rejects and is never logged — `CLAUDE.md` states that rule for the
+library as a whole. `mountInto()`'s initial fetch is dropped rather than returned, so its rejection
+goes to `onError()` and, only when nothing is subscribed, to `console.error` through the client's own
+`_discardRequest` seam. Conflating them is what produced a defect during implementation, where a
+caller who awaited and handled `fetch()` was also logged to the console.
 
 All three components reject when the metadata cannot load, following `DayViewer` rather than
 `CalendarResourcePicker`. The picker is the exception in this family, and for a specific reason: it

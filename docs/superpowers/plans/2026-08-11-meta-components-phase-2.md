@@ -1651,7 +1651,11 @@ Expected: FAIL — cannot resolve `../MetaComponents/ApiExplorer.js`.
 
 - [ ] **Step 3: Implement**
 
-`ApiExplorer` holds a `CalendarControls` constructed with `initialFetch: false` and a `PathBuilder` built from the controls' `apiOptions` and `calendarSelect`.
+`ApiExplorer` holds a `CalendarControls` constructed normally and a `PathBuilder` built from the
+controls' `apiOptions` and `calendarSelect`. It never calls `CalendarControls.listenTo()`, and that
+— not an `initialFetch` option — is what makes it never fetch: `listenTo()` is what wires
+`apiClient.listenTo()` onto the three children, and those fetch on every change. `initialFetch:
+false` would suppress only the first request.
 
 Its `appendTo(slots)` reproduces what `assets/js/index.js` does, appending the **same** `ApiOptions` instance three times under three different filters:
 
