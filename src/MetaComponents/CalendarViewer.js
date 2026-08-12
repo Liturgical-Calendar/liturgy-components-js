@@ -198,28 +198,7 @@ export default class CalendarViewer {
      */
     appendTo(slots, caller = 'CalendarViewer.appendTo') {
         this.#assertUsable();
-        try {
-            assertPlainOptions(slots, caller);
-        } catch {
-            throw new Error(
-                `${caller}: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
-            );
-        }
-
-        const unknownKeys = Object.keys(slots).filter(
-            (key) => false === SLOT_NAMES.includes(key),
-        );
-        if (unknownKeys.length > 0) {
-            throw new Error(
-                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, calendar, messages }.`,
-            );
-        }
-        if (false === Object.hasOwn(slots, 'controls')) {
-            throw new Error(`${caller}: slots must name a 'controls' target.`);
-        }
-        if (false === Object.hasOwn(slots, 'calendar')) {
-            throw new Error(`${caller}: slots must name a 'calendar' target.`);
-        }
+        CalendarViewer.#assertSlots(slots, caller);
 
         // Resolved BEFORE either half is mounted — see the doc comment above.
         const calendarElement = CalendarViewer.#requireElement(
@@ -316,6 +295,51 @@ export default class CalendarViewer {
         this.#assertUsable();
         this.#controls.onError(callback);
         return this;
+    }
+
+    /**
+     * Validates a `slots` argument: must be a plain object, name no key outside
+     * {@link SLOT_NAMES}, and include both `controls` and `calendar`.
+     *
+     * Shared by `appendTo()` and `mountInto()` so the rules have a single source
+     * of truth. `mountInto()` calls this BEFORE resolving any element or checking
+     * for cancellation — a typo in `slots` must surface even on a mount the
+     * caller already cancelled, per that method's own doc comment — and
+     * `appendTo()` calls it again as its own first act, since it is a public
+     * entry point in its own right and cannot assume its caller already
+     * validated. Re-validating when `mountInto()` already did is harmless and
+     * cheap.
+     *
+     * @param {unknown} slots - The candidate slots argument.
+     * @param {string} caller - The `Class.method` prefix to report, so a bad
+     *   `slots` names whichever entry point the caller actually used.
+     * @returns {void}
+     * @throws {Error} If `slots` is not an object, names an unknown slot, or
+     *   omits `controls` or `calendar`.
+     */
+    static #assertSlots(slots, caller) {
+        try {
+            assertPlainOptions(slots, caller);
+        } catch {
+            throw new Error(
+                `${caller}: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
+            );
+        }
+
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, calendar, messages }.`,
+            );
+        }
+        if (false === Object.hasOwn(slots, 'controls')) {
+            throw new Error(`${caller}: slots must name a 'controls' target.`);
+        }
+        if (false === Object.hasOwn(slots, 'calendar')) {
+            throw new Error(`${caller}: slots must name a 'calendar' target.`);
+        }
     }
 
     /**
@@ -419,15 +443,24 @@ export default class CalendarViewer {
      *
      * Modelled on `CalendarControls.mountInto()`: the viewer is constructed before
      * the cancellation check, so an invalid `webCalendar` key, theme or locale
-     * rejects even on a mount the caller already cancelled. This factory calls
-     * this class' own public `appendTo()`/`listenTo()`/`fetch()`/`onError()`
-     * methods — the validation, the unknown-slot and required-slot checks, and
-     * the two mount calls all live in `appendTo()`; the cancellation check stays
-     * here because only `mountInto()` takes a `signal`. `apiClient._discardRequest()`
-     * is called exactly once, on `fetch()`'s own promise: `fetch()` itself never
-     * routes through it (a caller holding the promise must be able to handle it),
-     * so a second discard or catch layered on top here would be exactly the
-     * duplicate `CalendarControls.fetch()`'s own doc comment warns against.
+     * rejects even on a mount the caller already cancelled. Slot validation runs
+     * next — see `#assertSlots()` — BEFORE either cancellation check, so a typo
+     * in `slots` still surfaces even on a mount the caller already cancelled.
+     * Two cancellation checks follow, exactly as many as `#targetElement()`
+     * alone can cover: the first, right after validation, catches an already-
+     * disconnected `controls` or `calendar` element passed directly; the second,
+     * after `calendar` is resolved, catches the case the first cannot —  a
+     * CONNECTED `controls` paired with a DISCONNECTED `calendar`, since
+     * `#targetElement()` returns whichever element it finds and prefers
+     * `controls`. Only then does this factory call `appendTo()` to mount both
+     * halves (re-validating and re-resolving `calendar` is harmless and cheap;
+     * see `#assertSlots()`'s own doc comment), followed by this class' own
+     * public `listenTo()`/`fetch()`/`onError()` to wire the client and perform
+     * the initial fetch. `apiClient._discardRequest()` is called exactly once,
+     * on `fetch()`'s own promise: `fetch()` itself never routes through it (a
+     * caller holding the promise must be able to handle it), so a second
+     * discard or catch layered on top here would be exactly the duplicate
+     * `CalendarControls.fetch()`'s own doc comment warns against.
      *
      * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
@@ -450,11 +483,30 @@ export default class CalendarViewer {
 
         const viewer = new CalendarViewer(bag);
 
+        // A typo in `slots` must surface even on a mount the caller already
+        // cancelled — validated BEFORE either cancellation check below.
+        CalendarViewer.#assertSlots(slots, 'CalendarViewer.mountInto');
+
         const element = CalendarViewer.#targetElement(slots);
         if (
             true === signal?.aborted ||
             (null !== element && false === element.isConnected)
         ) {
+            return null;
+        }
+
+        // BOTH required targets are resolved before EITHER is mounted, and this
+        // SECOND cancellation check is what catches the case `#targetElement()`
+        // cannot: a CONNECTED `controls` paired with a DISCONNECTED `calendar` —
+        // `#targetElement()` returns whichever element it finds and prefers
+        // `controls`, so the check above alone would miss it and mount the
+        // `WebCalendar` into a detached node.
+        const calendarElement = CalendarViewer.#requireElement(
+            slots.calendar,
+            'calendar',
+            'CalendarViewer.mountInto',
+        );
+        if (true === signal?.aborted || false === calendarElement.isConnected) {
             return null;
         }
 

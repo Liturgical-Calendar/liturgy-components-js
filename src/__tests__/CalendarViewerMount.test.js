@@ -290,3 +290,53 @@ describe('CalendarViewer — the constructor path', () => {
         expect(() => viewer.dispose()).not.toThrow();
     });
 });
+
+/**
+ * `mountInto()`'s two cancellation checks and their ordering relative to slot
+ * validation — the regression this describe block exists to guard. `#targetElement()`
+ * returns whichever of `controls`/`calendar` it finds an `HTMLElement` for,
+ * preferring `controls`, so a CONNECTED `controls` paired with a DISCONNECTED
+ * `calendar` is invisible to the first cancellation check alone; only the
+ * SECOND check, made after `calendar` is resolved, catches it. Slot validation
+ * must run before EITHER check, so an invalid `slots` still rejects even on an
+ * already-cancelled mount.
+ */
+describe('CalendarViewer.mountInto — cancellation and slot validation ordering', () => {
+    it('resolves to null and mounts nothing when a connected controls target pairs with a disconnected calendar target', async () => {
+        const connectedControls = document.getElementById('controls');
+        // Deliberately never appended to the document.
+        const disconnectedCalendar = document.createElement('div');
+
+        const viewer = await CalendarViewer.mountInto(
+            { controls: connectedControls, calendar: disconnectedCalendar },
+            { locale: 'en' },
+        );
+
+        expect(viewer).toBeNull();
+        expect(connectedControls.children.length).toBe(0);
+    });
+
+    it('rejects invalid slots even when the signal is already aborted', async () => {
+        const controller = new AbortController();
+        controller.abort();
+
+        await expect(
+            CalendarViewer.mountInto('not-an-object', {
+                locale: 'en',
+                signal: controller.signal,
+            }),
+        ).rejects.toThrow(/slots must be an object naming/);
+    });
+
+    it('resolves to null when the signal is already aborted, with valid slots', async () => {
+        const controller = new AbortController();
+        controller.abort();
+
+        const viewer = await CalendarViewer.mountInto(
+            { controls: '#controls', calendar: '#calendar' },
+            { locale: 'en', signal: controller.signal },
+        );
+
+        expect(viewer).toBeNull();
+    });
+});
