@@ -555,9 +555,21 @@ Append to `src/__tests__/RiteSelect.test.js`, inside the existing top-level `des
             );
         });
 
+        // The class name below MUST contain a backtick, not HTML tags.
+        // `Utils.sanitizeInput()` (Utils.js:122-125) runs its input through
+        // `DOMParser` and returns `textContent`, so tag-like substrings are
+        // STRIPPED BEFORE `validateClassName()` ever sees them:
+        // `'has<bad>chars'` sanitizes to the perfectly valid `'haschars'` and
+        // does not throw at all. `validateClassName()` rejects /[\s"'`<]/
+        // (Utils.js:75), and a backtick survives sanitization, so it is what
+        // actually reaches the validator. This was established empirically in
+        // Task 1 — do not "simplify" it back to an HTML-looking string.
+        //
+        // `'has space'` for the id is correct as written: whitespace survives
+        // sanitization and `validateId()` rejects it.
         it('rejects an invalid class name and an invalid id', () => {
             expect(() =>
-                new RiteSelect('en').wrapper({ class: 'has<bad>chars' }),
+                new RiteSelect('en').wrapper({ class: 'has`backtick' }),
             ).toThrow(/Invalid class name/);
             expect(() =>
                 new RiteSelect('en').wrapper({ id: 'has space' }),
