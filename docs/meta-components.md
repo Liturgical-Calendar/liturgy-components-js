@@ -128,6 +128,27 @@ label text on a themed child — the escape-hatch getters below still work for a
 left untouched (an id, a data attribute, a child the theme never themed at all), but not for
 re-configuring something the theme bag already configured.
 
+**Per-child keys depend on what the child is.** A `<select>`-shaped child (`riteSelect`,
+`calendarSelect`, `localeInput`, `dateControls`) accepts `class`, `labelClass`, `labelText`,
+`wrapperClass` and `wrapper`. `DayViewer`'s `liturgy` child is a `LiturgyOfAnyDay`, which has eight
+further class setters and no label or wrapper of its own, so it accepts `class` plus:
+
+| Key                   | Styles                    |
+| --------------------- | ------------------------- |
+| `titleClass`          | the widget's heading      |
+| `dateClass`           | the date header           |
+| `dateControlsClass`   | the day/month/year row    |
+| `eventsWrapperClass`  | the events container      |
+| `eventClass`          | each event                |
+| `eventGradeClass`     | the liturgical grade text |
+| `eventCommonClass`    | the "common" text         |
+| `eventYearCycleClass` | the year-cycle text       |
+
+Those eight were accepted by the bag but silently discarded before 2.3.0 (issue #43), so a consumer
+theming the event rows or the date header got library defaults with no throw and no warning. They work
+now. **An unrecognised per-child key throws**, naming the key — the same misspelling that produced that
+issue is now reported rather than ignored.
+
 **What a class-string value may contain:** every class string in this bag — flat or per-child —
 reaches the same validator every other class-taking method in this library uses
 (`Utils.validateClassName()`). It accepts any non-empty, space-separated token that contains no

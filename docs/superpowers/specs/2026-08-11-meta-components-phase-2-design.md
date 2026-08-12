@@ -239,6 +239,30 @@ Ships as **2.3.0**: additive, no existing component API changes.
   than an extraction (`usage.js` hand-rolls a URL builder against a PHP-rendered select), and it
   carries its own design questions: the `webcal://` scheme, which parameters belong in a subscription
   URL, and ICS defaults.
+
+  **Issue #42 supplies three of its requirements**, and is answered by this component rather than by
+  widening `CalendarResourcePicker`. The issue asks whether the picker should gain a browse/subscribe
+  mode for `usage.php`'s subscription card, and correctly anticipates that it "is arguably a different
+  component". It is. The picker's three rules are each load-bearing **for a resource id**:
+  `CalendarSelectFilter.NONE` is rejected because a resource must be national or diocesan; the empty
+  option is a disabled placeholder because it is never a valid id; and the rite select is offered only
+  for a diocesan filter because otherwise the Ambrosian rite leaves a `nations` list holding just the
+  rite-level calendar, stranding the user with an unfillable required field.
+
+  A subscription target is a different thing, and the issue's own analysis shows the third rule's
+  rationale dissolving once the second changes: when empty is a _valid, selectable_ choice meaning the
+  rite-level calendar (`/calendar/roman` or `/calendar/ambrosian`), an unfiltered Ambrosian list holds
+  that calendar plus its four dioceses, and nothing is stranded. So `SubscriptionBuilder` needs:
+
+  - an all-calendars scope, offering nations and dioceses in one grouped list;
+  - a **selectable and labelled** empty option carrying the rite-level calendar — subscribing to the
+    General Roman Calendar itself was a deliberate frontend feature;
+  - the rite select offered for that scope, since the stranding argument does not apply.
+
+  Folding these into the picker would put two different jobs behind one component's flags and make its
+  disabled-placeholder invariant conditional, which is what currently makes its rules easy to reason
+  about.
+
 - The `LiturgicalCalendarFrontend` migration. It is now **unblocked** — 2.2.0 published while phase 1
   was being finished — but it belongs in that repository with its own review cycle.
 - Relaxing `Input.setGlobal*` into something scoped. The theme bag supersedes it for meta-components;

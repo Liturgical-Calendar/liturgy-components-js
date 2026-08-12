@@ -189,7 +189,12 @@ export default class DayViewer {
         this.#apiOptions._localeInput.defaultValue(this.#language);
 
         this.#liturgy = new LiturgyOfAnyDay({ locale: this.#locale });
-        const liturgyTheme = resolveChildTheme(theme, 'liturgy');
+        // The `liturgy` role, not the default `select` one: `LiturgyOfAnyDay`
+        // takes eight further class setters that a `<select>` has no notion of,
+        // and the loop below is written to call them. Before issue #43 this asked
+        // for the select-shaped list, so all eight were stripped in transit and
+        // that loop never executed once.
+        const liturgyTheme = resolveChildTheme(theme, 'liturgy', 'liturgy');
         if (Object.hasOwn(liturgyTheme, 'class')) {
             this.#liturgy.class(liturgyTheme.class);
         }

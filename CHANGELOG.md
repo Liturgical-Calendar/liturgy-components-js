@@ -204,6 +204,25 @@ every consumer gets it correctly by construction instead of by careful copying.
   not per **locale**: a locale missing only `DAY` still shows its own translation for `MONTH`, which is
   translated for all 84 locales, rather than reverting the whole viewer to English.
 
+### Fixed
+
+- **`DayViewer`'s eight `LiturgyOfAnyDay` styling keys now reach the widget** ([#43]). The theme
+  resolver's per-child allow-list was written for `<select>`-shaped children and never widened, so
+  `titleClass`, `dateClass`, `dateControlsClass`, `eventsWrapperClass`, `eventClass`,
+  `eventGradeClass`, `eventCommonClass` and `eventYearCycleClass` were stripped in transit. The loop
+  in `DayViewer`'s constructor that names all eight and calls the matching setter was therefore
+  unreachable, and a consumer theming the event rows or the date header got library defaults with no
+  throw and no warning — the reporter only noticed because an end-to-end selector broke. The allow-list
+  is now per role, and `LiturgyOfAnyDay` has its own.
+
+- **An unrecognised per-child theme key now throws, naming it.** Silence is what made the above
+  invisible: the keys passed validation, were discarded, and the markup simply rendered with defaults.
+  A key valid for one role but named on a child of another is still dropped rather than rejected —
+  `assertTheme()` validates a bag without knowing which children a given component has, so it catches a
+  misspelling but not a misplacement.
+
+[#43]: https://github.com/Liturgical-Calendar/liturgy-components-js/issues/43
+
 ### Changed
 
 - **`Utils.validateClassName()` now accepts utility-framework class names**, across every component that

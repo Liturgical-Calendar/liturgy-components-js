@@ -54,18 +54,62 @@ const CLASS_KEY_BY_ROLE = Object.freeze({
 const FLAT_KEYS = Object.freeze(['select', 'input', 'label', 'wrapper']);
 
 /**
- * The keys a per-child override may carry, and which {@link resolveChildTheme}
- * copies through. Every one of them is handed to a child's setter as a string, so
- * every one of them must be a string here.
+ * The keys a per-child override may carry, BY ROLE, and which
+ * {@link resolveChildTheme} copies through. Every one is handed to a child's
+ * setter as a string, so every one must be a string here.
+ *
+ * Keyed by role rather than held as one flat list because the children are not
+ * alike. A `select`- or `input`-shaped child takes a class, a label and a wrapper;
+ * `LiturgyOfAnyDay` takes eight further class setters that mean nothing to a
+ * `<select>`. Issue #43: the list used to be flat and select-shaped, so
+ * `DayViewer`'s constructor — which names all eight `liturgy` keys and calls the
+ * matching setter for each — could never receive them. That loop was unreachable,
+ * and a consumer theming the event rows or the date header got library defaults
+ * with no throw and no warning.
+ *
+ * @type {Readonly<Object<string, Readonly<string[]>>>}
+ */
+const OVERRIDE_KEYS_BY_ROLE = Object.freeze({
+    select: Object.freeze([
+        'class',
+        'labelClass',
+        'labelText',
+        'wrapperClass',
+        'wrapper',
+    ]),
+    input: Object.freeze([
+        'class',
+        'labelClass',
+        'labelText',
+        'wrapperClass',
+        'wrapper',
+    ]),
+    liturgy: Object.freeze([
+        'class',
+        'titleClass',
+        'dateClass',
+        'dateControlsClass',
+        'eventsWrapperClass',
+        'eventClass',
+        'eventGradeClass',
+        'eventCommonClass',
+        'eventYearCycleClass',
+    ]),
+});
+
+/**
+ * Every key any role accepts, for {@link assertTheme}'s typo check.
+ *
+ * A key legitimate for one role but named on a child of another role still passes
+ * this check and is then dropped by {@link resolveChildTheme} — `assertTheme()`
+ * validates a bag without knowing which children a given meta-component has, so it
+ * can catch a misspelling but not a misplacement. The narrower per-role lists above
+ * are what decide what actually reaches a setter.
  *
  * @type {Readonly<string[]>}
  */
-const OVERRIDE_KEYS = Object.freeze([
-    'class',
-    'labelClass',
-    'labelText',
-    'wrapperClass',
-    'wrapper',
+const ALL_OVERRIDE_KEYS = Object.freeze([
+    ...new Set(Object.values(OVERRIDE_KEYS_BY_ROLE).flat()),
 ]);
 
 /**
@@ -117,9 +161,16 @@ export function assertTheme(theme, componentName) {
         // meta-components validate locales and filters here to avoid. An explicit
         // `undefined` is allowed: `resolveChildTheme()` treats it as absent and
         // falls back to the flat default.
-        for (const overrideKey of OVERRIDE_KEYS) {
-            if (false === Object.hasOwn(value, overrideKey)) {
-                continue;
+        for (const overrideKey of Object.keys(value)) {
+            // An unrecognised key is rejected rather than dropped in silence.
+            // Issue #43 was invisible for exactly that reason: eight keys were
+            // accepted by this guard, discarded by `resolveChildTheme()`, and the
+            // markup simply rendered with library defaults — no throw, no warning,
+            // and the reporter only noticed because an end-to-end selector broke.
+            if (false === ALL_OVERRIDE_KEYS.includes(overrideKey)) {
+                throw new Error(
+                    `${componentName}: theme.${key}.${overrideKey} is not a recognised per-child theme key. Valid keys are: ${ALL_OVERRIDE_KEYS.join(', ')}.`,
+                );
             }
             const overrideValue = value[overrideKey];
             if (
@@ -182,13 +233,8 @@ export function resolveChildTheme(theme, childKey, role = 'select') {
     if (null === override || typeof override !== 'object') {
         return resolved;
     }
-    for (const key of [
-        'class',
-        'labelClass',
-        'labelText',
-        'wrapperClass',
-        'wrapper',
-    ]) {
+    for (const key of OVERRIDE_KEYS_BY_ROLE[role] ??
+        OVERRIDE_KEYS_BY_ROLE.select) {
         // `override[key] !== undefined` is load-bearing, not redundant with
         // `Object.hasOwn`: a key explicitly present with value `undefined` must
         // fall back to the flat default below rather than overwrite it with
