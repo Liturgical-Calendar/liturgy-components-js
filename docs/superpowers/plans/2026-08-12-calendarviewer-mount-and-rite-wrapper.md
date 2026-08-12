@@ -415,9 +415,24 @@ Replace the whole body of `wrapper()` (`:1008-1102`) with:
 
 Leave the method's existing JSDoc block in place above it, unchanged.
 
-**Ordering matters:** the `#wrapperSet` guard runs BEFORE `buildWrapperElement()`, and `#wrapperSet` is assigned
-only AFTER it returns — so an invalid bag throws without marking the wrapper as set, exactly as today, where the
-validation threw before any of the three assignments.
+**Ordering matters, and it is a DELIBERATE behaviour change — read this carefully.** The `#wrapperSet` guard runs
+BEFORE `buildWrapperElement()`, and all three of `#wrapperElement`/`#hasWrapper`/`#wrapperSet` are assigned only
+AFTER it returns, so an invalid bag throws leaving the instance exactly as it was.
+
+That is **not** what the old code did, and an earlier draft of this plan claimed wrongly that it was. The old
+`wrapper()` assigned all three immediately after the `as` handling and BEFORE validating `class` and `id`
+(`git show c7b6f3b:src/CalendarSelect/CalendarSelect.js`, around `:1061-1063`). A throw from class or id
+validation therefore left `#wrapperSet === true` and a half-configured element behind, so a caller who caught the
+error and retried with a valid bag hit `"Wrapper has already been set"` about a wrapper that was never
+successfully set.
+
+Ruling (human, recorded in the SDD ledger): the new all-or-nothing behaviour **stands** — the old one is a latent
+bug, and nothing in `src/`, `examples/` or `stories/` depends on it. It is pinned by tests below and announced in
+the 2.4.0 changelog (Task 8).
+
+A second, smaller divergence is accepted on the same grounds: the old code **mutated the caller's options object**
+(writing back `as`, the joined `class`, and the sanitized `id`); `buildWrapperElement()` does not. A caller passing
+a frozen or shared bag would have seen the old mutation throw or leak. It too is pinned below.
 
 - [ ] **Step 3: Verify the characterization suite still passes, unmodified**
 
@@ -1845,6 +1860,12 @@ Two, both deliberate:
 - **`CalendarControls.appendTo()` and `CalendarViewer.appendTo()` reject unknown slot names**, naming
   the offending key, as `ApiExplorer.appendTo()` already did. `{ contorls: '#x' }` previously mounted
   nothing and returned successfully.
+- **A rejected `CalendarSelect.wrapper()` call no longer poisons the instance.** The wrapper bag is now
+  validated in full before anything is assigned, so a call that throws leaves the select exactly as it
+  was and a retry with a valid bag succeeds. Previously the "wrapper has been set" flag was raised
+  before `class` and `id` were validated, so a throw from either left the select permanently unable to
+  accept a wrapper — reporting `"Wrapper has already been set"` about one that never was. Relatedly,
+  the method no longer mutates the options object it is handed.
 ```
 
 - [ ] **Step 6: Bump the version**
