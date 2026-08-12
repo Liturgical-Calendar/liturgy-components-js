@@ -184,4 +184,30 @@ describe('CalendarControls.appendTo', () => {
             controls.appendTo({ controls: '#mount', messages: '#messages' }),
         ).not.toThrow();
     });
+
+    it('accepts a single CSS selector string', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() => controls.appendTo('#mount')).not.toThrow();
+        const mount = document.getElementById('mount');
+        // Controls should have mounted rite select and calendar select
+        const selects = mount.querySelectorAll('select');
+        expect(selects.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('accepts a single HTMLElement', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        const element = document.getElementById('mount');
+        expect(() => controls.appendTo(element)).not.toThrow();
+        // Controls should have mounted rite select and calendar select
+        const selects = element.querySelectorAll('select');
+        expect(selects.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('reports unknown-slot error before missing-controls error', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        // Verify it reports the unknown slot, not the missing controls error
+        expect(() => controls.appendTo({ contorls: '#mount' })).toThrow(
+            /unknown slot name\(s\): contorls/,
+        );
+    });
 });
