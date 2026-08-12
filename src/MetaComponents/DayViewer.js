@@ -53,6 +53,15 @@ export default class DayViewer {
     /** @type {boolean} */
     #disposed = false;
 
+    /**
+     * The initial fetch `mountInto()` performed, already resolved when it
+     * performed none. See the `settled` getter for the contract.
+     *
+     * @type {Promise<void>}
+     * @private
+     */
+    #settled = Promise.resolve();
+
     /** @type {ApiClient|null} */
     #apiClient = null;
 
@@ -375,6 +384,27 @@ export default class DayViewer {
      * @returns {void}
      * @throws {Error} If this viewer has been disposed.
      */
+    /**
+     * Resolves once `mountInto()`'s initial fetch has settled.
+     *
+     * Always resolves with `undefined`, never rejects, and is already resolved
+     * when no initial fetch ran. `CalendarControls#settled` carries the full
+     * contract and the reasoning; this is the same property on the viewer.
+     *
+     * This factory resolves without awaiting the initial fetch — deliberately, so
+     * a caller is handed a working viewer immediately — which is what makes this
+     * property load-bearing here rather than merely convenient.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {Promise<void>} Settles when the initial fetch has finished.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    get settled() {
+        this.#assertUsable();
+        return this.#settled;
+    }
+
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -750,8 +780,10 @@ export default class DayViewer {
             }
             // The rejection is handled here rather than returned, because this
             // factory's promise resolves to the viewer. Callers wanting the fetch
-            // result await `viewer.fetch()` themselves.
-            viewer.fetch().catch((error) => {
+            // RESULT await `viewer.fetch()` themselves; callers wanting to know
+            // when this one finished read `viewer.settled`, which is the promise
+            // captured here — after the `.catch`, so it resolves either way.
+            viewer.#settled = viewer.fetch().catch((error) => {
                 // The guard here used to be `0 === viewer.#errorCallbacks.length`,
                 // which assumed "a callback exists, therefore it will handle this".
                 // That is exactly false for a failure raised before the request goes

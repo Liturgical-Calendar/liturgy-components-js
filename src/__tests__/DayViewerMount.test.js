@@ -157,10 +157,10 @@ describe('DayViewer.mountInto', () => {
             onError: (error) => seen.push(error),
         });
         // mountInto()'s initial fetch is fire-and-forget from the caller's side —
-        // the returned promise resolves to the viewer, not to the fetch outcome —
-        // so its rejection is let settle on a fresh microtask/macrotask turn before
-        // asserting on it.
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        // the returned promise resolves to the viewer, not to the fetch outcome.
+        // `settled` is that fetch's own promise, resolving either way, so this
+        // waits on the thing itself rather than on a timer assumed to outlast it.
+        await viewer.settled;
 
         expect(viewer).toBeInstanceOf(DayViewer);
         expect(seen.length).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ describe('DayViewer.mountInto', () => {
             locale: 'en',
             apiClient,
         });
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await viewer.settled;
 
         expect(viewer).toBeInstanceOf(DayViewer);
         expect(errorSpy).toHaveBeenCalled();
