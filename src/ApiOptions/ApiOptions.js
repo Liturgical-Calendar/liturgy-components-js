@@ -523,7 +523,31 @@ export default class ApiOptions {
                 yearInputElement.dispatchEvent(new Event('change'));
             }
             this.#applyRiteToCalendarPathInput(riteProps.hasNationalTier);
+            // Same rule as the year clamp above, for the same reason. Rebuilding
+            // the locale options CHANGES WHICH LOCALE IS SELECTED —
+            // `setOptionsForCalendarLocales()` calls `replaceChildren()` and lets
+            // the DOM fall to the first option, `resetOptions()` assigns the
+            // default — and neither is a user edit, so neither fires `change` on
+            // its own. `ApiClient` learns the locale ONLY from a `change` listener
+            // on this element (see its `listenTo( apiOptions )`), so without this
+            // dispatch its `Accept-Language` kept whatever the user last chose BY
+            // HAND and diverged from the select permanently: pick French under the
+            // Roman rite, switch to Ambrosian, and the form reads Italian while the
+            // request still asks for French — which that rite cannot serve.
+            //
+            // Conditional, exactly as the year clamp is: a rite change that leaves
+            // the locale alone must not fire a synthetic `change`, because
+            // `ApiClient` treats one as "refetch".
+            //
+            // The calendar-selection path already does this for this very input,
+            // through `#applyCalendarToInputs()`'s `notify` flag. Only the rite
+            // path was missed.
+            const localeInputElement = this.#inputs.localeInput._domElement;
+            const localeBeforeRite = localeInputElement.value;
             this.#applyRiteToLocaleInput(rite);
+            if (localeInputElement.value !== localeBeforeRite) {
+                localeInputElement.dispatchEvent(new Event('change'));
+            }
 
             this.#currentEndpoint.calendarType = null;
             this.#currentEndpoint.calendarId = null;

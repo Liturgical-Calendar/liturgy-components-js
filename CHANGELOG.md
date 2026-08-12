@@ -4,6 +4,22 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.4.1
+
+### Fixed
+
+- **A rite change no longer leaves the locale select and the requested locale disagreeing.** Switching
+  rite rebuilds the locale input's options, which changes which locale is selected — but neither
+  `setOptionsForCalendarLocales()` nor `resetOptions()` is a user edit, so neither fired a `change`
+  event. `ApiClient` learns the locale only from a `change` listener on that input, so its
+  `Accept-Language` kept whatever had last been chosen by hand and diverged from the form for good:
+  pick French under the Roman rite, switch to Ambrosian, and the select read Italian while the request
+  still asked for French — a locale that rite cannot serve, so the calendar came back in another
+  language entirely. `applyRite()` now notifies when, and only when, the rebuild actually changed the
+  selected locale — the same conditional the year clamp beside it already used, and the same
+  notification the calendar-selection path already performed for this input. Measured: no additional
+  HTTP requests per rite change.
+
 ## 2.4.0
 
 `CalendarViewer` gains the public mount path its documentation already described, and `RiteSelect`
