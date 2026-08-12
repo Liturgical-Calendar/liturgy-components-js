@@ -159,6 +159,64 @@ describe('RiteSelect', () => {
             const rs = new RiteSelect('en');
             expect(rs.wrapper({ class: 'x' })).toBe(rs);
         });
+
+        // Deliberate 2.4.0 behaviour change (WrapperOptions extraction): the OLD
+        // `wrapper()` assigned `#wrapperElement`/`#hasWrapper`/`#wrapperSet` right
+        // after handling `as`, BEFORE validating `class`/`id` — so a throw from
+        // class validation left `#wrapperSet === true` behind, and a caller who
+        // caught the error and retried with a valid bag got "Wrapper has already
+        // been set" about a wrapper that never actually existed. The new
+        // `buildWrapperElement()` validates fully before `wrapper()` assigns
+        // anything, so it is all-or-nothing: a throw leaves the instance
+        // untouched and a retry succeeds. Use a backtick to trigger the throw —
+        // `Utils.sanitizeInput()` strips HTML-like substrings before
+        // `validateClassName()` runs, so something like `'has<bad>chars'`
+        // sanitizes to a valid class name and would not throw.
+        it('after an invalid class throws, a retry with a valid bag succeeds (2.4.0 behaviour change)', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect('en');
+            expect(() => rs.wrapper({ class: 'has`backtick' })).toThrow(
+                /Invalid class name/,
+            );
+            const returned = rs.wrapper({ class: 'valid' });
+            expect(returned).toBe(rs);
+            returned.appendTo('#mount');
+            const wrapper = document.querySelector('#mount > div');
+            expect(wrapper).not.toBeNull();
+            expect(wrapper.className).toBe('valid');
+        });
+
+        // Same 2.4.0 behaviour change as above, pinned for the `id` branch.
+        // Whitespace survives `Utils.sanitizeInput()`, so `'has space'` still
+        // throws from `validateId()`.
+        it('after an invalid id throws, a retry with a valid bag succeeds (2.4.0 behaviour change)', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect('en');
+            expect(() => rs.wrapper({ id: 'has space' })).toThrow(/Invalid id/);
+            const returned = rs.wrapper({ id: 'validId' });
+            expect(returned).toBe(rs);
+            returned.appendTo('#mount');
+            expect(document.getElementById('validId')).not.toBeNull();
+        });
+
+        // Deliberate 2.4.0 behaviour change: the OLD `wrapper()` mutated the
+        // caller's `wrapperOptions` object in place (writing back the resolved
+        // `as`, the whitespace-collapsed `class`, and the sanitized `id`). The
+        // new `buildWrapperElement()` only reads the bag and never writes to it,
+        // so a frozen options object no longer throws. This also proves the
+        // whitespace collapsing lands on the ELEMENT's className, not on the
+        // caller's bag.
+        it("does not mutate the caller's wrapper options object (2.4.0 behaviour change)", () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const options = Object.freeze({ class: 'a   b' });
+            const rs = new RiteSelect('en');
+            expect(() => rs.wrapper(options)).not.toThrow();
+            expect(options).toEqual({ class: 'a   b' });
+            rs.appendTo('#mount');
+            expect(document.querySelector('#mount > div').className).toBe(
+                'a b',
+            );
+        });
     });
 });
 
