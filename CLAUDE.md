@@ -63,6 +63,9 @@ liturgy-components-js/
 │   ├── MetaComponents/
 │   │   ├── CalendarResourcePicker.js # RiteSelect + filtered CalendarSelect, bundled
 │   │   ├── DayViewer.js             # Rite, calendar, locale and LiturgyOfAnyDay, bundled
+│   │   ├── CalendarControls.js      # Rite, calendar and ApiOptions, wired, no renderer
+│   │   ├── CalendarViewer.js        # CalendarControls + WebCalendar
+│   │   ├── ApiExplorer.js           # CalendarControls + PathBuilder, never fetches
 │   │   └── Theme.js                 # Internal theme-bag resolver, not exported
 │   ├── __fixtures__/               # Metadata fixtures for the tests
 │   ├── __tests__/                  # Jest unit tests
@@ -253,19 +256,22 @@ each other.
 
 ## Key Components
 
-| Component                | Purpose                                           |
-| ------------------------ | ------------------------------------------------- |
-| `ApiClient`              | Manages API communication, emits events           |
-| `ApiBase`                | One API base: its URL, calendar index and cache   |
-| `ApiClientError`         | Error carrying url, status, statusText and body   |
-| `CalendarSelect`         | Dropdown for selecting calendars                  |
-| `ApiOptions`             | Form controls for API parameters                  |
-| `WebCalendar`            | Renders calendar as HTML table                    |
-| `LiturgyOfTheDay`        | Widget displaying today's liturgy                 |
-| `LiturgyOfAnyDay`        | Widget displaying liturgy for any selected date   |
-| `PathBuilder`            | Builds and displays API request URLs              |
-| `CalendarResourcePicker` | Rite + filtered CalendarSelect, bundled and wired |
-| `DayViewer`              | Complete "liturgy of any day" page in one mount   |
+| Component                | Purpose                                                       |
+| ------------------------ | ------------------------------------------------------------- |
+| `ApiClient`              | Manages API communication, emits events                       |
+| `ApiBase`                | One API base: its URL, calendar index and cache               |
+| `ApiClientError`         | Error carrying url, status, statusText and body               |
+| `CalendarSelect`         | Dropdown for selecting calendars                              |
+| `ApiOptions`             | Form controls for API parameters                              |
+| `WebCalendar`            | Renders calendar as HTML table                                |
+| `LiturgyOfTheDay`        | Widget displaying today's liturgy                             |
+| `LiturgyOfAnyDay`        | Widget displaying liturgy for any selected date               |
+| `PathBuilder`            | Builds and displays API request URLs                          |
+| `CalendarResourcePicker` | Rite + filtered CalendarSelect, bundled and wired             |
+| `DayViewer`              | Complete "liturgy of any day" page in one mount               |
+| `CalendarControls`       | Rite + calendar + `ApiOptions`, wired, no renderer            |
+| `CalendarViewer`         | `CalendarControls` paired with a `WebCalendar`                |
+| `ApiExplorer`            | `CalendarControls` paired with a `PathBuilder`, never fetches |
 
 ### How components take a locale
 
@@ -381,48 +387,81 @@ The following methods are deprecated and will show console warnings:
 
 ## Meta-Components
 
-`CalendarResourcePicker` and `DayViewer` (`src/MetaComponents/`) bundle a fixed, tested wiring of the
-library's existing components behind a single mount call. They exist because several
-`LiturgicalCalendarFrontend` call sites were re-deriving the same wiring by hand — including its
-ordering requirements and its silent-failure traps (see "Rite Wiring" above) — and the library is a
-better place for that logic than every consumer's own code. The library owns wiring, ordering, failure
-behaviour and defaults; it ships nothing framework-specific and takes no position on CSS.
+Five components in `src/MetaComponents/` — `CalendarResourcePicker`, `DayViewer`, `CalendarControls`,
+`CalendarViewer` and `ApiExplorer` — bundle a fixed, tested wiring of the library's existing components
+behind a single mount call. They exist because several `LiturgicalCalendarFrontend` call sites were
+re-deriving the same wiring by hand — including its ordering requirements and its silent-failure traps
+(see "Rite Wiring" above) — and the library is a better place for that logic than every consumer's own
+code. The library owns wiring, ordering, failure behaviour and defaults; it ships nothing
+framework-specific and takes no position on CSS.
+
+`CalendarControls` bundles a `RiteSelect`, a `CalendarSelect` and an `ApiOptions`, wired to one another and
+(via `listenTo()`) to an `ApiClient` — with no renderer. `CalendarViewer` is `CalendarControls` plus a
+`WebCalendar`; `ApiExplorer` is `CalendarControls`' construction plus a `PathBuilder`, with `listenTo()`
+never called so it never fetches. The renderer was kept out of `CalendarControls` itself because a fourth,
+unbundled consumer (`LiturgicalCalendarFrontend`'s FullCalendar-based page) renders with FullCalendar
+instead of `WebCalendar` — bundling `WebCalendar` into the shared wiring would have excluded it.
 
 Full documentation, including worked examples, lives in `docs/meta-components.md` — this section
-summarizes the contract points that a change to either component must not violate.
+summarizes the contract points that a change to any of the five must not violate.
 
-**The theme bag's role vocabulary.** Both components take an optional `theme` option written in HTML
-roles (`select`, `input`, `label`, `wrapper`), never framework names, plus per-child override keys named
-for the component's own public getters (e.g. `riteSelect`, `calendarSelect`). Resolution is per-key and
-most specific first: a per-child override supplies whichever keys it names, and every key it does not
-name falls back to the flat default. `src/MetaComponents/Theme.js` is the shared resolver both components
-call — it is internal and deliberately **not exported** from `src/index.js`, the same as
+**The theme bag's role vocabulary.** All five take an optional `theme` option written in HTML roles
+(`select`, `input`, `label`, `wrapper`), never framework names, plus per-child override keys named for the
+component's own public getters (e.g. `riteSelect`, `calendarSelect`). Resolution is per-key and most
+specific first: a per-child override supplies whichever keys it names, and every key it does not name
+falls back to the flat default. `src/MetaComponents/Theme.js` is the shared resolver every one of them
+calls — it is internal and deliberately **not exported** from `src/index.js`, the same as
 `LocaleValidation.js` and `OptionsValidation.js`.
 
 **`mountInto()` versus the constructor.** Like every component in this library, each meta-component has a
 synchronous constructor — usable when an `ApiBase` is already known to be ready, paired with
 `appendTo(target)` — plus a static async `mountInto(target, options)`, which resolves the target,
-constructs the component, mounts it, and (for `DayViewer`) wires it to an `ApiClient` and performs the
-initial fetch. `appendTo()` returns `undefined`, per the library-wide contract: nothing can be chained off
-it, and its result must never be assigned.
+constructs the component, mounts it, and (for every one of the five except `ApiExplorer`) wires it to an
+`ApiClient` and performs the initial fetch. `appendTo()` returns `undefined`, per the library-wide
+contract: nothing can be chained off it, and its result must never be assigned.
 
-**Reject for programmer error, resolve for runtime failure.** `mountInto()` **rejects** on invalid
-options — an unparseable locale, an unknown filter, a target that matches nothing — because a typo should
-not be silently papered over. It **resolves** on a runtime failure — the API down, metadata unparseable —
-because an empty container is otherwise indistinguishable from "still loading". On a runtime failure,
-`CalendarResourcePicker.mountInto()` renders a disabled, `is-invalid` select carrying `errorText` and
-`dataset.loadFailed = 'true'`, keeping the theme's marker classes so form validation and end-to-end test
-selectors still find the control; `DayViewer.mountInto()` resolves with a mounted, fully working viewer
-and routes the failure to `onError()` (or `console.error` if none was registered).
+**Reject for programmer error, resolve for runtime failure — except where there is no form left to
+resolve with.** `mountInto()` **rejects** on invalid options — an unparseable locale, an unknown filter, a
+target that matches nothing — because a typo should not be silently papered over, on all five components.
+Where they diverge is a runtime failure (the API down, metadata unparseable):
 
-**`dispose()` is incomplete, and the docs say so.** Both components have an idempotent `dispose()` —
+- `CalendarResourcePicker.mountInto()` **resolves** with a disabled, `is-invalid` select carrying
+  `errorText` and `dataset.loadFailed = 'true'`, keeping the theme's marker classes so form validation and
+  end-to-end test selectors still find the control.
+- `DayViewer.mountInto()` **resolves** with a mounted, fully working viewer and routes the failure to
+  `onError()` (or `console.error` if none was registered) — no failure control, because `DayViewer` has no
+  runtime-metadata failure mode of its own beyond the one `CalendarResourcePicker` already covers through
+  its child selects.
+- `CalendarControls.mountInto()`, `CalendarViewer.mountInto()` and `ApiExplorer.mountInto()` **reject**
+  when the metadata cannot be loaded at all, with no failure control. This is deliberate, not an
+  inconsistency to "fix" into agreement with `CalendarResourcePicker`: that picker substitutes for a
+  **single required form field**, where an empty slot is indistinguishable from "still loading" and a
+  disabled stand-in select is a meaningful thing to render in its place. These three bundle a **whole
+  form** — a `RiteSelect` and `CalendarSelect` with no calendars to list are not a smaller working form,
+  they are no form at all, so there is no meaningful partial stand-in and construction is simply left to
+  throw. Do not add a failure control to `CalendarControls`/`CalendarViewer`/`ApiExplorer` to match
+  `CalendarResourcePicker` — the asymmetry is the correct behaviour, not a gap.
+
+A failed initial fetch (as opposed to unloadable metadata) is a separate case and behaves the same way
+across `DayViewer`, `CalendarControls` and `CalendarViewer`: **resolves** with a mounted, working
+component, routing the failure to `onError()`. `CalendarViewer.mountInto()` additionally `await`s that
+dropped fetch promise before resolving — `CalendarControls.mountInto()` and `DayViewer.mountInto()` do
+not, and resolve immediately while the fetch keeps running — because a viewer's whole reason to exist is
+its populated table, and resolving before the fetch's promise chain has run at all would hand back a
+`CalendarViewer` whose table is still empty for a caller who assumed otherwise. See
+`docs/meta-components.md`'s `CalendarViewer` "Reject versus resolve" section for the full reasoning; this
+is a deliberate divergence, not something to reconcile by removing the `await`. `ApiExplorer` never
+fetches, so it has no such case at all.
+
+**`dispose()` is incomplete, and the docs say so.** Every one of the five has an idempotent `dispose()` —
 calling it twice is safe, and further use of a disposed instance throws rather than failing quietly. What
-it releases: every listener the meta-component itself attached, plus (for `DayViewer`) the subscriptions
-made through `onError()`/`listenTo()`, unsubscribed via the `EventEmitter.off()` described above — which
-had to exist before `dispose()` could be written at all. What it does **not** and cannot release: the
-anonymous `change` listeners `ApiClient.listenTo()` attaches internally to the selects it's given, and the
-anonymous `calendarFetched` listener `LiturgyOfAnyDay.listenTo()` attaches to the client's event bus.
-Neither closure is exposed anywhere `dispose()` — or even `ApiClient` itself, for the first case — could
+it releases: every listener the meta-component itself attached, plus (for the four that fetch) the
+subscriptions made through `onError()`/`onCalendarFetched()`/`listenTo()`, unsubscribed via the
+`EventEmitter.off()` described above — which had to exist before `dispose()` could be written at all. What
+it does **not** and cannot release: the anonymous `change` listeners `ApiClient.listenTo()` attaches
+internally to the selects it's given, and the anonymous `calendarFetched` listener
+`LiturgyOfAnyDay.listenTo()`/`WebCalendar.listenTo()` attaches to the client's event bus. Neither closure
+is exposed anywhere `dispose()` — or even `ApiClient` itself, for the first case — could
 reach it. This is a pre-existing gap in the wired components, not something `dispose()` papers over by
 claiming completeness; if a caller keeps a separate reference to the child selects and the client after
 disposing, those selects can still drive fetches through that client.

@@ -886,11 +886,24 @@ method's [reject-versus-resolve section](#reject-versus-resolve-2) for what that
 
 ### Reject versus resolve
 
-Exactly `CalendarControls`' own table — see [that section](#reject-versus-resolve-2) — extended with one
-more invalid-options case: an unknown `webCalendar` key rejects for the same reason an unparseable locale
-or a malformed theme does. `mountInto()` resolves to `null`, without throwing or rejecting, under the same
-condition as `CalendarControls.mountInto()`: a supplied `signal` already aborted, or either slot passed as
-an already-resolved `HTMLElement` that has since left the document.
+Which cases reject and which resolve is exactly `CalendarControls`' own table — see
+[that section](#reject-versus-resolve-2) — extended with one more invalid-options case: an unknown
+`webCalendar` key rejects for the same reason an unparseable locale or a malformed theme does.
+`mountInto()` resolves to `null`, without throwing or rejecting, under the same condition as
+`CalendarControls.mountInto()`: a supplied `signal` already aborted, or either slot passed as an
+already-resolved `HTMLElement` that has since left the document.
+
+**The TIMING is not the same, on purpose.** `CalendarControls.mountInto()` and `DayViewer.mountInto()`
+both drop the initial fetch's promise into `apiClient._discardRequest()` and resolve immediately,
+without waiting for it to settle — the fetch keeps running after the returned promise has already
+resolved. `CalendarViewer.mountInto()` instead `await`s that same dropped promise (wrapped in
+`.catch(() => {})` so a rejection cannot reach this factory) before resolving. This is deliberate, not
+an oversight to reconcile: a viewer's whole reason to exist is the rendered table, so `mountInto()`
+resolving before the fetch's promise chain — including `WebCalendar`'s `calendarFetched` listener and
+the messages render — has even run would hand back a `CalendarViewer` whose table is still empty for a
+caller who assumed otherwise. `CalendarControls` and `DayViewer` have no such renderer to wait for, so
+resolving immediately loses nothing. Do not "fix" `CalendarViewer.mountInto()` to match the other two by
+removing the `await`.
 
 ### `dispose()`
 

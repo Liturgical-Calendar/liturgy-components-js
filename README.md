@@ -39,20 +39,23 @@ ApiClient.init().then((apiClient) => {
 
 ## Components
 
-| Component                                    | Description                                     |
-| -------------------------------------------- | ----------------------------------------------- |
-| [ApiClient][api-client]                      | Manages API communication and data fetching     |
-| [ApiBase][api-client]                        | One API base: its URL, index and cache          |
-| [ApiClientError][api-client]                 | Error carrying url, status, statusText, body    |
-| [CalendarSelect][calendar-select]            | Dropdown for selecting liturgical calendars     |
-| [RiteSelect][rite-select]                    | Dropdown for selecting the liturgical rite      |
-| [ApiOptions][api-options]                    | Form controls for API parameters                |
-| [WebCalendar][web-calendar]                  | Full calendar table with customizable display   |
-| [LiturgyOfTheDay / LiturgyOfAnyDay][liturgy] | Daily liturgy widgets                           |
-| [PathBuilder][path-builder]                  | API URL builder tool                            |
-| [CalendarResourcePicker][meta-components]    | Rite + calendar picker, bundled and wired       |
-| [DayViewer][meta-components]                 | Complete "liturgy of any day" page in one mount |
-| [Utils][utils]                               | Utility functions for locale detection          |
+| Component                                    | Description                                        |
+| -------------------------------------------- | -------------------------------------------------- |
+| [ApiClient][api-client]                      | Manages API communication and data fetching        |
+| [ApiBase][api-client]                        | One API base: its URL, index and cache             |
+| [ApiClientError][api-client]                 | Error carrying url, status, statusText, body       |
+| [CalendarSelect][calendar-select]            | Dropdown for selecting liturgical calendars        |
+| [RiteSelect][rite-select]                    | Dropdown for selecting the liturgical rite         |
+| [ApiOptions][api-options]                    | Form controls for API parameters                   |
+| [WebCalendar][web-calendar]                  | Full calendar table with customizable display      |
+| [LiturgyOfTheDay / LiturgyOfAnyDay][liturgy] | Daily liturgy widgets                              |
+| [PathBuilder][path-builder]                  | API URL builder tool                               |
+| [CalendarResourcePicker][meta-components]    | Rite + calendar picker, bundled and wired          |
+| [DayViewer][meta-components]                 | Complete "liturgy of any day" page in one mount    |
+| [CalendarControls][meta-components]          | Rite + calendar + `ApiOptions`, wired, no renderer |
+| [CalendarViewer][meta-components]            | `CalendarControls` paired with a `WebCalendar`     |
+| [ApiExplorer][meta-components]               | `CalendarControls` paired with a `PathBuilder`     |
+| [Utils][utils]                               | Utility functions for locale detection             |
 
 [api-client]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/api-client.md
 [calendar-select]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/calendar-select.md
@@ -75,8 +78,16 @@ mount call, and expose the wired children publicly for anything a theme bag does
 - **`DayViewer`** — a complete "liturgy of any day" page (rite, calendar, locale and the
   `LiturgyOfAnyDay` widget) bundled into one mount, correctly wired so a rite change actually reaches
   the API request.
+- **`CalendarControls`** — a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` bundled into one mount
+  and wired to an `ApiClient`, with no renderer of its own. `CalendarViewer` and `ApiExplorer` are both
+  built on it; a fourth, unbundled consumer renders with FullCalendar instead of `WebCalendar`, which is
+  why the renderer was kept out of this class rather than folded in.
+- **`CalendarViewer`** — `CalendarControls` paired with a `WebCalendar`, the whole calendar-table example
+  page in one mount call.
+- **`ApiExplorer`** — `CalendarControls` paired with a `PathBuilder`, with fetching turned off, for a page
+  whose only job is building and previewing an API request URL.
 
-Both take a synchronous constructor plus a static async `mountInto()`, and a `theme` bag written in
+All five take a synchronous constructor plus a static async `mountInto()`, and a `theme` bag written in
 HTML roles (`select`, `input`, `label`, `wrapper`) rather than framework class names — the library ships
 no framework-specific CSS. See [the meta-components documentation][meta-components] for the full
 contract, including the theme bag's resolution rules and the reject/resolve behaviour of `mountInto()`.
@@ -170,6 +181,9 @@ export {
     PathBuilder,
     CalendarResourcePicker,
     DayViewer,
+    CalendarControls,
+    CalendarViewer,
+    ApiExplorer,
     Input,
     Utils,
 
