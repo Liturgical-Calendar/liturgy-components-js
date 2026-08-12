@@ -234,4 +234,72 @@ describe('YearInput minimum', () => {
         yi.min(1970);
         expect(yi._domElement.min).toBe('1970');
     });
+
+    describe('constructor options bag', () => {
+        // Until 2.4.0 `label` and `wrapper` were accepted by the bag and then
+        // silently dropped: `normalizeComponentOptions()` rejects no unknown keys,
+        // and the constructor simply never read them. `CalendarSelect` honours both,
+        // and the two selects are documented as interchangeable here, so the bag
+        // form on a rite select failed silently.
+        it('honours a `wrapper` option, as CalendarSelect does', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect({
+                locale: 'en',
+                wrapper: { as: 'div', class: 'col col-md-2' },
+            });
+            rs.appendTo('#mount');
+
+            const wrapper = document.querySelector('#mount > div');
+            expect(wrapper).not.toBeNull();
+            expect(wrapper.className).toBe('col col-md-2');
+            expect(rs._domElement.parentElement).toBe(wrapper);
+        });
+
+        it('honours a `label` option, as CalendarSelect does', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect({
+                locale: 'en',
+                label: { text: 'Rite', class: 'form-label' },
+            });
+            rs.appendTo('#mount');
+
+            const label = document.querySelector('#mount label');
+            expect(label).not.toBeNull();
+            expect(label.textContent).toBe('Rite');
+            expect(label.className).toBe('form-label');
+        });
+
+        it('places the label inside the wrapper when both are given', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect({
+                locale: 'en',
+                label: { text: 'Rite' },
+                wrapper: { class: 'col' },
+            });
+            rs.appendTo('#mount');
+
+            const wrapper = document.querySelector('#mount > div.col');
+            expect(rs._domElement.parentElement).toBe(wrapper);
+            expect(rs._domElement.previousElementSibling.tagName).toBe('LABEL');
+        });
+
+        // The bag must not swallow a bad value: it forwards to the same method a
+        // caller would have called directly, so it throws the same error.
+        it('propagates an invalid wrapper value from the bag', () => {
+            expect(
+                () => new RiteSelect({ locale: 'en', wrapper: { as: 'span' } }),
+            ).toThrow(/must be one of `div` or `td`/);
+        });
+
+        it('leaves the select unwrapped and unlabelled when neither is given', () => {
+            document.body.innerHTML = '<div id="mount"></div>';
+            const rs = new RiteSelect({ locale: 'en' });
+            rs.appendTo('#mount');
+
+            expect(rs._domElement.parentElement).toBe(
+                document.getElementById('mount'),
+            );
+            expect(document.querySelector('#mount label')).toBeNull();
+        });
+    });
 });

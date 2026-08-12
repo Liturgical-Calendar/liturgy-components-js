@@ -31,6 +31,19 @@ reached the meta-components' theme bag, whose `wrapper` role was resolved for th
 then silently discarded by `CalendarResourcePicker`, `DayViewer` and `CalendarControls` alike,
 because there was no method to pass it to.
 
+### Fixed
+
+- **`CalendarViewer.mountInto()`'s initial fetch now reports pre-request failures to `onError()`.**
+  A failure raised before the request goes out — an unserviceable rite, an unusable locale — emits no
+  `calendarFetchFailed`, so routing the dropped promise through `ApiClient#_discardRequest` could never
+  reach an `onError()` callback. 2.3.0 fixed exactly this for `CalendarControls` and `DayViewer` and
+  missed `CalendarViewer`, which kept the old seam. It now uses the same deduplicated delivery: the
+  callbacks are tried first, and the console fallback runs only if nothing received the error.
+- **`new RiteSelect({ label, wrapper })` honours both options.** The constructor accepted them and then
+  silently dropped them, because nothing read them — so the bag form worked on `CalendarSelect` and
+  quietly did nothing on `RiteSelect`. Both are now forwarded to the corresponding method, `label`
+  first, as `CalendarSelect`'s constructor does.
+
 ### Behaviour changes
 
 Four, all deliberate:

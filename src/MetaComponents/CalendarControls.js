@@ -578,6 +578,28 @@ export default class CalendarControls {
     }
 
     /**
+     * Internal seam onto {@link CalendarControls##deliverError}, for a composing
+     * class whose own `mountInto()` drops an initial fetch.
+     *
+     * `CalendarViewer` holds a `CalendarControls` and forwards `onError()` to it,
+     * so the callbacks live in THIS instance's `#errorCallbacks` — which a private
+     * field puts out of that class' reach. Without this seam its factory had to
+     * fall back to `apiClient._discardRequest()`, and that is exactly the bug #43
+     * closed here: `_discardRequest` logs what the event bus never delivered, but
+     * it cannot reach `onError()`, and a failure raised BEFORE the request goes out
+     * never reaches the bus at all — so `onError()` silently missed that whole class
+     * of failure. `_`-prefixed by this codebase's convention for internal-but-reachable
+     * members (`_domElement`, `_discardRequest`); not part of the public API.
+     *
+     * @param {Error} error - The error to deliver.
+     * @returns {boolean} `true` if a callback received it (or already had),
+     *   `false` if nothing is subscribed and the caller should log instead.
+     */
+    _deliverError(error) {
+        return this.#deliverError(error);
+    }
+
+    /**
      * Registers `#renderMessages()` on `calendarFetched`, once a client exists
      * and a messages slot was named.
      *

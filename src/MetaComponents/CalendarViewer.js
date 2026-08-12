@@ -13,9 +13,6 @@
 
 import CalendarControls from './CalendarControls.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
-// Imported for the `ApiClient` JSDoc type reference in `listenTo()` below;
-// not otherwise used as a value in this file.
-import ApiClient from '../ApiClient/ApiClient.js';
 import {
     normalizeComponentOptions,
     assertPlainOptions,
@@ -235,7 +232,11 @@ export default class CalendarViewer {
      * know that and reproduce it; this method is what removes that trap, the
      * same way `CalendarControls.listenTo()` removes the rite's two-wire trap.
      *
-     * @param {ApiClient} apiClient - The client to drive.
+     * @param {import('../ApiClient/ApiClient.js').default} apiClient - The client to drive.
+     *   Written as an inline `import(...)` type rather than a top-level import: this
+     *   file needs `ApiClient` only as a TYPE, and a real import would make it a
+     *   runtime module dependency for nothing. `CalendarControls` and `DayViewer`
+     *   import it properly because they also use it as a value.
      * @returns {CalendarViewer} This instance.
      * @throws {Error} If this viewer has been disposed, or if the controls are
      *   already wired to a client.
@@ -435,8 +436,8 @@ export default class CalendarViewer {
      * `EventEmitter.emit()` is a synchronous `forEach`; `WebCalendar`'s listener
      * throws on a malformed or empty `litcal` (see `WebCalendar.js`), which would
      * otherwise abort the iteration before a listener registered AFTER it ever
-     * ran. Registering the controls first means that throw — routed to
-     * `apiClient._discardRequest()` below, exactly as `CalendarControls.mountInto()`
+     * ran. Registering the controls first means that throw — routed to the
+     * controls' own error delivery below, exactly as `CalendarControls.mountInto()`
      * routes its own dropped initial fetch — can never suppress the messages
      * render; it can only ever affect listeners registered after `WebCalendar`'s
      * own, and none are.
@@ -456,11 +457,12 @@ export default class CalendarViewer {
      * halves (re-validating and re-resolving `calendar` is harmless and cheap;
      * see `#assertSlots()`'s own doc comment), followed by this class' own
      * public `listenTo()`/`fetch()`/`onError()` to wire the client and perform
-     * the initial fetch. `apiClient._discardRequest()` is called exactly once,
-     * on `fetch()`'s own promise: `fetch()` itself never routes through it (a
-     * caller holding the promise must be able to handle it), so a second
-     * discard or catch layered on top here would be exactly the duplicate
-     * `CalendarControls.fetch()`'s own doc comment warns against.
+     * the initial fetch. That fetch's rejection is routed through the controls'
+     * own deduplicated error delivery — NOT through `apiClient._discardRequest()`,
+     * which this factory used to call and which cannot reach `onError()`; see the
+     * comment at the call site for the full reasoning. `fetch()` itself never
+     * routes through either path, because a caller holding that promise must be
+     * able to handle it, so nothing is ever reported twice.
      *
      * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
@@ -524,19 +526,33 @@ export default class CalendarViewer {
                 viewer.onError(onError);
             }
             if (false !== initialFetch) {
-                // `_discardRequest` is what CalendarControls.mountInto() itself
-                // uses for this exact promise, and it is called exactly once
-                // here: `fetch()` never routes through it, so a second discard
-                // would be the duplicate `CalendarControls.fetch()`'s own doc
-                // comment warns against. The `.catch(() => {})` below is NOT a
-                // second discard — it is an independent subscriber on the SAME
-                // promise, added only so this factory can `await` the request's
-                // settlement before resolving, rather than resolving while the
-                // WebCalendar listener's throw on an empty `litcal` and the
-                // messages render that must precede it are still pending.
-                const fetchPromise = viewer.fetch();
-                apiClient._discardRequest(fetchPromise);
-                await fetchPromise.catch(() => {});
+                // Routed through the controls' own error delivery, NOT through
+                // `apiClient._discardRequest()` which this used to call. That seam
+                // logs whatever the event bus never delivered — correct for a
+                // dropped promise — but it cannot reach `onError()`, and a failure
+                // raised BEFORE the request goes out never reaches the bus either,
+                // so `onError()` silently missed that whole class of failure. This
+                // is the same defect #43 closed in `CalendarControls.mountInto()`
+                // and `DayViewer`; `CalendarViewer` was missed at the time and kept
+                // the old seam, along with a comment claiming `CalendarControls`
+                // still used it, which had stopped being true.
+                //
+                // `_deliverError()` tries the callbacks and reports whether any
+                // received the error; only when nothing did does this fall back to
+                // the console, so a failure is never silent and never double-reported.
+                //
+                // The `await` is retained deliberately and is not a second discard:
+                // a viewer's reason to exist is its populated table, so this factory
+                // must not resolve while the request — and, on an empty `litcal`,
+                // the WebCalendar listener's throw and the messages render that must
+                // precede it — are still pending.
+                await viewer.fetch().catch((error) => {
+                    if (false === viewer.#controls._deliverError(error)) {
+                        console.error(
+                            `CalendarViewer: could not load the calendar: ${error.message}`,
+                        );
+                    }
+                });
             }
         }
 

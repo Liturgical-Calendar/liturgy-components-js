@@ -39,13 +39,17 @@ export default class RiteSelect {
      * @param {string} [options.id] The id attribute for the select element.
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
+     * @param {object} [options.label] Label options, forwarded to {@link RiteSelect#label}.
+     * @param {?object} [options.wrapper] Wrapper options, forwarded to {@link RiteSelect#wrapper}.
      * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `label` or `wrapper` carries an invalid value; the same errors
+     *         the corresponding method throws when called directly.
      */
     constructor(options = 'en') {
         options = normalizeComponentOptions(options, 'RiteSelect');
 
-        const { locale: inputLocale, id, name } = options;
+        const { locale: inputLocale, id, name, label, wrapper } = options;
         if (inputLocale !== undefined && inputLocale !== null) {
             this.#locale = canonicalizeLocale(inputLocale, 'RiteSelect');
         }
@@ -56,8 +60,12 @@ export default class RiteSelect {
         this.#domElement.innerHTML = Object.values(Rite)
             .map((rite) => {
                 const key = 'RITE_' + rite.toUpperCase();
-                const label = Messages[language]?.[key] ?? Messages['en'][key];
-                return `<option value="${rite}">${label}</option>`;
+                // Not `label`: that name now belongs to the destructured option
+                // below. The shadowing was harmless while nothing outside this
+                // callback used it, and stops being obvious the moment something does.
+                const optionLabel =
+                    Messages[language]?.[key] ?? Messages['en'][key];
+                return `<option value="${rite}">${optionLabel}</option>`;
             })
             .join('');
         this.#domElement.value = Rite.ROMAN;
@@ -70,6 +78,18 @@ export default class RiteSelect {
         }
         if (name) {
             this.name(name);
+        }
+        // `label` before `wrapper`, mirroring `CalendarSelect`'s constructor. Both
+        // were silently DROPPED here until 2.4.0 — the bag accepted them, because
+        // `normalizeComponentOptions()` rejects no unknown keys, and then nothing
+        // read them. `CalendarSelect` has honoured both since it gained them, and
+        // the two selects are documented as interchangeable in this respect, so a
+        // caller reaching for the bag form on a rite select got silence.
+        if (label) {
+            this.label(label);
+        }
+        if (wrapper) {
+            this.wrapper(wrapper);
         }
     }
 

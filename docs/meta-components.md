@@ -906,7 +906,8 @@ As `CalendarControls`, plus:
 
 ### Public members
 
-Every member below throws once this viewer has been disposed — see [`dispose()`](#dispose-3).
+Every member below except `dispose()` throws once this viewer has been disposed. `dispose()` itself is
+idempotent — calling it a second time is safe and does nothing. See [`dispose()`](#dispose-3).
 
 | Member                  | Returns            | Description                                                                 |
 | ----------------------- | ------------------ | --------------------------------------------------------------------------- |

@@ -180,7 +180,13 @@ describe('CalendarSelect.wrapper() — characterization', () => {
         expect(() => select().wrapper({ class: 42 })).toThrow(
             'Invalid type for wrapper class, must be of type string but found type: number',
         );
-        expect(() => select().wrapper({ class: 'has<bad>chars' })).toThrow(
+        // A BACKTICK, not HTML tags. `Utils.sanitizeInput()` (Utils.js:122-125)
+        // parses its input through `DOMParser` and returns `textContent`, so
+        // `'has<bad>chars'` sanitizes to the perfectly valid `'haschars'` and does
+        // not throw at all. `validateClassName()` rejects /[\s"'`<]/ (Utils.js:75),
+        // and a backtick survives sanitization, so it is what actually reaches the
+        // validator. Established empirically while implementing this task.
+        expect(() => select().wrapper({ class: 'has`backtick' })).toThrow(
             /Invalid class name/,
         );
     });

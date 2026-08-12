@@ -414,9 +414,15 @@ calls — it is internal and deliberately **not exported** from `src/index.js`, 
 `LocaleValidation.js` and `OptionsValidation.js`.
 
 **`mountInto()` versus the constructor.** Like every component in this library, each meta-component has a
-synchronous constructor — usable when an `ApiBase` is already known to be ready, paired with
-`appendTo(target)` — plus a static async `mountInto(target, options)`, which resolves the target,
-constructs the component and mounts it. Three of the five then wire an `ApiClient` and perform an
+synchronous constructor — usable when an `ApiBase` is already known to be ready, paired with an
+`appendTo()` — plus a static async `mountInto()`, which resolves the target(s), constructs the component
+and mounts it. **What those two take differs by component, and the difference is load-bearing.**
+`CalendarResourcePicker` and `DayViewer` take a single target. `CalendarControls` takes either a single
+target or a `{ controls, messages }` slots object. `CalendarViewer` and `ApiExplorer` take a slots object
+**only** — `{ controls, calendar, messages? }` and `{ pathBuilder, basePath?, allPaths?, riteSelect?,
+builder? }` respectively — and reject a bare target, because each has more than one mandatory mount and a
+lone target would have to pick one of them silently. All of them reject an unknown slot name, naming it.
+Three of the five then wire an `ApiClient` and perform an
 initial calendar fetch: `CalendarControls`, `CalendarViewer` and `DayViewer`. `CalendarResourcePicker`
 never fetches at all — it is a form field, and has no `listenTo()` — and `ApiExplorer` deliberately
 does not, because it composes request URLs rather than issuing them. `appendTo()` returns `undefined`, per the library-wide
