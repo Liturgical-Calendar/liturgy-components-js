@@ -532,6 +532,21 @@ fetches — the same asymmetry, on the same grounds, as their reject/resolve beh
 can read it; do not remove it there on that account, since a hand-constructed viewer still has one and
 callers should not need to know which construction path produced the instance.
 
+**`wrapper` means a CLASS flat and a TYPE per-child, and `resolveWrapperBag()` is the only place that
+reconciles them.** `resolveChildTheme()` maps the flat `theme.wrapper` onto `wrapperClass`; a per-child
+`wrapper` names the element type (`OVERRIDE_KEYS_BY_ROLE` accepts it for the `select` and `input` roles).
+Either alone is a complete instruction. Every meta-component used to gate its `wrapper()` call on
+`wrapperClass` alone across six near-identical call sites, so a type-only theme was accepted by the
+resolver, carried all the way to the call site and dropped there in silence — which is exactly how a rule
+ends up honoured for some children and not others. `Theme.js`'s `resolveWrapperBag()` now returns the
+`{ as, class }` bag or `null`, and all six sites call it; do not re-inline the check. It omits `class`
+entirely rather than passing `undefined`, because `Input.wrapper()` rejects a non-string class **and**
+treats a class named in the bag as final, closing `wrapperClass()` afterwards.
+
+`DayViewer`'s `dateControls` block is deliberately not routed through it: that path feeds a config bag to
+`LiturgyOfAnyDay`'s `dayInputConfig()`/`monthInputConfig()`/`yearInputConfig()`, which call `wrapper()` and
+`wrapperClass()` separately, and already handles both keys.
+
 **`dispose()` is incomplete, and the docs say so.** Every one of the five has an idempotent `dispose()` —
 calling it twice is safe, and further use of a disposed instance throws rather than failing quietly. What
 it releases: every listener the meta-component itself attached, plus (for the four that fetch) the

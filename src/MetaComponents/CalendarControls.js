@@ -25,7 +25,7 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
-import { assertTheme, resolveChildTheme } from './Theme.js';
+import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
 
 /**
  * The filters `ApiOptions.filter()` accepts, validated here by name so a typo
@@ -166,8 +166,9 @@ export default class CalendarControls {
             }
             this.#riteSelect.label(labelOptions);
         }
-        if (Object.hasOwn(riteTheme, 'wrapperClass')) {
-            this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
+        const riteWrapper = resolveWrapperBag(riteTheme);
+        if (null !== riteWrapper) {
+            this.#riteSelect.wrapper(riteWrapper);
         }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');
@@ -200,10 +201,9 @@ export default class CalendarControls {
                   Messages['en']['SELECT_A_CALENDAR']);
             this.#calendarSelect.label(labelOptions);
         }
-        if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
-            this.#calendarSelect.wrapper({
-                class: calendarTheme.wrapperClass,
-            });
+        const calendarWrapper = resolveWrapperBag(calendarTheme);
+        if (null !== calendarWrapper) {
+            this.#calendarSelect.wrapper(calendarWrapper);
         }
 
         // `?? ApiOptionsFilter.ALL_CALENDARS` would default `undefined` AND

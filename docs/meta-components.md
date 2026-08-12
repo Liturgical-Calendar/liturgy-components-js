@@ -131,7 +131,24 @@ re-configuring something the theme bag already configured.
 
 **Per-child keys depend on what the child is.** A `<select>`-shaped child (`riteSelect`,
 `calendarSelect`, `localeInput`, `dateControls`) accepts `class`, `labelClass`, `labelText`,
-`wrapperClass` and `wrapper`. `DayViewer`'s `liturgy` child is a `LiturgyOfAnyDay`, which has eight
+`wrapperClass` and `wrapper`.
+
+**`wrapper` means two different things depending on where it appears, and both are deliberate.** As a
+**flat** key, `theme.wrapper` is a wrapper **class** applied to every child that can take a wrapper. As a
+**per-child** key, `wrapper` is the wrapper's element **type** — `'div'` (the default) or `'td'` — and
+pairs with that child's own `wrapperClass`:
+
+```javascript
+{
+    wrapper: 'col-md-3',                                    // flat: a CLASS, for every child
+    calendarSelect: { wrapper: 'td', wrapperClass: 'p-2' }, // per-child: a TYPE, plus its own class
+}
+```
+
+Either per-child key alone is a complete instruction: `{ calendarSelect: { wrapper: 'td' } }` wraps in a
+`<td>` with no class, and `{ calendarSelect: { wrapperClass: 'p-2' } }` wraps in a `<div>` with that class.
+Before 2.6.1 the type-only form was accepted by the resolver and then dropped in silence at every call
+site, so it produced no wrapper, no throw and no warning. `DayViewer`'s `liturgy` child is a `LiturgyOfAnyDay`, which has eight
 further class setters and no label or wrapper of its own, so it accepts `class` plus:
 
 | Key                   | Styles                    |
