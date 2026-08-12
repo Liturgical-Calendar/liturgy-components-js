@@ -101,4 +101,22 @@ describe('CalendarControls messages slot', () => {
         expect(rows.length).toBe(1);
         expect(rows[0].textContent).toContain('only');
     });
+    // Review of PR #44: `appendTo()` only ever ASSIGNED `#messagesMount`, never
+    // cleared it, so re-mounting to a target that omits `messages` left the
+    // permanent renderer subscription writing into a container the caller had
+    // stopped naming. Only `dispose()` ever emptied it.
+    it('stops rendering into the previous mount when remounted without the slot', async () => {
+        captureRequests(['a message']);
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo({ controls: '#mount', messages: '#messages' });
+        controls.listenTo(apiClient);
+        await controls.fetch();
+        expect(document.querySelectorAll('#messages tr').length).toBe(1);
+
+        controls.appendTo('#mount');
+        ApiClient.clearCache();
+        await controls.fetch();
+        expect(document.querySelectorAll('#messages tr').length).toBe(0);
+    });
 });

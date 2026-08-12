@@ -372,12 +372,28 @@ export default class CalendarControls {
         this.#selectedLocale = this.#matchLocale();
         this.#apiOptions._localeInput._domElement.value = this.#selectedLocale;
 
-        if (Object.hasOwn(slots, 'messages')) {
-            this.#messagesMount = CalendarControls.#requireElement(
-                slots.messages,
-                'messages',
-                caller,
-            );
+        // The messages mount is reassigned on EVERY call, not only when the slot
+        // is named. Re-mounting to a target that omits `messages` — or names a
+        // different one — must stop rendering into the previous element: the
+        // renderer subscription is permanent once registered, so leaving
+        // `#messagesMount` pointing at the old node meant a later `calendarFetched`
+        // kept writing into a container the caller had stopped naming, and only
+        // `dispose()` ever cleared it.
+        const previousMessagesMount = this.#messagesMount;
+        this.#messagesMount = Object.hasOwn(slots, 'messages')
+            ? CalendarControls.#requireElement(
+                  slots.messages,
+                  'messages',
+                  caller,
+              )
+            : null;
+        if (
+            null !== previousMessagesMount &&
+            previousMessagesMount !== this.#messagesMount
+        ) {
+            previousMessagesMount.replaceChildren();
+        }
+        if (null !== this.#messagesMount) {
             this.#registerMessagesRenderer();
         }
     }

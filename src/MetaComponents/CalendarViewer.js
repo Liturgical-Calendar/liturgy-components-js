@@ -223,6 +223,11 @@ export default class CalendarViewer {
             return;
         }
         this.#controls.dispose();
+        // Ordered before the mount is emptied: `WebCalendar.dispose()` unsubscribes
+        // its `calendarFetched` listener, without which emptying the mount was
+        // undone by the very next fetch — measured, before this existed, as a
+        // disposed viewer's calendar reappearing.
+        this.#webCalendar.dispose();
         this.#calendarMount?.replaceChildren();
         this.#calendarMount = null;
         this.#disposed = true;
@@ -306,6 +311,20 @@ export default class CalendarViewer {
             return null;
         }
 
+        // BOTH required targets are resolved before EITHER is mounted. Resolving
+        // `calendar` after mounting the controls meant an unusable `calendar`
+        // selector threw with the controls already in the document — a partial
+        // mount the caller never asked for and cannot easily undo, since the
+        // rejected promise hands back no viewer to `dispose()`. Measured before
+        // this change: a bad `calendar` target left ten control elements mounted.
+        const calendarElement = CalendarViewer.#requireElement(
+            slots.calendar,
+            'calendar',
+        );
+        if (true === signal?.aborted || false === calendarElement.isConnected) {
+            return null;
+        }
+
         const controlsSlots = { controls: slots.controls };
         if (Object.hasOwn(slots, 'messages')) {
             controlsSlots.messages = slots.messages;
@@ -315,10 +334,6 @@ export default class CalendarViewer {
         // class the caller of THIS factory never directly touched.
         viewer.#controls.appendTo(controlsSlots, 'CalendarViewer.mountInto');
 
-        const calendarElement = CalendarViewer.#requireElement(
-            slots.calendar,
-            'calendar',
-        );
         viewer.#calendarMount = calendarElement;
         viewer.#webCalendar.appendTo(calendarElement);
 

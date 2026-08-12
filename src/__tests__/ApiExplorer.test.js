@@ -203,4 +203,39 @@ describe('ApiExplorer', () => {
         explorer.dispose();
         expect(() => explorer.controls).toThrow(/disposed/);
     });
+    // Review of PR #44: only the post-dispose throw was covered. `dispose()` also
+    // has to empty every slot it mounted into — there are five, more than any
+    // other component in this family — and be idempotent.
+    it('empties all five mount slots on dispose', async () => {
+        const explorer = await mountExplorer();
+        for (const id of [
+            'pathBuilder',
+            'basePath',
+            'allPaths',
+            'rite',
+            'builder',
+        ]) {
+            expect(document.getElementById(id).children.length).toBeGreaterThan(
+                0,
+            );
+        }
+
+        explorer.dispose();
+
+        for (const id of [
+            'pathBuilder',
+            'basePath',
+            'allPaths',
+            'rite',
+            'builder',
+        ]) {
+            expect(document.getElementById(id).children.length).toBe(0);
+        }
+    });
+
+    it('is idempotent', async () => {
+        const explorer = await mountExplorer();
+        explorer.dispose();
+        expect(() => explorer.dispose()).not.toThrow();
+    });
 });

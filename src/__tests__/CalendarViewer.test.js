@@ -257,4 +257,52 @@ describe('CalendarViewer', () => {
             ),
         ).rejects.toThrow(/CalendarViewer\.mountInto: Element not found/);
     });
+    // Review of PR #44: `mountInto()` resolved `calendar` only AFTER mounting the
+    // controls, so an unusable `calendar` selector threw with the controls already
+    // in the document — a partial mount the caller cannot undo, since the rejected
+    // promise hands back no viewer to `dispose()`. Measured before the fix: ten
+    // control elements left mounted.
+    it('mounts nothing when the calendar target is invalid', async () => {
+        captureRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            CalendarViewer.mountInto(
+                { controls: '#controls', calendar: '#nope' },
+                { locale: 'en', apiClient },
+            ),
+        ).rejects.toThrow(/calendar/);
+        expect(document.getElementById('controls').children.length).toBe(0);
+    });
+
+    // Review of PR #44: emptying the mount was undone by the very next fetch,
+    // because `WebCalendar.listenTo()` had attached an anonymous `calendarFetched`
+    // listener that nothing could unsubscribe. `WebCalendar.dispose()` now exists
+    // for exactly this, and `CalendarViewer.dispose()` calls it.
+    it('stays empty when a fetch lands after dispose', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: true,
+                status: 200,
+                headers: { get: () => 'application/json' },
+                json: () => Promise.resolve(NON_EMPTY_CALENDAR_DATA),
+            }),
+        );
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = await CalendarViewer.mountInto(
+            { controls: '#controls', calendar: '#calendar' },
+            { locale: 'en', apiClient },
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(
+            document.getElementById('calendar').children.length,
+        ).toBeGreaterThan(0);
+
+        viewer.dispose();
+        expect(document.getElementById('calendar').children.length).toBe(0);
+
+        ApiClient.clearCache();
+        await apiClient.fetchCalendar('en').catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(document.getElementById('calendar').children.length).toBe(0);
+    });
 });
