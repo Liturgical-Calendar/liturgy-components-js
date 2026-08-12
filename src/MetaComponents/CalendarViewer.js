@@ -13,6 +13,9 @@
 
 import CalendarControls from './CalendarControls.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
+// Imported for the `ApiClient` JSDoc type reference in `listenTo()` below;
+// not otherwise used as a value in this file.
+import ApiClient from '../ApiClient/ApiClient.js';
 import {
     normalizeComponentOptions,
     assertPlainOptions,
@@ -57,6 +60,17 @@ const WEB_CALENDAR_KEYS = Object.freeze([
     'latinInterface',
     'locale',
 ]);
+
+/**
+ * The slot names `appendTo()` accepts.
+ *
+ * `controls` and `calendar` are both required — a viewer has two mandatory
+ * mounts. `messages` is optional and is forwarded to `CalendarControls`, which
+ * owns the renderer.
+ *
+ * @type {Readonly<string[]>}
+ */
+const SLOT_NAMES = Object.freeze(['controls', 'calendar', 'messages']);
 
 export default class CalendarViewer {
     /** @type {CalendarControls} */
@@ -156,26 +170,127 @@ export default class CalendarViewer {
     }
 
     /**
+     * Mounts both halves: the controls into `slots.controls`, the calendar into
+     * `slots.calendar`, and — when named — the messages table into
+     * `slots.messages`, which `CalendarControls` renders.
+     *
+     * **Both required targets are resolved before either is mounted.** Resolving
+     * `calendar` after mounting the controls meant an unusable `calendar`
+     * selector threw with the controls already in the document — a partial mount
+     * the caller never asked for and, from `mountInto()`, cannot easily undo,
+     * since the rejected promise hands back no viewer to `dispose()`.
+     *
+     * Unlike `CalendarControls.appendTo()`, this does NOT accept a single bare
+     * target. A viewer has two mandatory mounts, and a lone target would have to
+     * choose one of them silently.
+     *
+     * Callable more than once; the children are moved rather than copied.
+     *
+     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {string} [caller='CalendarViewer.appendTo'] - Internal only: the
+     *   `Class.method` prefix to report in a thrown message. `mountInto()`
+     *   passes its own name so a bad target is reported under the entry point
+     *   the caller actually used.
+     * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
+     * @throws {Error} If `slots` is not an object, names an unknown slot, omits
+     *   `controls` or `calendar`, or names a target matching nothing.
+     */
+    appendTo(slots, caller = 'CalendarViewer.appendTo') {
+        this.#assertUsable();
+        try {
+            assertPlainOptions(slots, caller);
+        } catch {
+            throw new Error(
+                `${caller}: slots must be an object naming { controls, calendar, messages } targets, but found type: ${describeType(slots)}`,
+            );
+        }
+
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, calendar, messages }.`,
+            );
+        }
+        if (false === Object.hasOwn(slots, 'controls')) {
+            throw new Error(`${caller}: slots must name a 'controls' target.`);
+        }
+        if (false === Object.hasOwn(slots, 'calendar')) {
+            throw new Error(`${caller}: slots must name a 'calendar' target.`);
+        }
+
+        // Resolved BEFORE either half is mounted — see the doc comment above.
+        const calendarElement = CalendarViewer.#requireElement(
+            slots.calendar,
+            'calendar',
+            caller,
+        );
+
+        const controlsSlots = { controls: slots.controls };
+        if (Object.hasOwn(slots, 'messages')) {
+            controlsSlots.messages = slots.messages;
+        }
+        // The caller's own name is passed down so a bad `controls`/`messages`
+        // target is reported as this class' method, not as
+        // `CalendarControls.appendTo` — a class the caller never touched.
+        this.#controls.appendTo(controlsSlots, caller);
+
+        this.#calendarMount = calendarElement;
+        this.#webCalendar.appendTo(calendarElement);
+    }
+
+    /**
+     * Wires both halves to an `ApiClient`, controls first.
+     *
+     * **The order is the whole point of this method.** `EventEmitter.emit()` is
+     * a synchronous `forEach` over listeners in registration order, and
+     * `WebCalendar`'s own `calendarFetched` listener throws on malformed or
+     * empty `litcal` (see `WebCalendar.js`) — a throw that aborts the iteration
+     * for every listener registered after it. Registering the controls first
+     * means their `calendarFetched` listeners, including the messages renderer
+     * when a `messages` slot was named, always run before `WebCalendar`'s, so a
+     * `WebCalendar` failure can never suppress a messages render that was
+     * already due. A caller wiring `controls` and `webCalendar` by hand has to
+     * know that and reproduce it; this method is what removes that trap, the
+     * same way `CalendarControls.listenTo()` removes the rite's two-wire trap.
+     *
+     * @param {ApiClient} apiClient - The client to drive.
+     * @returns {CalendarViewer} This instance.
+     * @throws {Error} If this viewer has been disposed, or if the controls are
+     *   already wired to a client.
+     */
+    listenTo(apiClient) {
+        this.#assertUsable();
+        this.#controls.listenTo(apiClient);
+        this.#webCalendar.listenTo(apiClient);
+        return this;
+    }
+
+    /**
      * Resolves a mount target to an element.
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
      * @param {string} slot - The slot name, for the message.
+     * @param {string} caller - The `Class.method` prefix to report, so a bad
+     *   target names whichever entry point the caller actually used.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, slot) {
+    static #requireElement(target, slot, caller) {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `CalendarViewer.mountInto: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `CalendarViewer.mountInto: Element not found for the ${slot} slot: ${target}`,
+                `${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -320,6 +435,7 @@ export default class CalendarViewer {
         const calendarElement = CalendarViewer.#requireElement(
             slots.calendar,
             'calendar',
+            'CalendarViewer.mountInto',
         );
         if (true === signal?.aborted || false === calendarElement.isConnected) {
             return null;
