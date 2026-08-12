@@ -27,6 +27,7 @@ import ApiClient from '../ApiClient/ApiClient.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
+import ApiExplorer from '../MetaComponents/ApiExplorer.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
@@ -161,5 +162,58 @@ describe('a rite change keeps the locale select and Accept-Language in sync', ()
 
         expect(localeElement.value).toBe('it');
         expect(changes).toBe(0);
+    });
+});
+
+/**
+ * The SAME root cause, seen through a second consumer. `PathBuilder` learns the
+ * locale from the very same `change` listener on the locale input that `ApiClient`
+ * uses, so before the fix its rendered URL kept the stale query parameter:
+ * `/calendar/ambrosian?locale=fr` while the form read Italian. `ApiExplorer` never
+ * fetches, so this half of the defect was visible purely in the rendered path.
+ *
+ * Kept beside the `ApiClient` cases deliberately: one dispatch serves both consumers,
+ * and a future change that satisfies only one of them should fail here.
+ */
+describe("a rite change keeps PathBuilder's rendered locale in sync", () => {
+    beforeEach(() => {
+        document.body.innerHTML =
+            '<div id="pb"></div><div id="out"></div><div id="rite"></div>';
+    });
+
+    /**
+     * The rendered API path, read out of whatever element carries it.
+     *
+     * @returns {string} The rendered path, or '' when none was found.
+     */
+    const renderedPath = () =>
+        [...document.querySelectorAll('#out *')]
+            .map((element) => element.textContent)
+            .filter((text) => text && text.includes('/calendar'))
+            .pop() ?? '';
+
+    it('renders the locale the select shows once the rite narrows the options', async () => {
+        const explorer = await ApiExplorer.mountInto(
+            { pathBuilder: '#pb', builder: '#out', riteSelect: '#rite' },
+            { locale: 'en' },
+        );
+        const localeElement =
+            explorer.controls.apiOptions._localeInput._domElement;
+        const riteElement = explorer.controls.riteSelect._domElement;
+
+        // `en` is offered by the Roman rite and not by the Ambrosian one.
+        userSelects(localeElement, 'en');
+        expect(renderedPath()).toContain('locale=en');
+
+        userSelects(riteElement, 'ambrosian');
+
+        expect([...localeElement.options].map((o) => o.value)).not.toContain(
+            'en',
+        );
+        expect(renderedPath()).toContain('/calendar/ambrosian');
+        // THE REGRESSION: the rendered locale must be the one on display, not the
+        // one the rite just made unavailable.
+        expect(renderedPath()).toContain(`locale=${localeElement.value}`);
+        expect(renderedPath()).not.toContain('locale=en');
     });
 });

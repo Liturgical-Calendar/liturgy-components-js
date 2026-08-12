@@ -20,6 +20,11 @@ prepared under that number was skipped, and everything it was to have delivered 
   notification the calendar-selection path already performed for this input. Measured: no additional
   HTTP requests per rite change.
 
+  **`PathBuilder` was affected by the same defect and is fixed by the same change.** It reads the locale
+  from that identical `change` listener, so its rendered URL kept the stale query parameter —
+  `/calendar/ambrosian?locale=fr` while the form read Italian. `ApiExplorer` never fetches, so there the
+  defect was visible purely in the composed path.
+
 ## 2.4.0
 
 `CalendarViewer` gains the public mount path its documentation already described, and `RiteSelect`
