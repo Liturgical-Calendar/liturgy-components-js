@@ -4,6 +4,83 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.6.0
+
+Two additions and one converged API: a first-class signal for `mountInto()`'s initial fetch, and the
+`{ as, class, id }` wrapper bag on the last component that lacked it.
+
+### Added
+
+- **`settled` on `CalendarControls`, `CalendarViewer` and `DayViewer`.** `mountInto()` resolves to the
+  component, not to the calendar data, and drops the initial fetch's promise — so a caller had no way to
+  sequence on that first request: not to hide a spinner, not to assert in a test, not to know it had
+  finished at all. `onCalendarFetched()` and `onError()` between them observe everything about that fetch
+  except _when it finished_.
+
+  ```javascript
+  const viewer = await DayViewer.mountInto('#mount', { apiClient, onError });
+  await viewer.settled; // the initial fetch has finished, one way or the other
+  spinner.hide();
+  ```
+
+  It **always resolves and never rejects**, with `undefined`: a property present on every mounted instance
+  that could reject would produce an unhandled rejection for every caller who never reads it, which is the
+  trap `mountInto()` avoids by discarding. What is stored is the promise _after_ each factory's existing
+  `.catch`, so it adds no error handling and changes none — outcomes stay with `onError()`, and the data
+  stays with `onCalendarFetched()`. It is always a promise, already resolved when no initial fetch ran
+  (`initialFetch: false`, no `apiClient`, or a hand-constructed instance).
+
+  `CalendarResourcePicker` and `ApiExplorer` have none, deliberately: neither fetches, so neither has
+  anything to settle. On `CalendarViewer` it is the very promise that factory already awaits, so it has
+  settled by the time a caller can read it.
+
+- **`Input.wrapper()` takes the `{ as, class, id }` bag**, the same one `CalendarSelect.wrapper()` and
+  `RiteSelect.wrapper()` take, through the same shared validator — so the three cannot drift. This also
+  brings a wrapper `id` to `ApiOptions` inputs, which had no way to set one, and lets a wrapper's type and
+  class be set in one call rather than two:
+
+  ```javascript
+  apiOptions._yearInput.wrapper({ as: 'div', class: 'form-group col col-md-3', id: 'year-wrapper' });
+  ```
+
+  The bare tag name it has always taken still works — `wrapper('td')` is `wrapper({ as: 'td' })` — and is
+  kept rather than deprecated, because `DayViewer`, `LiturgyOfAnyDay` and both example apps all pass one.
+  `wrapperClass()` is unchanged for callers already using it.
+
+  `Input.setGlobalWrapper()` is deliberately **not** given the bag. Its JSDoc now records why: the globals
+  apply to every `Input` a page builds — `ApiOptions` alone builds more than a dozen — so a global `id`
+  would be stamped onto every wrapper and emit invalid HTML with duplicate ids.
+
+### Behaviour changes
+
+- **Listener-driven fetches are deferred by one microtask** (from 2.5.0's coalescing, restated here because
+  it is the change most likely to affect a downstream test suite). A test or consumer driving an input
+  programmatically must `await Promise.resolve()` before asserting on `fetch`. The explicit fetch methods
+  are unaffected.
+
+- **`Input.wrapper()` may be called once; a second call now throws.** The behaviour removed was not
+  something a caller could have relied on: it silently replaced the element and reset its class to the
+  _global_ wrapper class while leaving the class-set flag true, so a class set through `wrapperClass()` was
+  discarded without a word and the next `wrapperClass()` call threw an error naming a class the caller had
+  never set.
+
+  ```javascript
+  input.wrapperClass('form-group col-md-3'); // ok
+  input.wrapper('div'); // before: silently discarded that class
+  input.wrapperClass('form-group col-md-3'); // before: threw, naming the global class
+  ```
+
+  **`setGlobalWrapper()` does not consume that one allowance.** The guard counts explicit `wrapper()` calls
+  only, so the wrapper the constructor builds from the global does not count — a page that sets the global
+  still gets one per-instance call. All three code bases were surveyed before this shipped
+  (`LiturgicalCalendarFrontend`, `examples/`, `src/`) and no call site calls `wrapper()` twice. The one
+  remaining path that could: calling `LiturgyOfAnyDay`'s `dayInputConfig()`/`monthInputConfig()`/
+  `yearInputConfig()` twice with a `wrapper` key.
+
+  A `class` named in the bag beats `setGlobalWrapperClass()` and counts as the class being set, so a later
+  `wrapperClass()` naming something different throws. A class _inherited_ from the global does not, leaving
+  `wrapperClass()` free — the pairing every page built on the globals relies on.
+
 ## 2.5.0
 
 One user action now issues one request. This settles the cost 2.4.1 recorded as known and deferred, and
