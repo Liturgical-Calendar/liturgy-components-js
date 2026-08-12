@@ -20,7 +20,7 @@ bodies.
 
 - **Working directory:** `/home/johnrdorazio/development/LiturgicalCalendar/liturgy-components-js`. Branch
   `feat/calendarviewer-mount-and-rite-wrapper` already exists and holds the design doc.
-- **Spec:** `docs/superpowers/specs/2026-08-12-calendarviewer-mount-and-rite-wrapper-design.md`. Read it before Task 1.
+- **Spec:** `docs/superpowers/specs/2026-08-12-calendarviewer-mount-and-rite-wrapper-design.md`. Read it before starting.
 - **ES2022 floor.** `Object.hasOwn()` and `Error`'s `cause` are fine. Nothing newer.
 - **Formatting is enforced by CI.** `.prettierrc` sets `tabWidth: 4` and `singleQuote: true`. Run `yarn
 format:js:fix` before every commit touching `src/`, and `yarn format:md:fix` before every commit touching
@@ -40,22 +40,411 @@ format:js:fix` before every commit touching `src/`, and `yarn format:md:fix` bef
 
 | File                                                      | Responsibility                                                                                                              | Task |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---- |
-| `src/RiteSelect/RiteSelect.js`                            | Add `#wrapperElement`, `#hasWrapper`, `#wrapperSet` fields, the `wrapper()` method, and the wrapper branch in `appendTo()`. | 1    |
-| `src/__tests__/RiteSelect.test.js`                        | `wrapper()` parity coverage against `CalendarSelect`'s contract.                                                            | 1    |
-| `src/MetaComponents/CalendarControls.js`                  | Apply `riteTheme.wrapperClass`.                                                                                             | 2    |
-| `src/MetaComponents/DayViewer.js`                         | Apply `riteTheme.wrapperClass`.                                                                                             | 2    |
-| `src/MetaComponents/CalendarResourcePicker.js`            | Apply `riteTheme.wrapperClass`.                                                                                             | 2    |
-| `src/__tests__/MetaComponentThemeWrapperSymmetry.test.js` | Invert the two rite-select assertions; add `CalendarControls`.                                                              | 2    |
-| `src/MetaComponents/CalendarControls.js`                  | Reject unknown slot names in `appendTo()`.                                                                                  | 3    |
-| `src/MetaComponents/CalendarViewer.js`                    | Add five public members; refactor `mountInto()` onto them; reject unknown slot names.                                       | 4, 5 |
-| `src/__tests__/CalendarViewerMount.test.js`               | New — the constructor path, the `hide()` regression, listener ordering, slot validation, dispose guards.                    | 4, 5 |
-| `docs/rite-select.md`                                     | Document `wrapper()`.                                                                                                       | 6    |
-| `docs/meta-components.md`                                 | `CalendarViewer` public-members table and `appendTo()` section; drop the "RiteSelect has none" carve-out.                   | 6    |
-| `CHANGELOG.md`, `package.json`                            | 2.4.0 entry and version bump.                                                                                               | 6    |
+| `src/__tests__/CalendarSelectWrapper.test.js`             | New — characterizes `CalendarSelect.wrapper()`'s every branch before it is refactored.                                      | 1    |
+| `src/WrapperOptions.js`                                   | New — the shared wrapper-bag validator and element builder. Internal; not exported from `index.js`.                         | 2    |
+| `src/CalendarSelect/CalendarSelect.js`                    | Rewire `wrapper()` onto the shared helper. No behaviour change.                                                             | 2    |
+| `src/RiteSelect/RiteSelect.js`                            | Add `#wrapperElement`, `#hasWrapper`, `#wrapperSet` fields, the `wrapper()` method, and the wrapper branch in `appendTo()`. | 3    |
+| `src/__tests__/RiteSelect.test.js`                        | `wrapper()` parity coverage against `CalendarSelect`'s contract.                                                            | 3    |
+| `src/MetaComponents/CalendarControls.js`                  | Apply `riteTheme.wrapperClass`.                                                                                             | 4    |
+| `src/MetaComponents/DayViewer.js`                         | Apply `riteTheme.wrapperClass`.                                                                                             | 4    |
+| `src/MetaComponents/CalendarResourcePicker.js`            | Apply `riteTheme.wrapperClass`.                                                                                             | 4    |
+| `src/__tests__/MetaComponentThemeWrapperSymmetry.test.js` | Invert the two rite-select assertions; add `CalendarControls`.                                                              | 4    |
+| `src/MetaComponents/CalendarControls.js`                  | Reject unknown slot names in `appendTo()`.                                                                                  | 5    |
+| `src/MetaComponents/CalendarViewer.js`                    | Add five public members; refactor `mountInto()` onto them; reject unknown slot names.                                       | 6, 7 |
+| `src/__tests__/CalendarViewerMount.test.js`               | New — the constructor path, the `hide()` regression, listener ordering, slot validation, dispose guards.                    | 6, 7 |
+| `docs/rite-select.md`                                     | Document `wrapper()`.                                                                                                       | 8    |
+| `docs/meta-components.md`                                 | `CalendarViewer` public-members table and `appendTo()` section; drop the "RiteSelect has none" carve-out.                   | 8    |
+| `CHANGELOG.md`, `package.json`                            | 2.4.0 entry and version bump.                                                                                               | 8    |
 
 ---
 
-### Task 1: `RiteSelect.wrapper()`
+### Task 1: Characterize `CalendarSelect.wrapper()`
+
+**Files:**
+
+- Create: `src/__tests__/CalendarSelectWrapper.test.js`
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: a behavioural safety net Task 2 must keep green **without editing this file**.
+
+**Why this task exists.** Task 2 refactors `CalendarSelect.wrapper()` — a method used by the meta-components, four
+`examples/`, six stories and `CalendarSelect`'s own constructor (`CalendarSelect.js:226`) — onto a shared helper. Its
+current direct coverage is a single happy-path case (`ComponentOptionsValidation.test.js:359`); not one validation
+branch is pinned. Refactoring it with no net is how a silent behaviour change ships. **Write no source code in this
+task.** These tests must pass against `CalendarSelect` exactly as it stands today.
+
+Read `src/CalendarSelect/CalendarSelect.js:1008-1102` and pin what it actually does — including anything that
+surprises you. If a test you expect to pass fails, the current behaviour is the specification: change the test to
+match it and note the surprise in your report. Do not "fix" `CalendarSelect` in this task.
+
+- [ ] **Step 1: Write the characterization tests**
+
+Create `src/__tests__/CalendarSelectWrapper.test.js`:
+
+```javascript
+/** @jest-environment jsdom */
+/**
+ * Characterization tests for `CalendarSelect.wrapper()`, pinning its behaviour
+ * branch by branch BEFORE it is refactored onto the shared `WrapperOptions`
+ * helper. Their job is to fail loudly if that refactor changes anything a
+ * caller can observe.
+ *
+ * These assert current behaviour, not desired behaviour. Do not modify this
+ * file during the refactor — if one of these fails afterwards, the refactor is
+ * wrong, not the test.
+ */
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
+import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import { FULL_METADATA } from '../__fixtures__/metadata.js';
+
+const API_URL = 'http://localhost:8000';
+
+beforeEach(() => {
+    ApiBase.reset();
+    ApiBase.fromMetadata(API_URL, FULL_METADATA);
+    document.body.innerHTML = '<div id="mount"></div>';
+});
+
+const select = () => new CalendarSelect('en');
+
+describe('CalendarSelect.wrapper() — characterization', () => {
+    it('defaults `as` to div and applies the class', () => {
+        const cs = select().wrapper({ class: 'col-md-3' });
+        cs.appendTo('#mount');
+        const wrapper = document.querySelector('#mount > div');
+        expect(wrapper).not.toBeNull();
+        expect(wrapper.className).toBe('col-md-3');
+        expect(cs._domElement.parentElement).toBe(wrapper);
+    });
+
+    it('accepts as: td', () => {
+        document.body.innerHTML = '<table><tr id="row"></tr></table>';
+        const cs = select().wrapper({ as: 'td' });
+        cs.appendTo('#row');
+        expect(document.querySelector('#row > td')).not.toBeNull();
+    });
+
+    it('rejects an `as` outside div and td', () => {
+        expect(() => select().wrapper({ as: 'span' })).toThrow(
+            'Invalid value for wrapper `as` property, must be one of `div` or `td` but found: span',
+        );
+    });
+
+    it('rejects a non-string `as`', () => {
+        expect(() => select().wrapper({ as: 42 })).toThrow(
+            'Invalid type for wrapper `as` property, must be of type string but found type: number',
+        );
+    });
+
+    it('treats null as no wrapper, and still marks the setting as made', () => {
+        const cs = select();
+        cs.wrapper(null);
+        cs.appendTo('#mount');
+        expect(cs._domElement.parentElement).toBe(
+            document.getElementById('mount'),
+        );
+        expect(() => cs.wrapper({ class: 'x' })).toThrow(
+            /Wrapper has already been set on CalendarSelect instance/,
+        );
+    });
+
+    it('rejects an object naming none of as, class or id', () => {
+        expect(() => select().wrapper({})).toThrow(
+            'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
+        );
+        expect(() => select().wrapper({ nope: 'x' })).toThrow(
+            'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
+        );
+    });
+
+    it('rejects an array and a string', () => {
+        expect(() => select().wrapper([])).toThrow(
+            'Invalid type for wrapper options, must be of type object (not null or array) but found type: array',
+        );
+        expect(() => select().wrapper('div')).toThrow(
+            'Invalid type for wrapper options, must be of type object (not null or array) but found type: string',
+        );
+    });
+
+    it('throws on a second call, naming the locale', () => {
+        const cs = select().wrapper({ class: 'a' });
+        expect(() => cs.wrapper({ class: 'b' })).toThrow(
+            /Wrapper has already been set on CalendarSelect instance with locale en/,
+        );
+    });
+
+    it('rejects a non-string class and an invalid class name', () => {
+        expect(() => select().wrapper({ class: 42 })).toThrow(
+            'Invalid type for wrapper class, must be of type string but found type: number',
+        );
+        expect(() => select().wrapper({ class: 'has<bad>chars' })).toThrow(
+            /Invalid class name/,
+        );
+    });
+
+    it('collapses whitespace between class names', () => {
+        const cs = select().wrapper({ class: 'a   b' });
+        cs.appendTo('#mount');
+        expect(document.querySelector('#mount > div').className).toBe('a b');
+    });
+
+    it('rejects a non-string id and an invalid id', () => {
+        expect(() => select().wrapper({ id: 42 })).toThrow(
+            'Invalid type for wrapper id, must be of type string but found type: number',
+        );
+        expect(() => select().wrapper({ id: 'has space' })).toThrow(/Invalid id/);
+    });
+
+    it('sets the wrapper id', () => {
+        const cs = select().wrapper({ id: 'calendarWrapper' });
+        cs.appendTo('#mount');
+        expect(document.getElementById('calendarWrapper')).not.toBeNull();
+    });
+
+    it('returns this', () => {
+        const cs = select();
+        expect(cs.wrapper({ class: 'x' })).toBe(cs);
+    });
+
+    it('places the label inside the wrapper, immediately before the select', () => {
+        const cs = select();
+        cs.label({ text: 'Calendar' });
+        cs.wrapper({ class: 'col-md-3' });
+        cs.appendTo('#mount');
+        const wrapper = document.querySelector('#mount > div');
+        expect(cs._domElement.parentElement).toBe(wrapper);
+        expect(cs._domElement.previousElementSibling.tagName).toBe('LABEL');
+    });
+});
+```
+
+- [ ] **Step 2: Run them against unmodified `CalendarSelect`**
+
+Run: `yarn test src/__tests__/CalendarSelectWrapper.test.js`
+
+Expected: **PASS, all cases, with no source change.** Any failure means the test misdescribes current
+behaviour — correct the test to match the code and record what surprised you in your report. Do not edit
+`src/CalendarSelect/CalendarSelect.js` in this task.
+
+- [ ] **Step 3: Run the full gate and commit**
+
+```bash
+yarn format:js:fix && yarn test && yarn compile && yarn lint:dts
+git add src/__tests__/CalendarSelectWrapper.test.js
+git commit -m "Characterize CalendarSelect.wrapper() ahead of extracting it"
+```
+
+---
+
+### Task 2: Extract `WrapperOptions` and rewire `CalendarSelect`
+
+**Files:**
+
+- Create: `src/WrapperOptions.js`
+- Modify: `src/CalendarSelect/CalendarSelect.js:1008-1102`
+- Test: `src/__tests__/CalendarSelectWrapper.test.js` — **must pass unmodified**
+
+**Interfaces:**
+
+- Consumes: the characterization suite from Task 1.
+- Produces: `buildWrapperElement(wrapperOptions, componentName) => HTMLElement|null`, exported from
+  `src/WrapperOptions.js`. Task 3's `RiteSelect.wrapper()` calls it with `'RiteSelect'`.
+
+**Scope discipline.** This is a pure refactor: **no observable behaviour may change**, including every error message.
+The messages the helper throws are the ones `CalendarSelect` throws today, verbatim — Task 1 pinned them. The
+one-shot `#wrapperSet` guard stays in `CalendarSelect`, because its message names the class and the instance's
+locale, which is per-component state the helper cannot see.
+
+`src/WrapperOptions.js` is **internal**: do not add it to `src/index.js`, matching `LocaleValidation.js` and
+`OptionsValidation.js`, which are contract between components rather than public API.
+
+- [ ] **Step 1: Create the shared helper**
+
+Create `src/WrapperOptions.js`:
+
+```javascript
+/**
+ * Shared validation and construction for the `{ as, class, id }` wrapper bag
+ * that `CalendarSelect.wrapper()` and `RiteSelect.wrapper()` both accept.
+ *
+ * Internal, and deliberately NOT exported from `src/index.js` — contract
+ * between the components, not public API, on the same reasoning as
+ * `LocaleValidation.js` and `OptionsValidation.js`.
+ *
+ * `Input.wrapper()` deliberately does NOT use this: it takes a bare tag name
+ * and pairs with a separate `wrapperClass()`. Converging it is tracked in
+ * issue #46 and is explicitly out of scope here.
+ *
+ * The caller keeps its own "already set" guard: that message names the calling
+ * class and its instance state, which this module cannot see.
+ *
+ * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
+ * @license Apache-2.0
+ */
+
+import Utils from './Utils.js';
+
+/**
+ * Validates a wrapper bag and builds the element it describes.
+ *
+ * @param {?{as?: string, class?: string, id?: string}} wrapperOptions The wrapper
+ *        configuration, or `null` for no wrapper.
+ * @param {string} componentName The calling class' name, for error messages.
+ * @returns {HTMLElement|null} The configured element, or `null` when
+ *          `wrapperOptions` is `null` (meaning "no wrapper").
+ * @throws {Error} If `wrapperOptions` is an array or a non-object, names none of
+ *         `as`/`class`/`id`, or carries an invalid `as`, `class` or `id` value.
+ */
+export function buildWrapperElement(wrapperOptions, componentName) {
+    if (null === wrapperOptions) {
+        return null;
+    }
+    if (typeof wrapperOptions !== 'object' || Array.isArray(wrapperOptions)) {
+        const wrapperOptionsType = Array.isArray(wrapperOptions)
+            ? 'array'
+            : typeof wrapperOptions;
+        throw new Error(
+            'Invalid type for wrapper options, must be of type object (not null or array) but found type: ' +
+                wrapperOptionsType,
+        );
+    }
+    if (
+        Object.keys(wrapperOptions).length === 0 ||
+        false ===
+            Object.keys(wrapperOptions).some((key) =>
+                ['as', 'class', 'id'].includes(key),
+            )
+    ) {
+        throw new Error(
+            'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
+        );
+    }
+
+    let as = 'div';
+    if (Object.hasOwn(wrapperOptions, 'as')) {
+        if (typeof wrapperOptions.as !== 'string') {
+            throw new Error(
+                'Invalid type for wrapper `as` property, must be of type string but found type: ' +
+                    typeof wrapperOptions.as,
+            );
+        }
+        if (false === ['div', 'td'].includes(wrapperOptions.as)) {
+            throw new Error(
+                'Invalid value for wrapper `as` property, must be one of `div` or `td` but found: ' +
+                    wrapperOptions.as,
+            );
+        }
+        as = wrapperOptions.as;
+    }
+
+    const element = document.createElement(as);
+
+    if (Object.hasOwn(wrapperOptions, 'class')) {
+        if (typeof wrapperOptions.class !== 'string') {
+            throw new Error(
+                'Invalid type for wrapper class, must be of type string but found type: ' +
+                    typeof wrapperOptions.class,
+            );
+        }
+        let classNames = wrapperOptions.class.split(/\s+/);
+        classNames = classNames.map((className) =>
+            Utils.sanitizeInput(className),
+        );
+        classNames.forEach((className) => {
+            if (false === Utils.validateClassName(className)) {
+                throw new Error('Invalid class name: ' + className);
+            }
+        });
+        element.className = classNames.join(' ');
+    }
+
+    if (Object.hasOwn(wrapperOptions, 'id')) {
+        if (typeof wrapperOptions.id !== 'string') {
+            throw new Error(
+                'Invalid type for wrapper id, must be of type string but found type: ' +
+                    typeof wrapperOptions.id,
+            );
+        }
+        const id = Utils.sanitizeInput(wrapperOptions.id);
+        if (false === Utils.validateId(id)) {
+            throw new Error(
+                'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
+                    id,
+            );
+        }
+        element.id = id;
+    }
+
+    return element;
+}
+```
+
+`componentName` is currently unused by any message — every one of them is component-agnostic today, and Task 1
+pinned them that way. It is in the signature so a future message can name the caller without changing every call
+site. If your linter objects to an unused parameter, keep the parameter and do not "simplify" it away.
+
+- [ ] **Step 2: Rewire `CalendarSelect.wrapper()`**
+
+Add the import near the top of `src/CalendarSelect/CalendarSelect.js`, alongside the existing imports:
+
+```javascript
+import { buildWrapperElement } from '../WrapperOptions.js';
+```
+
+Replace the whole body of `wrapper()` (`:1008-1102`) with:
+
+```javascript
+    wrapper(wrapperOptions = null) {
+        if (this.#wrapperSet) {
+            throw new Error(
+                'Wrapper has already been set on CalendarSelect instance with locale ' +
+                    this.#locale +
+                    '.',
+            );
+        }
+        const element = buildWrapperElement(wrapperOptions, 'CalendarSelect');
+        this.#wrapperElement = element;
+        this.#hasWrapper = null !== element;
+        this.#wrapperSet = true;
+        return this;
+    }
+```
+
+Leave the method's existing JSDoc block in place above it, unchanged.
+
+**Ordering matters:** the `#wrapperSet` guard runs BEFORE `buildWrapperElement()`, and `#wrapperSet` is assigned
+only AFTER it returns — so an invalid bag throws without marking the wrapper as set, exactly as today, where the
+validation threw before any of the three assignments.
+
+- [ ] **Step 3: Verify the characterization suite still passes, unmodified**
+
+Run: `yarn test src/__tests__/CalendarSelectWrapper.test.js`
+
+Expected: PASS, **with that file untouched**. If any case fails, the refactor changed observable behaviour — fix
+`src/WrapperOptions.js`, never the test.
+
+- [ ] **Step 4: Run the full suite**
+
+Run: `yarn test`
+
+Expected: PASS. `ComponentOptionsValidation.test.js`, `ApiOptionsRite.test.js` and
+`ApiOptionsPathBuilderRiteRegression.test.js` all exercise `CalendarSelect.wrapper()` and are the cross-check that
+the meta-components and `ApiOptions` still see the old behaviour.
+
+- [ ] **Step 5: Run the full gate and commit**
+
+```bash
+yarn format:js:fix && yarn test && yarn compile && yarn lint:dts
+git add src/WrapperOptions.js src/CalendarSelect/CalendarSelect.js
+git commit -m "Extract the wrapper-bag validator CalendarSelect and RiteSelect share"
+```
+
+---
+
+### Task 3: `RiteSelect.wrapper()`
 
 **Files:**
 
@@ -64,14 +453,18 @@ format:js:fix` before every commit touching `src/`, and `yarn format:md:fix` bef
 
 **Interfaces:**
 
-- Consumes: nothing from other tasks.
+- Consumes: `buildWrapperElement(wrapperOptions, componentName)` from `src/WrapperOptions.js`, added in
+  Task 2.
 - Produces: `RiteSelect.prototype.wrapper(wrapperOptions = null) => RiteSelect`, accepting `{ as?:
-'div'|'td', class?: string, id?: string }` or `null`. Tasks 2 and 6 depend on this exact name and shape.
+'div'|'td', class?: string, id?: string }` or `null`. Tasks 4 and 8 depend on this exact name and shape.
 
-**Reference implementation to copy structurally:** `src/CalendarSelect/CalendarSelect.js:1008-1102`
-(`wrapper()`) and `:1319-1324` (the `appendTo()` branch). Read both before writing. Do not import from
-`CalendarSelect` — duplicate the logic, as `RiteSelect.class()` already duplicates
-`CalendarSelect.class()`.
+**Reference implementation:** `CalendarSelect.wrapper()` **as Task 2 leaves it** — the one-shot guard, the
+`buildWrapperElement()` call, three assignments — and `CalendarSelect.js:1319-1324` for the `appendTo()`
+branch. Read both before writing.
+
+Do **not** re-implement the bag validation here. It lives in `src/WrapperOptions.js`, which Task 2 created
+for exactly these two callers. All `RiteSelect` owns is its own one-shot guard, whose message names this
+class and its locale.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -255,95 +648,23 @@ Insert immediately after the closing brace of `class()` (which ends at `:107`, j
                     '.',
             );
         }
-        if (null === wrapperOptions) {
-            this.#hasWrapper = false;
-            this.#wrapperElement = null;
-            this.#wrapperSet = true;
-            return this;
-        } else if (
-            typeof wrapperOptions !== 'object' ||
-            Array.isArray(wrapperOptions)
-        ) {
-            const wrapperOptionsType = Array.isArray(wrapperOptions)
-                ? 'array'
-                : typeof wrapperOptions;
-            throw new Error(
-                'Invalid type for wrapper options, must be of type object (not null or array) but found type: ' +
-                    wrapperOptionsType,
-            );
-        } else if (
-            Object.keys(wrapperOptions).length === 0 ||
-            false ===
-                Object.keys(wrapperOptions).some((key) =>
-                    ['as', 'class', 'id'].includes(key),
-                )
-        ) {
-            throw new Error(
-                'Invalid wrapper options, must be an object with at least an `as`, `class` or `id` property',
-            );
-        }
-
-        if (Object.hasOwn(wrapperOptions, 'as')) {
-            if (typeof wrapperOptions.as !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper `as` property, must be of type string but found type: ' +
-                        typeof wrapperOptions.as,
-                );
-            }
-            if (false === ['div', 'td'].includes(wrapperOptions.as)) {
-                throw new Error(
-                    'Invalid value for wrapper `as` property, must be one of `div` or `td` but found: ' +
-                        wrapperOptions.as,
-                );
-            }
-        } else {
-            wrapperOptions.as = 'div';
-        }
-
-        this.#wrapperElement = document.createElement(wrapperOptions.as);
-        this.#hasWrapper = true;
+        const element = buildWrapperElement(wrapperOptions, 'RiteSelect');
+        this.#wrapperElement = element;
+        this.#hasWrapper = null !== element;
         this.#wrapperSet = true;
-
-        if (Object.hasOwn(wrapperOptions, 'class')) {
-            if (typeof wrapperOptions.class !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper class, must be of type string but found type: ' +
-                        typeof wrapperOptions.class,
-                );
-            }
-            let classNames = wrapperOptions.class.split(/\s+/);
-            classNames = classNames.map((className) =>
-                Utils.sanitizeInput(className),
-            );
-            classNames.forEach((className) => {
-                if (false === Utils.validateClassName(className)) {
-                    throw new Error('Invalid class name: ' + className);
-                }
-            });
-            this.#wrapperElement.className = classNames.join(' ');
-        }
-
-        if (Object.hasOwn(wrapperOptions, 'id')) {
-            if (typeof wrapperOptions.id !== 'string') {
-                throw new Error(
-                    'Invalid type for wrapper id, must be of type string but found type: ' +
-                        typeof wrapperOptions.id,
-                );
-            }
-            wrapperOptions.id = Utils.sanitizeInput(wrapperOptions.id);
-            if (false === Utils.validateId(wrapperOptions.id)) {
-                throw new Error(
-                    'Invalid id, cannot contain any kind of whitespace character and must be a valid CSS selector: ' +
-                        wrapperOptions.id,
-                );
-            }
-            this.#wrapperElement.id = wrapperOptions.id;
-        }
         return this;
     }
 ```
 
-`Utils` is already imported at `src/RiteSelect/RiteSelect.js:2`. No new import is needed.
+Add the import alongside the existing ones at the top of `src/RiteSelect/RiteSelect.js`:
+
+```javascript
+import { buildWrapperElement } from '../WrapperOptions.js';
+```
+
+**Ordering matters, exactly as in `CalendarSelect`:** the `#wrapperSet` guard runs BEFORE
+`buildWrapperElement()`, and `#wrapperSet` is assigned only AFTER it returns — so an invalid bag throws
+without marking the wrapper as set.
 
 - [ ] **Step 5: Add the wrapper branch to `appendTo()`**
 
@@ -392,7 +713,7 @@ git commit -m "Give RiteSelect the wrapper() CalendarSelect already has"
 
 ---
 
-### Task 2: Honour `riteTheme.wrapperClass` in the three meta-components
+### Task 4: Honour `riteTheme.wrapperClass` in the three meta-components
 
 **Files:**
 
@@ -403,7 +724,7 @@ git commit -m "Give RiteSelect the wrapper() CalendarSelect already has"
 
 **Interfaces:**
 
-- Consumes: `RiteSelect.prototype.wrapper({ class })` from Task 1.
+- Consumes: `RiteSelect.prototype.wrapper({ class })` from Task 3.
 - Produces: no new API. Behaviour change only — the theme bag's `wrapper` role now reaches the rite select.
 
 **Background:** `resolveChildTheme(theme, 'riteSelect')` already returns a `wrapperClass` key, resolved
@@ -565,7 +886,7 @@ git commit -m "Honour the theme bag's wrapper role for rite selects"
 
 ---
 
-### Task 3: Reject unknown slot names in `CalendarControls.appendTo()`
+### Task 5: Reject unknown slot names in `CalendarControls.appendTo()`
 
 **Files:**
 
@@ -576,7 +897,7 @@ git commit -m "Honour the theme bag's wrapper role for rite selects"
 
 - Consumes: nothing from earlier tasks.
 - Produces: `CalendarControls.appendTo()` throws `` `${caller}: unknown slot name(s): …` `` for any key
-  outside `['controls', 'messages']`. Task 4's `CalendarViewer.appendTo()` applies the same rule to its own
+  outside `['controls', 'messages']`. Task 6's `CalendarViewer.appendTo()` applies the same rule to its own
   slot set.
 
 **Model:** `src/MetaComponents/ApiExplorer.js:227-234` already does this. Copy its message shape.
@@ -690,7 +1011,7 @@ git commit -m "Reject unknown slot names in CalendarControls.appendTo()"
 
 ---
 
-### Task 4: `CalendarViewer.appendTo()` and `listenTo()`
+### Task 6: `CalendarViewer.appendTo()` and `listenTo()`
 
 **Files:**
 
@@ -699,13 +1020,13 @@ git commit -m "Reject unknown slot names in CalendarControls.appendTo()"
 
 **Interfaces:**
 
-- Consumes: `CalendarControls.appendTo(target, caller)` and its unknown-slot rejection from Task 3; `CalendarControls.listenTo(apiClient)`.
+- Consumes: `CalendarControls.appendTo(target, caller)` and its unknown-slot rejection from Task 5; `CalendarControls.listenTo(apiClient)`.
 - Produces:
   - `CalendarViewer.prototype.appendTo(slots, caller = 'CalendarViewer.appendTo') => void`, slots `{
 controls: string|HTMLElement, calendar: string|HTMLElement, messages?: string|HTMLElement }`
   - `CalendarViewer.prototype.listenTo(apiClient) => CalendarViewer`
 
-  Task 5 refactors `mountInto()` onto both.
+  Task 7 refactors `mountInto()` onto both.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -818,8 +1139,8 @@ describe('CalendarViewer — the constructor path', () => {
         });
         viewer.listenTo(apiClient);
         // `viewer.controls.fetch()` and not `viewer.fetch()`: the delegate
-        // arrives in Task 5, and this test must pass at the end of Task 4.
-        // Task 5 adds `fetch()`'s own coverage; this line stays as it is.
+        // arrives in Task 7, and this test must pass at the end of Task 6.
+        // Task 7 adds `fetch()`'s own coverage; this line stays as it is.
         await viewer.controls.fetch().catch(() => {});
 
         const rows = document.querySelectorAll('#messages tr');
@@ -1073,7 +1394,7 @@ Insert immediately after `appendTo()`:
 
 Run: `yarn test src/__tests__/CalendarViewerMount.test.js`
 
-Expected: PASS, every case. Task 4's tests deliberately avoid `viewer.fetch()`, which arrives in Task 5.
+Expected: PASS, every case. Task 6's tests deliberately avoid `viewer.fetch()`, which arrives in Task 7.
 
 - [ ] **Step 8: Mutation-verify the ordering test**
 
@@ -1094,7 +1415,7 @@ git commit -m "Add CalendarViewer.appendTo() and listenTo()"
 
 ---
 
-### Task 5: The three delegates, the dispose guards, and the `mountInto()` refactor
+### Task 7: The three delegates, the dispose guards, and the `mountInto()` refactor
 
 **Files:**
 
@@ -1103,7 +1424,7 @@ git commit -m "Add CalendarViewer.appendTo() and listenTo()"
 
 **Interfaces:**
 
-- Consumes: `appendTo()` and `listenTo()` from Task 4; `CalendarControls.fetch()`, `.onError()`, `.onCalendarFetched()`.
+- Consumes: `appendTo()` and `listenTo()` from Task 6; `CalendarControls.fetch()`, `.onError()`, `.onCalendarFetched()`.
 - Produces: `CalendarViewer.prototype.fetch() => Promise<Object>`, `.onError(cb) => CalendarViewer`, `.onCalendarFetched(cb) => CalendarViewer`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1182,7 +1503,7 @@ Append to `src/__tests__/CalendarViewerMount.test.js`, inside the existing `desc
     });
 ```
 
-Leave Task 4's existing `viewer.controls.fetch()` call as it is — it exercises the controls' own method, which is still worth covering directly.
+Leave Task 6's existing `viewer.controls.fetch()` call as it is — it exercises the controls' own method, which is still worth covering directly.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -1349,7 +1670,7 @@ git commit -m "Add CalendarViewer fetch/onError/onCalendarFetched; refactor moun
 
 ---
 
-### Task 6: Documentation, changelog and version
+### Task 8: Documentation, changelog and version
 
 **Files:**
 
@@ -1360,7 +1681,7 @@ git commit -m "Add CalendarViewer fetch/onError/onCalendarFetched; refactor moun
 
 **Interfaces:**
 
-- Consumes: every API from Tasks 1-5.
+- Consumes: every API from Tasks 1-7.
 - Produces: nothing consumed by later tasks.
 
 - [ ] **Step 1: Document `RiteSelect.wrapper()`**
@@ -1479,6 +1800,11 @@ Add above the `## 2.3.0` heading in `CHANGELOG.md`:
 `CalendarViewer` gains the public mount path its documentation already described, and `RiteSelect`
 gains the `wrapper()` every other select in the library already had.
 
+`RiteSelect.wrapper()` takes the same `{ as, class, id }` bag as `CalendarSelect.wrapper()`, and the two
+now share one internal validator, so the bag can never drift between them. `CalendarSelect.wrapper()`'s
+observable behaviour — every accepted value and every error message — is unchanged; a characterization
+suite added before the extraction pins it.
+
 `CalendarViewer` was the only meta-component with no `appendTo()` and no `listenTo()`, so its
 documented constructor path — "builds both halves but mounts neither" — was a dead end, and anything
 that has to happen between construction and the mount was unreachable. `AcceptHeaderInput.hide()` is
@@ -1533,11 +1859,14 @@ git commit -m "Document RiteSelect.wrapper() and CalendarViewer's mount path; re
 ## Definition of done
 
 - [ ] `yarn test` passes with no pre-existing test file modified, except
-      `MetaComponentThemeWrapperSymmetry.test.js` (Task 2, deliberately inverted) and
-      `CalendarControlsMount.test.js` (Task 3, additions only).
+      `MetaComponentThemeWrapperSymmetry.test.js` (Task 4, deliberately inverted) and
+      `CalendarControlsMount.test.js` (Task 5, additions only).
+- [ ] `CalendarSelectWrapper.test.js` passes unmodified from the moment Task 1 wrote it — it is the
+      evidence that extracting the shared validator changed nothing observable about `CalendarSelect`.
+- [ ] `src/WrapperOptions.js` is NOT exported from `src/index.js`.
 - [ ] `yarn compile && yarn lint:dts` pass.
 - [ ] `yarn format:js && yarn format:md && yarn lint:md` all report no changes needed.
-- [ ] The listener-ordering test was mutation-verified (Task 4, Step 8) and the correct order restored.
+- [ ] The listener-ordering test was mutation-verified (Task 6, Step 8) and the correct order restored.
 - [ ] `CalendarViewer.test.js` and `CalendarViewerStory.test.js` pass unmodified.
 - [ ] This sequence works end-to-end, which is what unblocks `examples/javascript/main.js`:
 
