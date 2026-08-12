@@ -225,11 +225,24 @@ describe('ApiClient response freshness', () => {
 });
 
 describe('ApiClient listening to a RiteSelect', () => {
+    /**
+     * Lets `ApiClient`'s coalesced refetch run.
+     *
+     * A `change` no longer fetches synchronously: `#scheduleRefetch()` defers to a
+     * microtask so that one user action, which may move several inputs, produces
+     * one request built from the state they settle on. These tests drive a single
+     * input, so the coalescing changes only WHEN the request goes out, never how
+     * many. See ApiClientRequestCoalescing.test.js.
+     *
+     * @returns {Promise<void>} Resolves once the flush has issued its request.
+     */
+    const flushRefetch = () => Promise.resolve();
+
     it('rejects something that is not a RiteSelect, CalendarSelect or ApiOptions', () => {
         expect(() => apiClient.listenTo({})).toThrow(/Expected an instance of/);
     });
 
-    it('sets the rite and re-issues the request when the rite changes', () => {
+    it('sets the rite and re-issues the request when the rite changes', async () => {
         const riteSelect = new RiteSelect('en');
         expect(apiClient.listenTo(riteSelect)).toBe(apiClient);
 
@@ -237,11 +250,12 @@ describe('ApiClient listening to a RiteSelect', () => {
         riteSelect._domElement.dispatchEvent(new Event('change'));
 
         expect(apiClient._currentRite).toBe(Rite.AMBROSIAN);
+        await flushRefetch();
         expect(global.fetch).toHaveBeenCalledTimes(1);
         expect(global.fetch.mock.calls[0][0]).toContain('/calendar/ambrosian');
     });
 
-    it('falls back to the rite-level calendar from a national selection', () => {
+    it('falls back to the rite-level calendar from a national selection', async () => {
         // A user switching rites is not a programming error, so this must not
         // hit the throw in fetchNationalCalendar. It re-targets instead.
         const riteSelect = new RiteSelect('en');
@@ -251,13 +265,14 @@ describe('ApiClient listening to a RiteSelect', () => {
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent(new Event('change'));
+        await flushRefetch();
 
         expect(global.fetch).toHaveBeenCalledTimes(1);
         expect(global.fetch.mock.calls[0][0]).toContain('/calendar/ambrosian');
         expect(global.fetch.mock.calls[0][0]).not.toContain('/nation/');
     });
 
-    it('falls back to the rite-level calendar from a diocesan selection, in both directions', () => {
+    it('falls back to the rite-level calendar from a diocesan selection, in both directions', async () => {
         // A calendar_id from one rite is never valid under another. Carrying a
         // diocese across a rite change is a 400 in BOTH directions, verified
         // against the API:
@@ -270,6 +285,7 @@ describe('ApiClient listening to a RiteSelect', () => {
 
         riteSelect._domElement.value = Rite.AMBROSIAN;
         riteSelect._domElement.dispatchEvent(new Event('change'));
+        await flushRefetch();
 
         expect(global.fetch.mock.calls[0][0]).toContain('/calendar/ambrosian');
         expect(global.fetch.mock.calls[0][0]).not.toContain('/diocese/');
@@ -280,6 +296,7 @@ describe('ApiClient listening to a RiteSelect', () => {
 
         riteSelect._domElement.value = Rite.ROMAN;
         riteSelect._domElement.dispatchEvent(new Event('change'));
+        await flushRefetch();
 
         expect(global.fetch.mock.calls[0][0]).toContain('/calendar/roman');
         expect(global.fetch.mock.calls[0][0]).not.toContain('/diocese/');
