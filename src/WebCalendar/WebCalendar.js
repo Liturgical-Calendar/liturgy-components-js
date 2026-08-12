@@ -1784,6 +1784,14 @@ export default class WebCalendar {
                     '.',
             );
         }
+        // Any previous subscription is released BEFORE the two references are
+        // overwritten. Assigning over them would orphan the old listener on the old
+        // client's bus with nothing left holding its reference — measured: after
+        // `listenTo(a)` then `listenTo(b)`, client `a` kept its listener, and
+        // `dispose()` could then only ever remove `b`'s, so `a` stayed subscribed
+        // for the lifetime of the page and would keep rendering into this calendar.
+        this.#unsubscribe();
+
         // Kept, along with the client, so `dispose()` can hand the exact same
         // reference back to `EventEmitter.off()`. Before this the closure was
         // unreachable, so nothing could ever stop a mounted `WebCalendar`
@@ -1862,6 +1870,25 @@ export default class WebCalendar {
      * @returns {void}
      */
     dispose() {
+        this.#unsubscribe();
+        this.#attachedElement = null;
+    }
+
+    /**
+     * Releases the `calendarFetched` subscription, if there is one, and clears the
+     * two references it needed.
+     *
+     * Shared by `dispose()` and by `listenTo()`, which must release a previous
+     * subscription before overwriting the references that identify it. Deliberately
+     * does NOT touch `#attachedElement`: forgetting the mount is `dispose()`'s
+     * business, while re-listening keeps rendering to the same place.
+     *
+     * Idempotent, and safe when `listenTo()` was never called.
+     *
+     * @returns {void}
+     * @private
+     */
+    #unsubscribe() {
         if (
             null !== this.#apiClient &&
             null !== this.#calendarFetchedListener
@@ -1873,7 +1900,6 @@ export default class WebCalendar {
         }
         this.#apiClient = null;
         this.#calendarFetchedListener = null;
-        this.#attachedElement = null;
     }
 
     /**
