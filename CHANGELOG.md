@@ -17,8 +17,14 @@ prepared under that number was skipped, and everything it was to have delivered 
   still asked for French — a locale that rite cannot serve, so the calendar came back in another
   language entirely. `applyRite()` now notifies when, and only when, the rebuild actually changed the
   selected locale — the same conditional the year clamp beside it already used, and the same
-  notification the calendar-selection path already performed for this input. Measured: no additional
-  HTTP requests per rite change.
+  notification the calendar-selection path already performed for this input.
+
+  **Cost, measured:** a rite change that also changes the selected locale now issues additional requests
+  before the correct one — `ApiClient` refetches on every input `change`, and a rite switch legitimately
+  moves several inputs at once. The final request always carries the new rite and the displayed locale,
+  and a rite change that leaves the locale alone still issues exactly one request. This is the same shape
+  the calendar-selection path has always had (selecting a nation issues a request for the previous
+  calendar first), not a new pattern; coalescing them is tracked separately.
 
   **`PathBuilder` was affected by the same defect and is fixed by the same change.** It reads the locale
   from that identical `change` listener, so its rendered URL kept the stale query parameter —

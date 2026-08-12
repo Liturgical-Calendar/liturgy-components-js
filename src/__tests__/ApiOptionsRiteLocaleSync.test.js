@@ -35,15 +35,19 @@ const API_URL = 'http://localhost:8000';
 
 /** `Accept-Language` values the mock saw, in request order. */
 let sentLocales = [];
+/** Request URLs the mock saw, in order, API base stripped. */
+let sentUrls = [];
 
 beforeEach(() => {
     ApiBase.reset();
     ApiBase.fromMetadata(API_URL, FULL_METADATA);
     document.body.innerHTML = '<div id="opts"></div>';
     sentLocales = [];
+    sentUrls = [];
     global.fetch = jest.fn((url, init) => {
         const lang = init?.headers?.['Accept-Language'] ?? '';
         sentLocales.push(lang);
+        sentUrls.push(String(url).replace(API_URL, ''));
         return Promise.resolve({
             ok: true,
             status: 200,
@@ -215,5 +219,49 @@ describe("a rite change keeps PathBuilder's rendered locale in sync", () => {
         // one the rite just made unavailable.
         expect(renderedPath()).toContain(`locale=${localeElement.value}`);
         expect(renderedPath()).not.toContain('locale=en');
+    });
+});
+
+/**
+ * What a rite change actually puts on the wire. Pinned because the fix's cost was
+ * initially reported — wrongly — as "no additional requests", and because the shape
+ * below is easy to regress in either direction.
+ *
+ * `ApiClient` refetches on every input `change`, and a rite switch legitimately moves
+ * several inputs at once, so a rite change that ALSO changes the locale issues more
+ * than one request. What must hold is that the LAST one is correct in both respects,
+ * and that a rite change which leaves the locale alone stays at exactly one.
+ */
+describe('what a rite change puts on the wire', () => {
+    it('ends on the new rite carrying the displayed locale', async () => {
+        const { apiClient, localeElement, riteElement } = await buildForm();
+        await apiClient.fetchCalendar('it');
+        userSelects(localeElement, 'en');
+        await settle();
+
+        sentUrls.length = 0;
+        sentLocales.length = 0;
+        userSelects(riteElement, 'ambrosian');
+        await settle();
+
+        expect(sentUrls.at(-1)).toContain('/calendar/ambrosian');
+        expect(sentLocales.at(-1)).toBe(localeElement.value);
+        // No request may end on the OLD rite — whatever precedes the last one,
+        // the settled state is what the user is left looking at.
+        expect(sentUrls.at(-1)).not.toContain('/calendar/roman');
+    });
+
+    it('issues exactly one request when the rite leaves the locale alone', async () => {
+        const { apiClient, localeElement, riteElement } = await buildForm();
+        await apiClient.fetchCalendar('it');
+        userSelects(localeElement, 'it');
+        await settle();
+
+        sentUrls.length = 0;
+        userSelects(riteElement, 'ambrosian');
+        await settle();
+
+        expect(localeElement.value).toBe('it');
+        expect(sentUrls).toEqual(['/calendar/ambrosian/2026']);
     });
 });
