@@ -39,6 +39,15 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 
+/** The slots a caller may name. @type {Readonly<string[]>} */
+const SLOT_NAMES = Object.freeze([
+    'pathBuilder',
+    'basePath',
+    'allPaths',
+    'riteSelect',
+    'builder',
+]);
+
 export default class ApiExplorer {
     /** @type {CalendarControls} */
     #controls;
@@ -123,22 +132,27 @@ export default class ApiExplorer {
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
      * @param {string} slot - The slot name, for the message.
+     * @param {string} caller - The full `Class.method` prefix to report the
+     *   message under — `'ApiExplorer.appendTo'` for a direct call,
+     *   `'ApiExplorer.mountInto'` when this runs inside that factory, so the
+     *   thrown message names the method the caller actually used rather than
+     *   always naming `appendTo`.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, slot) {
+    static #requireElement(target, slot, caller) {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `ApiExplorer.appendTo: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `ApiExplorer.appendTo: Element not found for the ${slot} slot: ${target}`,
+                `${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -171,43 +185,77 @@ export default class ApiExplorer {
      * in the document for `insertAdjacentElement( 'afterend', … )` to have a
      * parent to insert next to.
      *
-     * Every slot is optional; an omitted one simply skips that append (and, for
-     * `pathBuilder`, skips positioning the calendar select too). A named slot that
-     * matches nothing throws, naming `ApiExplorer` and the slot.
+     * **`pathBuilder` is the one REQUIRED slot**, unlike the other four: the
+     * calendar select has no slot of its own and is positioned only as a side
+     * effect of mounting `pathBuilder` (see above). Omitting it would leave
+     * `calendarSelect` permanently detached from the document with no error
+     * raised anywhere — `insertAdjacentElement('afterend', …)` on a node with
+     * no parent is a silent no-op — so it is rejected here instead. The other
+     * four slots stay optional; an omitted one simply skips that append. A
+     * named slot that matches nothing throws, naming `ApiExplorer` and the
+     * slot, and a slots object naming no key from `{ pathBuilder, basePath,
+     * allPaths, riteSelect, builder }` at all — an empty object, or every key
+     * misspelled — throws too, rather than silently mounting nothing.
      *
-     * @param {{pathBuilder?: (string|HTMLElement), basePath?: (string|HTMLElement), allPaths?: (string|HTMLElement), riteSelect?: (string|HTMLElement), builder?: (string|HTMLElement)}} slots - Where to mount each piece.
+     * @param {{pathBuilder: (string|HTMLElement), basePath?: (string|HTMLElement), allPaths?: (string|HTMLElement), riteSelect?: (string|HTMLElement), builder?: (string|HTMLElement)}} slots - Where to mount each piece.
+     * @param {string} [caller='ApiExplorer.appendTo'] - Internal only: the
+     *   full `Class.method` prefix to report in a thrown message.
+     *   `mountInto()` passes `'ApiExplorer.mountInto'` here, so a bad slot it
+     *   forwards is reported under the name the caller actually used.
      * @returns {void}
-     * @throws {Error} If this instance has been disposed, `slots` is not a plain
-     *   object, or a named slot matches nothing.
+     * @throws {Error} If this instance has been disposed, `slots` is not a
+     *   plain object, names no known slot, names an unknown slot, omits
+     *   `pathBuilder`, or a named slot matches nothing.
      */
-    appendTo(slots) {
+    appendTo(slots, caller = 'ApiExplorer.appendTo') {
         this.#assertUsable();
         try {
-            assertPlainOptions(slots, 'ApiExplorer.appendTo');
+            assertPlainOptions(slots, caller);
         } catch {
             throw new Error(
-                `ApiExplorer.appendTo: slots must be an object naming { pathBuilder, basePath, allPaths, riteSelect, builder } targets, but found type: ${describeType(slots)}`,
+                `${caller}: slots must be an object naming { pathBuilder, basePath, allPaths, riteSelect, builder } targets, but found type: ${describeType(slots)}`,
             );
         }
 
-        if (Object.hasOwn(slots, 'pathBuilder')) {
-            const target = ApiExplorer.#requireElement(
-                slots.pathBuilder,
-                'pathBuilder',
+        // A typo'd or empty slots object would otherwise mount nothing at
+        // all and resolve successfully — the exact silent-failure shape I4
+        // exists to close. Checked as two separate rules: any key outside
+        // the known set is rejected by name (consistent with the
+        // `webCalendar` bag's own unknown-key rejection on `CalendarViewer`),
+        // and — narrower than "at least one known key" — `pathBuilder`
+        // itself is required; see the doc comment above for why.
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { pathBuilder, basePath, allPaths, riteSelect, builder }.`,
             );
-            this.#controls.apiOptions
-                .filter(ApiOptionsFilter.PATH_BUILDER)
-                .appendTo(target);
-            this.#controls.calendarSelect.insertAfter(
-                this.#controls.apiOptions._calendarPathInput,
-            );
-            this.#pathBuilderMount = target;
         }
+        if (false === Object.hasOwn(slots, 'pathBuilder')) {
+            throw new Error(
+                `${caller}: slots must name a 'pathBuilder' target. The calendar select has no slot of its own — it is positioned relative to the calendar-path input inside 'pathBuilder' — so omitting that slot would leave the calendar select permanently detached from the document.`,
+            );
+        }
+
+        const pathBuilderTarget = ApiExplorer.#requireElement(
+            slots.pathBuilder,
+            'pathBuilder',
+            caller,
+        );
+        this.#controls.apiOptions
+            .filter(ApiOptionsFilter.PATH_BUILDER)
+            .appendTo(pathBuilderTarget);
+        this.#controls.calendarSelect.insertAfter(
+            this.#controls.apiOptions._calendarPathInput,
+        );
+        this.#pathBuilderMount = pathBuilderTarget;
 
         if (Object.hasOwn(slots, 'riteSelect')) {
             const target = ApiExplorer.#requireElement(
                 slots.riteSelect,
                 'riteSelect',
+                caller,
             );
             this.#controls.riteSelect.appendTo(target);
             this.#riteMount = target;
@@ -217,6 +265,7 @@ export default class ApiExplorer {
             const target = ApiExplorer.#requireElement(
                 slots.basePath,
                 'basePath',
+                caller,
             );
             this.#controls.apiOptions
                 .filter(ApiOptionsFilter.BASE_PATH)
@@ -228,6 +277,7 @@ export default class ApiExplorer {
             const target = ApiExplorer.#requireElement(
                 slots.allPaths,
                 'allPaths',
+                caller,
             );
             this.#controls.apiOptions
                 .filter(ApiOptionsFilter.ALL_PATHS)
@@ -239,6 +289,7 @@ export default class ApiExplorer {
             const target = ApiExplorer.#requireElement(
                 slots.builder,
                 'builder',
+                caller,
             );
             this.#pathBuilder.appendTo(target);
             this.#builderMount = target;
@@ -293,13 +344,7 @@ export default class ApiExplorer {
      * @returns {HTMLElement|null} The first resolved element found, or `null`.
      */
     static #targetElement(slots) {
-        for (const key of [
-            'pathBuilder',
-            'basePath',
-            'allPaths',
-            'riteSelect',
-            'builder',
-        ]) {
+        for (const key of SLOT_NAMES) {
             const candidate = slots?.[key];
             if (candidate instanceof HTMLElement) {
                 return candidate;
@@ -327,12 +372,13 @@ export default class ApiExplorer {
      * `#targetElement()` for why only an already-resolved element can be checked
      * that way.
      *
-     * @param {{pathBuilder?: (string|HTMLElement), basePath?: (string|HTMLElement), allPaths?: (string|HTMLElement), riteSelect?: (string|HTMLElement), builder?: (string|HTMLElement)}} slots - Where to mount each piece.
+     * @param {{pathBuilder: (string|HTMLElement), basePath?: (string|HTMLElement), allPaths?: (string|HTMLElement), riteSelect?: (string|HTMLElement), builder?: (string|HTMLElement)}} slots - Where to mount each piece.
      * @param {Object} [options] - As the constructor.
      * @param {AbortSignal} [options.signal] - Cancels the mount; see above.
      * @returns {Promise<ApiExplorer|null>} The explorer, or `null` if cancelled.
-     * @throws {Error} If the options or `slots` are invalid, or if the API
-     *   metadata cannot be loaded.
+     * @throws {Error} If the options or `slots` are invalid — including an
+     *   empty or unknown-keys-only `slots`, or one omitting `pathBuilder` —
+     *   or if the API metadata cannot be loaded.
      */
     static async mountInto(slots, options = {}) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
@@ -356,7 +402,7 @@ export default class ApiExplorer {
             return null;
         }
 
-        explorer.appendTo(slots);
+        explorer.appendTo(slots, 'ApiExplorer.mountInto');
 
         return explorer;
     }

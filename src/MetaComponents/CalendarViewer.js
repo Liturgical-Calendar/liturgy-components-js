@@ -13,7 +13,6 @@
 
 import CalendarControls from './CalendarControls.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
-import ApiClient from '../ApiClient/ApiClient.js';
 import {
     normalizeComponentOptions,
     assertPlainOptions,
@@ -311,7 +310,10 @@ export default class CalendarViewer {
         if (Object.hasOwn(slots, 'messages')) {
             controlsSlots.messages = slots.messages;
         }
-        viewer.#controls.appendTo(controlsSlots);
+        // Passed explicitly so a bad `controls`/`messages` target is reported
+        // as `CalendarViewer.mountInto`, not `CalendarControls.appendTo` — a
+        // class the caller of THIS factory never directly touched.
+        viewer.#controls.appendTo(controlsSlots, 'CalendarViewer.mountInto');
 
         const calendarElement = CalendarViewer.#requireElement(
             slots.calendar,

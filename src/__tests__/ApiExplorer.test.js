@@ -68,8 +68,97 @@ describe('ApiExplorer', () => {
         );
     });
 
+    // C2: `insertAdjacentElement('afterend', …)` on a node with no parent is a
+    // silent no-op — nothing anywhere else in the suite actually checked that
+    // the calendar select ends up where the doc comment says it does.
+    it('positions the calendar select inside the pathBuilder container, immediately after the calendar-path input', async () => {
+        const explorer = await mountExplorer();
+        const calendarPathInputEl =
+            explorer.controls.apiOptions._calendarPathInput._domElement;
+        const calendarSelectEl = explorer.controls.calendarSelect._domElement;
+        const container = document.querySelector('#pathBuilder');
+
+        expect(container.contains(calendarSelectEl)).toBe(true);
+        // DOCUMENT_POSITION_FOLLOWING: calendarSelectEl comes AFTER
+        // calendarPathInputEl in document order, regardless of whatever
+        // (label, wrapper, ...) sits between them.
+        expect(
+            Boolean(
+                calendarPathInputEl.compareDocumentPosition(calendarSelectEl) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+            ),
+        ).toBe(true);
+    });
+
+    // C2: the calendar select has no slot of its own — it can only be
+    // positioned as a side effect of mounting `pathBuilder`. Omitting that
+    // slot used to leave it silently detached from the document; this must
+    // now be a loud rejection instead.
+    it('rejects when the pathBuilder slot is omitted, since the calendar select could not be positioned', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            ApiExplorer.mountInto(
+                { builder: '#builder' },
+                { locale: 'en', apiClient },
+            ),
+        ).rejects.toThrow(/pathBuilder/);
+    });
+
+    // I4: a slots object naming no known slot at all — an empty object, or
+    // every key misspelled — must not resolve having silently mounted
+    // nothing, matching the rule `CalendarControls.appendTo` and
+    // `CalendarViewer`'s own `webCalendar`-bag unknown-key rejection already
+    // apply elsewhere in this family.
+    it('rejects an empty slots object', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            ApiExplorer.mountInto({}, { locale: 'en', apiClient }),
+        ).rejects.toThrow(/pathBuilder/);
+    });
+
+    it('rejects a slots object naming only an unknown key', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            ApiExplorer.mountInto(
+                { pathBulider: '#pathBuilder' },
+                { locale: 'en', apiClient },
+            ),
+        ).rejects.toThrow(/unknown slot/);
+    });
+
+    // I3: a bad slot target reached through `mountInto()` must be reported
+    // under that name, not under `appendTo` — a method the caller of
+    // `mountInto()` never called.
+    it('reports a missing slot target naming mountInto, not appendTo', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            ApiExplorer.mountInto(
+                { pathBuilder: '#nope' },
+                { locale: 'en', apiClient },
+            ),
+        ).rejects.toThrow(/ApiExplorer\.mountInto: Element not found/);
+    });
+
     it('never fetches a calendar', async () => {
         await mountExplorer();
+        const calls = global.fetch.mock.calls.map((c) => String(c[0]));
+        expect(calls.some((u) => /\/calendar(\/|\?|$)/.test(u))).toBe(false);
+    });
+
+    // I7: the earlier "never fetches" coverage only ever drove the rite
+    // select — re-adding `apiClient.listenTo(apiOptions)` alone (restoring
+    // the bug this class exists to avoid) would survive that test untouched,
+    // since nothing here changed an ApiOptions input at all. This drives the
+    // year-type input instead, one of the `allPaths`-filtered inputs.
+    it('never fetches a calendar after an ApiOptions input changes', async () => {
+        const explorer = await mountExplorer();
+        const yearTypeEl =
+            explorer.controls.apiOptions._yearTypeInput._domElement;
+        yearTypeEl.value =
+            yearTypeEl.value === 'LITURGICAL' ? 'CIVIL' : 'LITURGICAL';
+        yearTypeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
         const calls = global.fetch.mock.calls.map((c) => String(c[0]));
         expect(calls.some((u) => /\/calendar(\/|\?|$)/.test(u))).toBe(false);
     });
