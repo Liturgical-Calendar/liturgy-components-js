@@ -50,6 +50,18 @@ const ACCEPTED_FILTERS = Object.freeze([
     ApiOptionsFilter.NONE,
 ]);
 
+/**
+ * The slot names `appendTo()` accepts.
+ *
+ * Enumerated so a typo is rejected with the offending key named, rather than
+ * mounting nothing and returning successfully — the silent-failure shape this
+ * family exists to close, and the same rule `ApiExplorer.appendTo()` and
+ * `CalendarViewer`'s `webCalendar` bag already apply.
+ *
+ * @type {Readonly<string[]>}
+ */
+const SLOT_NAMES = Object.freeze(['controls', 'messages']);
+
 export default class CalendarControls {
     /** @type {string} */
     #locale = 'en';
@@ -341,6 +353,7 @@ export default class CalendarControls {
      * @returns {void}
      * @throws {Error} If this instance has been disposed, or `target` is
      *   neither a single target nor a slots object naming `controls`.
+     * @throws {Error} If `target` names a slot outside `{ controls, messages }`.
      */
     appendTo(target, caller = 'CalendarControls.appendTo') {
         this.#assertUsable();
@@ -361,6 +374,14 @@ export default class CalendarControls {
             }
         }
         const slots = single ? { controls: target } : target;
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, messages }.`,
+            );
+        }
         if (false === Object.hasOwn(slots, 'controls')) {
             throw new Error(
                 `${caller}: a slots object must name a 'controls' target.`,

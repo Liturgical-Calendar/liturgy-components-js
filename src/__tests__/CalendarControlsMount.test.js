@@ -34,6 +34,9 @@ beforeEach(() => {
     const mount = document.createElement('div');
     mount.id = 'mount';
     document.body.appendChild(mount);
+    const messages = document.createElement('div');
+    messages.id = 'messages';
+    document.body.appendChild(messages);
 });
 
 describe('CalendarControls.mountInto', () => {
@@ -157,5 +160,28 @@ describe('CalendarControls.dispose', () => {
         });
         controls.dispose();
         expect(document.getElementById('mount').children.length).toBe(0);
+    });
+});
+
+describe('CalendarControls.appendTo', () => {
+    it('rejects an unknown slot name, naming it', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() =>
+            controls.appendTo({ controls: '#mount', mesages: '#messages' }),
+        ).toThrow(/unknown slot name\(s\): mesages/);
+    });
+
+    it('names the calling class in an unknown-slot error', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() =>
+            controls.appendTo({ controls: '#mount', nope: '#messages' }),
+        ).toThrow(/^CalendarControls\.appendTo: unknown slot name/);
+    });
+
+    it('still accepts the two known slots', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() =>
+            controls.appendTo({ controls: '#mount', messages: '#messages' }),
+        ).not.toThrow();
     });
 });
