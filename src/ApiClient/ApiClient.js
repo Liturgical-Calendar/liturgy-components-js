@@ -145,17 +145,32 @@ export default class ApiClient {
     /**
      * Monotonic counter identifying the most recently STARTED calendar request.
      *
-     * Requests are fire-and-forget, so several can be in flight at once — a rite
-     * change alone starts two, one through the calendar select and one through the
-     * rite listener. Responses are not guaranteed to arrive in the order they were
-     * issued, and without this an older one landing last would overwrite the newer
-     * calendar and emit it, leaving the UI showing data the user has already moved
-     * on from.
+     * Requests are fire-and-forget, so several can be in flight at once. Since
+     * `#scheduleRefetch()` collapses one user action into a single request, the
+     * overlap that remains is a user acting AGAIN before the previous response
+     * lands. Responses are not guaranteed to arrive in the order they were
+     * issued, and without this an older one landing last would overwrite the
+     * newer calendar and emit it, leaving the UI showing data the user has
+     * already moved on from.
+     *
+     * This guards the network path only. A request answered from cache emits
+     * synchronously, at an instant when it IS the newest revision, so this check
+     * cannot catch a stale one — which is why the wasted requests had to be
+     * eliminated at the source rather than filtered out here. See
+     * `#scheduleRefetch()`.
      *
      * @type {number}
      * @private
      */
     #requestRevision = 0;
+
+    /**
+     * The coalesced refetch this turn has already scheduled, or `null`.
+     *
+     * @type {Promise<Object>|null}
+     * @private
+     */
+    #pendingRefetch = null;
 
     /**
      * The API base this client is bound to: its URL, its calendar index, and its
@@ -475,6 +490,61 @@ export default class ApiClient {
                 console.error(error);
             }
         });
+    }
+
+    /**
+     * Collapses the refetches one user action provokes into a single request.
+     *
+     * `listenTo()` attaches a `change` listener per input, and each one used to
+     * fetch on its own. That is right for a user editing one field and wrong for a
+     * single action that moves several at once, which both the rite select and the
+     * calendar select do: `ApiOptions` answers them by rewriting the year floor,
+     * the calendar path, the locale options and the calendar select, and each of
+     * those dispatches its own `change`. The listeners then ran in attachment
+     * order while this client's own state was still half-updated, so the leading
+     * requests described the state the user had just LEFT — the previous rite, or
+     * the previous calendar.
+     *
+     * Deferring an individual dispatch does not fix that; it only changes which
+     * field the wasted request gets wrong. The problem is that several independent
+     * listeners each decide to fetch, none of them knowing a batch is in progress.
+     * So none of them decides any more: they mark the client dirty, and the flush
+     * below reads whatever state the whole batch settled on. It is the same shape
+     * React, Vue and Svelte all use to collapse a turn's updates into one pass.
+     *
+     * A microtask is the right horizon because every dispatch in that batch is
+     * synchronous — `ApiOptions` and `CalendarSelect` both use `dispatchEvent( new
+     * Event( 'change' ) )` — so the whole burst has landed before this runs, and
+     * nothing later than the current turn is swallowed. The last test in
+     * `ApiClientRequestCoalescing.test.js` is what holds that line: two user
+     * actions in separate turns must still produce two requests.
+     *
+     * Only the listener paths are coalesced. The public `fetchCalendar()`,
+     * `fetchNationalCalendar()`, `fetchDiocesanCalendar()` and
+     * `refetchCalendarData()` stay immediate, so a caller that asks for a request
+     * gets one, and consumers holding those promises see no timing change. This
+     * mirrors the split every data-fetching library draws between an automatic
+     * refetch and an explicit one.
+     *
+     * @returns {Promise<Object>} The pending flush, shared by every call this turn.
+     * @private
+     */
+    #scheduleRefetch() {
+        if (null !== this.#pendingRefetch) {
+            return this.#pendingRefetch;
+        }
+        const pending = Promise.resolve().then(() => {
+            // Cleared BEFORE the request, so a `change` arriving after the flush
+            // has begun schedules a NEW flush rather than joining a departed one.
+            this.#pendingRefetch = null;
+            return this.refetchCalendarData();
+        });
+        this.#pendingRefetch = pending;
+        // Same fire-and-forget contract the listeners had before: the rejection
+        // value propagates unchanged through `.then()`, so the `deliveredFailures`
+        // check still suppresses logging a failure a subscriber already handled.
+        this.#discardRequest(pending);
+        return pending;
     }
 
     /**
@@ -1171,17 +1241,11 @@ export default class ApiClient {
                 calendarSelect._domElement.selectedOptions[0];
             this.#currentCalendarId = selectedOption.value;
             this.#currentCategory = selectedOption.dataset.calendartype ?? '';
-            if (this.#currentCategory === 'national') {
-                this.#discardRequest(
-                    this.fetchNationalCalendar(this.#currentCalendarId),
-                );
-            } else if (this.#currentCategory === 'diocesan') {
-                this.#discardRequest(
-                    this.fetchDiocesanCalendar(this.#currentCalendarId),
-                );
-            } else {
-                this.#discardRequest(this.fetchCalendar());
-            }
+            // The three-way branch this listener used to carry is exactly what
+            // `refetchCalendarData()` does, and the flush calls it once the whole
+            // batch has settled. Branching here as well would have picked the
+            // route from the category read mid-batch.
+            this.#scheduleRefetch();
         });
         return this;
     }
@@ -1220,7 +1284,7 @@ export default class ApiClient {
             this.rite(ev.target.value);
             this.#currentCategory = '';
             this.#currentCalendarId = '';
-            this.#discardRequest(this.refetchCalendarData());
+            this.#scheduleRefetch();
         });
         return this;
     }
@@ -1250,7 +1314,7 @@ export default class ApiClient {
                 this.#params.epiphany = event.target.value;
                 //console.log(`updated epiphany to ${this.#params.epiphany}`);
                 if (this.#currentCategory === '') {
-                    this.#discardRequest(this.refetchCalendarData());
+                    this.#scheduleRefetch();
                 }
             },
         );
@@ -1260,7 +1324,7 @@ export default class ApiClient {
                 this.#params.ascension = event.target.value;
                 //console.log(`updated ascension to ${this.#params.ascension}`);
                 if (this.#currentCategory === '') {
-                    this.#discardRequest(this.refetchCalendarData());
+                    this.#scheduleRefetch();
                 }
             },
         );
@@ -1270,7 +1334,7 @@ export default class ApiClient {
                 this.#params.corpus_christi = event.target.value;
                 //console.log(`updated corpus_christi to ${this.#params.corpus_christi}`);
                 if (this.#currentCategory === '') {
-                    this.#discardRequest(this.refetchCalendarData());
+                    this.#scheduleRefetch();
                 }
             },
         );
@@ -1281,7 +1345,7 @@ export default class ApiClient {
                     event.target.value === 'true';
                 //console.log(`updated eternal_high_priest to ${this.#params.eternal_high_priest}`);
                 if (this.#currentCategory === '') {
-                    this.#discardRequest(this.refetchCalendarData());
+                    this.#scheduleRefetch();
                 }
             },
         );
@@ -1297,7 +1361,7 @@ export default class ApiClient {
                 this.#params.holydays_of_obligation = selectedStates;
                 //console.log('updated holydays_of_obligation to:', this.#params.holydays_of_obligation);
                 if (this.#currentCategory === '') {
-                    this.#discardRequest(this.refetchCalendarData());
+                    this.#scheduleRefetch();
                 }
             },
         );
@@ -1306,7 +1370,7 @@ export default class ApiClient {
             (event) => {
                 this.#params.year = parseInt(event.target.value, 10);
                 //console.log(`updated year to ${this.#params.year}`);
-                this.#discardRequest(this.refetchCalendarData());
+                this.#scheduleRefetch();
             },
         );
         apiOptions._yearTypeInput._domElement.addEventListener(
@@ -1314,7 +1378,7 @@ export default class ApiClient {
             (event) => {
                 this.#params.year_type = event.target.value;
                 //console.log(`updated year_type to ${this.#params.year_type}`);
-                this.#discardRequest(this.refetchCalendarData());
+                this.#scheduleRefetch();
             },
         );
         apiOptions._localeInput._domElement.addEventListener(
@@ -1323,7 +1387,7 @@ export default class ApiClient {
                 this.#fetchCalendarHeaders['Accept-Language'] =
                     event.target.value;
                 //console.log(`updated locale to ${this.#fetchCalendarHeaders['Accept-Language']}`);
-                this.#discardRequest(this.refetchCalendarData());
+                this.#scheduleRefetch();
             },
         );
         return this;

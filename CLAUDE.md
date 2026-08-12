@@ -376,6 +376,38 @@ await apiClient.fetchCalendar('en'); // Fetches from API
 ApiClient.clearCache();
 ```
 
+### Request coalescing
+
+`listenTo()` attaches a `change` listener per input, and a single user action moves several of them: a rite
+change makes `ApiOptions` rewrite the year floor, the calendar path, the locale options and the calendar
+select, each dispatching its own `change`. Those listeners used to fetch individually, in attachment order,
+while the client's own state was still half-updated — so the leading requests described the state the user
+had just **left**.
+
+They now mark the client dirty via `#scheduleRefetch()`, which runs one refetch on a microtask, built from
+the state the batch settled on. A microtask is the right horizon because every dispatch in the batch is
+synchronous (`dispatchEvent( new Event( 'change' ) )` in both `ApiOptions` and `CalendarSelect`), so the
+whole burst has landed and nothing beyond the current turn is swallowed.
+
+**Only the listener path coalesces.** `fetchCalendar()`, `fetchNationalCalendar()`,
+`fetchDiocesanCalendar()` and `refetchCalendarData()` stay immediate, so consumers holding those promises —
+`LiturgyOfAnyDay` calls `refetchCalendarData()` three times — see no timing change. This is the split every
+data-fetching library draws between an automatic refetch and an explicit one; do not "unify" it by routing
+the public methods through the scheduler.
+
+This is also what removed a visible flicker, and the reason it could not be fixed by filtering instead.
+`#requestRevision` drops a superseded response before the `calendarFetched` emit, but a wasted request
+answered **from cache** emits synchronously, at an instant when it _is_ the newest revision — so the guard
+has nothing to catch, and the wasted requests were the ones most likely to be cached. The waste had to be
+removed at the source. `#requestRevision` still earns its place for the remaining overlap: a user acting
+again before the previous response lands.
+
+Requests are not aborted when superseded. That was weighed and declined: after coalescing the overlap is
+small, the response is already ignored, and letting it land populates the cache. Tests that drive an input
+programmatically must `await Promise.resolve()` before asserting on `fetch`. See
+`src/__tests__/ApiClientRequestCoalescing.test.js`, whose last test is what keeps coalescing from swallowing
+a second, genuine user action.
+
 ### Deprecated Methods
 
 The following methods are deprecated and will show console warnings:

@@ -279,6 +279,48 @@ ApiBase.cacheLimits({ ttl: null });                            // no expiry (the
 ApiBase.clearAllCaches();                                      // what ApiClient.clearCache() delegates to
 ```
 
+## Request coalescing
+
+A single user action often moves several inputs at once. Switching rite makes `ApiOptions` rewrite the year
+floor, the calendar path, the locale options and the calendar select; selecting a nation rebuilds the locale
+options. Each of those dispatches its own `change`, and `listenTo()` attaches a listener per input.
+
+Those listeners no longer fetch individually. They mark the client dirty, and a single refetch runs on a
+microtask, built from the state the whole batch settled on:
+
+```javascript
+apiClient.listenTo(calendarSelect).listenTo(riteSelect).listenTo(apiOptions);
+
+riteSelect._domElement.value = 'ambrosian';
+riteSelect._domElement.dispatchEvent(new Event('change'));
+// Before: up to three requests, the first two describing the rite and locale
+// the user just left. Now: one request, for the rite and locale they chose.
+```
+
+Only the listener-driven path is coalesced. **`fetchCalendar()`, `fetchNationalCalendar()`,
+`fetchDiocesanCalendar()` and `refetchCalendarData()` remain immediate** — a caller who asks for a request
+gets one, and the promises they return are unchanged in timing and in what they reject with.
+
+Two consequences worth knowing:
+
+- Actions in **separate turns** still produce separate requests. Coalescing collapses one action, never two.
+- A test that drives an input programmatically must let the microtask run before asserting on `fetch`:
+
+  ```javascript
+  select.dispatchEvent(new Event('change'));
+  await Promise.resolve(); // let the coalesced refetch go out
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  ```
+
+This also removes a visible flicker. Responses are already guarded against arriving out of order, but a
+wasted request answered **from cache** emits `calendarFetched` synchronously, and the wasted requests were
+precisely the ones most likely to be cached — so a `WebCalendar` could render the rite the user had just
+left before re-rendering the one they chose. With one request per action there is no stale request to emit.
+
+Superseded responses are ignored rather than aborted. After coalescing, requests overlap only when a user
+acts again before the previous response lands; that response is dropped before the emit, and it still
+populates the cache, which makes switching back instant.
+
 ## API bases
 
 An `ApiBase` is one API base URL and everything belonging to it: the `/calendars` index and the response cache.
