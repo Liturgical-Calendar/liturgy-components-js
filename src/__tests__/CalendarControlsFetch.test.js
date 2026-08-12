@@ -119,6 +119,35 @@ describe('CalendarControls event hooks', () => {
         spy.mockRestore();
     });
 
+    // I5: every test above registers its callback AFTER listenTo(), which
+    // subscribes it directly and never exercises the replay loops inside
+    // listenTo() itself. These register BEFORE, so listenTo() must replay
+    // them — and exactly once, not zero and not twice.
+    it('fires an onCalendarFetched callback registered before listenTo() exactly once', async () => {
+        captureRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        const seen = [];
+        controls.onCalendarFetched((data) => seen.push(data));
+        controls.listenTo(apiClient);
+        await controls.fetch();
+        expect(seen.length).toBe(1);
+    });
+
+    it('fires an onError callback registered before listenTo() exactly once', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        const seen = [];
+        controls.onError((error) => seen.push(error));
+        controls.listenTo(apiClient);
+
+        global.fetch = jest.fn(() => Promise.reject(new Error('network down')));
+        await expect(controls.fetch()).rejects.toThrow();
+        expect(seen.length).toBe(1);
+    });
+
     // fetch() returns its promise directly rather than routing it through
     // ApiClient#_discardRequest: that seam is for requests the library fires and
     // drops (LiturgyOfAnyDay's year handling, the listenTo() change listeners),

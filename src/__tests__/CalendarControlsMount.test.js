@@ -59,6 +59,16 @@ describe('CalendarControls.mountInto', () => {
         expect(urls.some((u) => u.includes('/calendar/'))).toBe(false);
     });
 
+    // I3: `mountInto()` calls `appendTo()` internally, and a bad target must
+    // be reported under the name the caller actually used — `mountInto` —
+    // not under `appendTo`, which the caller of `mountInto()` never called.
+    it('reports a missing target naming mountInto, not appendTo', async () => {
+        const apiClient = await ApiClient.init(API_URL);
+        await expect(
+            CalendarControls.mountInto('#nope', { locale: 'en', apiClient }),
+        ).rejects.toThrow(/CalendarControls\.mountInto: Element not found/);
+    });
+
     it('rejects an unparseable locale', async () => {
         const apiClient = await ApiClient.init(API_URL);
         await expect(

@@ -3,8 +3,10 @@
  * one another and to an `ApiClient` — with no renderer.
  *
  * The renderer is the axis of variation and the wiring is not: the same 45-line
- * block appears byte-for-byte in a `WebCalendar` example and a FullCalendar one,
- * and again, minus the fetching, in the API explorer. This class is that block.
+ * block appears, structurally identical, in a `WebCalendar` example and a
+ * FullCalendar one — they differ in locale source, comment wording and minor
+ * content, not in shape — and again, minus the fetching, in the API explorer.
+ * This class is that block.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
@@ -25,9 +27,38 @@ import {
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { assertTheme, resolveChildTheme } from './Theme.js';
 
+/**
+ * The filters `ApiOptions.filter()` accepts, validated here by name so a typo
+ * is reported as a `CalendarControls` problem rather than surfacing from
+ * `ApiOptions.filter()` under a component the caller never directly touched
+ * (that method's own thrown message names neither class).
+ *
+ * `ApiOptionsFilter.NONE` is included, unlike `CalendarResourcePicker`'s own
+ * `ACCEPTED_FILTERS`: there a resource id has to be national or diocesan, so
+ * `NONE` is meaningless, but here it is a legitimate, documented choice — it
+ * renders every `ApiOptions` input unfiltered, which is what the FullCalendar
+ * example (one of this class' own extraction sources) needs.
+ *
+ * @type {Readonly<Array<string|null>>}
+ */
+const ACCEPTED_FILTERS = Object.freeze([
+    ApiOptionsFilter.ALL_CALENDARS,
+    ApiOptionsFilter.GENERAL_ROMAN,
+    ApiOptionsFilter.PATH_BUILDER,
+    ApiOptionsFilter.LOCALE_ONLY,
+    ApiOptionsFilter.YEAR_ONLY,
+    ApiOptionsFilter.NONE,
+]);
+
 export default class CalendarControls {
     /** @type {string} */
     #locale = 'en';
+
+    /** @type {string} */
+    #language = 'en';
+
+    /** @type {string} */
+    #selectedLocale = '';
 
     /** @type {RiteSelect} */
     #riteSelect;
@@ -56,9 +87,6 @@ export default class CalendarControls {
     /** @type {boolean} */
     #disposed = false;
 
-    /** @type {boolean} */
-    #riteLinked = false;
-
     /** @type {Array<function(Object): void>} */
     #fetchedCallbacks = [];
 
@@ -82,9 +110,10 @@ export default class CalendarControls {
         if (locale !== undefined && locale !== null) {
             this.#locale = canonicalizeLocale(locale, 'CalendarControls');
         }
-        // Used only for the calendar select's default label text fallback below —
-        // its own children receive `this.#locale` directly and derive their own.
-        const language = new Intl.Locale(this.#locale).language;
+        // Used for the calendar select's default label text fallback below, and
+        // for the locale cascade `#matchLocale()` runs in `appendTo()` — its own
+        // children receive `this.#locale` directly and derive their own.
+        this.#language = new Intl.Locale(this.#locale).language;
         assertTheme(theme, 'CalendarControls');
         this.#base = resolveBase(apiClient, 'CalendarControls');
 
@@ -133,7 +162,7 @@ export default class CalendarControls {
             // label handling for the same reason.
             labelOptions.text = Object.hasOwn(calendarTheme, 'labelText')
                 ? calendarTheme.labelText
-                : (Messages[language]?.['SELECT_A_CALENDAR'] ??
+                : (Messages[this.#language]?.['SELECT_A_CALENDAR'] ??
                   Messages['en']['SELECT_A_CALENDAR']);
             this.#calendarSelect.label(labelOptions);
         }
@@ -143,10 +172,34 @@ export default class CalendarControls {
             });
         }
 
+        // `?? ApiOptionsFilter.ALL_CALENDARS` would default `undefined` AND
+        // `null` alike, silently converting an explicitly-passed
+        // `ApiOptionsFilter.NONE` (itself `null`) into `ALL_CALENDARS` — a
+        // documented filter value would then render the wrong set of inputs
+        // with no error at all. Defaulting only on `undefined` keeps `NONE` a
+        // real, distinct choice.
+        const resolvedFilter =
+            undefined === filter ? ApiOptionsFilter.ALL_CALENDARS : filter;
+        if (false === ACCEPTED_FILTERS.includes(resolvedFilter)) {
+            throw new Error(
+                `CalendarControls: the filter option must be one of ApiOptionsFilter.ALL_CALENDARS, .GENERAL_ROMAN, .PATH_BUILDER, .LOCALE_ONLY, .YEAR_ONLY, or .NONE, but found: ${String(filter)}`,
+            );
+        }
         this.#apiOptions = new ApiOptions({
             locale: this.#locale,
             apiClient,
-        }).filter(filter ?? ApiOptionsFilter.ALL_CALENDARS);
+        }).filter(resolvedFilter);
+
+        // Ported from `DayViewer`, which already gets this right (C3): a
+        // constructed-with `it` viewer must show `it` in the locale input and
+        // send `Accept-Language: it` on its first request, exactly as a
+        // themed `it` locale input reads Italian in the select — not `la`,
+        // and not silent. `defaultValue()` is what `LocaleInput.resetOptions()`
+        // falls back to (instead of `'la'`) on a rite change, so setting it
+        // here — regardless of `filter`, since the underlying input exists
+        // whether or not this filter renders it — keeps that fallback correct
+        // too, not only the very first render.
+        this.#apiOptions._localeInput.defaultValue(this.#language);
     }
 
     /** @returns {RiteSelect} The wired rite select. */
@@ -168,6 +221,43 @@ export default class CalendarControls {
     }
 
     /**
+     * The locale chosen by the cascade and currently selected in the locale
+     * input.
+     *
+     * Throws once these controls have been disposed; see
+     * [`dispose()`](#dispose).
+     *
+     * @returns {string} The selected locale.
+     * @throws {Error} If these controls have been disposed.
+     */
+    get selectedLocale() {
+        this.#assertUsable();
+        return this.#selectedLocale;
+    }
+
+    /**
+     * Chooses the locale to request, from those the selected calendar
+     * supports.
+     *
+     * Ported verbatim from `DayViewer.#matchLocale()`: exact match, then
+     * language-prefix match, then the first available option, then the
+     * configured locale — so a `CalendarControls` constructed with `it-CH`
+     * gets Italian rather than English, exactly as `DayViewer` does, rather
+     * than the two components inventing different cascades for the same
+     * documented behaviour.
+     *
+     * @returns {string} The locale to request.
+     */
+    #matchLocale() {
+        const options = this.#apiOptions._localeInput.options();
+        const exact = options.find((value) => value === this.#locale);
+        const language = options.find(
+            (value) => value.split(/[-_]/)[0] === this.#language,
+        );
+        return exact ?? language ?? options[0] ?? this.#locale;
+    }
+
+    /**
      * Guards every method a disposed instance cannot honour.
      *
      * @returns {void}
@@ -186,7 +276,12 @@ export default class CalendarControls {
      *
      * @param {string|HTMLElement} target - A CSS selector or an element.
      * @param {string} slot - The slot name, for the message.
-     * @param {string} caller - The calling method's name, for the message.
+     * @param {string} caller - The FULL `Class.method` prefix to report the
+     *   message under — e.g. `'CalendarControls.appendTo'` for a direct call,
+     *   `'CalendarControls.mountInto'` when this runs inside that factory, or
+     *   a composing class' own name (`'CalendarViewer.mountInto'`) when this
+     *   method is reached through that class instead, so the thrown message
+     *   names whichever class and method the caller actually used.
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
@@ -196,13 +291,13 @@ export default class CalendarControls {
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `CalendarControls.${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `CalendarControls.${caller}: Element not found for the ${slot} slot: ${target}`,
+                `${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -224,11 +319,17 @@ export default class CalendarControls {
      * Callable more than once; the children are moved rather than copied.
      *
      * @param {string|HTMLElement|{controls: (string|HTMLElement), messages?: (string|HTMLElement)}} target - Where to mount.
+     * @param {string} [caller='CalendarControls.appendTo'] - Internal only: the
+     *   full `Class.method` prefix to report in a thrown message.
+     *   `mountInto()` passes `'CalendarControls.mountInto'` here, and a
+     *   composing class (`CalendarViewer`) passes its OWN name, so a bad
+     *   target is reported under the name the caller actually used rather
+     *   than always under `CalendarControls.appendTo`.
      * @returns {void}
      * @throws {Error} If this instance has been disposed, or `target` is
      *   neither a single target nor a slots object naming `controls`.
      */
-    appendTo(target) {
+    appendTo(target, caller = 'CalendarControls.appendTo') {
         this.#assertUsable();
         const single =
             typeof target === 'string' || target instanceof HTMLElement;
@@ -239,35 +340,43 @@ export default class CalendarControls {
         // other malformed target.
         if (false === single) {
             try {
-                assertPlainOptions(target, 'CalendarControls.appendTo');
+                assertPlainOptions(target, caller);
             } catch {
                 throw new Error(
-                    `CalendarControls.appendTo: target must be a CSS selector, an HTMLElement, or a slots object naming { controls, messages } targets, but found type: ${describeType(target)}`,
+                    `${caller}: target must be a CSS selector, an HTMLElement, or a slots object naming { controls, messages } targets, but found type: ${describeType(target)}`,
                 );
             }
         }
         const slots = single ? { controls: target } : target;
         if (false === Object.hasOwn(slots, 'controls')) {
             throw new Error(
-                "CalendarControls.appendTo: a slots object must name a 'controls' target.",
+                `${caller}: a slots object must name a 'controls' target.`,
             );
         }
 
         const element = CalendarControls.#requireElement(
             slots.controls,
             'controls',
-            'appendTo',
+            caller,
         );
         this.#mount = element;
         this.#riteSelect.appendTo(element);
         this.#calendarSelect.appendTo(element);
         this.#apiOptions.appendTo(element);
 
+        // After the locale input is mounted, matching `DayViewer.appendTo()`'s
+        // own ordering for the same cascade (C3): computed here rather than in
+        // the constructor so a later `linkToCalendarSelect()` narrowing the
+        // locale options (via `listenTo()`) is not required for this to run —
+        // it only needs `#apiOptions` to exist, which it already does.
+        this.#selectedLocale = this.#matchLocale();
+        this.#apiOptions._localeInput._domElement.value = this.#selectedLocale;
+
         if (Object.hasOwn(slots, 'messages')) {
             this.#messagesMount = CalendarControls.#requireElement(
                 slots.messages,
                 'messages',
-                'appendTo',
+                caller,
             );
             this.#registerMessagesRenderer();
         }
@@ -302,12 +411,13 @@ export default class CalendarControls {
             'Controls filled from one API while their requests go to another would describe neither.',
         );
 
-        if (false === this.#riteLinked) {
-            this.#apiOptions
-                .linkToCalendarSelect(this.#calendarSelect)
-                .linkToRiteSelect(this.#riteSelect);
-            this.#riteLinked = true;
-        }
+        // `#assertUsable()`'s equivalent check above (`null !== this.#apiClient`)
+        // already refuses a second call before this point is reached, so a
+        // separate `#riteLinked` guard is unreachable dead code — `listenTo()`
+        // itself is one-shot, which makes the link below one-shot too.
+        this.#apiOptions
+            .linkToCalendarSelect(this.#calendarSelect)
+            .linkToRiteSelect(this.#riteSelect);
         apiClient
             .listenTo(this.#calendarSelect)
             .listenTo(this.#riteSelect)
@@ -455,6 +565,12 @@ export default class CalendarControls {
      * themselves before rejecting, independently of what this method does with
      * the returned promise.
      *
+     * `#selectedLocale` (C3) is passed to whichever fetch method is chosen, so
+     * the request carries the locale the cascade in `appendTo()` chose — and
+     * the locale input currently shows — rather than whatever `Accept-Language`
+     * happened to be left in force (nothing, on the very first call), which
+     * silently fell back to Latin.
+     *
      * @returns {Promise<Object>} The fetched calendar data.
      * @throws {Error} If no client has been wired.
      */
@@ -468,12 +584,15 @@ export default class CalendarControls {
         const element = this.#calendarSelect._domElement;
         const value = element.value;
         if ('' === value) {
-            return this.#apiClient.fetchCalendar();
+            return this.#apiClient.fetchCalendar(this.#selectedLocale);
         }
         const selected = element.options[element.selectedIndex];
         return 'diocesan' === selected?.dataset.calendartype
-            ? this.#apiClient.fetchDiocesanCalendar(value)
-            : this.#apiClient.fetchNationalCalendar(value);
+            ? this.#apiClient.fetchDiocesanCalendar(value, this.#selectedLocale)
+            : this.#apiClient.fetchNationalCalendar(
+                  value,
+                  this.#selectedLocale,
+              );
     }
 
     /**
@@ -596,8 +715,16 @@ export default class CalendarControls {
      *   instance is wired with `listenTo()` and, unless `initialFetch` is
      *   `false`, the initial fetch runs.
      * @param {boolean} [options.initialFetch=true] - Set `false` to wire the
-     *   client without performing the initial fetch. `ApiExplorer` needs this:
-     *   it builds request URLs and never fetches.
+     *   client without performing the ONE fetch `mountInto()` would otherwise
+     *   perform immediately — a subsequent rite, calendar or option change
+     *   still fetches normally, since `listenTo()` (called either way) also
+     *   wires `apiClient.listenTo( calendarSelect ).listenTo( riteSelect
+     *   ).listenTo( apiOptions )`. **This is NOT what `ApiExplorer` uses**,
+     *   and does not by itself produce a component that never fetches:
+     *   `ApiExplorer` needs every change to be fetch-free, not only the
+     *   first one, so it never calls `listenTo()` at all — see that class'
+     *   own doc comment for how it links the rite -> calendar chain
+     *   directly instead.
      * @param {AbortSignal} [options.signal] - Cancels the mount; see above.
      * @param {function(Error): void} [options.onError] - Registered before the
      *   initial fetch, so a failure of that very first request still reaches it.
@@ -618,7 +745,7 @@ export default class CalendarControls {
             return null;
         }
 
-        controls.appendTo(target);
+        controls.appendTo(target, 'CalendarControls.mountInto');
 
         if (apiClient !== undefined && apiClient !== null) {
             controls.listenTo(apiClient);

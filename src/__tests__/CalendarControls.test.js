@@ -114,6 +114,44 @@ describe('CalendarControls construction', () => {
         );
     });
 
+    // I1: `filter ?? ApiOptionsFilter.ALL_CALENDARS` used to default `null`
+    // (== `ApiOptionsFilter.NONE`) exactly as it defaults `undefined`,
+    // silently converting an explicitly-requested `NONE` into
+    // `ALL_CALENDARS`. `NONE` renders EVERY `ApiOptions` input unfiltered —
+    // both the ALL_CALENDARS set (locale, year type, accept header, year)
+    // AND the GENERAL_ROMAN set (epiphany, ascension, corpus christi,
+    // eternal high priest, holydays of obligation) — so the epiphany input
+    // landing in the DOM is a fact ALL_CALENDARS alone can never produce.
+    it('honours ApiOptionsFilter.NONE rather than silently defaulting to ALL_CALENDARS', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            filter: ApiOptionsFilter.NONE,
+        });
+        controls.appendTo('#mount');
+        const mount = document.getElementById('mount');
+        expect(
+            mount.contains(controls.apiOptions._epiphanyInput._domElement),
+        ).toBe(true);
+    });
+
+    it('still defaults an omitted filter to ALL_CALENDARS, not NONE', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        const mount = document.getElementById('mount');
+        expect(
+            mount.contains(controls.apiOptions._epiphanyInput._domElement),
+        ).toBe(false);
+    });
+
+    // I2: `ApiOptions.filter()`'s own thrown message ("Invalid filter: …")
+    // names neither `ApiOptions` nor `CalendarControls` — validating locally
+    // reports the failure under the class the caller actually constructed.
+    it('rejects an invalid filter, naming this component', () => {
+        expect(
+            () => new CalendarControls({ locale: 'en', filter: 'bogus' }),
+        ).toThrow(/CalendarControls.*filter/);
+    });
+
     it('still applies a themed labelText on the calendar select', () => {
         const controls = new CalendarControls({
             locale: 'en',
