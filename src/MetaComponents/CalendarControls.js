@@ -99,6 +99,15 @@ export default class CalendarControls {
     /** @type {boolean} */
     #disposed = false;
 
+    /**
+     * The initial fetch `mountInto()` performed, already resolved when it
+     * performed none. See the `settled` getter for the contract.
+     *
+     * @type {Promise<void>}
+     * @private
+     */
+    #settled = Promise.resolve();
+
     /** @type {Array<function(Object): void>} */
     #fetchedCallbacks = [];
 
@@ -288,6 +297,46 @@ export default class CalendarControls {
      * @returns {void}
      * @throws {Error} If this instance has been disposed.
      */
+    /**
+     * Resolves once `mountInto()`'s initial fetch has settled.
+     *
+     * `mountInto()` resolves to the controls, not to the calendar data, and drops
+     * the initial fetch's promise — so a caller had no way to sequence on that
+     * first request: not to hide a spinner, not to assert in a test, not to know
+     * it had finished at all. `onCalendarFetched()` and `onError()` between them
+     * observe everything about that fetch EXCEPT when it finished. This is that
+     * one missing signal, and only that: it answers "has it finished", never
+     * "did it work".
+     *
+     * **It always resolves, never rejects**, with `undefined`. A property present
+     * on every mounted instance that could reject would produce an unhandled
+     * rejection for every caller who never reads it — precisely the trap
+     * `mountInto()` avoids today by discarding. What is stored is the promise
+     * AFTER the factory's own `.catch`, so resolve-always comes for free rather
+     * than being bolted on. Success and failure stay with `onError()`, which also
+     * reports the failures raised before a request is ever issued.
+     *
+     * It is **always a promise**, already resolved when no initial fetch ran —
+     * `initialFetch: false`, no `apiClient`, or a hand-constructed instance whose
+     * caller drives `fetch()` themselves and therefore already holds that promise.
+     * An absent property would break `.then()` and force callers to feature-detect.
+     *
+     * `CalendarResourcePicker` and `ApiExplorer` have no such property, and that
+     * absence is deliberate: neither ever fetches, so neither has anything to
+     * settle. `CalendarViewer` has it, but its factory already awaits the initial
+     * fetch before resolving, so there it is settled by the time the caller can
+     * reach it.
+     *
+     * Throws once these controls have been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {Promise<void>} Settles when the initial fetch has finished.
+     * @throws {Error} If this instance has been disposed.
+     */
+    get settled() {
+        this.#assertUsable();
+        return this.#settled;
+    }
+
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -873,7 +922,11 @@ export default class CalendarControls {
                 // `#deliverError()` tries the callbacks; only if nothing received
                 // the error at all does it fall back to the console, so a failure
                 // is never silent and never double-reported.
-                controls.fetch().catch((error) => {
+                // Captured rather than merely dropped. This expression — AFTER
+                // the `.catch` — already resolves whatever happens, which is
+                // exactly the contract `settled` publishes, so exposing it costs
+                // nothing and changes nothing about the handling above.
+                controls.#settled = controls.fetch().catch((error) => {
                     if (false === controls.#deliverError(error)) {
                         console.error(
                             `CalendarControls: could not load the calendar: ${error.message}`,

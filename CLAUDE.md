@@ -493,6 +493,21 @@ its populated table, and resolving before the fetch's promise chain has run at a
 is a deliberate divergence, not something to reconcile by removing the `await`. `ApiExplorer` never
 fetches, so it has no such case at all.
 
+**`settled` observes the initial fetch; it does not report its outcome.** `mountInto()` resolves to the
+component and drops the initial fetch's promise, so `CalendarControls`, `CalendarViewer` and `DayViewer`
+each expose a `settled` promise that resolves once that fetch has finished. It **always resolves and never
+rejects**, with `undefined`: a property present on every mounted instance that could reject would produce an
+unhandled rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by
+discarding. What is stored is the promise _after_ each factory's existing `.catch`, so this adds no error
+handling and changes none. Outcomes stay with `onError()` and `onCalendarFetched()` — resolving to the
+payload would be a second channel for what `onCalendarFetched()` already delivers, free to drift from it.
+It is always a promise, already resolved when no initial fetch ran (`initialFetch: false`, no `apiClient`,
+or a hand-constructed instance). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
+fetches — the same asymmetry, on the same grounds, as their reject/resolve behaviour above. On
+`CalendarViewer` it is the very promise `mountInto()` already awaits, so it has settled by the time a caller
+can read it; do not remove it there on that account, since a hand-constructed viewer still has one and
+callers should not need to know which construction path produced the instance.
+
 **`dispose()` is incomplete, and the docs say so.** Every one of the five has an idempotent `dispose()` —
 calling it twice is safe, and further use of a disposed instance throws rather than failing quietly. What
 it releases: every listener the meta-component itself attached, plus (for the four that fetch) the

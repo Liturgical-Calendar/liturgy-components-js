@@ -83,6 +83,15 @@ export default class CalendarViewer {
     #disposed = false;
 
     /**
+     * The initial fetch `mountInto()` performed, already resolved when it
+     * performed none. See the `settled` getter for the contract.
+     *
+     * @type {Promise<void>}
+     * @private
+     */
+    #settled = Promise.resolve();
+
+    /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale,
      *   forwarded to `CalendarControls` as-is.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
@@ -146,6 +155,30 @@ export default class CalendarViewer {
      * @returns {void}
      * @throws {Error} If this viewer has been disposed.
      */
+    /**
+     * Resolves once `mountInto()`'s initial fetch has settled.
+     *
+     * Always resolves with `undefined`, never rejects, and is already resolved
+     * when no initial fetch ran. `CalendarControls#settled` carries the full
+     * contract and the reasoning; this is the same property on the viewer.
+     *
+     * Note that this factory, alone among the three, `await`s its initial fetch
+     * before resolving — so by the time a caller of `mountInto()` can read this,
+     * it has already settled. That is not a reason to drop it: a viewer built
+     * with the constructor and mounted by hand still has one, and code that
+     * awaits `settled` should not have to know which construction path produced
+     * the instance.
+     *
+     * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {Promise<void>} Settles when the initial fetch has finished.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    get settled() {
+        this.#assertUsable();
+        return this.#settled;
+    }
+
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -546,13 +579,16 @@ export default class CalendarViewer {
                 // must not resolve while the request — and, on an empty `litcal`,
                 // the WebCalendar listener's throw and the messages render that must
                 // precede it — are still pending.
-                await viewer.fetch().catch((error) => {
+                // Captured before being awaited, so `settled` is the SAME promise
+                // this factory waits on rather than a second one describing it.
+                viewer.#settled = viewer.fetch().catch((error) => {
                     if (false === viewer.#controls._deliverError(error)) {
                         console.error(
                             `CalendarViewer: could not load the calendar: ${error.message}`,
                         );
                     }
                 });
+                await viewer.#settled;
             }
         }
 

@@ -426,6 +426,7 @@ see [`dispose()`](#dispose-1) below.
 | `localeInput`    | The `ApiOptions` locale input's own type | The wired locale input.                                                                                                    |
 | `liturgy`        | `LiturgyOfAnyDay`                        | The wired liturgy widget — the escape hatch for anything the theme bag does not cover, such as the individual date inputs. |
 | `selectedLocale` | `string`                                 | The locale chosen by the cascade below, and currently selected in the locale input.                                        |
+| `settled`        | `Promise<void>`                          | Settles when `mountInto()`'s initial fetch finished. Never rejects. See below.                                             |
 
 ### The locale cascade
 
@@ -504,6 +505,47 @@ swallowed — so registering `onError()` made that class of failure _less_ visib
 `ApiClient.fetchCalendar()` does. That promise is the caller's to handle — rejections also reach any
 `onError()` callbacks, but the rejection itself is never swallowed. Calling `fetch()` before
 `listenTo()` throws, naming the missing wiring.
+
+### `settled`
+
+`mountInto()` resolves to the viewer, not to the calendar data, and drops the initial fetch's promise. On
+its own that leaves a caller no way to sequence on that first request — not to hide a spinner, not to assert
+in a test, not to know it had finished at all. `onCalendarFetched()` and `onError()` between them observe
+everything about that fetch **except when it finished**. `settled` is that one missing signal:
+
+```javascript
+const viewer = await DayViewer.mountInto('#mount', {
+    apiClient,
+    onError: (error) => showBanner(error.message),
+});
+
+await viewer.settled; // the initial fetch has finished, one way or the other
+spinner.hide();
+```
+
+Its contract, on all three components that have it:
+
+- **It always resolves, never rejects**, with `undefined`. A property present on every mounted instance
+  that could reject would produce an unhandled rejection for every caller who never reads it — precisely
+  the trap `mountInto()` avoids by discarding. What is stored is the promise _after_ the factory's own
+  `.catch`, so this costs nothing and changes nothing about how failures are handled.
+- **It answers "has it finished", never "did it work".** Outcomes stay with `onError()`, which since 2.3.0
+  also reports failures raised before a request is issued, and with `onCalendarFetched()` for the data.
+  Resolving to the payload would be a second channel for something `onCalendarFetched()` already delivers,
+  free to drift from it.
+- **It is always a promise**, already resolved when no initial fetch ran — `initialFetch: false`, no
+  `apiClient`, or a hand-constructed instance whose caller drives `fetch()` themselves and therefore
+  already holds that promise. An absent property would break `.then()` and force callers to feature-detect.
+- **It throws once the component has been disposed**, like every other member.
+
+Do not reach for `await viewer.fetch()` as a substitute. On the success path the cache makes it look
+equivalent, but it is a _different_ promise describing a _different_ call: it tells you a fresh request
+succeeded, not that the initial one did. On the failure path they genuinely diverge — a failed fetch caches
+nothing, so the follow-up issues a real request. That is a retry, not an observation, and it is precisely
+the case a caller most wants to observe.
+
+`CalendarResourcePicker` and `ApiExplorer` have no `settled`, and the absence is deliberate: neither ever
+fetches, so neither has anything to settle.
 
 ### `dispose()`
 
@@ -793,6 +835,13 @@ This is the opposite case from `fetch()` itself, whose returned promise is hande
 and routed through neither path: a promise the caller holds and can `.catch()` or `await`/`try` would
 otherwise be reported twice. See `fetch()`'s own doc comment in the source for the full reasoning.
 
+### `settled`
+
+`controls.settled` resolves once `mountInto()`'s initial fetch has finished, one way or the other. Since
+`CalendarControls.mountInto()` resolves **without** awaiting that fetch, this is the only way to sequence on
+it. The contract — always resolves, never rejects, resolves to `undefined`, already resolved when no initial
+fetch ran — is documented in full under [DayViewer's `settled`](#settled).
+
 ### `dispose()`
 
 ```javascript
@@ -924,6 +973,7 @@ idempotent — calling it a second time is safe and does nothing. See [`dispose(
 | `fetch()`               | `Promise<Object>`  | Fetches the calendar the select names. The promise is yours; handle it.     |
 | `onCalendarFetched(cb)` | `CalendarViewer`   | Registers a callback for fetched data.                                      |
 | `onError(cb)`           | `CalendarViewer`   | Registers a callback for fetch failures.                                    |
+| `settled`               | `Promise<void>`    | Settles when `mountInto()`'s initial fetch finished. Never rejects.         |
 | `dispose()`             | `void`             | Releases listeners and empties both mounts. Idempotent; further use throws. |
 
 ### `appendTo()` and its slots
@@ -1055,6 +1105,12 @@ caller who assumed otherwise. `CalendarControls` and `DayViewer` have no such re
 resolving immediately loses nothing. Do not "fix" `CalendarViewer.mountInto()` to match the other two by
 removing the `await`.
 
+`settled` reflects that difference rather than papering over it. It is the very promise this factory awaits,
+so on a `CalendarViewer` obtained from `mountInto()` it has already resolved by the time you can read it,
+whereas on a `CalendarControls` or `DayViewer` from theirs it is typically still pending. The property is
+still worth having here: a viewer built with the constructor and mounted by hand has one too, and code that
+awaits `settled` should not have to know which construction path produced the instance.
+
 ### `dispose()`
 
 ```javascript
@@ -1154,7 +1210,8 @@ It is never used to fetch a calendar. Unlike every other meta-component's `mount
 `initialFetch` option here, and no `onError` option: both concern a fetch this class never performs, under
 any circumstance — including after a rite, calendar or option change, not only at mount time. A
 `/calendars` request is legitimate and expected; no `/calendar/...` request is ever issued on this class'
-behalf.
+behalf. For the same reason there is no `settled` property: the three components that fetch expose one, and
+this class has nothing to settle. `CalendarResourcePicker` omits it on the same grounds.
 
 ### Two things this does NOT absorb
 

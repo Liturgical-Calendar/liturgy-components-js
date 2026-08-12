@@ -111,8 +111,9 @@ describe('CalendarControls.mountInto', () => {
             onError: (error) => seen.push(error),
         });
         expect(controls).toBeInstanceOf(CalendarControls);
-        // Give the dropped initial-fetch promise a turn to settle and reach onError.
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        // `settled` IS the initial-fetch promise, so this waits on the thing
+        // itself rather than on a timer long enough to have probably outlasted it.
+        await controls.settled;
         expect(seen.length).toBeGreaterThan(0);
     });
 });
