@@ -1,14 +1,17 @@
 /**
  * Shared validation and construction for the `{ as, class, id }` wrapper bag
- * that `CalendarSelect.wrapper()` and `RiteSelect.wrapper()` both accept.
+ * that `CalendarSelect.wrapper()`, `RiteSelect.wrapper()` and `Input.wrapper()`
+ * all accept.
  *
  * Internal, and deliberately NOT exported from `src/index.js` — contract
  * between the components, not public API, on the same reasoning as
  * `LocaleValidation.js` and `OptionsValidation.js`.
  *
- * `Input.wrapper()` deliberately does NOT use this: it takes a bare tag name
- * and pairs with a separate `wrapperClass()`. Converging it is tracked in
- * issue #46 and is explicitly out of scope here.
+ * `Input.wrapper()` additionally accepts a bare tag name, which it normalizes to
+ * `{ as: tagName }` before calling this — the form it has always taken, and one
+ * that `DayViewer`, `LiturgyOfAnyDay` and the example apps all still pass. It
+ * also layers `Input`'s global wrapper class on afterwards, as a default a bag's
+ * own `class` beats; the globals are invisible here by design.
  *
  * The caller keeps its own "already set" guard: that message names the calling
  * class and its instance state, which this module cannot see.

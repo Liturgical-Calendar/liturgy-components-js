@@ -187,18 +187,20 @@ export default class DayViewer {
         }
         // `wrapperClass` can arrive from the flat `theme.wrapper` key too, which —
         // like the date controls below — supplies a class only, with no wrapper
-        // element TYPE. `Input.wrapperClass()` requires a wrapper element to
-        // already exist, so `'div'` is supplied as the default type whenever an
-        // override does not name one explicitly. This was previously the one
+        // element TYPE, so `'div'` is the default whenever an override does not
+        // name one. This used to be a two-call dance — `wrapper( type )` then
+        // `wrapperClass( class )`, because `wrapperClass()` requires a wrapper
+        // element to already exist — which issue #46 collapsed into the single bag
+        // call below. This was previously the one
         // per-child block in this constructor that read `class`/`labelClass` but
         // never `wrapperClass` at all — `LocaleInput` supports a wrapper exactly as
         // `CalendarSelect` does, so the flat `theme.wrapper` key silently applied to
         // every OTHER select-role child and not to this one.
         if (Object.hasOwn(localeTheme, 'wrapperClass')) {
-            this.#apiOptions._localeInput.wrapper(localeTheme.wrapper ?? 'div');
-            this.#apiOptions._localeInput.wrapperClass(
-                localeTheme.wrapperClass,
-            );
+            this.#apiOptions._localeInput.wrapper({
+                as: localeTheme.wrapper ?? 'div',
+                class: localeTheme.wrapperClass,
+            });
         }
         this.#apiOptions._localeInput._labelElement.textContent = Object.hasOwn(
             localeTheme,
