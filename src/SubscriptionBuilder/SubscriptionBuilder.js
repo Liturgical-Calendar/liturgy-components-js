@@ -1,0 +1,235 @@
+/**
+ * A `CalendarControls` paired with a rendered iCal subscription URL and a copy
+ * control — meta-components phase 3, and the answer to issue #42.
+ *
+ * It NEVER calls `CalendarControls.listenTo()`, so no `ApiClient` listener is
+ * ever installed and no calendar request is ever issued. The `apiClient` option
+ * binds the selects to that client's API base so they populate from `/calendars`
+ * metadata; it is never used to fetch a calendar. This is `ApiExplorer`'s
+ * template, for the same reason.
+ *
+ * Issue #42 asked whether `CalendarResourcePicker` should gain a browse/subscribe
+ * mode. It should not: the picker's rules are load-bearing for a resource id,
+ * where empty is never valid. Here empty is a REAL, SELECTABLE choice meaning the
+ * rite-level calendar. All three of the issue's requirements are satisfied by
+ * `CalendarControls` as it stands — its `CalendarSelect` is built with
+ * `allowNull: true` and no filter — so this component adds only the URL half.
+ *
+ * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
+ * @license Apache-2.0
+ */
+
+import CalendarControls from '../MetaComponents/CalendarControls.js';
+import SubscriptionUrl from './SubscriptionUrl.js';
+import { ApiOptionsFilter } from '../Enums.js';
+import {
+    assertPlainOptions,
+    describeType,
+    normalizeComponentOptions,
+} from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
+
+/** The slot names `appendTo()` accepts. */
+const SLOT_NAMES = Object.freeze(['controls', 'url']);
+
+export default class SubscriptionBuilder {
+    /** @type {CalendarControls} */
+    #controls;
+
+    /** @type {SubscriptionUrl} */
+    #url;
+
+    /** @type {HTMLElement|null} */
+    #controlsMount = null;
+
+    /** @type {HTMLElement|null} */
+    #urlMount = null;
+
+    /** @type {boolean} */
+    #disposed = false;
+
+    /**
+     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {string|Intl.Locale} [options.locale] - The display locale.
+     * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.apiClient] - Binds the controls to that client's
+     *   API base. Never used to fetch a calendar.
+     * @param {'https'|'webcal'} [options.scheme='https'] - The URL scheme.
+     * @param {string|null} [options.copyIcon] - HTML for the copy glyph.
+     * @param {string} [options.copyTitle] - The copy control's title.
+     * @param {string} [options.copiedText] - The copied announcement.
+     * @param {string} [options.copiedClass] - The transient copied class.
+     * @param {function(boolean, Error=): void} [options.onCopy] - Copy outcome.
+     */
+    constructor(options) {
+        const bag = normalizeComponentOptions(options, 'SubscriptionBuilder');
+        this.#controls = new CalendarControls(bag);
+        // The rite -> calendar chain, wired directly rather than through
+        // `CalendarControls.listenTo()`: that method also installs
+        // `apiClient.listenTo( … )`, which fetches on every change.
+        this.#controls.apiOptions
+            .linkToCalendarSelect(this.#controls.calendarSelect)
+            .linkToRiteSelect(this.#controls.riteSelect);
+        // `language` is derived here, where the normalized locale lives, and
+        // passed in: the locale input exposes no locale accessor for
+        // `SubscriptionUrl` to read.
+        const language = toIntlLocale(
+            bag.locale ?? 'en',
+            'SubscriptionBuilder',
+        ).language;
+        this.#url = new SubscriptionUrl(
+            this.#controls.apiOptions,
+            this.#controls.calendarSelect,
+            this.#controls.riteSelect,
+            { ...bag, language },
+        );
+    }
+
+    /**
+     * Guards every method a disposed builder cannot honour.
+     *
+     * @returns {void}
+     * @throws {Error} If this builder has been disposed.
+     */
+    #assertUsable() {
+        if (true === this.#disposed) {
+            throw new Error(
+                'SubscriptionBuilder: this builder has been disposed and can no longer be used.',
+            );
+        }
+    }
+
+    /** @returns {CalendarControls} The wired controls. */
+    get controls() {
+        this.#assertUsable();
+        return this.#controls;
+    }
+
+    /** @returns {Object} The wired rite select. */
+    get riteSelect() {
+        this.#assertUsable();
+        return this.#controls.riteSelect;
+    }
+
+    /** @returns {Object} The wired calendar select. */
+    get calendarSelect() {
+        this.#assertUsable();
+        return this.#controls.calendarSelect;
+    }
+
+    /** @returns {Object} The wired locale input. */
+    get localeInput() {
+        this.#assertUsable();
+        return this.#controls.apiOptions._localeInput;
+    }
+
+    /** @returns {string} The serialized subscription URL. */
+    get url() {
+        this.#assertUsable();
+        return this.#url.url;
+    }
+
+    /**
+     * Registers a callback fired whenever the URL changes.
+     *
+     * @param {function(string): void} callback - Receives the new URL.
+     * @returns {SubscriptionBuilder} This instance, for chaining.
+     */
+    onChange(callback) {
+        this.#assertUsable();
+        this.#url.onChange(callback);
+        return this;
+    }
+
+    /**
+     * Resolves a mount target to an element.
+     *
+     * @param {string|HTMLElement} target - A CSS selector or an element.
+     * @param {string} slot - The slot name, for the message.
+     * @param {string} caller - The `Class.method` prefix for the message.
+     * @returns {HTMLElement} The resolved element.
+     * @throws {Error} If the target is neither, or matches nothing.
+     */
+    static #requireElement(target, slot, caller) {
+        if (target instanceof HTMLElement) {
+            return target;
+        }
+        if (typeof target !== 'string' || '' === target) {
+            throw new Error(
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+            );
+        }
+        const element = document.querySelector(target);
+        if (null === element) {
+            throw new Error(
+                `${caller}: Element not found for the ${slot} slot: ${target}`,
+            );
+        }
+        return element;
+    }
+
+    /**
+     * Mounts the controls and the URL into two named slots.
+     *
+     * Both are REQUIRED, and a bare target is rejected: this component has two
+     * mandatory mounts, and a lone target would have to pick one of them
+     * silently. Matches `CalendarViewer` and `ApiExplorer`.
+     *
+     * The three controls all mount into the single `controls` container. Column
+     * layout is the theme bag's job, through its `wrapper` keys — there is no
+     * per-control slot.
+     *
+     * @param {{controls: (string|HTMLElement), url: (string|HTMLElement)}} slots - Where to mount.
+     * @param {string} [caller='SubscriptionBuilder.appendTo'] - Internal only.
+     * @returns {void}
+     * @throws {Error} If disposed, if `slots` is not a plain object, names an
+     *   unknown slot, omits either slot, or a slot matches nothing.
+     */
+    appendTo(slots, caller = 'SubscriptionBuilder.appendTo') {
+        this.#assertUsable();
+        try {
+            assertPlainOptions(slots, caller);
+        } catch {
+            throw new Error(
+                `${caller}: slots must be an object naming { controls, url } targets, but found type: ${describeType(slots)}`,
+            );
+        }
+
+        const unknownKeys = Object.keys(slots).filter(
+            (key) => false === SLOT_NAMES.includes(key),
+        );
+        if (unknownKeys.length > 0) {
+            throw new Error(
+                `${caller}: unknown slot name(s): ${unknownKeys.join(', ')}. Known slots are { controls, url }.`,
+            );
+        }
+        for (const slot of SLOT_NAMES) {
+            if (false === Object.hasOwn(slots, slot)) {
+                throw new Error(
+                    `${caller}: slots must name both a 'controls' and a 'url' target; '${slot}' is missing.`,
+                );
+            }
+        }
+
+        const controlsTarget = SubscriptionBuilder.#requireElement(
+            slots.controls,
+            'controls',
+            caller,
+        );
+        const urlTarget = SubscriptionBuilder.#requireElement(
+            slots.url,
+            'url',
+            caller,
+        );
+
+        this.#controls.riteSelect.appendTo(controlsTarget);
+        this.#controls.calendarSelect.appendTo(controlsTarget);
+        this.#controls.apiOptions
+            .filter(ApiOptionsFilter.LOCALE_ONLY)
+            .appendTo(controlsTarget);
+        this.#controlsMount = controlsTarget;
+
+        this.#url.appendTo(urlTarget);
+        this.#urlMount = urlTarget;
+    }
+}
