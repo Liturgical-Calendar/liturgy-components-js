@@ -210,16 +210,20 @@ export default class SubscriptionUrl {
      */
     async #copy() {
         const text = this.url;
+        let error = null;
         try {
             if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(text);
             } else {
                 SubscriptionUrl.#execCommandCopy(text);
             }
-            this.#reportCopy(true);
-        } catch (error) {
-            this.#reportCopy(false, error);
+        } catch (caught) {
+            error = caught;
         }
+        // Reported OUTSIDE the try: a consumer callback that throws on the
+        // success path used to be caught by this same block and reported a
+        // second time as a failure — for a copy that had already succeeded.
+        this.#reportCopy(null === error, error ?? undefined);
     }
 
     /**
@@ -267,7 +271,18 @@ export default class SubscriptionUrl {
                 this.#copiedTimer = null;
             }, COPIED_DURATION);
         }
-        this.#onCopy?.(ok, error);
+        // Guarded separately from the clipboard attempt above: a consumer's
+        // `onCopy` throwing is the consumer's bug, not a clipboard failure, and
+        // must not turn into a rejection of `#copy()`'s promise — nothing holds
+        // that promise, since the click handler drops it.
+        try {
+            this.#onCopy?.(ok, error);
+        } catch (consumerError) {
+            console.error(
+                'SubscriptionUrl: the onCopy callback threw.',
+                consumerError,
+            );
+        }
     }
 
     /** @returns {string} The serialized subscription URL. */

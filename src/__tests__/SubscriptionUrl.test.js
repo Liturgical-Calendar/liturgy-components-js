@@ -11,7 +11,14 @@
  *     `CurrentEndpoint.path` omits the rite for Roman, and the frontend card
  *     this replaces emits it unconditionally.
  */
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
@@ -282,5 +289,95 @@ describe('SubscriptionUrl copy control', () => {
         const live = document.querySelector('[aria-live="polite"]');
         expect(live).not.toBeNull();
         expect(live.textContent).toBe('URL copied to clipboard');
+    });
+
+    it('does not call onCopy a second time when a throwing onCopy already reported success', async () => {
+        // The success report used to sit inside the try block, so a consumer
+        // callback that throws on the success path was caught by the
+        // surrounding catch and reported a second time as a failure — for a
+        // copy that actually succeeded. This pins that the success report is
+        // the only call onCopy ever sees here, and that the throw does not
+        // escape #copy() as a rejection nobody is holding a promise for.
+        stubClipboard(true);
+        const consoleError = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        const consumerError = new Error('consumer bug');
+        const seen = [];
+        try {
+            const { url } = build({
+                onCopy: (ok, error) => {
+                    seen.push([ok, error]);
+                    throw consumerError;
+                },
+            });
+            url._domElement.click();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(seen).toEqual([[true, undefined]]);
+            expect(consoleError).toHaveBeenCalledTimes(1);
+            expect(consoleError.mock.calls[0][1]).toBe(consumerError);
+        } finally {
+            consoleError.mockRestore();
+        }
+    });
+});
+
+describe('SubscriptionUrl copy control — execCommand fallback', () => {
+    // jsdom implements `document.execCommand` as a no-op that neither throws
+    // nor returns `false`, so exercising the two branches this method actually
+    // has to handle requires stubbing it directly.
+    const originalExecCommand = document.execCommand;
+
+    /**
+     * Removes `navigator.clipboard` so `#copy()` takes the execCommand path.
+     *
+     * @returns {void}
+     */
+    const removeClipboard = () => {
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: undefined,
+        });
+    };
+
+    afterEach(() => {
+        document.execCommand = originalExecCommand;
+        removeClipboard();
+    });
+
+    it('falls back to execCommand when navigator.clipboard is absent, and cleans up the textarea', async () => {
+        removeClipboard();
+        const execCommand = jest.fn().mockReturnValue(true);
+        document.execCommand = execCommand;
+        const seen = [];
+        const { url } = build({
+            onCopy: (ok, error) => seen.push([ok, error]),
+        });
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(execCommand).toHaveBeenCalledWith('copy');
+        expect(seen).toEqual([[true, undefined]]);
+        expect(document.querySelectorAll('textarea')).toHaveLength(0);
+    });
+
+    it('reports failure when execCommand returns false, and still cleans up the textarea', async () => {
+        removeClipboard();
+        document.execCommand = jest.fn().mockReturnValue(false);
+        const seen = [];
+        const { url } = build({
+            onCopy: (ok, error) => seen.push([ok, error]),
+        });
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(seen).toHaveLength(1);
+        expect(seen[0][0]).toBe(false);
+        expect(seen[0][1]).toBeInstanceOf(Error);
+        expect(document.querySelectorAll('textarea')).toHaveLength(0);
     });
 });
