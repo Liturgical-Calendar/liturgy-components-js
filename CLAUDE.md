@@ -539,7 +539,8 @@ Either alone is a complete instruction. Every meta-component used to gate its `w
 `wrapperClass` alone across six near-identical call sites, so a type-only theme was accepted by the
 resolver, carried all the way to the call site and dropped there in silence — which is exactly how a rule
 ends up honoured for some children and not others. `Theme.js`'s `resolveWrapperBag()` now returns the
-`{ as, class }` bag or `null`, and all six sites call it; do not re-inline the check. It omits `class`
+`{ as, class }` bag or `null`, and seven sites call it — those six, plus `DayViewer`'s locale input, which
+had the same gap; do not re-inline the check. It omits `class`
 entirely rather than passing `undefined`, because `Input.wrapper()` rejects a non-string class **and**
 treats a class named in the bag as final, closing `wrapperClass()` afterwards.
 

@@ -153,7 +153,7 @@ apiOptions._acceptHeaderInput.hide();
 | `defaultValue(value)`     | Set initial/default value                                          |
 | `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
 | `options()`               | Returns array of option values (for select elements only)          |
-| `hide(hide=true)`         | Hide the control                                                   |
+| `hide()`                  | Hide the control — `_acceptHeaderInput` only, and not reversible   |
 
 ### The wrapper bag
 
