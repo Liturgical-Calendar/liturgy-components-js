@@ -92,3 +92,78 @@ describe('SubscriptionUrl serialization', () => {
         expect(webcal.startsWith('webcal:')).toBe(true);
     });
 });
+
+describe('SubscriptionUrl control wiring', () => {
+    /**
+     * Selects a value the way a user would, notifying listeners.
+     *
+     * @param {HTMLSelectElement} element - The select to drive.
+     * @param {string} value - The value to select.
+     * @returns {void}
+     */
+    const userSelects = (element, value) => {
+        element.value = value;
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    it('repaints when the calendar select names a nation', () => {
+        const { url, calendarSelect } = build();
+        url.appendTo(document.getElementById('mount'));
+        userSelects(calendarSelect._domElement, 'VA');
+        expect(url._domElement.textContent).toContain('/nation/VA');
+    });
+
+    it('clears the calendar when the empty option is reselected', () => {
+        // The empty option carries no `data-calendartype` and means the
+        // rite-level calendar. Without clearing, the last nation stays in the
+        // path forever and reselecting empty appears to do nothing.
+        const { url, calendarSelect } = build();
+        url.appendTo(document.getElementById('mount'));
+        userSelects(calendarSelect._domElement, 'VA');
+        userSelects(calendarSelect._domElement, '');
+        expect(url._domElement.textContent).not.toContain('/nation/');
+        expect(url._domElement.textContent).toContain('/calendar/roman');
+    });
+
+    it('repaints when the rite changes', () => {
+        const { url, riteSelect } = build();
+        url.appendTo(document.getElementById('mount'));
+        userSelects(riteSelect._domElement, 'ambrosian');
+        expect(url._domElement.textContent).toContain('/calendar/ambrosian');
+    });
+
+    it('carries the locale select into the query', () => {
+        // A subscription URL cannot carry an Accept-Language header — a calendar
+        // app just GETs it — so the chosen language has to travel as ?locale=.
+        const { url, apiOptions } = build();
+        url.appendTo(document.getElementById('mount'));
+        userSelects(apiOptions._localeInput._domElement, 'it');
+        expect(url._domElement.textContent).toContain('locale=it');
+    });
+
+    it('notifies onChange with the new URL', () => {
+        // Two calls, not one: `ApiOptions.linkToCalendarSelect()` resyncs the
+        // locale select's options for the newly chosen calendar and dispatches
+        // a synthetic `change` on it (see ApiOptions.js `#applyCalendarSelection`),
+        // and that fires synchronously, inside the calendar select's own
+        // `change` handling, before SubscriptionUrl's own calendar listener
+        // (registered after `linkToCalendarSelect()` in `build()`) gets to run.
+        // The first callback therefore reflects only the locale resync; the
+        // final one is the one callers care about, and it carries the nation.
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        userSelects(calendarSelect._domElement, 'VA');
+        expect(seen).toHaveLength(2);
+        expect(seen.at(-1)).toContain('/nation/VA');
+    });
+
+    it('stops repainting after dispose', () => {
+        const { url, calendarSelect } = build();
+        url.appendTo(document.getElementById('mount'));
+        const before = url._domElement.textContent;
+        url.dispose();
+        userSelects(calendarSelect._domElement, 'VA');
+        expect(url._domElement.textContent).toBe(before);
+    });
+});

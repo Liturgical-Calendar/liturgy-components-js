@@ -38,6 +38,12 @@ export default class SubscriptionUrl {
     /** @type {'https'|'webcal'} */
     #scheme;
 
+    /** @type {Array<{element: HTMLElement, listener: function}>} */
+    #subscriptions = [];
+
+    /** @type {Array<function(string): void>} */
+    #changeCallbacks = [];
+
     /**
      * @param {Object} apiOptions - The ApiOptions owning the CurrentEndpoint.
      * @param {Object} calendarSelect - The calendar select to follow.
@@ -72,6 +78,37 @@ export default class SubscriptionUrl {
         this.#domElement.append(this.#codeElement);
 
         this.#render();
+
+        // The calendar select's option carries `data-calendartype`; the empty
+        // option carries none and means the rite-level calendar. Reading
+        // `selectedOptions[0]` optionally matters: a select can legitimately
+        // have nothing selected — `allowNull(false)` removes the empty option
+        // and a rite change then resets the value to '' with no option to match
+        // — and a throw inside a listener is swallowed by the DOM, which would
+        // leave the endpoint updated and the rendering stale.
+        this.#listen(calendarSelect._domElement, (ev) => {
+            const selected = ev.target.selectedOptions[0];
+            const type = selected?.getAttribute('data-calendartype') ?? null;
+            if ('national' === type) {
+                this.#currentEndpoint.calendarType = CalendarType.NATIONAL;
+                this.#currentEndpoint.calendarId = ev.target.value;
+            } else if ('diocesan' === type) {
+                this.#currentEndpoint.calendarType = CalendarType.DIOCESAN;
+                this.#currentEndpoint.calendarId = ev.target.value;
+            } else {
+                this.#currentEndpoint.calendarType = null;
+                this.#currentEndpoint.calendarId = null;
+            }
+        });
+
+        // `ApiOptions` already writes the rite onto the endpoint through
+        // `linkToRiteSelect()`, so this listener only has to repaint. Attached
+        // AFTER the link, so the endpoint is current by the time this runs.
+        this.#listen(riteSelect._domElement, () => {});
+
+        this.#listen(apiOptions._localeInput._domElement, (ev) => {
+            this.#currentEndpoint.requestPayload.locale = ev.target.value;
+        });
     }
 
     /** @returns {string} The serialized subscription URL. */
@@ -104,5 +141,56 @@ export default class SubscriptionUrl {
      */
     appendTo(target) {
         target.replaceChildren(this.#domElement);
+    }
+
+    /**
+     * Attaches a `change` listener that updates the endpoint and repaints, and
+     * records it so `dispose()` can remove it.
+     *
+     * @param {HTMLElement} element - The element to listen to.
+     * @param {function(Event): void} update - Applies the change to the endpoint.
+     * @returns {void}
+     */
+    #listen(element, update) {
+        const listener = (ev) => {
+            update(ev);
+            this.#render();
+            const next = this.url;
+            this.#changeCallbacks.forEach((callback) => callback(next));
+        };
+        element.addEventListener('change', listener);
+        this.#subscriptions.push({ element, listener });
+    }
+
+    /**
+     * Registers a callback fired whenever the rendered URL changes.
+     *
+     * @param {function(string): void} callback - Receives the new URL.
+     * @returns {SubscriptionUrl} This instance, for chaining.
+     * @throws {Error} If `callback` is not a function.
+     */
+    onChange(callback) {
+        if (typeof callback !== 'function') {
+            throw new Error(
+                `SubscriptionUrl.onChange: callback must be a function, but found type: ${typeof callback}`,
+            );
+        }
+        this.#changeCallbacks.push(callback);
+        return this;
+    }
+
+    /**
+     * Removes every listener this renderer attached.
+     *
+     * Idempotent.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        for (const { element, listener } of this.#subscriptions) {
+            element.removeEventListener('change', listener);
+        }
+        this.#subscriptions = [];
+        this.#changeCallbacks = [];
     }
 }
