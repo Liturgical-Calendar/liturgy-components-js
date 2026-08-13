@@ -32,6 +32,7 @@ import {
     resolveChildTheme,
     resolveWrapperBag,
 } from '../MetaComponents/Theme.js';
+import Messages from '../Messages.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -56,8 +57,11 @@ export default class SubscriptionBuilder {
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`. Its
-     *   `theme.subscriptionUrl` override reaches the URL control's `class`,
-     *   `codeClass` and `copiedClass`.
+     *   `theme.subscriptionUrl` override reaches the URL control's `class`
+     *   only; style the inner `<code>` element with a descendant selector on
+     *   that class, and use the top-level `copiedClass` option below for the
+     *   copied state — see `SubscriptionUrl`'s own constructor doc comment
+     *   for why those are `class`'s only sibling keys.
      * @param {Object} [options.apiClient] - Binds the controls to that client's
      *   API base. Never used to fetch a calendar.
      * @param {'https'|'webcal'} [options.scheme='https'] - The URL scheme.
@@ -101,10 +105,19 @@ export default class SubscriptionBuilder {
                 localeTheme.labelClass,
             );
         }
-        if (Object.hasOwn(localeTheme, 'labelText')) {
-            this.#controls.apiOptions._localeInput._labelElement.textContent =
-                localeTheme.labelText;
-        }
+        // Set UNCONDITIONALLY, unlike `class`/`labelClass`/`wrapper` above:
+        // `LocaleInput`'s constructor hardcodes its label to the literal
+        // string `'locale'` (`LocaleInput.js:48`), with no i18n of its own,
+        // so an un-themed `SubscriptionBuilder` would otherwise ship that raw
+        // string to every locale. `DayViewer` faces the same default and
+        // fixes it the same way — same key, same `??` fallback to English so
+        // a locale outside the 12-locale `LANGUAGE` catalogue cannot throw. A
+        // theme-supplied `labelText` still wins, since it is read first.
+        this.#controls.apiOptions._localeInput._labelElement.textContent =
+            Object.hasOwn(localeTheme, 'labelText')
+                ? localeTheme.labelText
+                : (Messages[language]?.['LANGUAGE'] ??
+                  Messages['en']['LANGUAGE']);
         const localeWrapper = resolveWrapperBag(localeTheme);
         if (null !== localeWrapper) {
             this.#controls.apiOptions._localeInput.wrapper(localeWrapper);

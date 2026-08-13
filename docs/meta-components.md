@@ -1407,12 +1407,10 @@ through to `SubscriptionUrl`:
 | `onCopy`      | none                                       | `(ok, error?) => void`, called after every copy attempt, success or failure. Never rejects and never throws on the caller's behalf: a clipboard refusal is a runtime condition, not a programming error, and a throwing `onCopy` is logged rather than propagated, so it cannot be mistaken for a second, later failure of the copy itself. |
 
 `theme.subscriptionUrl` additionally reaches the rendered control directly: `{ class }` sets the button's
-own class (the mechanism the worked example above uses for `w-100 text-center …`). The renderer also reads
-`codeClass` (for the inner `<code>` element) and a per-child `copiedClass` override from that same object,
-but neither is reachable through the public `theme` bag today — `Theme.js`'s per-child key validator does
-not yet list them, so passing either currently throws under `CalendarControls`'s name rather than silently
-doing nothing. Style the `<code>` element through `theme.subscriptionUrl.class`'s descendant selectors for
-now, and use the top-level `copiedClass` constructor option above rather than the theme-bag route.
+own class — the mechanism the worked example above uses for `w-100 text-center …`. That is the full extent
+of what the theme bag styles here: the inner `<code>` element has no option of its own, so style it with a
+CSS descendant selector on the button's class (e.g. `.your-class code { … }`); the copied state is styled
+through the top-level `copiedClass` constructor option in the table above, not through `theme.subscriptionUrl`.
 
 ### It never fetches
 

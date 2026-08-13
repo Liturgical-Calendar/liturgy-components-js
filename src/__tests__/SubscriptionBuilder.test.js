@@ -180,4 +180,18 @@ describe('SubscriptionBuilder theming', () => {
             'bg-light border rounded p-2',
         );
     });
+
+    it('gives the locale input a localized label by default, not the raw "locale" hardcoded by LocaleInput', () => {
+        const sub = new SubscriptionBuilder({ locale: 'en' });
+        expect(sub.localeInput._labelElement.textContent).not.toBe('locale');
+        expect(sub.localeInput._labelElement.textContent).toBe('Language');
+    });
+
+    it('lets a themed labelText win over the localized default', () => {
+        const sub = new SubscriptionBuilder({
+            locale: 'en',
+            theme: { localeInput: { labelText: 'Idioma' } },
+        });
+        expect(sub.localeInput._labelElement.textContent).toBe('Idioma');
+    });
 });
