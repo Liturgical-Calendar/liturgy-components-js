@@ -271,6 +271,12 @@ export default class SubscriptionBuilder {
             caller,
         );
 
+        if (controlsTarget === urlTarget) {
+            throw new Error(
+                `${caller}: the 'controls' and 'url' slots must be different elements. The URL control replaces its target's children, so mounting both into one element would destroy the controls that were just appended.`,
+            );
+        }
+
         this.#controls.riteSelect.appendTo(controlsTarget);
         this.#controls.calendarSelect.appendTo(controlsTarget);
         this.#controls.apiOptions

@@ -1659,6 +1659,14 @@ In `SubscriptionUrl`'s constructor, after creating `#domElement` and `#codeEleme
 
 Move the `#copiedClass` assignment above this block so the theme can override it, i.e. set `this.#copiedClass = options.copiedClass ?? 'is-copied';` first.
 
+> **Correction (post-execution).** The `codeClass` and `copiedClass` branches shown above were found
+> unreachable during execution and removed from the implementation. `Theme.js`'s per-child key lists
+> (`ALL_OVERRIDE_KEYS` and `OVERRIDE_KEYS_BY_ROLE.select`, the role `resolveChildTheme()` is called with
+> for `subscriptionUrl`) do not carry a `codeClass` or `copiedClass` key, so `assertTheme()` rejects a
+> theme bag naming either one before `SubscriptionUrl`'s constructor is ever reached — these two branches
+> could never run. Only the `class` branch survives. This code block is left as written above, as the
+> historical record of what was instructed; do not reimplement the removed branches from this listing.
+
 - [ ] **Step 4: Run the test**
 
 Run: `yarn test src/__tests__/SubscriptionBuilder.test.js -t theming`

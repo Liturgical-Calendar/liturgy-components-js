@@ -283,6 +283,33 @@ describe('SubscriptionUrl control wiring', () => {
         userSelects(calendarSelect._domElement, 'VA');
         expect(url._domElement.textContent).toBe(before);
     });
+
+    it('no longer copies on click after dispose', async () => {
+        // The click listener is anonymous and was never recorded alongside the
+        // `change` listeners `dispose()` already removes, so a consumer
+        // holding a reference to the button could still trigger a copy — and
+        // the consumer's onCopy callback — after disposal.
+        const written = [];
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {
+                writeText: (text) => {
+                    written.push(text);
+                    return Promise.resolve();
+                },
+            },
+        });
+        const seen = [];
+        const { url } = build({ onCopy: (ok) => seen.push(ok) });
+        url.appendTo(document.getElementById('mount'));
+        url.dispose();
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(written).toEqual([]);
+        expect(seen).toEqual([]);
+    });
 });
 
 describe('SubscriptionUrl copy control', () => {

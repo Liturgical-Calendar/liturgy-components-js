@@ -207,9 +207,13 @@ The standard role vocabulary (`select`, `label`, `input`, `wrapper`) plus per-ch
 for this component's public getters: `riteSelect`, `calendarSelect`, `localeInput`. Resolution is
 `Theme.js`'s, unchanged.
 
-The URL half adds one per-child key, `subscriptionUrl`, accepting `class` (on the `<button>` wrapper),
-`codeClass` (on the `<code>`) and `copiedClass` (the transient class toggled on a successful copy,
-defaulting to a library-owned name).
+The URL half adds one per-child key, `subscriptionUrl`, accepting `class` only (on the `<button>` wrapper).
+`Theme.js`'s per-child key lists (`ALL_OVERRIDE_KEYS` and `OVERRIDE_KEYS_BY_ROLE.select`, the role
+`resolveChildTheme()` is called with here) carry no `codeClass` or `copiedClass` key, so neither reaches
+`SubscriptionUrl`; style the inner `<code>` element with a CSS descendant selector on the button's class
+instead. The transient class toggled on a successful copy (defaulting to a library-owned name) is set
+through the top-level `copiedClass` **constructor option**, not the theme bag — a different thing that
+happens to share a name.
 
 ## Messages
 

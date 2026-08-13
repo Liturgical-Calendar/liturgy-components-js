@@ -94,6 +94,21 @@ describe('SubscriptionBuilder.appendTo', () => {
             /Element not found for the controls slot/,
         );
     });
+
+    it('rejects controls and url slots resolving to the same element, before mounting anything', () => {
+        // `#url.appendTo()` calls `target.replaceChildren(...)`, which would
+        // wipe out the three controls if both slots landed on one element —
+        // silently leaving the caller with a URL control and no form. The
+        // guard must fire BEFORE any `appendTo` call, so nothing is mounted
+        // into the shared element even transiently.
+        document.body.innerHTML = '<div id="shared"></div>';
+        const sub = new SubscriptionBuilder({ locale: 'en' });
+        expect(() =>
+            sub.appendTo({ controls: '#shared', url: '#shared' }),
+        ).toThrow(/controls' and 'url' slots must be different elements/);
+        const shared = document.getElementById('shared');
+        expect(shared.children.length).toBe(0);
+    });
 });
 
 describe('SubscriptionBuilder.mountInto', () => {

@@ -79,6 +79,9 @@ export default class SubscriptionUrl {
     /** @type {number|null} */
     #copiedTimer = null;
 
+    /** @type {function(): void} The click listener, stored so dispose() can remove it. */
+    #clickListener;
+
     /**
      * @param {Object} apiOptions - The ApiOptions owning the CurrentEndpoint.
      * @param {Object} calendarSelect - The calendar select to follow.
@@ -193,7 +196,8 @@ export default class SubscriptionUrl {
         // would make the control announce as "<url> URL copied to clipboard"
         // for the ~2 seconds after every copy. `appendTo()` mounts both.
 
-        this.#domElement.addEventListener('click', () => this.#copy());
+        this.#clickListener = () => this.#copy();
+        this.#domElement.addEventListener('click', this.#clickListener);
 
         // Seeded from the locale input's CURRENT value, not merely from its
         // future `change` events: without this, a consumer who mounts and
@@ -462,6 +466,7 @@ export default class SubscriptionUrl {
         for (const { element, listener } of this.#subscriptions) {
             element.removeEventListener('change', listener);
         }
+        this.#domElement.removeEventListener('click', this.#clickListener);
         if (null !== this.#copiedTimer) {
             clearTimeout(this.#copiedTimer);
             this.#copiedTimer = null;
