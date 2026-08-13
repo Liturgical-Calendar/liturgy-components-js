@@ -61,6 +61,9 @@ export default class SubscriptionUrl {
     /** @type {Promise<void>|null} The coalesced notification this turn scheduled. */
     #pendingNotify = null;
 
+    /** @type {string|null} The URL most recently handed to the callbacks. */
+    #lastNotified = null;
+
     /** @type {HTMLElement} */
     #liveRegion;
 
@@ -205,6 +208,11 @@ export default class SubscriptionUrl {
         }
 
         this.#render();
+        // Seeded here, not left `null`: without this, the very first no-op
+        // `change` after mounting would compare the unchanged URL against
+        // `null`, find them different, and notify — the exact bug this field
+        // exists to close.
+        this.#lastNotified = this.url;
 
         // The calendar select's option carries `data-calendartype`; the empty
         // option carries none and means the rite-level calendar. Reading
@@ -409,12 +417,25 @@ export default class SubscriptionUrl {
         this.#pendingNotify = Promise.resolve().then(() => {
             this.#pendingNotify = null;
             const next = this.url;
+            // The documented contract is that this fires when the URL
+            // CHANGES. A `change` event whose value did not alter the URL —
+            // a raw dispatch, a re-selection of the current option — must
+            // therefore notify nobody. Compared against the LAST NOTIFIED
+            // value (seeded at construction), not against a set of every URL
+            // ever seen, so changing away and back still notifies both times.
+            if (next === this.#lastNotified) {
+                return;
+            }
+            this.#lastNotified = next;
             this.#changeCallbacks.forEach((callback) => callback(next));
         });
     }
 
     /**
-     * Registers a callback fired whenever the rendered URL changes.
+     * Registers a callback fired whenever the rendered URL changes, i.e. when
+     * the freshly-serialized URL differs from the one last handed to
+     * callbacks. A `change` event that leaves the URL unaltered — a raw
+     * dispatch, reselecting the currently-selected option — notifies nobody.
      *
      * @param {function(string): void} callback - Receives the new URL.
      * @returns {SubscriptionUrl} This instance, for chaining.

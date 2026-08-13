@@ -214,6 +214,44 @@ describe('SubscriptionUrl control wiring', () => {
         expect(seen[0]).toContain('/nation/VA');
     });
 
+    it('does not notify onChange when a change event does not alter the URL', async () => {
+        // A raw dispatch (or a re-selection of the currently-selected option)
+        // fires `change` without altering `CurrentEndpoint`'s state, so the
+        // serialized URL comes out byte-identical. The documented contract is
+        // that `onChange` fires when the URL CHANGES, so this must notify
+        // nobody.
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        calendarSelect._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+        expect(seen).toHaveLength(0);
+    });
+
+    it('still notifies once for a genuine change', async () => {
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        userSelects(calendarSelect._domElement, 'VA');
+        await Promise.resolve();
+        expect(seen).toHaveLength(1);
+        expect(seen[0]).toContain('/nation/VA');
+    });
+
+    it('notifies again when changing away and back, proving the dedupe compares against the last notified value', async () => {
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        userSelects(calendarSelect._domElement, 'VA');
+        await Promise.resolve();
+        userSelects(calendarSelect._domElement, '');
+        await Promise.resolve();
+        expect(seen).toHaveLength(2);
+        expect(seen[0]).toContain('/nation/VA');
+        expect(seen[1]).not.toContain('/nation/');
+        expect(seen[1]).toContain('/calendar/roman');
+    });
+
     it('does not notify onChange for a change made after dispose', async () => {
         const seen = [];
         const { url, calendarSelect } = build();
