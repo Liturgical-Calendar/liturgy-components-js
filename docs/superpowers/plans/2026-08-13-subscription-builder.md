@@ -1,10 +1,18 @@
 # SubscriptionBuilder Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for
+> tracking.
 
-**Goal:** Add `SubscriptionBuilder`, the sixth meta-component, bundling the rite, calendar and locale selects with a rendered iCal subscription URL and a copy control — replacing the hand-rolled card in `LiturgicalCalendarFrontend`'s `usage.php` and answering issue #42.
+**Goal:** Add `SubscriptionBuilder`, the sixth meta-component, bundling the rite, calendar and locale selects
+with a rendered iCal subscription URL and a copy control — replacing the hand-rolled card in
+`LiturgicalCalendarFrontend`'s `usage.php` and answering issue #42.
 
-**Architecture:** `SubscriptionBuilder` composes a `CalendarControls` (rite select, unfiltered `allowNull` calendar select, `ApiOptions` filtered to `LOCALE_ONLY`) and never calls `listenTo()`, so it never fetches — exactly `ApiExplorer`'s template. A new internal `SubscriptionUrl` renders the URL by borrowing `apiOptions._currentEndpoint`, the same `CurrentEndpoint` instance `PathBuilder` borrows. `PathBuilder` is not modified.
+**Architecture:** `SubscriptionBuilder` composes a `CalendarControls` (rite select, unfiltered `allowNull`
+calendar select, `ApiOptions` filtered to `LOCALE_ONLY`) and never calls `listenTo()`, so it never fetches —
+exactly `ApiExplorer`'s template. A new internal `SubscriptionUrl` renders the URL by borrowing
+`apiOptions._currentEndpoint`, the same `CurrentEndpoint` instance `PathBuilder` borrows. `PathBuilder` is not
+modified.
 
 **Tech Stack:** ES2022 JavaScript modules, Jest 29 with jsdom, prettier, markdownlint-cli2.
 
@@ -33,20 +41,32 @@
 | `docs/meta-components.md`                        | The component's documentation section                                    |
 | `CLAUDE.md`                                      | Contract points, plus the stale Messages-count correction                |
 
-`SubscriptionUrl` lives beside `SubscriptionBuilder` rather than in `src/MetaComponents/`, because `src/MetaComponents/` holds exported meta-components plus the internal `Theme.js`, and `SubscriptionUrl` is this component's private renderer — the same relationship `CurrentEndpoint.js` has to `PathBuilder.js` in `src/PathBuilder/`.
+`SubscriptionUrl` lives beside `SubscriptionBuilder` rather than in `src/MetaComponents/`, because
+`src/MetaComponents/` holds exported meta-components plus the internal `Theme.js`, and `SubscriptionUrl` is
+this component's private renderer — the same relationship `CurrentEndpoint.js` has to `PathBuilder.js` in
+`src/PathBuilder/`.
 
 ---
 
 ## Facts you will need (verified against the code)
 
-- `apiOptions._currentEndpoint` is a **`CurrentEndpoint` instance**, owned by `ApiOptions`. `PathBuilder.js:79` borrows it the same way. It is instance state, not static, so two builders on one page never share it.
+- `apiOptions._currentEndpoint` is a **`CurrentEndpoint` instance**, owned by `ApiOptions`. `PathBuilder.js:79`
+  borrows it the same way. It is instance state, not static, so two builders on one page never share it.
 - `currentEndpoint.path` is a **getter** (`CurrentEndpoint.js:138-150`) returning a _relative_ path: `/calendar[/rite][/type/id][/year]`.
-- **`path` omits the rite when it is Roman unless `explicitRite` is true** (`CurrentEndpoint.js:141`). The frontend's subscription URL emits `/roman` unconditionally, so `SubscriptionUrl` **must set `explicitRite = true`** to preserve current behaviour.
+- **`path` omits the rite when it is Roman unless `explicitRite` is true** (`CurrentEndpoint.js:141`). The
+  frontend's subscription URL emits `/roman` unconditionally, so `SubscriptionUrl` **must set `explicitRite =
+true`** to preserve current behaviour.
 - `currentEndpoint.serialize()` (`CurrentEndpoint.js:163-177`) returns `path` plus `?key=value` pairs for every non-`null`, non-`''` field of `requestPayload`.
 - `apiOptions._base.url` is the API base URL. The full subscription URL is `` `${base.url}${currentEndpoint.serialize()}` ``.
-- `ApiOptions` sets `currentEndpoint.rite` itself when the rite select changes (`ApiOptions.js:506`), via `linkToRiteSelect()`. `SubscriptionUrl` therefore does **not** set the rite — it only needs to re-render when the rite changes.
-- The calendar select's option carries `data-calendartype` of `'national'` or `'diocesan'`; the empty option carries none. `PathBuilder.js`'s listener maps these to `CalendarType.NATIONAL` / `CalendarType.DIOCESAN` / `null`.
-- Exact helper names: `normalizeComponentOptions(options, name)`, `assertPlainOptions(options, name)`, `describeType(value)` from `src/OptionsValidation.js`; `assertTheme`, `resolveChildTheme`, `resolveWrapperBag` from `src/MetaComponents/Theme.js`; `CalendarType` from `src/PathBuilder/CurrentEndpoint.js`.
+- `ApiOptions` sets `currentEndpoint.rite` itself when the rite select changes (`ApiOptions.js:506`), via
+  `linkToRiteSelect()`. `SubscriptionUrl` therefore does **not** set the rite — it only needs to re-render when
+  the rite changes.
+- The calendar select's option carries `data-calendartype` of `'national'` or `'diocesan'`; the empty option
+  carries none. `PathBuilder.js`'s listener maps these to `CalendarType.NATIONAL` / `CalendarType.DIOCESAN` /
+  `null`.
+- Exact helper names: `normalizeComponentOptions(options, name)`, `assertPlainOptions(options, name)`,
+  `describeType(value)` from `src/OptionsValidation.js`; `assertTheme`, `resolveChildTheme`, `resolveWrapperBag`
+  from `src/MetaComponents/Theme.js`; `CalendarType` from `src/PathBuilder/CurrentEndpoint.js`.
 
 ---
 
@@ -293,7 +313,10 @@ Append to `src/__tests__/SubscriptionUrl.test.js`, inside `describe('Subscriptio
 
 Run: `yarn test src/__tests__/SubscriptionUrl.test.js`
 
-Expected: PASS, 5 tests. If "renders the Ambrosian rite-level calendar" fails, the renderer is not yet re-rendering on a rite change — that is Task 2. Move that one assertion to read `url.url` **after** the dispatch, which it already does; the `url` getter recomputes from the endpoint on every read, so it passes without a listener.
+Expected: PASS, 5 tests. If "renders the Ambrosian rite-level calendar" fails, the renderer is not yet
+re-rendering on a rite change — that is Task 2. Move that one assertion to read `url.url` **after** the
+dispatch, which it already does; the `url` getter recomputes from the endpoint on every read, so it passes
+without a listener.
 
 - [ ] **Step 7: Run the full gate and commit**
 
@@ -540,7 +563,9 @@ the shared endpoint through linkToRiteSelect()."
 
 - [ ] **Step 1: Add the Messages keys**
 
-`src/Messages.js` holds **84 locale blocks** with uneven key coverage. `SELECT_A_RITE` — the precedent — exists in twelve of them. Add both new keys to those same twelve blocks only; every other locale reaches English through the call-site `??` fallback.
+`src/Messages.js` holds **84 locale blocks** with uneven key coverage. `SELECT_A_RITE` — the precedent —
+exists in twelve of them. Add both new keys to those same twelve blocks only; every other locale reaches
+English through the call-site `??` fallback.
 
 Find each block's `SELECT_A_RITE` line and add the two keys beside it:
 
@@ -1600,7 +1625,11 @@ and add `SubscriptionBuilder,` to the export list beside `ApiExplorer,`.
 
 - [ ] **Step 6: Document the component**
 
-Add a `## SubscriptionBuilder` section to `docs/meta-components.md`, after `## ApiExplorer`, covering: what it bundles; the `{ controls, url }` slots and why both are required; that column layout comes from the theme bag's wrapper keys rather than per-control slots; the `scheme` option; the copy control's options (`copyIcon`, `copyTitle`, `copiedText`, `copiedClass`, `onCopy`); that it never fetches and therefore has no `settled`, `onError` or `initialFetch`; and `dispose()`.
+Add a `## SubscriptionBuilder` section to `docs/meta-components.md`, after `## ApiExplorer`, covering: what it
+bundles; the `{ controls, url }` slots and why both are required; that column layout comes from the theme
+bag's wrapper keys rather than per-control slots; the `scheme` option; the copy control's options (`copyIcon`,
+`copyTitle`, `copiedText`, `copiedClass`, `onCopy`); that it never fetches and therefore has no `settled`,
+`onError` or `initialFetch`; and `dispose()`.
 
 Include the worked example:
 
@@ -1631,10 +1660,16 @@ Add `SubscriptionBuilder` to the key-components table and to the meta-components
 
 - it never fetches, so it has no `settled`/`onError`/`initialFetch`, like `ApiExplorer`;
 - both slots are required;
-- the copy control's wrapper **is** the `<button>` — do not "fix" it into a separate button beside the text, because `div[role="button"]` without `tabindex` or a key handler announces a control that cannot be focused or activated;
+- the copy control's wrapper **is** the `<button>` — do not "fix" it into a separate button beside the text,
+  because `div[role="button"]` without `tabindex` or a key handler announces a control that cannot be focused or
+  activated;
 - `return_type` is pinned to ICS and `explicitRite` is set to `true`, and why.
 
-Also correct the stale Messages claim. `CLAUDE.md` currently says "Supports 13 languages via message catalogs in `Messages.js`: en, it, la, es, fr, de, pt, nl, hu, id, sk, vi" — twelve names under a claim of thirteen, describing a file that holds **84 locale blocks** with uneven key coverage. Replace with an accurate statement: 84 locale blocks, unevenly populated, with newer keys present in twelve and every other locale reaching English through the call sites' `??` fallback.
+Also correct the stale Messages claim. `CLAUDE.md` currently says "Supports 13 languages via message catalogs
+in `Messages.js`: en, it, la, es, fr, de, pt, nl, hu, id, sk, vi" — twelve names under a claim of thirteen,
+describing a file that holds **84 locale blocks** with uneven key coverage. Replace with an accurate
+statement: 84 locale blocks, unevenly populated, with newer keys present in twelve and every other locale
+reaching English through the call sites' `??` fallback.
 
 - [ ] **Step 8: Run the full gate and commit**
 
@@ -1653,10 +1688,25 @@ coverage."
 
 ## Self-review
 
-**Spec coverage.** Every section of the spec maps to a task: composition and the no-fetch guarantee (Tasks 4, 5); the dedicated renderer on the shared `CurrentEndpoint` (Task 1); the locale select as a control (Task 2); fixed ICS/CIVIL parameters (Task 1); `scheme` (Task 1); the wrapper-is-the-button decision and its accessibility rationale (Task 3); the inline SVG icon and its override (Task 3); copy feedback, both the built-in state and `onCopy` (Task 3); Messages coverage following `SELECT_A_RITE`'s twelve blocks (Task 3); slots and layout (Task 4); theming (Task 6); errors and reject-vs-resolve (Task 5); `dispose()` (Tasks 2, 5); the full test list (spread across all six); the `CLAUDE.md` Messages correction (Task 6). The frontend migration is a spec non-goal and correctly has no task.
+**Spec coverage.** Every section of the spec maps to a task: composition and the no-fetch guarantee (Tasks 4,
+5); the dedicated renderer on the shared `CurrentEndpoint` (Task 1); the locale select as a control (Task 2);
+fixed ICS/CIVIL parameters (Task 1); `scheme` (Task 1); the wrapper-is-the-button decision and its
+accessibility rationale (Task 3); the inline SVG icon and its override (Task 3); copy feedback, both the
+built-in state and `onCopy` (Task 3); Messages coverage following `SELECT_A_RITE`'s twelve blocks (Task 3);
+slots and layout (Task 4); theming (Task 6); errors and reject-vs-resolve (Task 5); `dispose()` (Tasks 2, 5);
+the full test list (spread across all six); the `CLAUDE.md` Messages correction (Task 6). The frontend
+migration is a spec non-goal and correctly has no task.
 
 **Placeholders.** None. Every code step carries the code; every test step carries the assertions.
 
-**Type consistency.** `SubscriptionUrl`'s constructor is `(apiOptions, calendarSelect, riteSelect, options)` in Tasks 1, 2, 3, 4 and 6. `url` is a getter returning `string` on both classes. `onChange(callback)` is chainable on both. `dispose()` returns `void` on both. `SLOT_NAMES` is `['controls', 'url']` in Tasks 4 and 5. `#copiedClass` is assigned in Task 3 and overridden in Task 6, with Step 3 of Task 6 stating the ordering requirement explicitly.
+**Type consistency.** `SubscriptionUrl`'s constructor is `(apiOptions, calendarSelect, riteSelect, options)`
+in Tasks 1, 2, 3, 4 and 6. `url` is a getter returning `string` on both classes. `onChange(callback)` is
+chainable on both. `dispose()` returns `void` on both. `SLOT_NAMES` is `['controls', 'url']` in Tasks 4 and 5.
+`#copiedClass` is assigned in Task 3 and overridden in Task 6, with Step 3 of Task 6 stating the ordering
+requirement explicitly.
 
-**One risk flagged for the implementer.** Task 3's constructor reads `apiOptions._localeInput._locale` to pick the Messages language. Verify that accessor exists before relying on it; if it does not, take the language from the `bag.locale` that `SubscriptionBuilder` already normalized and pass it into `SubscriptionUrl`'s options as `language`. Either way the `??` fallback to `Messages['en']` must stay, because a locale outside the catalogue would otherwise throw.
+**One risk flagged for the implementer.** Task 3's constructor reads `apiOptions._localeInput._locale` to pick
+the Messages language. Verify that accessor exists before relying on it; if it does not, take the language
+from the `bag.locale` that `SubscriptionBuilder` already normalized and pass it into `SubscriptionUrl`'s
+options as `language`. Either way the `??` fallback to `Messages['en']` must stay, because a locale outside
+the catalogue would otherwise throw.
