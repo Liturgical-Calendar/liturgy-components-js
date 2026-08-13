@@ -141,21 +141,41 @@ describe('SubscriptionUrl control wiring', () => {
         expect(url._domElement.textContent).toContain('locale=it');
     });
 
-    it('notifies onChange with the new URL', () => {
-        // Two calls, not one: `ApiOptions.linkToCalendarSelect()` resyncs the
-        // locale select's options for the newly chosen calendar and dispatches
-        // a synthetic `change` on it (see ApiOptions.js `#applyCalendarSelection`),
-        // and that fires synchronously, inside the calendar select's own
-        // `change` handling, before SubscriptionUrl's own calendar listener
-        // (registered after `linkToCalendarSelect()` in `build()`) gets to run.
-        // The first callback therefore reflects only the locale resync; the
-        // final one is the one callers care about, and it carries the nation.
+    it('notifies onChange exactly once per action, with settled state', async () => {
+        // `ApiOptions.linkToCalendarSelect()`'s listener is registered before
+        // this class's and synchronously dispatches a synthetic `change` on the
+        // locale input, so without coalescing a subscriber is notified twice —
+        // the first time with the calendar the user just left.
         const seen = [];
         const { url, calendarSelect } = build();
         url.onChange((next) => seen.push(next));
         userSelects(calendarSelect._domElement, 'VA');
-        expect(seen).toHaveLength(2);
-        expect(seen.at(-1)).toContain('/nation/VA');
+        await Promise.resolve();
+        expect(seen).toHaveLength(1);
+        expect(seen[0]).toContain('/nation/VA');
+    });
+
+    it('does not notify onChange for a change made after dispose', async () => {
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        url.dispose();
+        userSelects(calendarSelect._domElement, 'VA');
+        await Promise.resolve();
+        expect(seen).toHaveLength(0);
+    });
+
+    it('cancels an already-pending notification when disposed mid-turn', async () => {
+        // Dispose can land between the synchronous `change` handling that
+        // schedules the microtask and the microtask actually running. The
+        // pending notification must not fire into callbacks that are gone.
+        const seen = [];
+        const { url, calendarSelect } = build();
+        url.onChange((next) => seen.push(next));
+        userSelects(calendarSelect._domElement, 'VA');
+        url.dispose();
+        await Promise.resolve();
+        expect(seen).toHaveLength(0);
     });
 
     it('stops repainting after dispose', () => {

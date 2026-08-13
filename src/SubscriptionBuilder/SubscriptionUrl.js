@@ -44,6 +44,9 @@ export default class SubscriptionUrl {
     /** @type {Array<function(string): void>} */
     #changeCallbacks = [];
 
+    /** @type {Promise<void>|null} The coalesced notification this turn scheduled. */
+    #pendingNotify = null;
+
     /**
      * @param {Object} apiOptions - The ApiOptions owning the CurrentEndpoint.
      * @param {Object} calendarSelect - The calendar select to follow.
@@ -154,12 +157,45 @@ export default class SubscriptionUrl {
     #listen(element, update) {
         const listener = (ev) => {
             update(ev);
+            // The repaint stays SYNCHRONOUS: both firings of a single user
+            // action share one task, so the browser never paints between them
+            // and the intermediate write is unobservable. Deferring it would
+            // only make the DOM lag the state by a microtask, for no gain.
             this.#render();
-            const next = this.url;
-            this.#changeCallbacks.forEach((callback) => callback(next));
+            this.#scheduleNotify();
         };
         element.addEventListener('change', listener);
         this.#subscriptions.push({ element, listener });
+    }
+
+    /**
+     * Collapses the `onChange` notifications one user action provokes into one,
+     * on a microtask.
+     *
+     * One selection moves several inputs: `ApiOptions.linkToCalendarSelect()`'s
+     * own listener is registered BEFORE this class's and synchronously dispatches
+     * a synthetic `change` on the locale input, so without this a subscriber is
+     * notified while `calendarType`/`calendarId` are still stale — an
+     * intermediate URL carrying the calendar the user just left. Every dispatch
+     * in that burst is synchronous, so a microtask flush reads settled state.
+     *
+     * The same shape as `ApiClient.#scheduleRefetch()`, added for the
+     * structurally identical problem in issue #50. Only the NOTIFICATION is
+     * coalesced, not the repaint: a callback hands a value to consumer code that
+     * acts on it at once, whereas the DOM write is idempotent and invisible until
+     * the task settles.
+     *
+     * @returns {void}
+     */
+    #scheduleNotify() {
+        if (null !== this.#pendingNotify) {
+            return;
+        }
+        this.#pendingNotify = Promise.resolve().then(() => {
+            this.#pendingNotify = null;
+            const next = this.url;
+            this.#changeCallbacks.forEach((callback) => callback(next));
+        });
     }
 
     /**
@@ -192,5 +228,6 @@ export default class SubscriptionUrl {
         }
         this.#subscriptions = [];
         this.#changeCallbacks = [];
+        this.#pendingNotify = null;
     }
 }
