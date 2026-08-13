@@ -85,3 +85,74 @@ describe('SubscriptionBuilder.appendTo', () => {
         );
     });
 });
+
+describe('SubscriptionBuilder.mountInto', () => {
+    it('resolves to a mounted builder', async () => {
+        const sub = await SubscriptionBuilder.mountInto(
+            { controls: '#controls', url: '#url' },
+            { locale: 'en' },
+        );
+        expect(sub).toBeInstanceOf(SubscriptionBuilder);
+        expect(document.querySelector('#url button')).not.toBeNull();
+    });
+
+    it('rejects an unparseable locale', async () => {
+        await expect(
+            SubscriptionBuilder.mountInto(
+                { controls: '#controls', url: '#url' },
+                { locale: 'not a locale' },
+            ),
+        ).rejects.toThrow(/SubscriptionBuilder/);
+    });
+
+    it('rejects an unknown scheme', async () => {
+        await expect(
+            SubscriptionBuilder.mountInto(
+                { controls: '#controls', url: '#url' },
+                { locale: 'en', scheme: 'ftp' },
+            ),
+        ).rejects.toThrow(/'https' or 'webcal'/);
+    });
+
+    it('resolves to null when the signal is already aborted', async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const sub = await SubscriptionBuilder.mountInto(
+            { controls: document.getElementById('controls'), url: '#url' },
+            { locale: 'en', signal: controller.signal },
+        );
+        expect(sub).toBeNull();
+    });
+});
+
+describe('SubscriptionBuilder never fetches', () => {
+    it('issues no request, whatever the user changes', async () => {
+        const sub = await SubscriptionBuilder.mountInto(
+            { controls: '#controls', url: '#url' },
+            { locale: 'en' },
+        );
+        const change = (element, value) => {
+            element.value = value;
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        change(sub.riteSelect._domElement, 'ambrosian');
+        change(sub.riteSelect._domElement, 'roman');
+        change(sub.calendarSelect._domElement, 'VA');
+        change(sub.localeInput._domElement, 'it');
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+});
+
+describe('SubscriptionBuilder.dispose', () => {
+    it('is idempotent and makes further use throw', async () => {
+        const sub = await SubscriptionBuilder.mountInto(
+            { controls: '#controls', url: '#url' },
+            { locale: 'en' },
+        );
+        sub.dispose();
+        sub.dispose();
+        expect(() => sub.url).toThrow(/disposed/);
+        expect(document.querySelector('#url button')).toBeNull();
+    });
+});

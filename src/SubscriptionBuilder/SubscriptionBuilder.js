@@ -63,20 +63,27 @@ export default class SubscriptionBuilder {
      */
     constructor(options) {
         const bag = normalizeComponentOptions(options, 'SubscriptionBuilder');
-        this.#controls = new CalendarControls(bag);
+        // Validated here, by name, BEFORE `CalendarControls` is constructed:
+        // left to whichever child constructs first, an invalid locale would
+        // reject under THAT child's own name, misattributing the failure to a
+        // component the caller never directly touched. Same pattern as
+        // `DayViewer`. Canonicalising once also means `CalendarControls`
+        // parses an already-valid tag and cannot re-throw under its own name.
+        const intlLocale = toIntlLocale(
+            bag.locale ?? 'en',
+            'SubscriptionBuilder',
+        );
+        const language = intlLocale.language;
+        this.#controls = new CalendarControls({ ...bag, locale: intlLocale });
         // The rite -> calendar chain, wired directly rather than through
         // `CalendarControls.listenTo()`: that method also installs
         // `apiClient.listenTo( … )`, which fetches on every change.
         this.#controls.apiOptions
             .linkToCalendarSelect(this.#controls.calendarSelect)
             .linkToRiteSelect(this.#controls.riteSelect);
-        // `language` is derived here, where the normalized locale lives, and
+        // `language` is derived above, where the normalized locale lives, and
         // passed in: the locale input exposes no locale accessor for
         // `SubscriptionUrl` to read.
-        const language = toIntlLocale(
-            bag.locale ?? 'en',
-            'SubscriptionBuilder',
-        ).language;
         this.#url = new SubscriptionUrl(
             this.#controls.apiOptions,
             this.#controls.calendarSelect,
@@ -231,5 +238,95 @@ export default class SubscriptionBuilder {
 
         this.#url.appendTo(urlTarget);
         this.#urlMount = urlTarget;
+    }
+
+    /**
+     * Releases every mount and listener this builder used.
+     *
+     * Idempotent; further use throws.
+     *
+     * Subject to the same documented, pre-existing gap as the rest of the
+     * family: the anonymous listeners `ApiOptions.linkToCalendarSelect()` and
+     * `linkToRiteSelect()` attach internally are not exposed anywhere this
+     * could reach them, and are not released.
+     *
+     * @returns {void}
+     */
+    dispose() {
+        if (true === this.#disposed) {
+            return;
+        }
+        this.#url.dispose();
+        this.#controls.dispose();
+        this.#controlsMount?.replaceChildren();
+        this.#urlMount?.replaceChildren();
+        this.#controlsMount = null;
+        this.#urlMount = null;
+        this.#disposed = true;
+    }
+
+    /**
+     * Resolves the slots argument to an already-attached element, for the
+     * cancellation check in `mountInto()` only.
+     *
+     * @param {Object} slots - The `mountInto()` slots argument.
+     * @returns {HTMLElement|null} The first resolved element found, or `null`.
+     */
+    static #targetElement(slots) {
+        for (const key of SLOT_NAMES) {
+            const candidate = slots?.[key];
+            if (candidate instanceof HTMLElement) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the targets, constructs the builder and mounts it.
+     *
+     * **Rejects** on invalid options — an unparseable locale, an unknown
+     * `scheme`, an unknown or missing slot, a target matching nothing — and on
+     * metadata that cannot be loaded at all. The second matches
+     * `CalendarControls`, `CalendarViewer` and `ApiExplorer`: this bundles a
+     * whole form, and a rite select and calendar select with no calendars to
+     * list are not a smaller working form but no form at all. It does NOT grow a
+     * failure control like `CalendarResourcePicker`'s, which substitutes for a
+     * single required field.
+     *
+     * There is no `settled`, no `onError` and no `initialFetch`: this component
+     * never fetches a calendar, exactly as `ApiExplorer` never does.
+     *
+     * @param {{controls: (string|HTMLElement), url: (string|HTMLElement)}} slots - Where to mount.
+     * @param {Object} [options] - As the constructor, plus `signal`.
+     * @param {AbortSignal} [options.signal] - Cancels the mount.
+     * @returns {Promise<SubscriptionBuilder|null>} The mounted builder, or
+     *   `null` when the mount was cancelled.
+     */
+    static async mountInto(slots, options = {}) {
+        const bag = normalizeComponentOptions(options, 'SubscriptionBuilder');
+        const { signal } = bag;
+
+        const builder = new SubscriptionBuilder(bag);
+
+        try {
+            assertPlainOptions(slots, 'SubscriptionBuilder.mountInto');
+        } catch {
+            throw new Error(
+                `SubscriptionBuilder.mountInto: slots must be an object naming { controls, url } targets, but found type: ${describeType(slots)}`,
+            );
+        }
+
+        const element = SubscriptionBuilder.#targetElement(slots);
+        if (
+            true === signal?.aborted ||
+            (null !== element && false === element.isConnected)
+        ) {
+            return null;
+        }
+
+        builder.appendTo(slots, 'SubscriptionBuilder.mountInto');
+
+        return builder;
     }
 }
