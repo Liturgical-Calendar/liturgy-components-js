@@ -40,7 +40,7 @@ liturgy-components-js/
 ├── src/                            # TypeScript source files
 │   ├── index.js                    # Main entry point
 │   ├── Enums.js                    # Type-safe enumerations
-│   ├── Messages.js                 # Localized UI strings (13 languages)
+│   ├── Messages.js                 # Localized UI strings (84 locale blocks, unevenly populated)
 │   ├── Utils.js                    # Utility functions
 │   ├── typedefs.js                 # Shared JSDoc typedefs
 │   ├── ApiClient/
@@ -67,6 +67,9 @@ liturgy-components-js/
 │   │   ├── CalendarViewer.js        # CalendarControls + WebCalendar
 │   │   ├── ApiExplorer.js           # CalendarControls + PathBuilder, never fetches
 │   │   └── Theme.js                 # Internal theme-bag resolver, not exported
+│   ├── SubscriptionBuilder/
+│   │   ├── SubscriptionBuilder.js  # CalendarControls + a subscription URL, never fetches
+│   │   └── SubscriptionUrl.js       # Private renderer, not exported
 │   ├── __fixtures__/               # Metadata fixtures for the tests
 │   ├── __tests__/                  # Jest unit tests
 │   └── stories/                    # Storybook stories
@@ -256,22 +259,23 @@ each other.
 
 ## Key Components
 
-| Component                | Purpose                                                       |
-| ------------------------ | ------------------------------------------------------------- |
-| `ApiClient`              | Manages API communication, emits events                       |
-| `ApiBase`                | One API base: its URL, calendar index and cache               |
-| `ApiClientError`         | Error carrying url, status, statusText and body               |
-| `CalendarSelect`         | Dropdown for selecting calendars                              |
-| `ApiOptions`             | Form controls for API parameters                              |
-| `WebCalendar`            | Renders calendar as HTML table                                |
-| `LiturgyOfTheDay`        | Widget displaying today's liturgy                             |
-| `LiturgyOfAnyDay`        | Widget displaying liturgy for any selected date               |
-| `PathBuilder`            | Builds and displays API request URLs                          |
-| `CalendarResourcePicker` | Rite + filtered CalendarSelect, bundled and wired             |
-| `DayViewer`              | Complete "liturgy of any day" page in one mount               |
-| `CalendarControls`       | Rite + calendar + `ApiOptions`, wired, no renderer            |
-| `CalendarViewer`         | `CalendarControls` paired with a `WebCalendar`                |
-| `ApiExplorer`            | `CalendarControls` paired with a `PathBuilder`, never fetches |
+| Component                | Purpose                                                                |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `ApiClient`              | Manages API communication, emits events                                |
+| `ApiBase`                | One API base: its URL, calendar index and cache                        |
+| `ApiClientError`         | Error carrying url, status, statusText and body                        |
+| `CalendarSelect`         | Dropdown for selecting calendars                                       |
+| `ApiOptions`             | Form controls for API parameters                                       |
+| `WebCalendar`            | Renders calendar as HTML table                                         |
+| `LiturgyOfTheDay`        | Widget displaying today's liturgy                                      |
+| `LiturgyOfAnyDay`        | Widget displaying liturgy for any selected date                        |
+| `PathBuilder`            | Builds and displays API request URLs                                   |
+| `CalendarResourcePicker` | Rite + filtered CalendarSelect, bundled and wired                      |
+| `DayViewer`              | Complete "liturgy of any day" page in one mount                        |
+| `CalendarControls`       | Rite + calendar + `ApiOptions`, wired, no renderer                     |
+| `CalendarViewer`         | `CalendarControls` paired with a `WebCalendar`                         |
+| `ApiExplorer`            | `CalendarControls` paired with a `PathBuilder`, never fetches          |
+| `SubscriptionBuilder`    | `CalendarControls` paired with an iCal subscription URL, never fetches |
 
 ### How components take a locale
 
@@ -561,6 +565,30 @@ reach it. This is a pre-existing gap in the wired components, not something `dis
 claiming completeness; if a caller keeps a separate reference to the child selects and the client after
 disposing, those selects can still drive fetches through that client.
 
+**`SubscriptionBuilder` is a sixth composed component, built the same way but living outside `src/MetaComponents/`.**
+It lives in `src/SubscriptionBuilder/`, not among the five above, because it pairs a `CalendarControls` with its
+own private renderer (`SubscriptionUrl.js`, never exported — the same relationship `Theme.js` has to the five)
+rather than reusing one of the library's existing renderers. It otherwise follows every convention documented
+above: the theme bag, `mountInto()` versus the constructor, reject-for-programmer-error, and an idempotent
+`dispose()` with the same documented gap around `ApiOptions`' internal listeners. Four points are specific to it:
+
+- **It never fetches**, exactly as `ApiExplorer` never does — its constructor links the rite -> calendar chain
+  directly (`apiOptions.linkToCalendarSelect().linkToRiteSelect()`) and never calls `CalendarControls.listenTo()`.
+  It therefore has no `settled`, no `onError` and no `initialFetch`: all three concern a fetch this class never
+  performs.
+- **Both slots — `{ controls, url }` — are required.** Like `CalendarViewer` and `ApiExplorer`, this bundles more
+  than one mandatory mount, so a bare target is rejected rather than silently picking one of the two.
+- **The copy control's wrapper IS the `<button>` itself**, not a separate button placed beside the URL text. Do
+  not "fix" this into a `<div>` wrapping a nested button: a `div[role="button"]` with no `tabindex` and no key
+  handler announces a control that can be neither focused nor activated by keyboard, which is a regression this
+  shape specifically avoids.
+- **`return_type` is pinned to `ICS` and `explicitRite` is set to `true`.** `return_type` is what makes this a
+  subscription URL rather than a JSON request, so it is set once and never wired to an input, unlike `PathBuilder`.
+  `explicitRite` is needed because `CurrentEndpoint.path` otherwise omits the rite segment whenever it is Roman,
+  and a subscription URL must always read `/roman` or `/ambrosian` explicitly.
+
+Full documentation lives in `docs/meta-components.md`'s `SubscriptionBuilder` section.
+
 ## Enums
 
 Type-safe enumerations for component configuration:
@@ -577,8 +605,11 @@ Type-safe enumerations for component configuration:
 
 ## Internationalization
 
-Supports 13 languages via message catalogs in `Messages.js`:
-en, it, la, es, fr, de, pt, nl, hu, id, sk, vi
+`Messages.js` holds 84 locale blocks, unevenly populated: not every key exists in every block. Newer keys —
+including `COPY_TO_CLIPBOARD`/`COPIED_TO_CLIPBOARD`, added for `SubscriptionUrl`'s copy control — are present
+in exactly twelve of the 84, the same twelve that carry `SELECT_A_RITE`. Every other locale reaches English
+through the `??` fallback each call site already applies (`Messages[language]?.[KEY] ?? Messages['en'][KEY]`),
+so an unpopulated block degrades to English for that key rather than throwing.
 
 ## Important Notes
 

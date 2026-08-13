@@ -156,3 +156,28 @@ describe('SubscriptionBuilder.dispose', () => {
         expect(document.querySelector('#url button')).toBeNull();
     });
 });
+
+describe('SubscriptionBuilder theming', () => {
+    it('reaches all three controls and the URL wrapper', () => {
+        const sub = new SubscriptionBuilder({
+            locale: 'en',
+            theme: {
+                select: 'form-select',
+                label: 'form-label',
+                wrapper: 'form-group col-md',
+                subscriptionUrl: { class: 'bg-light border rounded p-2' },
+            },
+        });
+        sub.appendTo({ controls: '#controls', url: '#url' });
+
+        expect(sub.riteSelect._domElement.className).toBe('form-select');
+        expect(sub.calendarSelect._domElement.className).toBe('form-select');
+        expect(sub.localeInput._domElement.className).toBe('form-select');
+        expect(
+            sub.riteSelect._domElement.closest('.form-group'),
+        ).not.toBeNull();
+        expect(document.querySelector('#url button').className).toBe(
+            'bg-light border rounded p-2',
+        );
+    });
+});

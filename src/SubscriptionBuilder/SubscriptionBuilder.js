@@ -28,6 +28,10 @@ import {
     normalizeComponentOptions,
 } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
+import {
+    resolveChildTheme,
+    resolveWrapperBag,
+} from '../MetaComponents/Theme.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -51,7 +55,9 @@ export default class SubscriptionBuilder {
     /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
-     * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.theme] - The theme bag; see `Theme.js`. Its
+     *   `theme.subscriptionUrl` override reaches the URL control's `class`,
+     *   `codeClass` and `copiedClass`.
      * @param {Object} [options.apiClient] - Binds the controls to that client's
      *   API base. Never used to fetch a calendar.
      * @param {'https'|'webcal'} [options.scheme='https'] - The URL scheme.
@@ -81,14 +87,37 @@ export default class SubscriptionBuilder {
         this.#controls.apiOptions
             .linkToCalendarSelect(this.#controls.calendarSelect)
             .linkToRiteSelect(this.#controls.riteSelect);
+        // `CalendarControls` themes its OWN two children (`riteSelect`,
+        // `calendarSelect`) but has no notion of the `ApiOptions` inputs it
+        // wraps, so the locale input — the third of this component's "three
+        // controls" — is themed directly here, the same way `DayViewer` themes
+        // its own copy of the same `ApiOptions._localeInput`.
+        const localeTheme = resolveChildTheme(bag.theme, 'localeInput');
+        if (Object.hasOwn(localeTheme, 'class')) {
+            this.#controls.apiOptions._localeInput.class(localeTheme.class);
+        }
+        if (Object.hasOwn(localeTheme, 'labelClass')) {
+            this.#controls.apiOptions._localeInput.labelClass(
+                localeTheme.labelClass,
+            );
+        }
+        if (Object.hasOwn(localeTheme, 'labelText')) {
+            this.#controls.apiOptions._localeInput._labelElement.textContent =
+                localeTheme.labelText;
+        }
+        const localeWrapper = resolveWrapperBag(localeTheme);
+        if (null !== localeWrapper) {
+            this.#controls.apiOptions._localeInput.wrapper(localeWrapper);
+        }
         // `language` is derived above, where the normalized locale lives, and
         // passed in: the locale input exposes no locale accessor for
         // `SubscriptionUrl` to read.
+        const urlTheme = resolveChildTheme(bag.theme, 'subscriptionUrl');
         this.#url = new SubscriptionUrl(
             this.#controls.apiOptions,
             this.#controls.calendarSelect,
             this.#controls.riteSelect,
-            { ...bag, language },
+            { ...bag, language, urlTheme },
         );
     }
 

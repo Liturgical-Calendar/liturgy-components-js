@@ -13,6 +13,7 @@ import DayViewer from './MetaComponents/DayViewer.js';
 import CalendarControls from './MetaComponents/CalendarControls.js';
 import CalendarViewer from './MetaComponents/CalendarViewer.js';
 import ApiExplorer from './MetaComponents/ApiExplorer.js';
+import SubscriptionBuilder from './SubscriptionBuilder/SubscriptionBuilder.js';
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
 import {
@@ -45,6 +46,7 @@ export {
     CalendarControls,
     CalendarViewer,
     ApiExplorer,
+    SubscriptionBuilder,
     Input,
     Utils,
     Grouping,

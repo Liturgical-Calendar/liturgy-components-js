@@ -93,6 +93,10 @@ export default class SubscriptionUrl {
      *   each copy attempt with whether it succeeded, and the error when not.
      * @param {string} [options.copiedClass='is-copied'] - The class applied to
      *   the button for `COPIED_DURATION` ms after a successful copy.
+     * @param {Object} [options.urlTheme] - Resolved by `SubscriptionBuilder` via
+     *   `resolveChildTheme(bag.theme, 'subscriptionUrl')`. `class` sets the
+     *   button's class, `codeClass` sets the `<code>` element's class, and
+     *   `copiedClass` overrides `options.copiedClass`.
      * @throws {Error} If `scheme` is neither 'https' nor 'webcal'.
      */
     constructor(apiOptions, calendarSelect, riteSelect, options = {}) {
@@ -120,6 +124,22 @@ export default class SubscriptionUrl {
         this.#codeElement = document.createElement('code');
         this.#domElement.append(this.#codeElement);
 
+        // Assigned here, BEFORE the theme block below, so that block's
+        // `copiedClass` override can replace the default rather than being
+        // clobbered by an assignment that ran after it.
+        this.#copiedClass = options.copiedClass ?? 'is-copied';
+
+        const urlTheme = options.urlTheme ?? {};
+        if (Object.hasOwn(urlTheme, 'class')) {
+            this.#domElement.className = urlTheme.class;
+        }
+        if (Object.hasOwn(urlTheme, 'codeClass')) {
+            this.#codeElement.className = urlTheme.codeClass;
+        }
+        if (Object.hasOwn(urlTheme, 'copiedClass')) {
+            this.#copiedClass = urlTheme.copiedClass;
+        }
+
         // The display language for the two built-in strings. Taken from the
         // `language` option `SubscriptionBuilder` passes in — NOT from the
         // locale input, which exposes no locale accessor: `_localeInput._locale`
@@ -136,7 +156,6 @@ export default class SubscriptionUrl {
             options.copiedText ??
             Messages[language]?.['COPIED_TO_CLIPBOARD'] ??
             Messages['en']['COPIED_TO_CLIPBOARD'];
-        this.#copiedClass = options.copiedClass ?? 'is-copied';
         this.#onCopy =
             typeof options.onCopy === 'function' ? options.onCopy : null;
 
