@@ -746,6 +746,16 @@ variable number of inputs depending on `filter`, so there is no fixed set of per
 way `riteSelect`/`calendarSelect`/`localeInput` are named. Reach the remaining inputs directly through
 `controls.apiOptions` for anything the theme bag does not cover.
 
+**That escape hatch can throw when aimed at the locale input specifically.** `Input.wrapper()` is
+one-shot (2.6.0), and a bag naming a class also closes `wrapperClass()` for the rest of that instance's
+life. Once any `theme.wrapper` or `theme.localeInput.wrapperClass`/`wrapper` is in play, `CalendarControls`
+consumes that one allowance on `apiOptions._localeInput` at construction time — so a later
+`controls.apiOptions._localeInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already been
+set on Input instance, and cannot be set twice.` (or the equivalent message from `wrapperClass()`). The
+escape hatch still works, unchanged, for `year_type`, `year` and the rest of `ApiOptions`' inputs, which
+this theme bag never touches — it is only the locale input, themed once already by `CalendarControls`
+itself, that is closed to it.
+
 ### Public getters
 
 All four throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
@@ -1060,6 +1070,15 @@ viewer.controls.apiOptions
 
 viewer.listenTo(apiClient);
 ```
+
+**Since 2.7.0, this same flat `wrapper` also reaches `locale`, but not `year_type` or `year`.** The theme
+bag's `wrapper: 'form-group col col-md-2'` now column-wraps the locale input the same way it wraps
+`riteSelect` and `calendarSelect` — see `CalendarControls`' "The theme bag" section above — while
+`year_type` and `year` are plain `ApiOptions` inputs the theme bag does not reach at all, so they render
+unwrapped in row one. That is an asymmetric row this example did not produce before 2.7.0. A consumer who
+wants a symmetric row should either style `year_type` and `year` directly through
+`viewer.controls.apiOptions` (subject to the one-shot `wrapper()` caveat noted above) or drop the flat
+`wrapper` key here and wrap all three by hand.
 
 | Container              | Receives                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------ |

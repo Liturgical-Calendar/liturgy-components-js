@@ -6,9 +6,29 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ## 2.7.0
 
-`ApiOptions`' locale-input theming, extracted to one place and applied to a second component.
+`SubscriptionBuilder`, the sixth meta-component, plus `ApiOptions`' locale-input theming extracted to one
+place and applied to a second component.
 
 ### Added
+
+- **`SubscriptionBuilder`**, closing #42 — a `CalendarControls` (rite select, an unfiltered
+  `CalendarSelect` with a selectable empty option, and an `ApiOptions` restricted to its locale input)
+  paired with a rendered iCal subscription URL and an accessible copy control, replacing the hand-rolled
+  card in `LiturgicalCalendarFrontend`'s `usage.php`. Like `ApiExplorer`, it never calls `listenTo()`, so
+  it never fetches and has no `settled`, `onError` or `initialFetch` — there is no calendar data to wait
+  on. `appendTo()`/`mountInto()` take a required `{ controls, url }` slots object, the same
+  two-mandatory-mount rule as `CalendarViewer` and `ApiExplorer`. A `scheme: 'https' | 'webcal'` option
+  (default `'https'`) rewrites the URL's protocol so a calendar app that recognises `webcal:` opens its
+  "add subscription" flow directly rather than downloading a file. Five options style and hook the copy
+  control — `copyIcon`, `copyTitle`, `copiedText`, `copiedClass`, `onCopy` — and the control's wrapper IS
+  the `<button>` itself, not a `<div>` around one: the card it replaces used `div[role="button"]` with no
+  `tabindex` and no key handler, announcing a control to screen readers that could neither be focused nor
+  activated by keyboard. `return_type` is pinned to ICS and `explicitRite` is set true so `/roman` always
+  appears in the path, matching the card being replaced. `onChange(callback)` fires once per user action
+  even when a single selection moves more than one input — coalesced onto a microtask and deduped by URL
+  value, the same shape as `ApiClient`'s own refetch coalescing (#50). Two new `Messages` keys,
+  `COPY_TO_CLIPBOARD` and `COPIED_TO_CLIPBOARD`, back the copy control's title and its `aria-live`
+  confirmation. See `docs/meta-components.md`'s `SubscriptionBuilder` section for the full contract.
 
 - **`Theme.js` gains `applyLocaleInputTheme()`**, an internal helper (not exported from `src/index.js`,
   like the rest of that module) that themes an `ApiOptions._localeInput`'s `class`, `labelClass`, wrapper
@@ -17,13 +37,20 @@ prepared under that number was skipped, and everything it was to have delivered 
   where the original correctly was not, which is exactly the class of bug this extraction closes: the
   label text is set **unconditionally**, because `LocaleInput`'s constructor hardcodes its label to the
   raw, untranslated string `'locale'` (`LocaleInput.js:48`) with no i18n of its own, so an un-themed
-  caller must still get a localized label rather than that literal string.
+  caller must still get a localized label rather than that literal string. `SubscriptionBuilder` ships
+  with no such block of its own: its locale input is themed entirely through `CalendarControls`, since the
+  whole options bag — including `theme` — already flows into its `new CalendarControls( bag )` call, and a
+  second `wrapper()` call from a block of its own would have **thrown**, not silently no-opped —
+  `Input.wrapper()` became one-shot in 2.6.0.
 
 ### Behaviour changes
 
-- **`CalendarControls` now themes its locale input, and therefore so do `CalendarViewer`, `ApiExplorer`
-  and `SubscriptionBuilder`.** Previously `theme.localeInput` had no effect on `CalendarControls` at all —
-  `apiOptions` was documented as "not a themeable child" with no exception. Two things follow:
+- **`CalendarControls` now themes its locale input, and therefore so do `CalendarViewer` and
+  `ApiExplorer`.** Previously `theme.localeInput` had no effect on `CalendarControls` at all —
+  `apiOptions` was documented as "not a themeable child" with no exception. (`SubscriptionBuilder` is new
+  in this same release, so this is not a behaviour change for it — it is built on `CalendarControls` and
+  gets this theming from the day it first ships.) Three things follow for `CalendarControls`,
+  `CalendarViewer` and `ApiExplorer`:
 
   - **The locale input's label is now localized instead of showing the raw `locale` string.** A
     `CalendarControls` (or anything built on it) constructed with no theme at all used to render the
@@ -32,19 +59,24 @@ prepared under that number was skipped, and everything it was to have delivered 
     the same input. A theme-supplied `theme.localeInput.labelText` still wins.
   - **The flat `theme.wrapper` key now reaches the locale input too**, and so does a per-child
     `theme.localeInput.wrapperClass`/`wrapper` override — previously neither had any effect on this
-    child. **This is the larger of the two changes**: a consumer who set a flat `wrapper` class expecting
+    child. **This is the larger of the three changes**: a consumer who set a flat `wrapper` class expecting
     it to apply only to `riteSelect` and `calendarSelect` will now see a wrapper element appear around the
     locale input as well, which can shift layout. Review any `theme.wrapper` in use with `CalendarControls`,
-    `CalendarViewer`, `ApiExplorer` or `SubscriptionBuilder` before upgrading.
+    `CalendarViewer` or `ApiExplorer` before upgrading.
+  - **This can also THROW, not just shift layout.** `Input.wrapper()` is one-shot (2.6.0), and a bag
+    naming a class also closes `wrapperClass()` for the rest of that instance's life. With any
+    `theme.wrapper` or `theme.localeInput.wrapperClass` in play, `CalendarControls` now consumes that
+    single allowance on `apiOptions._localeInput` at construction — so the escape hatch
+    `docs/meta-components.md` recommends for reaching an unthemed `ApiOptions` input, "reach the remaining
+    inputs directly through `controls.apiOptions`", now throws when aimed at the locale input specifically:
+    `controls.apiOptions._localeInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already
+been set on Input instance, and cannot be set twice.` (or the equivalent `wrapperClass()` message)
+    once a theme has already themed that wrapper. `year_type`, `year` and the rest of `ApiOptions`' inputs are
+    unaffected — this bag never touches them.
 
-  See `docs/meta-components.md`'s `CalendarControls` "The theme bag" section for the full, updated rule.
-
-- **`SubscriptionBuilder` no longer themes its locale input directly.** Its own copy of this block is
-  deleted; the same theme now reaches the input through `CalendarControls` instead, since the whole
-  options bag — including `theme` — already flowed into its `new CalendarControls( bag )` call. This was
-  required, not merely tidier: `Input.wrapper()` became one-shot in 2.6.0, so once `CalendarControls`
-  themes the wrapper first, a second `wrapper()` call from `SubscriptionBuilder`'s old block would have
-  **thrown**, not silently no-opped.
+  See `docs/meta-components.md`'s `CalendarControls` "The theme bag" section for the full, updated rule,
+  and the escape-hatch note beside "reach the remaining inputs directly through `controls.apiOptions`" for
+  the throw above.
 
 ## 2.6.1
 
