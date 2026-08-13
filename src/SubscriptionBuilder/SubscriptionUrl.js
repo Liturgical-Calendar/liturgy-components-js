@@ -85,7 +85,8 @@ export default class SubscriptionUrl {
      * @param {string} [options.language='en'] - The display language for the
      *   built-in copy strings, passed in by `SubscriptionBuilder`.
      * @param {string|null} [options.copyIcon] - HTML for the copy button's icon.
-     *   Omit for the built-in SVG; pass `null` for no icon at all.
+     *   Omit, or pass `undefined` explicitly, for the built-in SVG; pass
+     *   `null` for no icon at all.
      * @param {string} [options.copyTitle] - Overrides the localized button title.
      * @param {string} [options.copiedText] - Overrides the localized
      *   copied-confirmation announcement.
@@ -160,10 +161,15 @@ export default class SubscriptionUrl {
 
         // `copyIcon` accepts consumer HTML, injected with the same
         // `createContextualFragment` path `Input.labelAfter()` uses. `null`
-        // means no glyph; omitted means the built-in SVG.
-        const icon = Object.hasOwn(options, 'copyIcon')
-            ? options.copyIcon
-            : DEFAULT_COPY_ICON;
+        // means no glyph; omitted OR explicitly `undefined` means the
+        // built-in SVG — the library-wide contract is that `undefined` means
+        // "not supplied", and an options bag built by spreading (as
+        // `SubscriptionBuilder` does) can carry an explicit `undefined` key,
+        // which `Object.hasOwn` alone would have mistaken for `null`.
+        const icon =
+            undefined === options.copyIcon
+                ? DEFAULT_COPY_ICON
+                : options.copyIcon;
         if (null !== icon && undefined !== icon) {
             this.#domElement.append(
                 document.createRange().createContextualFragment(icon),
@@ -179,9 +185,24 @@ export default class SubscriptionUrl {
         this.#liveRegion.style.height = '1px';
         this.#liveRegion.style.overflow = 'hidden';
         this.#liveRegion.style.clip = 'rect(0 0 0 0)';
-        this.#domElement.append(this.#liveRegion);
+        // A SIBLING of the button, not a child: a button's accessible name is
+        // computed from its whole subtree, so a live region nested inside it
+        // would make the control announce as "<url> URL copied to clipboard"
+        // for the ~2 seconds after every copy. `appendTo()` mounts both.
 
         this.#domElement.addEventListener('click', () => this.#copy());
+
+        // Seeded from the locale input's CURRENT value, not merely from its
+        // future `change` events: without this, a consumer who mounts and
+        // copies immediately — the primary path for this component — gets a
+        // URL with no `?locale=` at all, subscribing in the API's default
+        // language while the select already displays something else. Guarded
+        // against an empty value so an unset input does not write `locale=`
+        // onto the query string.
+        const initialLocale = apiOptions._localeInput._domElement.value;
+        if ('' !== initialLocale) {
+            this.#currentEndpoint.requestPayload.locale = initialLocale;
+        }
 
         this.#render();
 
@@ -328,11 +349,16 @@ export default class SubscriptionUrl {
     /**
      * Mounts the control, replacing whatever the target held.
      *
+     * The live region is mounted as a SIBLING of the button, not a child of
+     * it — see the constructor's comment by `#liveRegion`'s construction for
+     * why nesting it inside the button would corrupt the button's accessible
+     * name.
+     *
      * @param {HTMLElement} target - The element to mount into.
      * @returns {void}
      */
     appendTo(target) {
-        target.replaceChildren(this.#domElement);
+        target.replaceChildren(this.#domElement, this.#liveRegion);
     }
 
     /**

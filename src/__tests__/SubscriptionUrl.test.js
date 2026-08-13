@@ -65,9 +65,16 @@ const build = (options = {}) => {
 
 describe('SubscriptionUrl serialization', () => {
     it('renders the rite-level calendar with ICS and CIVIL pinned', () => {
+        // `build()`'s `CalendarSelect` defaults to Vatican (see the
+        // `CalendarSelect` default-value note in CLAUDE.md), and
+        // `linkToCalendarSelect()` narrows the locale input to that
+        // calendar's one supported locale, Latin — so `la` is already the
+        // DISPLAYED value the moment `SubscriptionUrl` is constructed, and
+        // the seeded-locale fix (see the "seeds ?locale=" test below) puts
+        // it on the URL immediately, with no `change` event needed.
         const { url } = build();
         expect(url.url).toBe(
-            `${API_URL}/calendar/roman?year_type=CIVIL&return_type=ICS`,
+            `${API_URL}/calendar/roman?locale=la&year_type=CIVIL&return_type=ICS`,
         );
     });
 
@@ -97,6 +104,51 @@ describe('SubscriptionUrl serialization', () => {
         const webcal = build({ scheme: 'webcal' }).url.url;
         expect(webcal).toBe(https.replace(/^https?:/, 'webcal:'));
         expect(webcal.startsWith('webcal:')).toBe(true);
+    });
+
+    it("seeds ?locale= from the locale input's displayed value, with no change event dispatched", () => {
+        // Before this fix, `requestPayload.locale` was written only by the
+        // locale input's `change` listener, so a consumer who mounts and
+        // copies immediately — the primary path for this component — got a
+        // URL in the API's default language even though the select already
+        // displayed something else.
+        const riteSelect = new RiteSelect('en');
+        const calendarSelect = new CalendarSelect({
+            locale: 'en',
+            allowNull: true,
+        });
+        const apiOptions = new ApiOptions('en').filter(
+            ApiOptionsFilter.LOCALE_ONLY,
+        );
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
+        // Sets the DOM value directly, WITHOUT dispatching `change` — this is
+        // what "already displayed" means: nothing has fired yet.
+        apiOptions._localeInput.value('it');
+
+        const url = new SubscriptionUrl(apiOptions, calendarSelect, riteSelect);
+
+        expect(url.url).toContain('locale=it');
+    });
+
+    it('omits ?locale= when the locale input has no value selected', () => {
+        const riteSelect = new RiteSelect('en');
+        const calendarSelect = new CalendarSelect({
+            locale: 'en',
+            allowNull: true,
+        });
+        const apiOptions = new ApiOptions('en').filter(
+            ApiOptionsFilter.LOCALE_ONLY,
+        );
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
+        apiOptions._localeInput._domElement.value = '';
+
+        const url = new SubscriptionUrl(apiOptions, calendarSelect, riteSelect);
+
+        expect(url.url).not.toContain('locale=');
     });
 });
 
@@ -254,6 +306,17 @@ describe('SubscriptionUrl copy control', () => {
         expect(url._domElement.querySelector('i')).toBeNull();
     });
 
+    it('renders the default SVG for an explicitly-passed copyIcon: undefined', () => {
+        // `Object.hasOwn` alone treats an explicitly-passed `undefined` the
+        // same as `null` (no icon), but the library-wide contract is that
+        // `undefined` means "not supplied" — and an options bag built by
+        // spreading, as `SubscriptionBuilder` does, can carry an explicit
+        // `undefined` key. `{ copyIcon: undefined }` is reachable, not
+        // hypothetical.
+        const { url } = build({ copyIcon: undefined });
+        expect(url._domElement.querySelector('svg')).not.toBeNull();
+    });
+
     it('copies the URL and reports success', async () => {
         const written = stubClipboard(true);
         const seen = [];
@@ -289,6 +352,19 @@ describe('SubscriptionUrl copy control', () => {
         const live = document.querySelector('[aria-live="polite"]');
         expect(live).not.toBeNull();
         expect(live.textContent).toBe('URL copied to clipboard');
+    });
+
+    it('mounts the live region as a sibling of the button, not a descendant', () => {
+        // A button's accessible name is computed from its whole subtree, so a
+        // live region nested inside it would make the control announce as
+        // "<url> URL copied to clipboard" for the ~2 seconds after every
+        // copy — reopening, through the announcement itself, the
+        // accessibility gap this component exists to close.
+        const { url } = build();
+        url.appendTo(document.getElementById('mount'));
+        const live = document.querySelector('[aria-live="polite"]');
+        expect(live).not.toBeNull();
+        expect(url._domElement.contains(live)).toBe(false);
     });
 
     it('does not call onCopy a second time when a throwing onCopy already reported success', async () => {
@@ -328,7 +404,15 @@ describe('SubscriptionUrl copy control — execCommand fallback', () => {
     // jsdom implements `document.execCommand` as a no-op that neither throws
     // nor returns `false`, so exercising the two branches this method actually
     // has to handle requires stubbing it directly.
-    const originalExecCommand = document.execCommand;
+    //
+    // Save/restore is symmetric across beforeEach/afterEach — rather than
+    // saving once at module-eval time and relying on this describe block
+    // being LAST in the file — so file order can never make a later block
+    // silently inherit a stubbed-out `navigator.clipboard` or a replaced
+    // `execCommand` and exercise the fallback path while believing it is
+    // testing the modern one.
+    let originalExecCommand;
+    let originalClipboard;
 
     /**
      * Removes `navigator.clipboard` so `#copy()` takes the execCommand path.
@@ -342,9 +426,21 @@ describe('SubscriptionUrl copy control — execCommand fallback', () => {
         });
     };
 
+    beforeEach(() => {
+        originalExecCommand = document.execCommand;
+        originalClipboard = Object.getOwnPropertyDescriptor(
+            navigator,
+            'clipboard',
+        );
+    });
+
     afterEach(() => {
         document.execCommand = originalExecCommand;
-        removeClipboard();
+        if (undefined === originalClipboard) {
+            delete navigator.clipboard;
+        } else {
+            Object.defineProperty(navigator, 'clipboard', originalClipboard);
+        }
     });
 
     it('falls back to execCommand when navigator.clipboard is absent, and cleans up the textarea', async () => {

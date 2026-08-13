@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClient from '../ApiClient/ApiClient.js';
 import SubscriptionBuilder from '../SubscriptionBuilder/SubscriptionBuilder.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
@@ -20,8 +21,17 @@ beforeEach(() => {
     ApiBase.reset();
     ApiBase.fromMetadata(API_URL, FULL_METADATA);
     document.body.innerHTML = '<div id="controls"></div><div id="url"></div>';
+    // Resolves rather than rejects, matching `ApiExplorer.test.js`'s "never
+    // fetches" mock: a wiring bug then shows up as a recorded call inspected
+    // by the assertion below, rather than as an unhandled rejection racing
+    // the test's own assertions.
     global.fetch = jest.fn(() =>
-        Promise.reject(new Error('no request should ever be issued')),
+        Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/json' },
+            json: () => Promise.resolve({ litcal: [] }),
+        }),
     );
 });
 
@@ -126,10 +136,19 @@ describe('SubscriptionBuilder.mountInto', () => {
 });
 
 describe('SubscriptionBuilder never fetches', () => {
+    // Mirrors `ApiExplorer.test.js`'s equivalent coverage: mount against a
+    // REAL `ApiClient` (bound explicitly via the `apiClient` option, the same
+    // way a consumer wires a page) rather than letting `SubscriptionBuilder`
+    // fall back to the first registered base implicitly. The realistic
+    // regression this guards against is someone re-adding
+    // `CalendarControls.listenTo(apiClient)` inside `SubscriptionBuilder` —
+    // a mount with no `apiClient` at all could never catch that, since there
+    // would be no client for a stray `listenTo()` call to attach to.
     it('issues no request, whatever the user changes', async () => {
+        const apiClient = await ApiClient.init(API_URL);
         const sub = await SubscriptionBuilder.mountInto(
             { controls: '#controls', url: '#url' },
-            { locale: 'en' },
+            { locale: 'en', apiClient },
         );
         const change = (element, value) => {
             element.value = value;
@@ -140,7 +159,9 @@ describe('SubscriptionBuilder never fetches', () => {
         change(sub.calendarSelect._domElement, 'VA');
         change(sub.localeInput._domElement, 'it');
         await new Promise((resolve) => setTimeout(resolve, 20));
-        expect(global.fetch).not.toHaveBeenCalled();
+
+        const calls = global.fetch.mock.calls.map((c) => String(c[0]));
+        expect(calls.some((u) => /\/calendar(\/|\?|$)/.test(u))).toBe(false);
     });
 });
 

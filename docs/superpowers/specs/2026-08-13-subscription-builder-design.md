@@ -131,7 +131,10 @@ the way a `<div>` does. The library renders it unstyled; `usage.php`'s existing
 `text-center bg-light border border-info rounded p-2` still applies and will likely want `w-100` added.
 
 Partial text selection is not a loss here: `selectUrlOnMouseUp()` already selects the _entire_ contents on
-mouseup, so selecting a substring was traded away deliberately long ago. That behaviour is preserved.
+mouseup, so selecting a substring was traded away deliberately long ago. That behaviour is deliberately NOT
+carried over, though — the whole box is now a `<button>` whose click copies the URL, which makes a separate
+select-all-on-mouseup affordance redundant, and drag-selecting text inside a `<button>` is awkward in any
+case. No `mouseup` handler exists anywhere in this component.
 
 ### The icon is an inline SVG, overridable
 
