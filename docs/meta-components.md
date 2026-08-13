@@ -9,8 +9,8 @@ The library owns wiring, ordering, failure behaviour and defaults. It ships noth
 framework-specific and takes no position on CSS: styling is entirely up to the consumer, through a
 **theme bag** for the common case and the wired child instances for everything else.
 
-This page documents `CalendarResourcePicker`, `DayViewer`, `CalendarControls`, `CalendarViewer` and
-`ApiExplorer`.
+This page documents `CalendarResourcePicker`, `DayViewer`, `CalendarControls`, `CalendarViewer`,
+`ApiExplorer` and `SubscriptionBuilder`.
 
 ## CalendarResourcePicker
 
@@ -1321,3 +1321,178 @@ exactly what it releases — and additionally empties every slot this explorer i
 has no `dispose()` of its own and no way to unsubscribe the `change` listeners it attaches internally to the
 underlying inputs; only its mounted DOM (the `builder` slot) can be reclaimed from here, and it is — the same
 pre-existing gap `CalendarViewer.dispose()` documents for `WebCalendar`.
+
+## SubscriptionBuilder
+
+A `CalendarControls` paired with a rendered iCal subscription URL and a copy control — the answer to
+issue #42, and the final new component in this family. Where `ApiExplorer` lets a visitor build and
+preview a generic API request, `SubscriptionBuilder` narrows that same three-control form (rite, calendar,
+locale) to one specific, fixed request: an ICS feed a calendar app can subscribe to. Like `ApiExplorer`, it
+never issues that request itself — it only ever renders the URL and offers to copy it.
+
+```javascript
+const sub = await SubscriptionBuilder.mountInto(
+    { controls: '#subscriptionControls', url: '#calSubscriptionUrlWrapper' },
+    {
+        locale: 'it',
+        apiClient,
+        copyIcon: '<i class="fas fa-clipboard float-end text-info"></i>',
+        onCopy: (ok) =>
+            ok ? toastr.success('Copied') : toastr.error('Copy failed'),
+        theme: {
+            select: 'form-select',
+            label: 'form-label',
+            wrapper: 'form-group col-md',
+            subscriptionUrl: { class: 'w-100 text-center bg-light border border-info rounded p-2' },
+        },
+    },
+);
+```
+
+The `w-100` in that example earns its place: the copy control is a `<button>`, which — unlike the `<div>`
+another renderer might have used — does not fill its container by default. A consumer who omits it gets a
+button sized to its text, sitting inside whatever the `url` slot's own layout leaves around it.
+
+### What it bundles
+
+Two pieces, mounted into two separate slots:
+
+- **`controls`** — a `CalendarControls`, exactly as [above](#calendarcontrols): a `RiteSelect`, an
+  unfiltered `CalendarSelect` with a selectable empty option (issue #42's "browse every calendar, including
+  the rite-level one" requirement), and an `ApiOptions` restricted to its locale input only. The rite ->
+  calendar chain is linked directly in the constructor
+  (`apiOptions.linkToCalendarSelect().linkToRiteSelect()`), the same half of `CalendarControls.listenTo()`
+  `ApiExplorer` reuses — see [that section](#it-never-fetches) for why only that half is needed.
+- **`url`** — `SubscriptionUrl`, this component's own private renderer (`src/SubscriptionBuilder/SubscriptionUrl.js`,
+  never exported — the same relationship `CurrentEndpoint.js` has to `PathBuilder.js`). It borrows
+  `apiOptions._currentEndpoint` rather than building one of its own, so the URL it renders and the path
+  `PathBuilder` would render for the same selections cannot drift apart; what differs is presentation, not
+  the underlying model.
+
+### Both slots are required
+
+`appendTo()` takes a `{ controls, url }` slots object only, and rejects a bare target — the same rule
+`CalendarViewer` and `ApiExplorer` apply, for the same reason: this component has two mandatory mounts, and
+a single target string would have to pick one of them silently. Omitting either slot, naming an unknown
+one, or naming a slot that matches nothing all throw, by name.
+
+### Column layout is the theme bag's job, not a slot's
+
+All three controls mount into the ONE `controls` container — there is no `riteSelect` slot, `calendarSelect`
+slot or `localeInput` slot separate from it. A multi-column form (rite in one column, calendar in the next)
+is arranged the same way `CalendarViewer`'s [multi-row layout](#multi-row-option-layouts) is: through the
+theme bag's flat `wrapper` key (or a per-child `wrapper`/`wrapperClass` override), not through a slot this
+component does not offer. The worked example above does exactly this — `wrapper: 'form-group col-md'`
+wraps all three controls in a Bootstrap column, with no extra markup on the consumer's part.
+
+### The `scheme` option
+
+`SubscriptionBuilder` accepts `scheme: 'https' | 'webcal'` (default `'https'`), forwarded straight through
+to `SubscriptionUrl`. `'webcal'` rewrites the URL's protocol so a calendar app that recognises that scheme
+(most desktop and mobile calendar clients do) opens its "add subscription" flow directly rather than
+downloading a file. Any other value throws, naming the two accepted values — checked eagerly, in the
+constructor, so `mountInto()` rejects on a typo rather than mounting a broken control.
+
+### The copy control's options
+
+Five constructor options style and hook the copy button, all forwarded from `SubscriptionBuilder` straight
+through to `SubscriptionUrl`:
+
+| Option        | Default                                    | Effect                                                                                                                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `copyIcon`    | a built-in inline SVG clipboard glyph      | HTML appended after the URL text. Pass `null` for no icon at all — no icon font, no stylesheet, no network request either way.                                                                                                                                                                                                              |
+| `copyTitle`   | the localized `COPY_TO_CLIPBOARD` string   | The button's `title` attribute.                                                                                                                                                                                                                                                                                                             |
+| `copiedText`  | the localized `COPIED_TO_CLIPBOARD` string | Announced through a visually-hidden `aria-live="polite"` region after a successful copy — the visible confirmation is `copiedClass`, which the consumer themes.                                                                                                                                                                             |
+| `copiedClass` | `'is-copied'`                              | Applied to the button for two seconds after a successful copy, then removed.                                                                                                                                                                                                                                                                |
+| `onCopy`      | none                                       | `(ok, error?) => void`, called after every copy attempt, success or failure. Never rejects and never throws on the caller's behalf: a clipboard refusal is a runtime condition, not a programming error, and a throwing `onCopy` is logged rather than propagated, so it cannot be mistaken for a second, later failure of the copy itself. |
+
+`theme.subscriptionUrl` additionally reaches the rendered control directly: `{ class }` sets the button's
+own class — the mechanism the worked example above uses for `w-100 text-center …`. That is the full extent
+of what the theme bag styles here: the inner `<code>` element has no option of its own, so style it with a
+CSS descendant selector on the button's class (e.g. `.your-class code { … }`); the copied state is styled
+through the top-level `copiedClass` constructor option in the table above, not through `theme.subscriptionUrl`.
+
+### It never fetches
+
+Like `ApiExplorer`, `SubscriptionBuilder` never calls `CalendarControls.listenTo()`, so no `ApiClient`
+listener is ever installed and no `/calendar/...` request is ever issued — building and copying a
+subscription URL needs the calendar's shape, not its data. `apiClient` is accepted only to bind the
+controls to that client's API base (via `CalendarControls`' own constructor), the same `/calendars`
+metadata request every meta-component makes to populate its selects. Because nothing ever fetches, there is
+no `settled`, no `onError` and no `initialFetch` option — all three exist elsewhere in this family to
+observe or configure a calendar fetch, and this component performs none.
+
+### Constructor options
+
+| Option                                                         | Type                    | Default   | Notes                                                                                                                                                                                   |
+| -------------------------------------------------------------- | ----------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `locale`                                                       | `string \| Intl.Locale` | `'en'`    | Canonicalized once, under `SubscriptionBuilder`'s own name, before `CalendarControls` is constructed — so an invalid locale is attributed to the component the caller actually touched. |
+| `theme`                                                        | `Object`                | none      | See [above](#the-theme-bags-role-vocabulary) and [column layout](#column-layout-is-the-theme-bags-job-not-a-slots).                                                                     |
+| `apiClient`                                                    | `ApiClient`             | none      | Binds the controls to that client's API base; never used to fetch.                                                                                                                      |
+| `scheme`                                                       | `'https' \| 'webcal'`   | `'https'` | See [above](#the-scheme-option).                                                                                                                                                        |
+| `copyIcon`, `copyTitle`, `copiedText`, `copiedClass`, `onCopy` | —                       | —         | See [the copy control's options](#the-copy-controls-options).                                                                                                                           |
+
+### Public getters
+
+All throw once this builder has been disposed — see [`dispose()`](#dispose-5) below.
+
+| Member           | Returns            | Description                                                     |
+| ---------------- | ------------------ | --------------------------------------------------------------- |
+| `controls`       | `CalendarControls` | The wired rite select, calendar select and locale input.        |
+| `riteSelect`     | `RiteSelect`       | Shorthand for `controls.riteSelect`.                            |
+| `calendarSelect` | `CalendarSelect`   | Shorthand for `controls.calendarSelect`.                        |
+| `localeInput`    | the locale `Input` | Shorthand for `controls.apiOptions._localeInput`.               |
+| `url`            | `string`           | The serialized subscription URL, current as of the last change. |
+
+`onChange(callback)` registers a `(url: string) => void` callback fired whenever a rite, calendar or locale
+change alters the URL, coalesced onto one microtask per user action — see `SubscriptionUrl`'s own doc
+comment for why a single selection can move more than one input and must still report only once.
+
+### `mountInto()` versus the constructor
+
+The same split as every other meta-component in this family:
+
+- **`new SubscriptionBuilder(options)`** is synchronous and requires an already-initialised `ApiBase` — it
+  builds the controls and the URL renderer, links the rite -> calendar chain, but mounts neither.
+- **`SubscriptionBuilder.mountInto(slots, options)`** resolves both named slots, constructs the builder, and
+  mounts it in one call.
+
+```javascript
+// Constructor + appendTo — used when an ApiBase is already known to be ready
+const sub = new SubscriptionBuilder({ locale: 'en', apiClient });
+sub.appendTo({ controls: '#subscriptionControls', url: '#calSubscriptionUrlWrapper' });
+
+// mountInto — constructs and mounts in one call, without fetching
+const sub = await SubscriptionBuilder.mountInto(slots, { locale: 'en', apiClient });
+```
+
+### Reject versus resolve
+
+| Kind                                                                                                                                                | Behaviour    |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Invalid options (unparseable locale, malformed theme, an unknown `scheme`, a named slot matching nothing, an unknown slot key, either slot omitted) | **Rejects.** |
+| The API metadata cannot be loaded (API down, `ApiClient` never initialised)                                                                         | **Rejects.** |
+
+Matches `CalendarControls`, `CalendarViewer` and `ApiExplorer`, not `CalendarResourcePicker`: this bundles a
+whole form, and a rite select and calendar select with no calendars to list are not a smaller working form,
+they are no form at all — so there is no meaningful partial stand-in, and this component has no failure
+control. `mountInto()` also resolves to `null`, without throwing or rejecting, when a supplied `signal` was
+already aborted, or when a slot was passed as an already-resolved `HTMLElement` that has since left the
+document. There is no "failed initial fetch" row, because there is no initial fetch: this component never
+fetches at all.
+
+### `dispose()`
+
+```javascript
+const sub = await SubscriptionBuilder.mountInto(slots, { locale: 'en', apiClient });
+
+// Scope changed: tear down and rebuild.
+sub.dispose();
+```
+
+Idempotent; further use throws. Disposes `SubscriptionUrl`'s own listeners (the `change` listeners it
+attached to the calendar select, rite select and locale input, plus its pending copied-state timer) and
+delegates the controls half to `CalendarControls.dispose()` — see [that section](#dispose-2) for exactly
+what it releases — then empties both mounted slots. Subject to the same documented, pre-existing gap as the
+rest of the family: the anonymous listeners `ApiOptions.linkToCalendarSelect()` and `linkToRiteSelect()`
+attach internally are not exposed anywhere this could reach them, and are not released.
