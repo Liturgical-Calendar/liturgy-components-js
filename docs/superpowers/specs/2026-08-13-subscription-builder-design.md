@@ -210,13 +210,24 @@ defaulting to a library-owned name).
 
 ## Messages
 
-Two new keys, `COPY_TO_CLIPBOARD` and `COPIED_TO_CLIPBOARD`, added to **all twelve** locale blocks in
-`Messages.js` (de, en, es, fr, hu, id, it, la, nl, pt, sk, vi) — `SELECT_A_RITE` is translated in every one
-of them, so partial coverage would be a regression in this file's standard rather than a continuation of
-it. The `copyTitle` and `copiedText` options override them, so `usage.php` keeps its own gettext strings.
+Two new keys, `COPY_TO_CLIPBOARD` and `COPIED_TO_CLIPBOARD`. The `copyTitle` and `copiedText` options
+override them, so `usage.php` keeps its own gettext strings.
 
-Note for implementation: `CLAUDE.md` claims thirteen languages while `Messages.js` has twelve locale
-blocks. Count before editing, and correct whichever is wrong as a side fix.
+**Coverage follows `SELECT_A_RITE`'s precedent, which is narrower than it first appears.** `Messages.js`
+holds **84 locale blocks**, and they are not uniformly populated: `en` carries 26 keys, `ja` 18. The newer
+keys — `SELECT_A_RITE` among them — exist in twelve blocks (de, en, es, fr, hu, id, it, la, nl, pt, sk,
+vi), and every other locale reaches the English text through the `??` fallback the call sites already
+apply, e.g. `Messages[ language ]?.[ 'SELECT_A_CALENDAR' ] ?? …` at `CalendarControls.js:198-200`.
+
+So these two keys go into those same twelve blocks, with the remaining seventy-two falling back — not
+because partial coverage is desirable, but because inventing translations for seventy-two languages
+nobody has reviewed would be worse than an honest fallback. Use the same call-site `??` pattern; do not
+add a bare `Messages[ language ][ KEY ]` lookup, which throws for any locale outside the catalogue.
+
+**Correct `CLAUDE.md` as a side fix.** It states "Supports 13 languages via message catalogs in
+`Messages.js`: en, it, la, es, fr, de, pt, nl, hu, id, sk, vi" — which lists twelve names under a claim of
+thirteen, and describes a file that actually carries eighty-four locale blocks with uneven key coverage.
+All three numbers disagree.
 
 ## Errors
 
