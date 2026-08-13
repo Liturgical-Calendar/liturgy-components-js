@@ -25,7 +25,12 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
-import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
+import {
+    assertTheme,
+    resolveChildTheme,
+    resolveWrapperBag,
+    applyLocaleInputTheme,
+} from './Theme.js';
 
 /**
  * The filters `ApiOptions.filter()` accepts, validated here by name so a typo
@@ -223,6 +228,21 @@ export default class CalendarControls {
             locale: this.#locale,
             apiClient,
         }).filter(resolvedFilter);
+
+        // Unlike `riteSelect`/`calendarSelect` above, this is a NEW theming
+        // path (issue #56): `CalendarControls` previously had no notion of the
+        // `ApiOptions` inputs it wraps, so `theme.localeInput` (and the flat
+        // `select`/`label`/`wrapper` defaults) reached every child except this
+        // one. `applyLocaleInputTheme()` is the same helper `DayViewer` calls
+        // for its own copy of this input, so the two behave alike rather than
+        // each inventing their own version of the same theming.
+        const localeTheme = resolveChildTheme(theme, 'localeInput');
+        applyLocaleInputTheme(
+            this.#apiOptions._localeInput,
+            localeTheme,
+            Messages[this.#language]?.['LANGUAGE'] ??
+                Messages['en']['LANGUAGE'],
+        );
 
         // Ported from `DayViewer`, which already gets this right (C3): a
         // constructed-with `it` viewer must show `it` in the locale input and

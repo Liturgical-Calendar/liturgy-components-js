@@ -33,9 +33,7 @@ describe('DayViewer locale input theme — characterization', () => {
     it('ships a localized label by default, never the raw "locale" LocaleInput hardcodes', () => {
         const viewer = new DayViewer({ locale: 'en' });
         viewer.appendTo('#mount');
-        expect(viewer.localeInput._labelElement.textContent).not.toBe(
-            'locale',
-        );
+        expect(viewer.localeInput._labelElement.textContent).not.toBe('locale');
         expect(viewer.localeInput._labelElement.textContent).toBe('Language');
     });
 
@@ -51,9 +49,7 @@ describe('DayViewer locale input theme — characterization', () => {
             theme: { localeInput: { class: 'form-select-sm' } },
         });
         viewer.appendTo('#mount');
-        expect(viewer.localeInput._domElement.className).toBe(
-            'form-select-sm',
-        );
+        expect(viewer.localeInput._domElement.className).toBe('form-select-sm');
     });
 
     it('applies a per-child labelClass override to the locale input', () => {
@@ -62,9 +58,7 @@ describe('DayViewer locale input theme — characterization', () => {
             theme: { localeInput: { labelClass: 'form-label' } },
         });
         viewer.appendTo('#mount');
-        expect(viewer.localeInput._labelElement.className).toBe(
-            'form-label',
-        );
+        expect(viewer.localeInput._labelElement.className).toBe('form-label');
     });
 
     it('a theme-supplied labelText wins over the localized default', () => {

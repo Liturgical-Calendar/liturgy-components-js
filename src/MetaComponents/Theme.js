@@ -287,3 +287,57 @@ export function resolveWrapperBag(childTheme) {
         ...(hasClass ? { class: childTheme.wrapperClass } : {}),
     };
 }
+
+/**
+ * Applies a resolved theme to an `ApiOptions` locale input — `class`,
+ * `labelClass`, its wrapper, and its label text — all in one place, since two
+ * meta-components (`DayViewer`, and formerly `SubscriptionBuilder`) needed the
+ * identical block and had started to drift the moment the second copy existed.
+ *
+ * **The label text is set UNCONDITIONALLY, unlike every other key here.**
+ * `LocaleInput`'s constructor hardcodes its label to the literal string
+ * `'locale'` (`LocaleInput.js:48`), with no i18n of its own — so a caller that
+ * themes nothing would otherwise ship that raw, untranslated string to every
+ * locale. This is the one key this function cannot leave to "not themed means
+ * library default", because the library default is wrong. A theme-supplied
+ * `labelText` still wins, since it is read first; `defaultLabelText` is what a
+ * caller sees only in its absence.
+ *
+ * Takes an already-resolved child theme, not the whole bag — call
+ * `resolveChildTheme( theme, 'localeInput' )` first, exactly as every other
+ * per-child theming block in this module does.
+ *
+ * @param {Object} localeInput - The `ApiOptions._localeInput` to theme.
+ * @param {{class?: string, labelClass?: string, labelText?: string, wrapper?: string, wrapperClass?: string}} childTheme -
+ *   The resolved theme, from `resolveChildTheme( theme, 'localeInput' )`.
+ * @param {string} defaultLabelText - The localized label to use when the
+ *   theme names no `labelText` of its own — a caller's own message-catalogue
+ *   lookup, since this module has no locale of its own to translate with.
+ * @returns {void}
+ */
+export function applyLocaleInputTheme(
+    localeInput,
+    childTheme,
+    defaultLabelText,
+) {
+    if (Object.hasOwn(childTheme, 'class')) {
+        localeInput.class(childTheme.class);
+    }
+    if (Object.hasOwn(childTheme, 'labelClass')) {
+        localeInput.labelClass(childTheme.labelClass);
+    }
+    const wrapper = resolveWrapperBag(childTheme);
+    if (null !== wrapper) {
+        localeInput.wrapper(wrapper);
+    }
+    // Set UNCONDITIONALLY: LocaleInput's constructor hardcodes its label to the
+    // literal string 'locale' with no i18n of its own, so a caller that themes
+    // nothing would otherwise ship that raw string to every locale. A
+    // theme-supplied labelText still wins, being read first.
+    localeInput._labelElement.textContent = Object.hasOwn(
+        childTheme,
+        'labelText',
+    )
+        ? childTheme.labelText
+        : defaultLabelText;
+}

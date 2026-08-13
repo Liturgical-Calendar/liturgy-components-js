@@ -4,6 +4,48 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.7.0
+
+`ApiOptions`' locale-input theming, extracted to one place and applied to a second component.
+
+### Added
+
+- **`Theme.js` gains `applyLocaleInputTheme()`**, an internal helper (not exported from `src/index.js`,
+  like the rest of that module) that themes an `ApiOptions._localeInput`'s `class`, `labelClass`, wrapper
+  and label text in one call. `DayViewer` and `SubscriptionBuilder` had each grown a near-identical block
+  for this — `SubscriptionBuilder`'s was a copy-paste of `DayViewer`'s, made conditional on the theme
+  where the original correctly was not, which is exactly the class of bug this extraction closes: the
+  label text is set **unconditionally**, because `LocaleInput`'s constructor hardcodes its label to the
+  raw, untranslated string `'locale'` (`LocaleInput.js:48`) with no i18n of its own, so an un-themed
+  caller must still get a localized label rather than that literal string.
+
+### Behaviour changes
+
+- **`CalendarControls` now themes its locale input, and therefore so do `CalendarViewer`, `ApiExplorer`
+  and `SubscriptionBuilder`.** Previously `theme.localeInput` had no effect on `CalendarControls` at all —
+  `apiOptions` was documented as "not a themeable child" with no exception. Two things follow:
+
+  - **The locale input's label is now localized instead of showing the raw `locale` string.** A
+    `CalendarControls` (or anything built on it) constructed with no theme at all used to render the
+    literal, untranslated word `locale` as this input's label; it now renders `Language` / `Lingua` /
+    `Sprache` / … from the `LANGUAGE` message key, the same catalogue entry `DayViewer` already used for
+    the same input. A theme-supplied `theme.localeInput.labelText` still wins.
+  - **The flat `theme.wrapper` key now reaches the locale input too**, and so does a per-child
+    `theme.localeInput.wrapperClass`/`wrapper` override — previously neither had any effect on this
+    child. **This is the larger of the two changes**: a consumer who set a flat `wrapper` class expecting
+    it to apply only to `riteSelect` and `calendarSelect` will now see a wrapper element appear around the
+    locale input as well, which can shift layout. Review any `theme.wrapper` in use with `CalendarControls`,
+    `CalendarViewer`, `ApiExplorer` or `SubscriptionBuilder` before upgrading.
+
+  See `docs/meta-components.md`'s `CalendarControls` "The theme bag" section for the full, updated rule.
+
+- **`SubscriptionBuilder` no longer themes its locale input directly.** Its own copy of this block is
+  deleted; the same theme now reaches the input through `CalendarControls` instead, since the whole
+  options bag — including `theme` — already flowed into its `new CalendarControls( bag )` call. This was
+  required, not merely tidier: `Input.wrapper()` became one-shot in 2.6.0, so once `CalendarControls`
+  themes the wrapper first, a second `wrapper()` call from `SubscriptionBuilder`'s old block would have
+  **thrown**, not silently no-opped.
+
 ## 2.6.1
 
 ### Fixed
