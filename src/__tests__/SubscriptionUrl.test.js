@@ -187,3 +187,100 @@ describe('SubscriptionUrl control wiring', () => {
         expect(url._domElement.textContent).toBe(before);
     });
 });
+
+describe('SubscriptionUrl copy control', () => {
+    /**
+     * Replaces navigator.clipboard with a recording stub.
+     *
+     * @param {boolean} succeeds - Whether writeText resolves or rejects.
+     * @returns {Array<string>} The texts the stub was asked to write.
+     */
+    const stubClipboard = (succeeds) => {
+        const written = [];
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {
+                writeText: (text) => {
+                    written.push(text);
+                    return succeeds
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('denied'));
+                },
+            },
+        });
+        return written;
+    };
+
+    it('is a real button, not a div with role=button', () => {
+        // `role="button"` on a div with no tabindex and no key handler announces
+        // a button that cannot be focused or activated. A real <button> gets
+        // keyboard focus, Enter/Space and the correct accessibility tree free.
+        const { url } = build();
+        expect(url._domElement.tagName).toBe('BUTTON');
+        expect(url._domElement.getAttribute('type')).toBe('button');
+        expect(url._domElement.hasAttribute('role')).toBe(false);
+    });
+
+    it('carries a localized title', () => {
+        const { url } = build();
+        expect(url._domElement.getAttribute('title')).toBe(
+            'Click to copy to the clipboard!',
+        );
+    });
+
+    it('renders an inline SVG icon by default', () => {
+        const { url } = build();
+        expect(url._domElement.querySelector('svg')).not.toBeNull();
+    });
+
+    it('accepts a consumer icon and renders no SVG', () => {
+        const { url } = build({
+            copyIcon: '<i class="fas fa-clipboard"></i>',
+        });
+        expect(url._domElement.querySelector('i.fa-clipboard')).not.toBeNull();
+        expect(url._domElement.querySelector('svg')).toBeNull();
+    });
+
+    it('renders no icon at all for copyIcon: null', () => {
+        const { url } = build({ copyIcon: null });
+        expect(url._domElement.querySelector('svg')).toBeNull();
+        expect(url._domElement.querySelector('i')).toBeNull();
+    });
+
+    it('copies the URL and reports success', async () => {
+        const written = stubClipboard(true);
+        const seen = [];
+        const { url } = build({ onCopy: (ok) => seen.push(ok) });
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(written).toEqual([url.url]);
+        expect(seen).toEqual([true]);
+    });
+
+    it('reports failure without throwing', async () => {
+        stubClipboard(false);
+        const seen = [];
+        const { url } = build({
+            onCopy: (ok, error) => seen.push([ok, error]),
+        });
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(seen[0][0]).toBe(false);
+        expect(seen[0][1]).toBeInstanceOf(Error);
+    });
+
+    it('announces the copy through an aria-live region', async () => {
+        stubClipboard(true);
+        const { url } = build();
+        url.appendTo(document.getElementById('mount'));
+        url._domElement.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        const live = document.querySelector('[aria-live="polite"]');
+        expect(live).not.toBeNull();
+        expect(live.textContent).toBe('URL copied to clipboard');
+    });
+});

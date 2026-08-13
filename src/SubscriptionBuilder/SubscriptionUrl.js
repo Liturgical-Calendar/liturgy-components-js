@@ -18,9 +18,23 @@
  */
 
 import { CalendarType } from '../PathBuilder/CurrentEndpoint.js';
+import Messages from '../Messages.js';
 
 /** The schemes a subscription URL may be rendered under. */
 const SCHEMES = Object.freeze(['https', 'webcal']);
+
+/**
+ * The default clipboard glyph: an inline SVG, so the component depends on no
+ * icon font, no stylesheet and no network request. A consumer already using an
+ * icon set replaces it with `copyIcon`.
+ */
+const DEFAULT_COPY_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">' +
+    '<path d="M4 1.5A1.5 1.5 0 0 1 5.5 0h5A1.5 1.5 0 0 1 12 1.5V2h.5A1.5 1.5 0 0 1 14 3.5v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-11A1.5 1.5 0 0 1 3.5 2H4v-.5Zm1 .5h6v-.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0-.5.5V2Z"/>' +
+    '</svg>';
+
+/** How long the copied state stays applied, in milliseconds. */
+const COPIED_DURATION = 2000;
 
 export default class SubscriptionUrl {
     /** @type {Object} The ApiBase this renderer's URL is built against. */
@@ -47,12 +61,38 @@ export default class SubscriptionUrl {
     /** @type {Promise<void>|null} The coalesced notification this turn scheduled. */
     #pendingNotify = null;
 
+    /** @type {HTMLElement} */
+    #liveRegion;
+
+    /** @type {function(boolean, Error=): void|null} */
+    #onCopy;
+
+    /** @type {string} */
+    #copiedText;
+
+    /** @type {string} */
+    #copiedClass;
+
+    /** @type {number|null} */
+    #copiedTimer = null;
+
     /**
      * @param {Object} apiOptions - The ApiOptions owning the CurrentEndpoint.
      * @param {Object} calendarSelect - The calendar select to follow.
      * @param {Object} riteSelect - The rite select to follow.
      * @param {Object} [options] - Renderer options.
      * @param {'https'|'webcal'} [options.scheme='https'] - The URL scheme.
+     * @param {string} [options.language='en'] - The display language for the
+     *   built-in copy strings, passed in by `SubscriptionBuilder`.
+     * @param {string|null} [options.copyIcon] - HTML for the copy button's icon.
+     *   Omit for the built-in SVG; pass `null` for no icon at all.
+     * @param {string} [options.copyTitle] - Overrides the localized button title.
+     * @param {string} [options.copiedText] - Overrides the localized
+     *   copied-confirmation announcement.
+     * @param {function(boolean, Error=): void} [options.onCopy] - Called after
+     *   each copy attempt with whether it succeeded, and the error when not.
+     * @param {string} [options.copiedClass='is-copied'] - The class applied to
+     *   the button for `COPIED_DURATION` ms after a successful copy.
      * @throws {Error} If `scheme` is neither 'https' nor 'webcal'.
      */
     constructor(apiOptions, calendarSelect, riteSelect, options = {}) {
@@ -79,6 +119,51 @@ export default class SubscriptionUrl {
         this.#domElement.setAttribute('type', 'button');
         this.#codeElement = document.createElement('code');
         this.#domElement.append(this.#codeElement);
+
+        // The display language for the two built-in strings. Taken from the
+        // `language` option `SubscriptionBuilder` passes in — NOT from the
+        // locale input, which exposes no locale accessor: `_localeInput._locale`
+        // is `undefined`, so reading it would silently pin every locale to
+        // English with no error to notice.
+        const language = options.language ?? 'en';
+        this.#domElement.setAttribute(
+            'title',
+            options.copyTitle ??
+                Messages[language]?.['COPY_TO_CLIPBOARD'] ??
+                Messages['en']['COPY_TO_CLIPBOARD'],
+        );
+        this.#copiedText =
+            options.copiedText ??
+            Messages[language]?.['COPIED_TO_CLIPBOARD'] ??
+            Messages['en']['COPIED_TO_CLIPBOARD'];
+        this.#copiedClass = options.copiedClass ?? 'is-copied';
+        this.#onCopy =
+            typeof options.onCopy === 'function' ? options.onCopy : null;
+
+        // `copyIcon` accepts consumer HTML, injected with the same
+        // `createContextualFragment` path `Input.labelAfter()` uses. `null`
+        // means no glyph; omitted means the built-in SVG.
+        const icon = Object.hasOwn(options, 'copyIcon')
+            ? options.copyIcon
+            : DEFAULT_COPY_ICON;
+        if (null !== icon && undefined !== icon) {
+            this.#domElement.append(
+                document.createRange().createContextualFragment(icon),
+            );
+        }
+
+        this.#liveRegion = document.createElement('span');
+        this.#liveRegion.setAttribute('aria-live', 'polite');
+        // Announced but not shown: the visible confirmation is the copied class,
+        // which the consumer themes.
+        this.#liveRegion.style.position = 'absolute';
+        this.#liveRegion.style.width = '1px';
+        this.#liveRegion.style.height = '1px';
+        this.#liveRegion.style.overflow = 'hidden';
+        this.#liveRegion.style.clip = 'rect(0 0 0 0)';
+        this.#domElement.append(this.#liveRegion);
+
+        this.#domElement.addEventListener('click', () => this.#copy());
 
         this.#render();
 
@@ -112,6 +197,77 @@ export default class SubscriptionUrl {
         this.#listen(apiOptions._localeInput._domElement, (ev) => {
             this.#currentEndpoint.requestPayload.locale = ev.target.value;
         });
+    }
+
+    /**
+     * Writes the URL to the clipboard, reporting the outcome.
+     *
+     * Never rejects and never throws: a clipboard refusal is a runtime
+     * condition, not a programming error, and the caller has no promise to
+     * catch — the click handler dropped it.
+     *
+     * @returns {Promise<void>} Resolves once the outcome has been reported.
+     */
+    async #copy() {
+        const text = this.url;
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                SubscriptionUrl.#execCommandCopy(text);
+            }
+            this.#reportCopy(true);
+        } catch (error) {
+            this.#reportCopy(false, error);
+        }
+    }
+
+    /**
+     * The pre-Clipboard-API fallback, for browsers and for insecure origins
+     * where `navigator.clipboard` is absent.
+     *
+     * @param {string} text - The text to copy.
+     * @returns {void}
+     * @throws {Error} If the copy command reports failure.
+     */
+    static #execCommandCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            if (false === document.execCommand('copy')) {
+                throw new Error('SubscriptionUrl: the copy command failed.');
+            }
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+
+    /**
+     * Applies the transient copied state and notifies `onCopy`.
+     *
+     * @param {boolean} ok - Whether the copy succeeded.
+     * @param {Error} [error] - The failure, when it did not.
+     * @returns {void}
+     */
+    #reportCopy(ok, error) {
+        if (ok) {
+            this.#domElement.classList.add(this.#copiedClass);
+            this.#liveRegion.textContent = this.#copiedText;
+            if (null !== this.#copiedTimer) {
+                clearTimeout(this.#copiedTimer);
+            }
+            this.#copiedTimer = setTimeout(() => {
+                this.#domElement.classList.remove(this.#copiedClass);
+                this.#liveRegion.textContent = '';
+                this.#copiedTimer = null;
+            }, COPIED_DURATION);
+        }
+        this.#onCopy?.(ok, error);
     }
 
     /** @returns {string} The serialized subscription URL. */
@@ -225,6 +381,10 @@ export default class SubscriptionUrl {
     dispose() {
         for (const { element, listener } of this.#subscriptions) {
             element.removeEventListener('change', listener);
+        }
+        if (null !== this.#copiedTimer) {
+            clearTimeout(this.#copiedTimer);
+            this.#copiedTimer = null;
         }
         this.#subscriptions = [];
         this.#changeCallbacks = [];
