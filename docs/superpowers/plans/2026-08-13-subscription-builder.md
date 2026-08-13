@@ -313,10 +313,11 @@ Append to `src/__tests__/SubscriptionUrl.test.js`, inside `describe('Subscriptio
 
 Run: `yarn test src/__tests__/SubscriptionUrl.test.js`
 
-Expected: PASS, 5 tests. If "renders the Ambrosian rite-level calendar" fails, the renderer is not yet
-re-rendering on a rite change — that is Task 2. Move that one assertion to read `url.url` **after** the
-dispatch, which it already does; the `url` getter recomputes from the endpoint on every read, so it passes
-without a listener.
+Expected: PASS, 5 tests.
+
+The Ambrosian case passes with no listener yet because `url` is a getter that recomputes from the endpoint on
+every read, and `ApiOptions.linkToRiteSelect()` has already written the new rite onto that endpoint. Task 2 adds
+the listener that repaints the DOM; this task only reads.
 
 - [ ] **Step 7: Run the full gate and commit**
 
@@ -762,8 +763,12 @@ Add fields:
 In the constructor, after `this.#domElement.append(this.#codeElement);`, add:
 
 ```javascript
-        const language = new Intl.Locale(apiOptions._localeInput._locale ?? 'en')
-            .language;
+        // The display language for the two built-in strings. Taken from the
+        // `language` option `SubscriptionBuilder` passes in — NOT from the
+        // locale input, which exposes no locale accessor: `_localeInput._locale`
+        // is `undefined`, so reading it would silently pin every locale to
+        // English with no error to notice.
+        const language = options.language ?? 'en';
         this.#domElement.setAttribute(
             'title',
             options.copyTitle ??
@@ -1033,6 +1038,7 @@ import {
     describeType,
     normalizeComponentOptions,
 } from '../OptionsValidation.js';
+import { toIntlLocale } from '../LocaleValidation.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -1075,11 +1081,18 @@ export default class SubscriptionBuilder {
         this.#controls.apiOptions
             .linkToCalendarSelect(this.#controls.calendarSelect)
             .linkToRiteSelect(this.#controls.riteSelect);
+        // `language` is derived here, where the normalized locale lives, and
+        // passed in: the locale input exposes no locale accessor for
+        // `SubscriptionUrl` to read.
+        const language = toIntlLocale(
+            bag.locale ?? 'en',
+            'SubscriptionBuilder',
+        ).language;
         this.#url = new SubscriptionUrl(
             this.#controls.apiOptions,
             this.#controls.calendarSelect,
             this.#controls.riteSelect,
-            bag,
+            { ...bag, language },
         );
     }
 
