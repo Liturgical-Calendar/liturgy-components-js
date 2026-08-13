@@ -19,7 +19,7 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
-import { assertTheme, resolveChildTheme } from './Theme.js';
+import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
 
 /**
  * The filters this picker accepts. `CalendarSelectFilter.NONE` is excluded on
@@ -199,8 +199,9 @@ export default class CalendarResourcePicker {
                 // forcing the caller to hardcode one.
                 this.#riteSelect.label(riteLabelOptions);
             }
-            if (Object.hasOwn(riteTheme, 'wrapperClass')) {
-                this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
+            const riteWrapper = resolveWrapperBag(riteTheme);
+            if (null !== riteWrapper) {
+                this.#riteSelect.wrapper(riteWrapper);
             }
         }
 
@@ -238,10 +239,9 @@ export default class CalendarResourcePicker {
                   Messages['en']['SELECT_A_CALENDAR']);
             this.#calendarSelect.label(calendarLabelOptions);
         }
-        if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
-            this.#calendarSelect.wrapper({
-                class: calendarTheme.wrapperClass,
-            });
+        const calendarWrapper = resolveWrapperBag(calendarTheme);
+        if (null !== calendarWrapper) {
+            this.#calendarSelect.wrapper(calendarWrapper);
         }
     }
 

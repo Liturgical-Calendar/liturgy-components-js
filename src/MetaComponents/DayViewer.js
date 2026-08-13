@@ -20,7 +20,7 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
-import { assertTheme, resolveChildTheme } from './Theme.js';
+import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
 
 /** The slots a caller may name, in mount order. @type {Readonly<string[]>} */
 const SLOT_NAMES = Object.freeze(['rite', 'calendar', 'locale', 'liturgy']);
@@ -144,8 +144,9 @@ export default class DayViewer {
             }
             this.#riteSelect.label(riteLabelOptions);
         }
-        if (Object.hasOwn(riteTheme, 'wrapperClass')) {
-            this.#riteSelect.wrapper({ class: riteTheme.wrapperClass });
+        const riteWrapper = resolveWrapperBag(riteTheme);
+        if (null !== riteWrapper) {
+            this.#riteSelect.wrapper(riteWrapper);
         }
 
         const calendarTheme = resolveChildTheme(theme, 'calendarSelect');
@@ -170,8 +171,9 @@ export default class DayViewer {
                     : this.#message('SELECT_A_CALENDAR'),
             });
         }
-        if (Object.hasOwn(calendarTheme, 'wrapperClass')) {
-            this.#calendarSelect.wrapper({ class: calendarTheme.wrapperClass });
+        const calendarWrapper = resolveWrapperBag(calendarTheme);
+        if (null !== calendarWrapper) {
+            this.#calendarSelect.wrapper(calendarWrapper);
         }
 
         this.#apiOptions = new ApiOptions({
@@ -185,22 +187,19 @@ export default class DayViewer {
         if (Object.hasOwn(localeTheme, 'labelClass')) {
             this.#apiOptions._localeInput.labelClass(localeTheme.labelClass);
         }
-        // `wrapperClass` can arrive from the flat `theme.wrapper` key too, which —
-        // like the date controls below — supplies a class only, with no wrapper
-        // element TYPE, so `'div'` is the default whenever an override does not
-        // name one. This used to be a two-call dance — `wrapper( type )` then
-        // `wrapperClass( class )`, because `wrapperClass()` requires a wrapper
-        // element to already exist — which issue #46 collapsed into the single bag
-        // call below. This was previously the one
-        // per-child block in this constructor that read `class`/`labelClass` but
-        // never `wrapperClass` at all — `LocaleInput` supports a wrapper exactly as
-        // `CalendarSelect` does, so the flat `theme.wrapper` key silently applied to
-        // every OTHER select-role child and not to this one.
-        if (Object.hasOwn(localeTheme, 'wrapperClass')) {
-            this.#apiOptions._localeInput.wrapper({
-                as: localeTheme.wrapper ?? 'div',
-                class: localeTheme.wrapperClass,
-            });
+        // `resolveWrapperBag()` reconciles the two keys — a per-child `wrapper`
+        // names the element TYPE, the flat `theme.wrapper` a CLASS — and returns
+        // `null` when the theme named neither. Before issue #46 this was a
+        // two-call dance, `wrapper( type )` then `wrapperClass( class )`, because
+        // `wrapperClass()` requires a wrapper element to already exist. This was
+        // also previously the one per-child block in this constructor that read
+        // `class`/`labelClass` but never `wrapperClass` at all — `LocaleInput`
+        // supports a wrapper exactly as `CalendarSelect` does, so the flat
+        // `theme.wrapper` key silently applied to every OTHER select-role child
+        // and not to this one.
+        const localeWrapper = resolveWrapperBag(localeTheme);
+        if (null !== localeWrapper) {
+            this.#apiOptions._localeInput.wrapper(localeWrapper);
         }
         this.#apiOptions._localeInput._labelElement.textContent = Object.hasOwn(
             localeTheme,

@@ -216,6 +216,33 @@ describe('DayViewer theme wrapper', () => {
             viewer.localeInput._domElement.closest('.col-lg-6'),
         ).not.toBeNull();
     });
+
+    // `wrapper` is an accepted per-child key for the select and input roles
+    // (`Theme.js`, OVERRIDE_KEYS_BY_ROLE), where it names the wrapper's element
+    // TYPE — unlike the FLAT `theme.wrapper`, which names a class. A theme that
+    // set the type and no class used to be dropped in silence: the locale input's
+    // block was entered only when `wrapperClass` was present.
+    it('honours a per-child wrapper TYPE with no wrapperClass', () => {
+        document.body.innerHTML = '<table><tr id="row"></tr></table>';
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { localeInput: { wrapper: 'td' } },
+        });
+        viewer.appendTo('#row');
+        expect(viewer.localeInput._domElement.closest('td')).not.toBeNull();
+    });
+
+    it('still applies both when the per-child override names each', () => {
+        document.body.innerHTML = '<table><tr id="row"></tr></table>';
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { localeInput: { wrapper: 'td', wrapperClass: 'col-lg-6' } },
+        });
+        viewer.appendTo('#row');
+        const wrapper = viewer.localeInput._domElement.closest('td');
+        expect(wrapper).not.toBeNull();
+        expect(wrapper.className).toBe('col-lg-6');
+    });
 });
 
 // I3: `labelText` is the theme bag's escape hatch for a themed child's label TEXT,

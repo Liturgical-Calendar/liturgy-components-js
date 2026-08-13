@@ -153,6 +153,7 @@ apiOptions._acceptHeaderInput.hide();
 | `defaultValue(value)`     | Set initial/default value                                          |
 | `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
 | `options()`               | Returns array of option values (for select elements only)          |
+| `hide()`                  | Hide the control — `_acceptHeaderInput` only, and not reversible   |
 
 ### The wrapper bag
 
@@ -190,7 +191,6 @@ is not the caller's own, so a page that sets the global still gets one per-insta
 A `class` named in the bag beats `setGlobalWrapperClass()` and counts as the class being set, so a later
 `wrapperClass()` naming something different throws. A bag naming no class still inherits the global one and
 leaves `wrapperClass()` free — the pairing pages built on the globals rely on.
-| `hide(hide=true)` | Hide the control |
 
 ## Linking to CalendarSelect
 

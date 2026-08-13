@@ -245,3 +245,45 @@ export function resolveChildTheme(theme, childKey, role = 'select') {
     }
     return resolved;
 }
+
+/**
+ * Turns a resolved child theme into the `{ as, class }` bag its wrapper setter
+ * takes, or `null` when the theme asks for no wrapper at all.
+ *
+ * Two keys reach here and they mean different things. A per-child `wrapper`
+ * names the wrapper's element TYPE — it is an accepted override key for the
+ * `select` and `input` roles, see `OVERRIDE_KEYS_BY_ROLE` above. The FLAT
+ * `theme.wrapper` names a CLASS, which `resolveChildTheme()` has already mapped
+ * onto `wrapperClass`. **Either one alone is a complete instruction**, which is
+ * the whole reason this exists: every meta-component used to gate its wrapper
+ * call on `wrapperClass` alone, so a theme naming only the type was accepted by
+ * the resolver, carried to the call site, and dropped there in silence — no
+ * wrapper, no throw, no warning. Six call sites repeated that same gate, which is
+ * exactly how a rule ends up honoured in some of them and not others.
+ *
+ * `class` is present only when the theme named one, never as `undefined`. Both
+ * `CalendarSelect.wrapper()` and `Input.wrapper()` reject a non-string `class`,
+ * and `Input.wrapper()` additionally treats a class named in the bag as FINAL,
+ * closing `wrapperClass()` afterwards — neither of which a theme that never
+ * mentioned a class should provoke.
+ *
+ * Internal to the meta-components, like the rest of this module. The value it
+ * returns is handed straight to `CalendarSelect.wrapper()`,
+ * `RiteSelect.wrapper()` or `Input.wrapper()`, which validate it.
+ *
+ * @param {{wrapper?: string, wrapperClass?: string}} childTheme - A theme already
+ *        resolved by `resolveChildTheme()`.
+ * @returns {{as: string, class?: string}|null} The bag to pass to the child's
+ *          `wrapper()`, or `null` when the theme named neither key.
+ */
+export function resolveWrapperBag(childTheme) {
+    const hasType = Object.hasOwn(childTheme, 'wrapper');
+    const hasClass = Object.hasOwn(childTheme, 'wrapperClass');
+    if (false === hasType && false === hasClass) {
+        return null;
+    }
+    return {
+        as: hasType ? childTheme.wrapper : 'div',
+        ...(hasClass ? { class: childTheme.wrapperClass } : {}),
+    };
+}

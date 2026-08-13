@@ -137,3 +137,105 @@ describe('Theme bag symmetry: { select, label, wrapper }', () => {
         expect(controls.riteSelect._domElement.closest('.col-md-3')).toBeNull();
     });
 });
+
+/**
+ * The second half of the same symmetry, and the one the flat-bag cases above
+ * could not reach. `wrapper` is an accepted PER-CHILD key for the select and
+ * input roles (`Theme.js`, OVERRIDE_KEYS_BY_ROLE), where it names the wrapper's
+ * element TYPE — as against the FLAT `theme.wrapper`, which `resolveChildTheme()`
+ * maps onto a wrapperCLASS. Every meta-component gated its wrapper call on
+ * `wrapperClass` alone, so a per-child theme naming only the type was accepted by
+ * the resolver, carried all the way to the call site, and dropped there in
+ * silence — no wrapper, no throw, no warning.
+ *
+ * `DayViewer`'s locale input was fixed first (see `DayViewer.test.js`); these pin
+ * the same property for both SELECT children of all three components, so the key
+ * cannot be honoured for some children and ignored for others again. The shared
+ * `resolveWrapperBag()` is what makes that structural rather than a promise.
+ */
+describe('a per-child wrapper TYPE is honoured wherever it is accepted', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<table><tr id="row"></tr></table>';
+    });
+
+    const wrappedIn = (element, tag) => element.closest(tag);
+
+    it('wraps DayViewer’s selects in the themed element type', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: {
+                riteSelect: { wrapper: 'td' },
+                calendarSelect: { wrapper: 'td' },
+            },
+        });
+        viewer.appendTo('#row');
+
+        expect(wrappedIn(viewer.riteSelect._domElement, 'td')).not.toBeNull();
+        expect(
+            wrappedIn(viewer.calendarSelect._domElement, 'td'),
+        ).not.toBeNull();
+    });
+
+    it('wraps CalendarControls’ selects in the themed element type', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                riteSelect: { wrapper: 'td' },
+                calendarSelect: { wrapper: 'td' },
+            },
+        });
+        controls.appendTo('#row');
+
+        expect(wrappedIn(controls.riteSelect._domElement, 'td')).not.toBeNull();
+        expect(
+            wrappedIn(controls.calendarSelect._domElement, 'td'),
+        ).not.toBeNull();
+    });
+
+    it('wraps CalendarResourcePicker’s selects in the themed element type', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            theme: {
+                riteSelect: { wrapper: 'td' },
+                calendarSelect: { wrapper: 'td' },
+            },
+        });
+        picker.appendTo('#row');
+
+        expect(wrappedIn(picker.riteSelect._domElement, 'td')).not.toBeNull();
+        expect(
+            wrappedIn(picker.calendarSelect._domElement, 'td'),
+        ).not.toBeNull();
+    });
+
+    it('applies the type and the class together', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                calendarSelect: { wrapper: 'td', wrapperClass: 'col-md-4' },
+            },
+        });
+        controls.appendTo('#row');
+
+        const wrapper = wrappedIn(controls.calendarSelect._domElement, 'td');
+        expect(wrapper).not.toBeNull();
+        expect(wrapper.className).toBe('col-md-4');
+    });
+
+    it('still defaults the type to div when only a class is themed', () => {
+        document.body.innerHTML = '<div id="mount"></div>';
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { calendarSelect: { wrapperClass: 'col-md-4' } },
+        });
+        controls.appendTo('#mount');
+
+        const wrapper = wrappedIn(
+            controls.calendarSelect._domElement,
+            '.col-md-4',
+        );
+        expect(wrapper).not.toBeNull();
+        expect(wrapper.tagName).toBe('DIV');
+    });
+});
