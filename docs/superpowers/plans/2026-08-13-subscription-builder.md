@@ -436,6 +436,9 @@ In `src/SubscriptionBuilder/SubscriptionUrl.js`, add two fields beside the other
 
     /** @type {Array<function(string): void>} */
     #changeCallbacks = [];
+
+    /** @type {Promise<void>|null} The coalesced update this turn scheduled. */
+    #pendingUpdate = null;
 ```
 
 At the end of the constructor, after `this.#render();`, add:
@@ -487,12 +490,38 @@ Add the three methods:
     #listen(element, update) {
         const listener = (ev) => {
             update(ev);
-            this.#render();
-            const next = this.url;
-            this.#changeCallbacks.forEach((callback) => callback(next));
+            this.#scheduleUpdate();
         };
         element.addEventListener('change', listener);
         this.#subscriptions.push({ element, listener });
+    }
+
+    /**
+     * Collapses the repaints and notifications one user action provokes into a
+     * single update, on a microtask.
+     *
+     * One selection moves several inputs: `ApiOptions.linkToCalendarSelect()`'s
+     * own listener is registered BEFORE this class's and synchronously dispatches
+     * a synthetic `change` on the locale input, so without this a subscriber is
+     * notified while `calendarType`/`calendarId` are still stale — an
+     * intermediate URL carrying the calendar the user just left. Every dispatch
+     * in that burst is synchronous, so a microtask flush reads settled state.
+     *
+     * The same shape as `ApiClient.#scheduleRefetch()`, added for the
+     * structurally identical problem in issue #50.
+     *
+     * @returns {void}
+     */
+    #scheduleUpdate() {
+        if (null !== this.#pendingUpdate) {
+            return;
+        }
+        this.#pendingUpdate = Promise.resolve().then(() => {
+            this.#pendingUpdate = null;
+            this.#render();
+            const next = this.url;
+            this.#changeCallbacks.forEach((callback) => callback(next));
+        });
     }
 
     /**
