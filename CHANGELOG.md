@@ -4,6 +4,41 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## 2.6.1
+
+### Fixed
+
+- **A per-child `wrapper` naming only the element type is no longer dropped in silence.** `wrapper` is an
+  accepted per-child theme key for the `select` and `input` roles, where it names the wrapper's element
+  **type** — as against the **flat** `theme.wrapper`, which `resolveChildTheme()` maps onto a wrapper
+  **class**. Either alone is a complete instruction, but every meta-component gated its `wrapper()` call on
+  `wrapperClass` alone, so `{ calendarSelect: { wrapper: 'td' } }` was accepted by the resolver, carried all
+  the way to the call site, and dropped there: no wrapper, no throw, no warning.
+
+  The gate is now `Theme.js`'s `resolveWrapperBag()`, which returns the `{ as, class }` bag or `null`, and
+  all seven call sites use it — both selects in `CalendarControls`, `CalendarResourcePicker` and
+  `DayViewer`, plus `DayViewer`'s locale input. Extracted rather than repeated: seven copies of a rule is
+  how a rule ends up applied in some places and not others, which is exactly what had happened. It omits
+  `class` rather than passing `undefined`, because `Input.wrapper()` rejects a non-string class **and**
+  (since 2.6.0) treats a class named in the bag as final, closing `wrapperClass()` afterwards.
+
+  `DayViewer`'s `dateControls` block is deliberately unchanged: it feeds a config bag to `LiturgyOfAnyDay`'s
+  `dayInputConfig()`/`monthInputConfig()`/`yearInputConfig()`, which call `wrapper()` and `wrapperClass()`
+  separately and already handled both keys.
+
+  The gap predates 2.6.0 — the same guard stood before that release's refactor — but it is reachable
+  through the documented theme vocabulary, so it is fixed rather than merely recorded.
+
+### Documentation
+
+- The **flat versus per-child `wrapper`** distinction is now stated explicitly in `docs/meta-components.md`,
+  with an example. It had been implicit in a source comment, which is a fair part of why the gap survived.
+- The control-method table in `docs/api-options.md` is whole again: 2.6.0's new "The wrapper bag" section
+  was inserted between its last row and its `hide()` row, stranding `hide()` after the prose as a one-row
+  table. Neither `markdownlint` nor `prettier` caught it, because a lone `|`-row **is** a valid table.
+- `hide()` is documented accurately: it takes no parameter — `hide( false )` would not unhide — and exists
+  only on `_acceptHeaderInput`, not on every control the table lists.
+
 ## 2.6.0
 
 Two additions and one converged API: a first-class signal for `mountInto()`'s initial fetch, and the
