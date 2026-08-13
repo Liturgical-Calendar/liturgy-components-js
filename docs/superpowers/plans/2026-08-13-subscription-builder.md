@@ -400,11 +400,16 @@ describe('SubscriptionUrl control wiring', () => {
         expect(url._domElement.textContent).toContain('locale=it');
     });
 
-    it('notifies onChange with the new URL', () => {
+    it('notifies onChange exactly once per action, with settled state', async () => {
+        // `ApiOptions.linkToCalendarSelect()`'s listener is registered before
+        // this class's and synchronously dispatches a synthetic `change` on the
+        // locale input, so without coalescing a subscriber is notified twice —
+        // the first time with the calendar the user just left.
         const seen = [];
         const { url, calendarSelect } = build();
         url.onChange((next) => seen.push(next));
         userSelects(calendarSelect._domElement, 'VA');
+        await Promise.resolve();
         expect(seen).toHaveLength(1);
         expect(seen[0]).toContain('/nation/VA');
     });
@@ -437,8 +442,8 @@ In `src/SubscriptionBuilder/SubscriptionUrl.js`, add two fields beside the other
     /** @type {Array<function(string): void>} */
     #changeCallbacks = [];
 
-    /** @type {Promise<void>|null} The coalesced update this turn scheduled. */
-    #pendingUpdate = null;
+    /** @type {Promise<void>|null} The coalesced notification this turn scheduled. */
+    #pendingNotify = null;
 ```
 
 At the end of the constructor, after `this.#render();`, add:
@@ -490,15 +495,20 @@ Add the three methods:
     #listen(element, update) {
         const listener = (ev) => {
             update(ev);
-            this.#scheduleUpdate();
+            // The repaint stays SYNCHRONOUS: both firings of a single user
+            // action share one task, so the browser never paints between them
+            // and the intermediate write is unobservable. Deferring it would
+            // only make the DOM lag the state by a microtask, for no gain.
+            this.#render();
+            this.#scheduleNotify();
         };
         element.addEventListener('change', listener);
         this.#subscriptions.push({ element, listener });
     }
 
     /**
-     * Collapses the repaints and notifications one user action provokes into a
-     * single update, on a microtask.
+     * Collapses the `onChange` notifications one user action provokes into one,
+     * on a microtask.
      *
      * One selection moves several inputs: `ApiOptions.linkToCalendarSelect()`'s
      * own listener is registered BEFORE this class's and synchronously dispatches
@@ -508,17 +518,19 @@ Add the three methods:
      * in that burst is synchronous, so a microtask flush reads settled state.
      *
      * The same shape as `ApiClient.#scheduleRefetch()`, added for the
-     * structurally identical problem in issue #50.
+     * structurally identical problem in issue #50. Only the NOTIFICATION is
+     * coalesced, not the repaint: a callback hands a value to consumer code that
+     * acts on it at once, whereas the DOM write is idempotent and invisible until
+     * the task settles.
      *
      * @returns {void}
      */
-    #scheduleUpdate() {
-        if (null !== this.#pendingUpdate) {
+    #scheduleNotify() {
+        if (null !== this.#pendingNotify) {
             return;
         }
-        this.#pendingUpdate = Promise.resolve().then(() => {
-            this.#pendingUpdate = null;
-            this.#render();
+        this.#pendingNotify = Promise.resolve().then(() => {
+            this.#pendingNotify = null;
             const next = this.url;
             this.#changeCallbacks.forEach((callback) => callback(next));
         });
