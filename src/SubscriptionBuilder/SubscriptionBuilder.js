@@ -28,11 +28,7 @@ import {
     normalizeComponentOptions,
 } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
-import {
-    resolveChildTheme,
-    resolveWrapperBag,
-} from '../MetaComponents/Theme.js';
-import Messages from '../Messages.js';
+import { resolveChildTheme } from '../MetaComponents/Theme.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -91,37 +87,13 @@ export default class SubscriptionBuilder {
         this.#controls.apiOptions
             .linkToCalendarSelect(this.#controls.calendarSelect)
             .linkToRiteSelect(this.#controls.riteSelect);
-        // `CalendarControls` themes its OWN two children (`riteSelect`,
-        // `calendarSelect`) but has no notion of the `ApiOptions` inputs it
-        // wraps, so the locale input — the third of this component's "three
-        // controls" — is themed directly here, the same way `DayViewer` themes
-        // its own copy of the same `ApiOptions._localeInput`.
-        const localeTheme = resolveChildTheme(bag.theme, 'localeInput');
-        if (Object.hasOwn(localeTheme, 'class')) {
-            this.#controls.apiOptions._localeInput.class(localeTheme.class);
-        }
-        if (Object.hasOwn(localeTheme, 'labelClass')) {
-            this.#controls.apiOptions._localeInput.labelClass(
-                localeTheme.labelClass,
-            );
-        }
-        // Set UNCONDITIONALLY, unlike `class`/`labelClass`/`wrapper` above:
-        // `LocaleInput`'s constructor hardcodes its label to the literal
-        // string `'locale'` (`LocaleInput.js:48`), with no i18n of its own,
-        // so an un-themed `SubscriptionBuilder` would otherwise ship that raw
-        // string to every locale. `DayViewer` faces the same default and
-        // fixes it the same way — same key, same `??` fallback to English so
-        // a locale outside the 12-locale `LANGUAGE` catalogue cannot throw. A
-        // theme-supplied `labelText` still wins, since it is read first.
-        this.#controls.apiOptions._localeInput._labelElement.textContent =
-            Object.hasOwn(localeTheme, 'labelText')
-                ? localeTheme.labelText
-                : (Messages[language]?.['LANGUAGE'] ??
-                  Messages['en']['LANGUAGE']);
-        const localeWrapper = resolveWrapperBag(localeTheme);
-        if (null !== localeWrapper) {
-            this.#controls.apiOptions._localeInput.wrapper(localeWrapper);
-        }
+        // `CalendarControls` now themes its own copy of the locale input
+        // (issue #56, via the shared `applyLocaleInputTheme()` helper in
+        // `Theme.js`), so nothing further is needed here: the whole `bag`,
+        // including `theme`, already flows into the `new CalendarControls(…)`
+        // call above. `Input.wrapper()` became one-shot in 2.6.0, so a second
+        // theming pass here would have THROWN rather than being redundant.
+        //
         // `language` is derived above, where the normalized locale lives, and
         // passed in: the locale input exposes no locale accessor for
         // `SubscriptionUrl` to read.

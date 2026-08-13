@@ -20,7 +20,12 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
-import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
+import {
+    assertTheme,
+    resolveChildTheme,
+    resolveWrapperBag,
+    applyLocaleInputTheme,
+} from './Theme.js';
 
 /** The slots a caller may name, in mount order. @type {Readonly<string[]>} */
 const SLOT_NAMES = Object.freeze(['rite', 'calendar', 'locale', 'liturgy']);
@@ -181,32 +186,11 @@ export default class DayViewer {
             apiClient,
         }).filter(ApiOptionsFilter.LOCALE_ONLY);
         const localeTheme = resolveChildTheme(theme, 'localeInput');
-        if (Object.hasOwn(localeTheme, 'class')) {
-            this.#apiOptions._localeInput.class(localeTheme.class);
-        }
-        if (Object.hasOwn(localeTheme, 'labelClass')) {
-            this.#apiOptions._localeInput.labelClass(localeTheme.labelClass);
-        }
-        // `resolveWrapperBag()` reconciles the two keys — a per-child `wrapper`
-        // names the element TYPE, the flat `theme.wrapper` a CLASS — and returns
-        // `null` when the theme named neither. Before issue #46 this was a
-        // two-call dance, `wrapper( type )` then `wrapperClass( class )`, because
-        // `wrapperClass()` requires a wrapper element to already exist. This was
-        // also previously the one per-child block in this constructor that read
-        // `class`/`labelClass` but never `wrapperClass` at all — `LocaleInput`
-        // supports a wrapper exactly as `CalendarSelect` does, so the flat
-        // `theme.wrapper` key silently applied to every OTHER select-role child
-        // and not to this one.
-        const localeWrapper = resolveWrapperBag(localeTheme);
-        if (null !== localeWrapper) {
-            this.#apiOptions._localeInput.wrapper(localeWrapper);
-        }
-        this.#apiOptions._localeInput._labelElement.textContent = Object.hasOwn(
+        applyLocaleInputTheme(
+            this.#apiOptions._localeInput,
             localeTheme,
-            'labelText',
-        )
-            ? localeTheme.labelText
-            : this.#message('LANGUAGE');
+            this.#message('LANGUAGE'),
+        );
         this.#apiOptions._localeInput.defaultValue(this.#language);
 
         this.#liturgy = new LiturgyOfAnyDay({ locale: this.#locale });

@@ -170,6 +170,80 @@ describe('CalendarControls construction', () => {
     });
 });
 
+// Issue #56: `CalendarControls` previously had no notion of the `ApiOptions`
+// inputs it wraps, so `theme.localeInput` — and the flat `select`/`label`/
+// `wrapper` defaults — reached `riteSelect` and `calendarSelect` but never the
+// locale input. Both behaviour changes below are new in this release; see
+// `DayViewerLocaleInputTheme.test.js` for the same theming pinned as
+// characterization on `DayViewer`, which has themed this input since before
+// this component existed.
+describe('CalendarControls locale input theme', () => {
+    it('gives the locale input a localized label by default, not the raw "locale" hardcoded by LocaleInput', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        expect(
+            controls.apiOptions._localeInput._labelElement.textContent,
+        ).not.toBe('locale');
+        expect(controls.apiOptions._localeInput._labelElement.textContent).toBe(
+            Messages['en']['LANGUAGE'],
+        );
+    });
+
+    it('localizes the default label per the message catalogue, for a non-English locale', () => {
+        const controls = new CalendarControls({ locale: 'it' });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions._localeInput._labelElement.textContent).toBe(
+            Messages['it']['LANGUAGE'],
+        );
+    });
+
+    it('a theme-supplied labelText wins over the localized default', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { localeInput: { labelText: 'Preferred language' } },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions._localeInput._labelElement.textContent).toBe(
+            'Preferred language',
+        );
+    });
+
+    it('applies a per-child class override to the locale input', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { localeInput: { class: 'form-select-sm' } },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions._localeInput._domElement.className).toBe(
+            'form-select-sm',
+        );
+    });
+
+    // The larger of the two behaviour changes: previously no wrapper was ever
+    // created for this input, since `CalendarControls` never themed it at all.
+    it('reaches the locale input via the flat theme.wrapper key', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { wrapper: 'col-md-3' },
+        });
+        controls.appendTo('#mount');
+        expect(
+            controls.apiOptions._localeInput._domElement.closest('.col-md-3'),
+        ).not.toBeNull();
+    });
+
+    it('reaches the locale input via a per-child wrapperClass override', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { localeInput: { wrapperClass: 'col-lg-6' } },
+        });
+        controls.appendTo('#mount');
+        expect(
+            controls.apiOptions._localeInput._domElement.closest('.col-lg-6'),
+        ).not.toBeNull();
+    });
+});
+
 describe('CalendarControls mounting', () => {
     it('mounts the rite select before the calendar select', () => {
         const controls = new CalendarControls({ locale: 'en' });
