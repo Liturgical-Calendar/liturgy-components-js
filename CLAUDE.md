@@ -473,6 +473,35 @@ falls back to the flat default. `src/MetaComponents/Theme.js` is the shared reso
 calls — it is internal and deliberately **not exported** from `src/index.js`, the same as
 `LocaleValidation.js` and `OptionsValidation.js`.
 
+**`apiOptions` is the one NESTED key, and the only one, deliberately.** It carries the same four flat role
+keys for a whole `ApiOptions` form plus per-input overrides named for `ApiOptions`' accessors with the
+underscore stripped (`epiphanyInput` … `calendarPathInput`; `yearInput` alone takes the `input` role). It
+is what removed the last reason a consumer had to call the process-wide `Input.setGlobal*` setters, which
+the theme bag exists to replace. Four things about it are load-bearing and easy to undo by accident:
+
+- **It is an OPT-IN GATE.** While the key is absent, the flat keys reach `riteSelect`, `calendarSelect`
+  and `localeInput` and no further — exactly 2.7.0's behaviour. Do not "simplify" this into letting the
+  flat keys always cascade into the form: that would restyle every existing consumer's page in a minor
+  release, and would consume `Input.wrapper()`'s one-shot allowance on ten inputs at construction time, so
+  the `setGlobalWrapperClass()`-plus-per-input-`wrapperClass()` pairing those pages are built on would
+  start throwing. Widening the gate later is backward compatible; closing it again is not.
+- **`theme.localeInput` is a TIER, not a rival path.** It shipped as public API in 2.7.0 and still works.
+  Precedence, per key: `theme.apiOptions[ input ]` > `theme.localeInput` (that input only) >
+  `theme.apiOptions` flat > outer flat. One resolver, four layers; nothing merges twice.
+- **`assertTheme()` catches typos at the new depth too**, both for a key inside `apiOptions` and for a key
+  inside a per-input override, AND it rejects any of the other nine input names written at the top level,
+  pointing at the nested spelling. The per-input check is deliberately STRICTER than the two-level one,
+  because the role is known there. Silently dropping an unrecognised key is the exact failure mode issue
+  #43 was filed about, and shipping ten names that work nested while one of them also works at the top
+  level is what would otherwise have made that misplacement easy to write.
+- **Every one of the ten inputs is themed regardless of `filter`.** They all exist; `filter` decides only
+  which are appended. Theming one the filter hides must stay inert rather than throwing.
+
+`applyApiOptionsTheme()` is the single application helper — `CalendarControls` and `DayViewer` each call
+it once, and `CalendarViewer`/`ApiExplorer`/`SubscriptionBuilder` inherit it through `CalendarControls`.
+It reuses `resolveWrapperBag()` rather than re-inlining the type-vs-class reconciliation, for the reason
+that helper's own doc comment gives.
+
 **`mountInto()` versus the constructor.** Like every component in this library, each meta-component has a
 synchronous constructor — usable when an `ApiBase` is already known to be ready, paired with an
 `appendTo()` — plus a static async `mountInto()`, which resolves the target(s), constructs the component

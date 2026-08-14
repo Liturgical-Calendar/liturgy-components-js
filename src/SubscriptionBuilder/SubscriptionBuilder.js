@@ -87,9 +87,10 @@ export default class SubscriptionBuilder {
         this.#controls.apiOptions
             .linkToCalendarSelect(this.#controls.calendarSelect)
             .linkToRiteSelect(this.#controls.riteSelect);
-        // `CalendarControls` now themes its own copy of the locale input
-        // (issue #56, via the shared `applyLocaleInputTheme()` helper in
-        // `Theme.js`), so nothing further is needed here: the whole `bag`,
+        // `CalendarControls` now themes its own `ApiOptions` — the locale input
+        // since issue #56, the whole ten-input bundle since issue #60, via the
+        // shared `applyApiOptionsTheme()` helper in `Theme.js` — so nothing
+        // further is needed here: the whole `bag`,
         // including `theme`, already flows into the `new CalendarControls(…)`
         // call above. `Input.wrapper()` became one-shot in 2.6.0, so a second
         // theming pass here would have THROWN rather than being redundant.

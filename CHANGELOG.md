@@ -31,6 +31,53 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Added
 
+- **`theme.apiOptions`, making the whole `ApiOptions` form themeable**, closing #60. The theme bag reached
+  `riteSelect`, `calendarSelect` and (since 2.7.0) `localeInput` and nothing else, so every consumer of the
+  meta-components still had to open with four process-wide `Input.setGlobalInputClass()` /
+  `setGlobalLabelClass()` / `setGlobalWrapper()` / `setGlobalWrapperClass()` mutations — which leak onto
+  every other component on the page, and which the theme bag exists to replace. A nested `apiOptions` key
+  now carries flat role defaults (`select`, `input`, `label`, `wrapper`) for the whole bundle plus
+  per-input overrides named for `ApiOptions`' own accessors, underscore stripped: `epiphanyInput`,
+  `ascensionInput`, `corpusChristiInput`, `eternalHighPriestInput`, `holydaysOfObligationInput`,
+  `localeInput`, `yearTypeInput`, `yearInput`, `acceptHeaderInput`, `calendarPathInput`. Only `yearInput`
+  takes the `input` role. All ten exist whatever the `filter`, so theming one the current filter does not
+  render is inert rather than an error. `CalendarControls`, `CalendarViewer`, `ApiExplorer`,
+  `SubscriptionBuilder` and `DayViewer` all accept it; `CalendarResourcePicker` bundles no `ApiOptions`
+  and is unaffected. The reason the docs previously gave for not doing this — that `filter` makes the set
+  of inputs variable — did not hold: `filter` varies which inputs render, not which exist.
+
+  **The key is an opt-in gate, and nothing changes without it.** While `theme.apiOptions` is absent, the
+  flat keys reach exactly what they reached in 2.7.0. Naming it at all opens the gate (`{}` included),
+  after which each input resolves per key, most specific first, over four tiers:
+  `theme.apiOptions[ inputKey ]`, then `theme.localeInput` (that input only, 2.7.0's key, still fully
+  supported), then `theme.apiOptions`' flat keys, then the outer bag's. Gating it this way keeps a minor
+  release from silently restyling existing forms, and from consuming `Input.wrapper()`'s one-shot
+  allowance on ten inputs that a consumer may still be styling by hand.
+
+  **With the gate open, a themed input's `wrapper()`/`wrapperClass()` and `labelClass()` are consumed at
+  construction**, so a later `controls.apiOptions._yearInput.wrapper( … )` or `.labelClass( … )` throws
+  where it previously worked — the escape hatch `docs/meta-components.md` recommends. Before this key
+  existed only the locale input could be closed this way. The `Input.setGlobal*` values do **not** close
+  either: the constructor assigns them without marking the class as set, which is what keeps the
+  globals-plus-per-input-override pairing working on a page mid-migration. Same rendered class, different
+  behaviour afterwards, and both directions are pinned in
+  `src/__tests__/MetaComponentThemeApiOptionsGlobals.test.js`.
+
+  **An unrecognised key inside `apiOptions` throws, naming it**, at both new levels — the typo check that
+  issue #43 was filed over now holds at the added depth. So does naming one of the other nine inputs at
+  the TOP level, where only `localeInput` is answered: `theme: { localeInput: …, yearInput: … }` written
+  by analogy would otherwise have had half of it silently dropped, and the error points at
+  `theme.apiOptions.yearInput` instead. The per-input check is stricter than the
+  top-level one: the role is known there, so a `liturgy`-role key such as `titleClass` on an input is
+  rejected rather than accepted and dropped. The shorter spellings `epiphany`/`holydaysOfObligation` are
+  deliberately not accepted — they would make the already-shipped `localeInput` inconsistent, and they
+  collide with the API query parameters of the same name.
+
+  Internally this is `Theme.js`'s new `applyApiOptionsTheme()`, which `CalendarControls` and `DayViewer`
+  each call in place of their previous locale-input-only block; `resolveWrapperBag()` is reused rather
+  than re-inlined, so a per-input `wrapperClass` with no element type still wraps in a `<div>` instead of
+  raising "Wrapper has not been set". `Theme.js` remains internal and unexported from `src/index.js`.
+
 - Six `Messages` keys backing those labels — `YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`,
   `ETERNAL_HIGH_PRIEST`, `HOLYDAYS_OF_OBLIGATION` — populated for the same twelve locales that already carry
   `SELECT_A_RITE`, with the other 72 blocks degrading to English through the usual
