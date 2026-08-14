@@ -1131,7 +1131,7 @@ const Messages = {
         AMBROSIAN_CALENDAR_CAPTION: 'Calendario Ambrosiano - {year}',
         CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} voce',
         CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} voci',
-        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia del {date} aggiornata',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia per {date} aggiornata',
     },
     ja: {
         SUNDAY_JAN2_JAN8: '1月2日から1月8日までの日曜日',
@@ -1732,7 +1732,7 @@ const Messages = {
         // `formatPluralMessage()` in MessageFormat.js.
         CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} záznam',
         CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} záznamov',
-        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia na {date} aktualizovaná',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia aktualizovaná: {date}',
     },
     sl: {
         SUNDAY_JAN2_JAN8: 'Nedelja med 2. in 8. januarju',
