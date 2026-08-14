@@ -236,6 +236,33 @@ describe('LiturgyOfAnyDay live region', () => {
         expect(widget._domElement.querySelector('[role="status"]')).toBeNull();
     });
 
+    it('is silent on the first render after announcements are turned back on', async () => {
+        // Re-enabling mounts a NEW region, so the "silent on the render that
+        // inserts the region" rule applies to it as to a fresh instance.
+        const { widget, apiClient } = await mounted();
+        apiClient._eventBus.emit(
+            'calendarFetched',
+            payloadFor(selectedDate(widget)),
+        );
+        const dayInput = widget._dayInput._domElement;
+        dayInput.value = String(Number(dayInput.value) === 1 ? 2 : 1);
+        dayInput.dispatchEvent(new Event('change'));
+        expect(widget._liveRegion.textContent).not.toBe('');
+
+        widget.announceUpdates(false);
+        widget.announceUpdates(true);
+
+        dayInput.value = String(Number(dayInput.value) === 3 ? 4 : 3);
+        dayInput.dispatchEvent(new Event('change'));
+        expect(widget._liveRegion.textContent).toBe('');
+
+        dayInput.value = String(Number(dayInput.value) === 5 ? 6 : 5);
+        dayInput.dispatchEvent(new Event('change'));
+        expect(widget._liveRegion.textContent).toBe(
+            `Liturgy for ${widget._dateElement.textContent} updated`,
+        );
+    });
+
     it('rejects a non-boolean', () => {
         expect(() => new LiturgyOfAnyDay('en').announceUpdates('yes')).toThrow(
             /LiturgyOfAnyDay/,

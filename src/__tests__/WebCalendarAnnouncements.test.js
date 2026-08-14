@@ -190,6 +190,25 @@ describe('WebCalendar live region', () => {
         expect(container.querySelector('[role="status"]')).toBeNull();
     });
 
+    it('is silent on the first render after announcements are turned back on', async () => {
+        // Re-enabling builds a NEW region, which the next render inserts. The
+        // "silent on the render that inserts the region" rule applies to it
+        // exactly as it applies to a fresh instance.
+        const { webCalendar, container } = mounted();
+        await render(calendarData());
+        await render(calendarData({}, 2));
+        webCalendar.announceUpdates(false);
+        webCalendar.announceUpdates(true);
+
+        await render(calendarData({}, 3));
+        expect(container.querySelector('[role="status"]').textContent).toBe('');
+
+        await render(calendarData({}, 4));
+        expect(container.querySelector('[role="status"]').textContent).toBe(
+            'General Roman Calendar - 2026, 4 entries',
+        );
+    });
+
     it('rejects a non-boolean', () => {
         expect(() => new WebCalendar().announceUpdates('yes')).toThrow(
             /WebCalendar/,

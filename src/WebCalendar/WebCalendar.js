@@ -402,6 +402,11 @@ export default class WebCalendar {
             this.#announcer = null;
         } else if (null === this.#announcer) {
             this.#announcer = new LiveAnnouncer();
+            // A NEW region, which the next render will insert — and a region
+            // written in the same task it is inserted in is not reliably
+            // announced. So the same silent-first-render rule a fresh instance
+            // gets applies here too.
+            this.#hasRendered = false;
         }
         return this;
     }

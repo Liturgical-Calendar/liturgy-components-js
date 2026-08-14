@@ -1100,6 +1100,10 @@ export default class LiturgyOfAnyDay {
         } else if (null === this.#announcer) {
             this.#announcer = new LiveAnnouncer();
             this.#announcer.mountInto(this.#domElement);
+            // A NEWLY inserted region, so the same silent-first-render rule a
+            // fresh instance gets applies here too: assistive technology needs
+            // the region present before its content changes.
+            this.#hasRendered = false;
         }
         return this;
     }
