@@ -547,8 +547,14 @@ export function resolveWrapperBag(childTheme) {
  * caller sees only in its absence.
  *
  * Takes an already-resolved child theme, not the whole bag — call
- * `resolveChildTheme( theme, 'localeInput' )` first, exactly as every other
- * per-child theming block in this module does.
+ * `resolveApiOptionsInputTheme( theme, 'localeInput' )` first, exactly as every
+ * other per-child theming block in this module does.
+ *
+ * Since issue #60 the meta-components reach this through
+ * {@link applyApiOptionsTheme} rather than calling it directly, so that the
+ * locale input is themed by the same pass as its nine siblings. It stays
+ * exported because it, not that loop, is the single definition of this one
+ * input's unconditional-label rule.
  *
  * @param {Object} localeInput - The `ApiOptions._localeInput` to theme.
  * @param {{class?: string, labelClass?: string, labelText?: string, wrapper?: string, wrapperClass?: string}} childTheme -

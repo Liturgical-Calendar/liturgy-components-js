@@ -24,7 +24,7 @@ import {
     assertTheme,
     resolveChildTheme,
     resolveWrapperBag,
-    applyLocaleInputTheme,
+    applyApiOptionsTheme,
 } from './Theme.js';
 
 /** The slots a caller may name, in mount order. @type {Readonly<string[]>} */
@@ -185,10 +185,17 @@ export default class DayViewer {
             locale: this.#locale,
             apiClient,
         }).filter(ApiOptionsFilter.LOCALE_ONLY);
-        const localeTheme = resolveChildTheme(theme, 'localeInput');
-        applyLocaleInputTheme(
-            this.#apiOptions._localeInput,
-            localeTheme,
+        // The whole bundle, not just the locale input (issue #60), through the
+        // same helper `CalendarControls` calls. This viewer's `ApiOptions` is
+        // `LOCALE_ONLY`-filtered, so `localeInput` is the only one of the ten
+        // it ever appends — but the other nine exist here as they do anywhere
+        // else, and resolving them costs nothing when the bag names none of
+        // them. Routing this through the shared helper is also what keeps
+        // `theme.localeInput` and `theme.apiOptions.localeInput` meaning the
+        // same thing here as they do on `CalendarControls`.
+        applyApiOptionsTheme(
+            this.#apiOptions,
+            theme,
             this.#message('LANGUAGE'),
         );
         this.#apiOptions._localeInput.defaultValue(this.#language);

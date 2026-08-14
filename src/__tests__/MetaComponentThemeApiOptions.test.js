@@ -18,6 +18,11 @@ import {
 import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import { ApiOptionsFilter } from '../Enums.js';
+import CalendarControls from '../MetaComponents/CalendarControls.js';
+import CalendarViewer from '../MetaComponents/CalendarViewer.js';
+import ApiExplorer from '../MetaComponents/ApiExplorer.js';
+import DayViewer from '../MetaComponents/DayViewer.js';
+import SubscriptionBuilder from '../SubscriptionBuilder/SubscriptionBuilder.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 const API_URL = 'http://localhost:8000';
@@ -415,5 +420,135 @@ describe('applyApiOptionsTheme', () => {
             ),
         ).not.toThrow();
         expect(apiOptions._calendarPathInput._domElement.className).toBe('x');
+    });
+});
+
+describe('CalendarControls — theme.apiOptions', () => {
+    it('styles every ApiOptions input the bundle names', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                apiOptions: {
+                    select: 'form-select',
+                    input: 'form-control',
+                    label: 'form-label d-block mb-1',
+                    wrapper: 'form-group col col-md-2',
+                    epiphanyInput: { wrapperClass: 'form-group col col-md-3' },
+                    holydaysOfObligationInput: {
+                        wrapperClass: 'form-group col col-md-3',
+                    },
+                },
+            },
+        });
+        controls.appendTo('#mount');
+        const options = controls.apiOptions;
+        expect(options._epiphanyInput._domElement.className).toBe(
+            'form-select',
+        );
+        expect(options._yearInput._domElement.className).toBe('form-control');
+        expect(options._ascensionInput._labelElement.className).toBe(
+            'form-label d-block mb-1',
+        );
+        expect(options._ascensionInput._wrapperElement.className).toBe(
+            'form-group col col-md-2',
+        );
+        expect(options._epiphanyInput._wrapperElement.className).toBe(
+            'form-group col col-md-3',
+        );
+        expect(
+            options._holydaysOfObligationInput._wrapperElement.className,
+        ).toBe('form-group col col-md-3');
+    });
+
+    it('leaves the ApiOptions inputs alone when the bag names no apiOptions key', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { select: 'form-select', label: 'form-label' },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions._epiphanyInput._domElement.className).toBe(
+            '',
+        );
+        expect(controls.apiOptions._localeInput._domElement.className).toBe(
+            'form-select',
+        );
+    });
+
+    it('lets apiOptions.localeInput win over the legacy top-level localeInput', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                localeInput: { class: 'legacy', labelClass: 'legacy-label' },
+                apiOptions: { localeInput: { class: 'scoped' } },
+            },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions._localeInput._domElement.className).toBe(
+            'scoped',
+        );
+        expect(controls.apiOptions._localeInput._labelElement.className).toBe(
+            'legacy-label',
+        );
+    });
+
+    it('does not throw when theming an input the chosen filter never renders', () => {
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    filter: ApiOptionsFilter.LOCALE_ONLY,
+                    theme: {
+                        apiOptions: {
+                            select: 'form-select',
+                            wrapper: 'col',
+                        },
+                    },
+                }),
+        ).not.toThrow();
+    });
+
+    it('rejects a misspelled input key, naming CalendarControls', () => {
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    theme: { apiOptions: { epiphany: 'form-select' } },
+                }),
+        ).toThrow(/CalendarControls: theme\.apiOptions\.epiphany/);
+    });
+});
+
+describe('the composed components inherit theme.apiOptions', () => {
+    const theme = { apiOptions: { select: 'form-select' } };
+
+    it('CalendarViewer', () => {
+        const viewer = new CalendarViewer({ locale: 'en', theme });
+        expect(
+            viewer.controls.apiOptions._yearTypeInput._domElement.className,
+        ).toBe('form-select');
+    });
+
+    it('ApiExplorer', () => {
+        const explorer = new ApiExplorer({ locale: 'en', theme });
+        expect(
+            explorer.controls.apiOptions._calendarPathInput._domElement
+                .className,
+        ).toBe('form-select');
+    });
+
+    it('SubscriptionBuilder', () => {
+        const builder = new SubscriptionBuilder({ locale: 'en', theme });
+        expect(
+            builder.controls.apiOptions._yearTypeInput._domElement.className,
+        ).toBe('form-select');
+    });
+
+    it('DayViewer', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: { apiOptions: { localeInput: { class: 'form-select' } } },
+        });
+        viewer.appendTo('#mount');
+        expect(viewer.localeInput._domElement.className).toBe('form-select');
     });
 });
