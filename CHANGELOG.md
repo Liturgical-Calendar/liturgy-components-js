@@ -4,6 +4,37 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Fixed
+
+- **A `CalendarSelect` with nothing selected no longer crashes `ApiClient`'s `change` listener**, closing
+  #66. Assigning a value no option carries leaves `selectedIndex` at `-1`, and the listener read
+  `selectedOptions[0].value` off the missing option — a bare `TypeError` raised inside a listener, where
+  the DOM swallows it, so the page simply stopped updating with nothing in the console naming the select.
+  The listener now falls back to the rite-level calendar, which is the only thing the DOM still reports:
+  `HTMLSelectElement.value` is `''` whenever nothing is selected, so the offending value has already been
+  discarded and "nothing selected" is indistinguishable from "the empty option is selected".
+  `PathBuilder`, `SubscriptionUrl` and `CalendarControls.fetch()` all read it that way already; this
+  brings `ApiClient` into line with them.
+
+  This was reachable without any programmatic help: `CalendarSelect#applyLinkedRite()` resets the value to
+  `''` around its rebuild, an `allowNull( false )` select (the default) has no empty option to match, and
+  the rite change then dispatches `change` straight into the crash — so an ordinary rite change on such a
+  select, wired to an `ApiClient`, was affected.
+
+### Changed
+
+- **`CalendarSelect.value( val )` now throws for a non-empty value no option carries**, naming the select
+  (with its element id, when it has one) and the offending value. This is the last point at which that
+  particular mistake can be named at all: the DOM discards an unmatched value at assignment, so `value()`
+  and every listener afterwards read back only `''`. The check is point-in-time and cannot be otherwise —
+  a value accepted now stops matching when a rite change rebuilds the option list, and the selection then
+  degrades to the rite-level calendar silently. `''` itself is still always accepted, including on a select
+  with no empty option, because it is the documented way to ask for the rite-level calendar and lands on
+  `selectedIndex === -1` by design. Writing to `_domElement.value` directly is unaffected — there is no
+  setter to intercept — and now yields a rite-level request rather than a crash.
+
 ## 2.7.0
 
 `SubscriptionBuilder`, the sixth meta-component, plus `ApiOptions`' locale-input theming extracted to one

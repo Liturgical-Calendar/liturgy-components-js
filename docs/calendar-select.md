@@ -102,8 +102,35 @@ calendarSelect.appendTo('#calendarOptions');
 | `after(htmlString)`                               | HTML content after the select element                    |
 | `linkToNationsSelect(instance)`                   | Link to national calendars select for filtering dioceses |
 | `linkToRiteSelect(instance, dispatchChange=true)` | Link to a rite select; rebuilds on rite change           |
-| `value(val?)`                                     | Get/set value; with arg sets value, returns `this`       |
+| `value(val?)`                                     | Get/set value; throws for an unmatched value (see below) |
 | `onChange(callback)`                              | Register callback for change events; returns `this`      |
+
+### Setting a value no option carries
+
+`value(val)` **throws** when `val` is a non-empty string that no current option carries. The message
+carries the value, the number of options currently offered and the select's filter — plus the element
+id when one was set with `id()`, which is what distinguishes one select from another on a page holding
+several. It has to be caught here: assigning an unmatched value to a
+`<select>` leaves `selectedIndex` at `-1` and the DOM **discards the value**, so `value()` — and every
+listener afterwards — reads back `''`. There is nothing left downstream to name the mistake with.
+
+`''` is always accepted, and does not throw even on a select with no empty option (the default, since
+`allowNull` is `false`): it is the documented way to ask for the rite-level calendar, and it
+deliberately lands on `selectedIndex === -1`.
+
+Writing to the element directly — `calendarSelect._domElement.value = 'NOT_A_REAL_ID'` — bypasses this
+check, because there is no setter to intercept. The library treats the resulting empty selection as the
+rite-level calendar rather than crashing, so a request still goes out; it is simply a request for
+`/calendar/{rite}` rather than for the calendar that was asked for.
+
+A rite change rebuilds the option list, so a value that was valid a moment ago may not be. Set the
+value after the rebuild, not before.
+
+```javascript
+calendarSelect.value(''); // fine — the rite-level calendar
+calendarSelect.value('IT'); // fine when the nations list is loaded
+calendarSelect.value('NOT_A_REAL_ID'); // throws, naming the select and the value
+```
 
 The empty option added by `allowNull()` selects the **rite-level** calendar, not the General Roman
 Calendar specifically. It is labelled "General Roman Calendar" only when the select's rite is
