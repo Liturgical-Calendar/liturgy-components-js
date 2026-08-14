@@ -140,8 +140,10 @@ prepared under that number was skipped, and everything it was to have delivered 
   own versioned base URLs (`/api/dev`), so a `version` there would read as the API's version rather than
   this package's. See `CLAUDE.md`'s Releasing section for the rejected alternatives.
 
-- **`src/MessageLookup.js`, exporting `message( key, locale )`**: the library's single guarded read of the
-  message catalogue, added for #69. Internal, and deliberately not exported from `src/index.js`, on the same
+- **`src/MessageLookup.js`, exporting `message( key, locale )`**: the canonical guarded read of the message
+  catalogue for the call sites migrated onto it, added for #69. Not the library's only one:
+  `src/MetaComponents/` still applies the same shape inline, correctly, and `WebCalendar`/`LiturgyOfAnyDay`
+  remain unguarded (issue #83). Internal, and deliberately not exported from `src/index.js`, on the same
   reasoning as `LocaleValidation.js`, `OptionsValidation.js` and `WrapperOptions.js`. It accepts an
   `Intl.Locale`, a locale tag string or `null`, falls back to English for a missing block or a missing key,
   throws by name for an unparseable tag (through `toIntlLocale()`, so the underscore form every other locale
@@ -225,9 +227,11 @@ prepared under that number was skipped, and everything it was to have delivered 
   language with no block at all failed on the first, with a bare
   `TypeError: Cannot read properties of undefined` naming neither the component, nor the locale, nor the fact
   that it was the message catalogue rather than the API that lacked the language. The worst of the six was
-  `EpiphanyInput`, which `ApiOptions` builds in its constructor: since all six meta-components build an
-  `ApiOptions`, `new CalendarViewer( { locale: 'ceb' } )` — or any `locale` wired straight from
-  `document.documentElement.lang` — died at construction, inside a component the consumer never touched. The
+  `EpiphanyInput`, which `ApiOptions` builds in its constructor: since five of the six composed components
+  build an `ApiOptions` — `CalendarControls` and `DayViewer` directly, the other three through
+  `CalendarControls`; `CalendarResourcePicker` builds none — `new CalendarViewer( { locale: 'ceb' } )`, or any
+  `locale` wired straight from `document.documentElement.lang`, died at construction inside a component the
+  consumer never touched. The
   other five were
   `EternalHighPriestInput`'s, `YearTypeInput`'s and `CalendarPathInput`'s option and label text,
   `CalendarSelect.label()`'s default text, and `LiturgyOfTheDay`'s title. All six now fall back to English.

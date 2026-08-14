@@ -96,8 +96,11 @@ exception, present in all 84 because `WebCalendar` has long used it as a column 
 The controls' **option** text follows the same rule since #69. `_epiphanyInput`, `_yearTypeInput`,
 `_eternalHighPriestInput` and `_calendarPathInput` used to read their option and route labels through an
 unguarded `Messages[locale.language][KEY]`, which threw for any language with no block at all — and, because
-`ApiOptions` builds every input in its constructor and all six meta-components build an `ApiOptions`, took
-the whole page with it. There is no warning on the fallback: a block that lacks a key is the documented
+`ApiOptions` builds every input in its constructor, took the whole page with it wherever an `ApiOptions` is
+built. That is five of the six composed components: `CalendarControls` and `DayViewer` build one directly,
+and `CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` inherit it through `CalendarControls`.
+`CalendarResourcePicker` is the exception — it bundles only a `RiteSelect` and a `CalendarSelect`, and
+references `ApiOptions` nowhere. There is no warning on the fallback: a block that lacks a key is the documented
 normal case here, not an anomaly.
 
 `_acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it

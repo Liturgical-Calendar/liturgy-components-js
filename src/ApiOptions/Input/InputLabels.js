@@ -19,12 +19,15 @@
  *
  * **The fallback is the point of this function existing** rather than ten
  * inlined lookups. It now delegates to `src/MessageLookup.js`'s `message()`,
- * which is the library's single guarded read of the catalogue (issue #69): four
- * of the six sites that still threw were neither inputs nor labels, so the guard
- * had to move somewhere both this module and `CalendarSelect` could reach. This
- * wrapper survives that move because it carries a rationale `message()` does not
- * — the `null`-means-English default appropriate to a LABEL — and because ten
- * call sites read better naming what they are looking up.
+ * the canonical catalogue lookup for the call sites migrated onto it (issue
+ * #69): four of the six sites that still threw were neither inputs nor labels,
+ * so the guard had to move somewhere both this module and `CalendarSelect` could
+ * reach. It is not the library's ONLY guarded read — `src/MetaComponents/`
+ * still applies the same `?? Messages['en'][…]` shape inline, correctly, and
+ * `WebCalendar`/`LiturgyOfAnyDay` are still unguarded (issue #83). This wrapper
+ * survives the move because it carries a rationale `message()` does not — the
+ * `null`-means-English default appropriate to a LABEL — and because ten call
+ * sites read better naming what they are looking up.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0

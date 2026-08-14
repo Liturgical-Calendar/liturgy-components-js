@@ -8,9 +8,13 @@
  * miss throws a bare `TypeError: Cannot read properties of undefined`, naming
  * neither the component, nor the locale, nor the fact that it is this catalogue
  * — not the API — that lacks the language. That was issue #69: `ApiOptions`
- * builds ten inputs in its constructor, and all six meta-components build an
- * `ApiOptions`, so a `locale` wired from `document.documentElement.lang` could
- * take down a page through a component the consumer never touched.
+ * builds ten inputs in its constructor, and five of the six composed components
+ * build an `ApiOptions` — `CalendarControls` and `DayViewer` directly, and
+ * `CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` through
+ * `CalendarControls` — so a `locale` wired from `document.documentElement.lang`
+ * could take down a page through a component the consumer never touched.
+ * (`CalendarResourcePicker` is the exception: it bundles only a `RiteSelect` and
+ * a `CalendarSelect`, and both were guarded here too.)
  *
  * The fix is one shared implementation rather than a guard per call site,
  * because a guard per call site is exactly the shape that produced the bug:
