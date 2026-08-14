@@ -1237,10 +1237,29 @@ export default class ApiClient {
             throw new Error('Expected an instance of CalendarSelect');
         }
         calendarSelect._domElement.addEventListener('change', () => {
+            // A select can legitimately have NOTHING selected, and reading
+            // `.value`/`.dataset` off the missing option threw a bare `TypeError`
+            // from inside this listener — where the DOM swallows it, leaving a
+            // page that simply stops updating. See issue #66.
+            //
+            // Falling back to the rite-level calendar is not a papered-over
+            // programmer error, it is the only thing the DOM still reports:
+            // `HTMLSelectElement.value` is `''` whenever `selectedIndex === -1`,
+            // so the offending value has already been discarded and "nothing
+            // selected" is indistinguishable from "the empty option is selected".
+            // `PathBuilder`, `SubscriptionUrl` and `CalendarControls.fetch()` all
+            // read it that way already.
+            //
+            // And the library PRODUCES this state itself: `#applyLinkedRite()`
+            // resets the value to `''` around the rebuild, which an
+            // `allowNull( false )` select has no option to match, then dispatches
+            // `change` — so throwing here would break an ordinary rite change.
+            // The message naming an unmatched value belongs at
+            // `CalendarSelect.value()`, which still has the value in hand.
             const selectedOption =
                 calendarSelect._domElement.selectedOptions[0];
-            this.#currentCalendarId = selectedOption.value;
-            this.#currentCategory = selectedOption.dataset.calendartype ?? '';
+            this.#currentCalendarId = selectedOption?.value ?? '';
+            this.#currentCategory = selectedOption?.dataset.calendartype ?? '';
             // The three-way branch this listener used to carry is exactly what
             // `refetchCalendarData()` does, and the flush calls it once the whole
             // batch has settled. Branching here as well would have picked the

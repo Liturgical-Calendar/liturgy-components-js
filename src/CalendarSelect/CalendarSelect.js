@@ -1131,9 +1131,16 @@ export default class CalendarSelect {
      * When called without arguments, returns the current selected value.
      * When called with a value argument, sets the selected value and returns the instance for chaining.
      *
+     * A non-empty value that no current option carries is rejected by name rather
+     * than assigned: the DOM would discard it, leaving `selectedIndex === -1` and a
+     * value that reads back as `''` everywhere afterwards. `''` itself is always
+     * accepted — it asks for the rite-level calendar, and lands on
+     * `selectedIndex === -1` by design on a select with no empty option.
+     *
      * @param {string} [val] - The value to set. If omitted, the method acts as a getter.
      * @returns {string|CalendarSelect} The current value when used as getter, or the instance when used as setter.
      * @throws {Error} If the provided value is not a string.
+     * @throws {Error} If the provided value is a non-empty string that no option of this select carries.
      */
     value(val) {
         if (typeof val === 'undefined') {
@@ -1143,6 +1150,34 @@ export default class CalendarSelect {
             throw new Error(
                 'Invalid type for value, must be of type string but found type: ' +
                     typeof val,
+            );
+        }
+        // Assigning a value no option carries leaves `selectedIndex === -1`, and
+        // the DOM discards the value as it does so: every later reader sees only
+        // `''`. This is therefore the LAST point at which the mistake can be
+        // named, which is why it is named here rather than in the listeners that
+        // eventually trip over the empty selection (issue #66).
+        //
+        // `''` is exempt, and must stay exempt: it is the documented way to ask
+        // for the rite-level calendar, `#allowNull` is `false` by default, and
+        // `#applyLinkedRite()` writes it on every rite change — so on most selects
+        // it lands on `selectedIndex === -1` by design.
+        //
+        // Compared option by option rather than through a `[value="…"]` selector,
+        // which would need escaping for a calendar_id carrying a quote.
+        if (
+            '' !== val &&
+            false ===
+                [...this.#domElement.options].some(
+                    (option) => option.value === val,
+                )
+        ) {
+            const named =
+                '' === this.#domElement.id ? '' : ` #${this.#domElement.id}`;
+            throw new Error(
+                `CalendarSelect.value: no option of this select${named} carries the value '${val}'. ` +
+                    `It currently offers ${this.#domElement.options.length} option(s), filter '${this.#filter}'. ` +
+                    `Set the value only once the option exists — a rite change rebuilds this list — or pass '' for the rite-level calendar.`,
             );
         }
         this.#domElement.value = val;
