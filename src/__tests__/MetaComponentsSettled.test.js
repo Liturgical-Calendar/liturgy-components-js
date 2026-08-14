@@ -110,6 +110,75 @@ const deferRequests = () => {
 };
 
 /**
+ * As {@link deferRequests}, but the held-open response carries one real event.
+ *
+ * `WebCalendar` and `LiturgyOfAnyDay` both THROW on an empty `litcal[]` from
+ * inside their `calendarFetched` listeners, which turns an otherwise successful
+ * fetch into a rejected promise. The `mountInto()` tests never notice, because
+ * those factories hold the rejection themselves; a constructor-path test that
+ * awaits `fetch()` does. So the renderer-bearing components get a payload they
+ * accept — the same minimal event `DayViewerMount.test.js` uses.
+ *
+ * @returns {function(): void} Lands the response.
+ */
+const deferRequestsWithEvent = () => {
+    let land;
+    global.fetch = jest.fn(
+        () =>
+            new Promise((resolve) => {
+                land = () =>
+                    resolve({
+                        ok: true,
+                        status: 200,
+                        headers: { get: () => 'application/json' },
+                        json: () =>
+                            Promise.resolve({
+                                litcal: [
+                                    {
+                                        event_key: 'StJohnVianney',
+                                        event_idx: 1,
+                                        name: 'Saint John Mary Vianney, Priest',
+                                        color: ['white'],
+                                        color_lcl: ['white'],
+                                        grade: 3,
+                                        grade_lcl: 'Memorial',
+                                        grade_abbr: 'M',
+                                        grade_display: null,
+                                        common: ['Pastors'],
+                                        common_lcl: 'Pastors',
+                                        type: 'fixed',
+                                        date: '2026-06-15T00:00:00+00:00',
+                                        year: 2026,
+                                        month: 6,
+                                        month_short: 'Jun.',
+                                        month_long: 'June',
+                                        day: 15,
+                                        day_of_the_week_iso8601: 1,
+                                        day_of_the_week_short: 'Mon',
+                                        day_of_the_week_long: 'Monday',
+                                        liturgical_year: null,
+                                        is_vigil_mass: false,
+                                        psalter_week: 2,
+                                        liturgical_season: 'ORDINARY_TIME',
+                                        liturgical_season_lcl: 'Ordinary Time',
+                                        holy_day_of_obligation: false,
+                                    },
+                                ],
+                                settings: {
+                                    year: 2026,
+                                    locale: 'en',
+                                    year_type: 'CIVIL',
+                                },
+                                metadata: { version: 'test' },
+                                messages: [],
+                            }),
+                    });
+            }),
+    );
+    return () => land();
+};
+
+/**
  * Drains the microtask queue without letting a macrotask through, so anything
  * still waiting on a held-open response stays unsettled.
  *
@@ -257,13 +326,201 @@ describe('settled is already resolved when no initial fetch ran', () => {
         expect(urls.some((url) => url.includes('/calendar/'))).toBe(false);
     });
 
-    it('is resolved on a hand-constructed instance', async () => {
+    it('is resolved on a hand-constructed instance that has not fetched', async () => {
         captureRequests();
         const controls = new CalendarControls({ locale: 'en' });
 
-        // The library performed no initial fetch here; the caller drives it with
-        // `fetch()`, whose promise they already hold.
+        // Nothing has been issued yet. Once the caller drives `fetch()`
+        // themselves, this same property tracks THAT request — see the
+        // constructor-path block below.
         await expect(controls.settled).resolves.toBeUndefined();
+    });
+});
+
+/**
+ * `settled` on the constructor path (#61).
+ *
+ * `mountInto()` publishes this signal because it drops the initial fetch's
+ * promise. A hand-constructed instance holds its own promise from `fetch()`, so
+ * `settled` is not the only way to sequence there — but a caller who reaches
+ * `settled` should not have to know which construction path produced the
+ * instance, which is the same reasoning that keeps the property on
+ * `CalendarViewer` even though its factory already awaits the fetch.
+ *
+ * So `settled` means: the most recent fetch THIS COMPONENT issued —
+ * `mountInto()`'s initial one, or the latest `fetch()` call. Every other clause
+ * of the contract above is unchanged, and the tests below hold each of them to
+ * that: it still never rejects, it is still already-resolved before anything is
+ * issued, and the promise `fetch()` hands back is still the caller's, rejection
+ * and all.
+ *
+ * Refetches driven by `ApiClient`'s own `listenTo()` change listeners are NOT
+ * observed, on either path: those requests are issued inside `ApiClient` and the
+ * meta-component never sees their promises.
+ */
+describe('settled tracks a constructor-path fetch()', () => {
+    it('stays pending until CalendarControls’ own fetch() lands', async () => {
+        const land = deferRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        controls.listenTo(apiClient);
+
+        // Nothing issued yet.
+        await expect(controls.settled).resolves.toBeUndefined();
+
+        const fetching = controls.fetch();
+        let done = false;
+        controls.settled.then(() => {
+            done = true;
+        });
+        await drain();
+        expect(done).toBe(false);
+
+        land();
+        await expect(controls.settled).resolves.toBeUndefined();
+        await expect(fetching).resolves.toBeDefined();
+    });
+
+    it('stays pending until CalendarViewer’s own fetch() lands', async () => {
+        const land = deferRequestsWithEvent();
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new CalendarViewer({ locale: 'en' });
+        viewer.appendTo({ controls: '#mount', calendar: '#calendar' });
+        viewer.listenTo(apiClient);
+
+        const fetching = viewer.fetch();
+        let done = false;
+        viewer.settled.then(() => {
+            done = true;
+        });
+        await drain();
+        expect(done).toBe(false);
+
+        land();
+        await expect(viewer.settled).resolves.toBeUndefined();
+        await fetching;
+    });
+
+    it('stays pending until DayViewer’s own fetch() lands', async () => {
+        const land = deferRequestsWithEvent();
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new DayViewer({ locale: 'en' });
+        viewer.appendTo('#mount');
+        viewer.listenTo(apiClient);
+
+        const fetching = viewer.fetch();
+        let done = false;
+        viewer.settled.then(() => {
+            done = true;
+        });
+        await drain();
+        expect(done).toBe(false);
+
+        land();
+        await expect(viewer.settled).resolves.toBeUndefined();
+        await fetching;
+    });
+
+    it('still resolves when that fetch fails, while the returned promise rejects', async () => {
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        controls.listenTo(apiClient);
+
+        // The `.catch` `settled` is built from is a HANDLED derived branch: it
+        // neither swallows the caller's rejection nor creates a second,
+        // unhandled one.
+        const fetching = controls.fetch();
+        await expect(fetching).rejects.toThrow();
+        await expect(controls.settled).resolves.toBeUndefined();
+    });
+
+    it('is replaced by each further fetch(), so it tracks the latest one', async () => {
+        let land = deferRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        controls.listenTo(apiClient);
+
+        const first = controls.fetch();
+        land();
+        await controls.settled;
+        await first;
+
+        // A second request, deliberately for a different year so the cache
+        // cannot answer it synchronously and hide the point.
+        land = deferRequests();
+        apiClient.year(2030);
+        const second = controls.fetch();
+        let done = false;
+        controls.settled.then(() => {
+            done = true;
+        });
+        await drain();
+        expect(done).toBe(false);
+
+        land();
+        await expect(controls.settled).resolves.toBeUndefined();
+        await second;
+    });
+
+    it('is untouched when fetch() throws synchronously', async () => {
+        captureRequests();
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+
+        // No client is wired, so no request was issued and there is nothing new
+        // to settle.
+        expect(() => controls.fetch()).toThrow(/no ApiClient is wired/);
+        await expect(controls.settled).resolves.toBeUndefined();
+    });
+
+    it('resolves with undefined after a SUCCESSFUL mountInto fetch, not with the payload', async () => {
+        // The contract says `undefined`, and says why: the data has a channel
+        // already in `onCalendarFetched()`, and a second one would be free to
+        // drift from it. `.catch( handler )` alone does not deliver that — it
+        // passes a fulfilled value straight through — so on the success path
+        // `settled` used to resolve with the whole calendar payload. Only the
+        // FAILURE path was ever covered, which is how that survived.
+        captureRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = await CalendarControls.mountInto('#mount', {
+            locale: 'en',
+            apiClient,
+        });
+
+        await expect(controls.settled).resolves.toBeUndefined();
+    });
+
+    it('resolves with undefined after a successful CalendarViewer mount too', async () => {
+        captureRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = await CalendarViewer.mountInto(
+            { controls: '#mount', calendar: '#calendar' },
+            { locale: 'en', apiClient },
+        );
+
+        await expect(viewer.settled).resolves.toBeUndefined();
+    });
+
+    it('is still the factory’s error-delivering branch on the mountInto path', async () => {
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const errors = [];
+        const controls = await CalendarControls.mountInto('#mount', {
+            locale: 'en',
+            apiClient,
+            onError: (error) => errors.push(error),
+        });
+
+        // `fetch()` stores its own swallowing branch, and the factory then
+        // overwrites `#settled` with the branch that delivers to `onError()`.
+        // If that ordering ever inverted, this could resolve before the callback
+        // had run.
+        await controls.settled;
+        expect(errors).toHaveLength(1);
     });
 });
 

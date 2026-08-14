@@ -106,8 +106,9 @@ export default class CalendarControls {
     #disposed = false;
 
     /**
-     * The initial fetch `mountInto()` performed, already resolved when it
-     * performed none. See the `settled` getter for the contract.
+     * The most recent fetch this component issued — `mountInto()`'s initial one,
+     * or the caller's own `fetch()` — already resolved when none has been
+     * issued. See the `settled` getter for the contract.
      *
      * @type {Promise<void>}
      * @private
@@ -346,7 +347,7 @@ export default class CalendarControls {
      * @throws {Error} If this instance has been disposed.
      */
     /**
-     * Resolves once `mountInto()`'s initial fetch has settled.
+     * Resolves once the most recent fetch these controls issued has settled.
      *
      * `mountInto()` resolves to the controls, not to the calendar data, and drops
      * the initial fetch's promise — so a caller had no way to sequence on that
@@ -356,18 +357,38 @@ export default class CalendarControls {
      * one missing signal, and only that: it answers "has it finished", never
      * "did it work".
      *
+     * **What it observes.** `mountInto()`'s initial fetch, and every `fetch()`
+     * call, on both construction paths — each REPLACING what came before, so it
+     * always names the latest request this component issued rather than the
+     * first. A caller who fetches twice wants to know when the second finished;
+     * keeping only the first would make the property dead after one use. It was
+     * once reachable only from `mountInto()`, which was exactly backwards: a
+     * single pre-append flag (`_acceptHeaderInput.hide()`, now the
+     * `inputs: { acceptHeader }` option) put every real consumer on the
+     * constructor path, where this signal did not exist (#61).
+     *
+     * It does NOT observe the refetches `ApiClient`'s own `listenTo()` change
+     * listeners drive — a user picking a different calendar. Those requests are
+     * issued inside `ApiClient` and their promises never reach this class.
+     *
      * **It always resolves, never rejects**, with `undefined`. A property present
      * on every mounted instance that could reject would produce an unhandled
      * rejection for every caller who never reads it — precisely the trap
-     * `mountInto()` avoids today by discarding. What is stored is the promise
-     * AFTER the factory's own `.catch`, so resolve-always comes for free rather
-     * than being bolted on. Success and failure stay with `onError()`, which also
-     * reports the failures raised before a request is ever issued.
+     * `mountInto()` avoids today by discarding. What is stored is a HANDLED
+     * derived branch of the fetch promise, built with a two-callback `then()`:
+     * the promise `fetch()` hands back is untouched and still the caller's to
+     * handle, and the branch resolves with `undefined` on success as well as on
+     * failure. (A bare `.catch( handler )` would not: it passes a fulfilled value
+     * straight through, so this used to resolve with the whole calendar payload —
+     * a second data channel free to drift from `onCalendarFetched()`.) Success
+     * and failure stay with `onError()`, which also reports the failures raised
+     * before a request is ever issued.
      *
-     * It is **always a promise**, already resolved when no initial fetch ran —
+     * It is **always a promise**, already resolved when nothing has been issued —
      * `initialFetch: false`, no `apiClient`, or a hand-constructed instance whose
-     * caller drives `fetch()` themselves and therefore already holds that promise.
-     * An absent property would break `.then()` and force callers to feature-detect.
+     * caller has not called `fetch()` yet. A `fetch()` that throws synchronously,
+     * for want of a wired client, issues nothing and so leaves it untouched. An
+     * absent property would break `.then()` and force callers to feature-detect.
      *
      * `CalendarResourcePicker` and `ApiExplorer` have no such property, and that
      * absence is deliberate: neither ever fetches, so neither has anything to
@@ -377,7 +398,7 @@ export default class CalendarControls {
      *
      * Throws once these controls have been disposed; see [`dispose()`](#dispose).
      *
-     * @returns {Promise<void>} Settles when the initial fetch has finished.
+     * @returns {Promise<void>} Settles when the latest fetch has finished.
      * @throws {Error} If this instance has been disposed.
      */
     get settled() {
@@ -790,16 +811,35 @@ export default class CalendarControls {
         }
         const element = this.#calendarSelect._domElement;
         const value = element.value;
+        let promise;
         if ('' === value) {
-            return this.#apiClient.fetchCalendar(this.#selectedLocale);
+            promise = this.#apiClient.fetchCalendar(this.#selectedLocale);
+        } else {
+            const selected = element.options[element.selectedIndex];
+            promise =
+                'diocesan' === selected?.dataset.calendartype
+                    ? this.#apiClient.fetchDiocesanCalendar(
+                          value,
+                          this.#selectedLocale,
+                      )
+                    : this.#apiClient.fetchNationalCalendar(
+                          value,
+                          this.#selectedLocale,
+                      );
         }
-        const selected = element.options[element.selectedIndex];
-        return 'diocesan' === selected?.dataset.calendartype
-            ? this.#apiClient.fetchDiocesanCalendar(value, this.#selectedLocale)
-            : this.#apiClient.fetchNationalCalendar(
-                  value,
-                  this.#selectedLocale,
-              );
+        // `settled` tracks the most recent fetch this component issued, so a
+        // hand-constructed instance publishes the same signal `mountInto()`
+        // does (#61). The `.catch` is a HANDLED derived branch: the promise
+        // returned below is untouched and still the caller's to handle, so this
+        // neither swallows their rejection nor creates a second, unhandled one.
+        // `mountInto()` overwrites `#settled` immediately afterwards with its
+        // own error-delivering branch — deliberately, so that branch stays the
+        // one a caller awaits there.
+        this.#settled = promise.then(
+            () => {},
+            () => {},
+        );
+        return promise;
     }
 
     /**
@@ -970,17 +1010,27 @@ export default class CalendarControls {
                 // `#deliverError()` tries the callbacks; only if nothing received
                 // the error at all does it fall back to the console, so a failure
                 // is never silent and never double-reported.
-                // Captured rather than merely dropped. This expression — AFTER
-                // the `.catch` — already resolves whatever happens, which is
-                // exactly the contract `settled` publishes, so exposing it costs
-                // nothing and changes nothing about the handling above.
-                controls.#settled = controls.fetch().catch((error) => {
-                    if (false === controls.#deliverError(error)) {
-                        console.error(
-                            `CalendarControls: could not load the calendar: ${error.message}`,
-                        );
-                    }
-                });
+                // Captured rather than merely dropped. The two-callback
+                // `then()` is what makes this expression resolve with
+                // `undefined` whatever happens, which is exactly the contract
+                // `settled` publishes: `.catch( handler )` alone passes a
+                // FULFILLED value straight through, so the success path used to
+                // hand back the whole calendar payload — a second data channel,
+                // free to drift from `onCalendarFetched()`. The rejection
+                // handling below is unchanged. `fetch()` stores a swallowing
+                // branch of its own; this assignment runs after it and wins, so
+                // what a caller awaits here is still the branch that delivers to
+                // `onError()`.
+                controls.#settled = controls.fetch().then(
+                    () => {},
+                    (error) => {
+                        if (false === controls.#deliverError(error)) {
+                            console.error(
+                                `CalendarControls: could not load the calendar: ${error.message}`,
+                            );
+                        }
+                    },
+                );
             }
         }
 
