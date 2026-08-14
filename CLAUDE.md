@@ -489,9 +489,11 @@ the theme bag exists to replace. Four things about it are load-bearing and easy 
   Precedence, per key: `theme.apiOptions[ input ]` > `theme.localeInput` (that input only) >
   `theme.apiOptions` flat > outer flat. One resolver, four layers; nothing merges twice.
 - **`assertTheme()` catches typos at the new depth too**, both for a key inside `apiOptions` and for a key
-  inside a per-input override. The per-input check is deliberately STRICTER than the two-level one,
+  inside a per-input override, AND it rejects any of the other nine input names written at the top level,
+  pointing at the nested spelling. The per-input check is deliberately STRICTER than the two-level one,
   because the role is known there. Silently dropping an unrecognised key is the exact failure mode issue
-  #43 was filed about.
+  #43 was filed about, and shipping ten names that work nested while one of them also works at the top
+  level is what would otherwise have made that misplacement easy to write.
 - **Every one of the ten inputs is themed regardless of `filter`.** They all exist; `filter` decides only
   which are appended. Theming one the filter hides must stay inert rather than throwing.
 

@@ -207,6 +207,24 @@ export function assertTheme(theme, componentName) {
             assertApiOptionsTheme(value, componentName);
             continue;
         }
+        // An `ApiOptions` input named at the TOP level, where only `localeInput`
+        // is answered. Rejected rather than accepted-and-dropped, because issue
+        // #60 is exactly what makes this misplacement plausible: it ships ten key
+        // names that work under `apiOptions` while ONE of them, `localeInput`,
+        // also works here — so `{ localeInput: …, yearInput: … }` written by
+        // analogy would otherwise have half of it silently ignored, which is the
+        // issue-#43 failure mode arriving by a new route. No meta-component has a
+        // per-child key sharing any of the ten names, so nothing legitimate is
+        // caught here; a child added later under one of those names would have to
+        // reconcile with this list.
+        if (
+            API_OPTIONS_INPUT_KEYS.includes(key) &&
+            false === LEGACY_TOP_LEVEL_INPUT_KEYS.includes(key)
+        ) {
+            throw new Error(
+                `${componentName}: theme.${key} is an ApiOptions input, which the theme bag reaches through the nested key. Write it as theme.${API_OPTIONS_KEY}.${key} instead.`,
+            );
+        }
         if (FLAT_KEYS.includes(key)) {
             if (typeof value !== 'string') {
                 throw new Error(

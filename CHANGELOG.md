@@ -32,7 +32,10 @@ prepared under that number was skipped, and everything it was to have delivered 
   allowance on ten inputs that a consumer may still be styling by hand.
 
   **An unrecognised key inside `apiOptions` throws, naming it**, at both new levels — the typo check that
-  issue #43 was filed over now holds at the added depth. The per-input check is stricter than the
+  issue #43 was filed over now holds at the added depth. So does naming one of the other nine inputs at
+  the TOP level, where only `localeInput` is answered: `theme: { localeInput: …, yearInput: … }` written
+  by analogy would otherwise have had half of it silently dropped, and the error points at
+  `theme.apiOptions.yearInput` instead. The per-input check is stricter than the
   top-level one: the role is known there, so a `liturgy`-role key such as `titleClass` on an input is
   rejected rather than accepted and dropped. The shorter spellings `epiphany`/`holydaysOfObligation` are
   deliberately not accepted — they would make the already-shipped `localeInput` inconsistent, and they

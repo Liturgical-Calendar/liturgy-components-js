@@ -134,6 +134,35 @@ describe('assertTheme — theme.apiOptions', () => {
         ).toThrow(/theme\.apiOptions\.epiphanyInput/);
     });
 
+    it('rejects an ApiOptions input named at the TOP level, pointing at the nested spelling', () => {
+        expect(() =>
+            assertTheme(
+                { yearInput: { class: 'form-control' } },
+                'CalendarControls',
+            ),
+        ).toThrow(/theme\.apiOptions\.yearInput/);
+    });
+
+    it('rejects every non-legacy input key at the top level, not just one', () => {
+        for (const key of API_OPTIONS_INPUT_KEYS) {
+            if ('localeInput' === key) {
+                continue;
+            }
+            expect(() =>
+                assertTheme({ [key]: 'form-select' }, 'CalendarControls'),
+            ).toThrow(new RegExp(`theme\\.apiOptions\\.${key}`));
+        }
+    });
+
+    it('still accepts the legacy top-level localeInput', () => {
+        expect(() =>
+            assertTheme(
+                { localeInput: { class: 'form-select' } },
+                'CalendarControls',
+            ),
+        ).not.toThrow();
+    });
+
     it('allows an explicitly-undefined per-input override value', () => {
         expect(() =>
             assertTheme(

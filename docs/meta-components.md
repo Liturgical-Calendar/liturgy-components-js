@@ -825,7 +825,26 @@ existing consumer's form in a minor release, and a flat `wrapper` would silently
 
 Tier 2 exists only because `theme.localeInput` shipped as public API in 2.7.0. It is a tier of one
 resolution, not a competing path: the two merge key by key, with the more specific spelling winning each
-key, exactly as a per-child override already wins over a flat default.
+key, exactly as a per-child override already wins over a flat default. **`localeInput` is the only input
+name accepted at the top level** — naming any of the other nine there throws, pointing at the nested
+spelling, rather than being accepted and silently dropped.
+
+Note that tiers 3 and 4 arrive together: opening the gate for one narrow reason —
+`apiOptions: { input: 'form-control' }`, say — also lets the OUTER flat `select`/`label`/`wrapper` reach
+all ten inputs. That is what makes `apiOptions: {}` a complete opt-in on its own. A bundle key can
+override an outer one but cannot cancel it, so a form that must differ wholesale from the selects around
+it is expressed by moving those outer flat keys down onto `riteSelect`/`calendarSelect` as per-child
+overrides and letting the bundle carry the form's own.
+
+**Two smaller edges worth knowing, both about keys that mean something else nearby:**
+
+- **The bundle's flat `wrapper` names a CLASS, and the element type it pairs with is always `div`.** That
+  is the same split the outer flat `wrapper` has, but it also means the bundle's flat key overrides
+  `Input.setGlobalWrapper( 'td' )` back to a `<div>`. To wrap in `<td>`, name `wrapper: 'td'` on each
+  per-input key that needs it — there is no bundle-level wrapper-type key.
+- **`acceptHeaderInput.labelText` is not final.** `AcceptHeaderInput.asReturnTypeParam()` rewrites its own
+  label text, so calling it through the escape hatch after the theme has applied replaces a themed label
+  with `return_type` or `Accept Header`. Theme it after that call, not before.
 
 **The escape hatch can throw when aimed at an input the bag already themed.** `Input.wrapper()` is
 one-shot (2.6.0), and a bag naming a class also closes `wrapperClass()` for the rest of that instance's
