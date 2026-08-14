@@ -562,10 +562,28 @@ export default class ApiOptions {
      * @private
      */
     static #holydayStates(input) {
+        // SORTED, so the comparison is over the SET of key/state pairs rather
+        // than over DOM order. `setOptions()` rebuilds the `<option>` list from
+        // scratch in the published object's own property order, so an
+        // order-sensitive comparison would report a change where the pairs are
+        // identical, costing an `ApiClient` refetch for exactly what is already
+        // on screen (CodeRabbit, PR #81).
+        //
+        // **Deliberately untested, because it is currently unreachable.** Two
+        // things would have to hold: two rites both publishing settings, and the
+        // second publishing the first's pairs in a different order. Only the
+        // Ambrosian rite publishes any, and `applyRite()` clears the calendar
+        // selection before `#applyRiteToHolydaysInput()` runs — so the `before`
+        // snapshot is never a nation's list either. Attempting a test for it
+        // produced one that passed with the sort removed; it was withdrawn
+        // rather than shipped as false coverage. This stays as hardening against
+        // a third rite, or a Roman `roman_calendars` entry, appearing later.
         return Array.from(
             input._domElement.options,
             (option) => `${option.value}=${option.selected}`,
-        ).join(',');
+        )
+            .sort()
+            .join(',');
     }
 
     /**

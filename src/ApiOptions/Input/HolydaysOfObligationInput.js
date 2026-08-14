@@ -88,6 +88,20 @@ export default class HolydaysOfObligationInput extends SelectInput {
         return [...options];
     }
 
+    /**
+     * Merges custom options over {@link HolydaysOfObligationInput.BASE_OPTIONS},
+     * keeping every base entry the caller did not name.
+     *
+     * This is the right shape for a NATION's list, which the API publishes as a
+     * full set naming all ten base keys — but wrong for a RITE's, which drops
+     * four base entries and adds three of its own. `setOptions()` therefore takes
+     * a `merge` flag rather than always merging; see its own comment (issue #70).
+     *
+     * @param {Array<{value: string, label: string, selected: boolean}>} customOptions -
+     *        The options to merge over the base set.
+     * @returns {Array<{value: string, label: string, selected: boolean}>} The merged set.
+     * @throws {Error} If `customOptions` is not a non-empty array of valid options.
+     */
     static mergeOptions(customOptions) {
         if (!Array.isArray(customOptions) || customOptions.length === 0) {
             return [...HolydaysOfObligationInput.BASE_OPTIONS];
@@ -162,6 +176,7 @@ export default class HolydaysOfObligationInput extends SelectInput {
             }
             this._domElement.appendChild(optionElement);
         });
+        return this;
     }
 
     get _options() {
