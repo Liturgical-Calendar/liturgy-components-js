@@ -191,6 +191,39 @@ describe('LiturgyOfAnyDay live region', () => {
         );
     });
 
+    it('recovers its voice when the refetch a year change issued fails', async () => {
+        // `#refetchPending` is cleared by the `calendarFetched` handler, which a
+        // FAILED request never reaches. Left sticky, one failed request would
+        // silence the widget for the rest of the page's life — including for
+        // day and month changes, which never refetch at all.
+        const { widget, apiClient } = await mounted();
+        apiClient._eventBus.emit(
+            'calendarFetched',
+            payloadFor(selectedDate(widget)),
+        );
+        // Subscribed so the client suppresses its own console.error for a
+        // rejection nobody else is holding.
+        apiClient.on('calendarFetchFailed', () => {});
+        global.fetch = jest.fn(() => Promise.reject(new Error('offline')));
+
+        const yearInput = widget._yearInput._domElement;
+        yearInput.value = String(Number(yearInput.value) + 1);
+        yearInput.dispatchEvent(new Event('change'));
+        // Let the rejected request settle. `ApiClient`'s failure path spans
+        // several awaits, so a fixed number of microtask ticks is not enough —
+        // real timers and a macrotask are.
+        jest.useRealTimers();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const dayInput = widget._dayInput._domElement;
+        dayInput.value = String(Number(dayInput.value) === 1 ? 2 : 1);
+        dayInput.dispatchEvent(new Event('change'));
+
+        expect(widget._liveRegion.textContent).toBe(
+            `Liturgy for ${widget._dateElement.textContent} updated`,
+        );
+    });
+
     it('mounts no region when announcements are turned off', async () => {
         const { widget } = await mounted({ announceUpdates: false });
         expect(widget._domElement.querySelector('[role="status"]')).toBeNull();

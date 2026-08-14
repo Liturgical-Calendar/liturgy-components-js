@@ -257,7 +257,7 @@ export default class LiturgyOfAnyDay {
                 // Dropping the promise here would surface as an unhandled rejection. The client
                 // suppresses it when a 'calendarFetchFailed' subscriber exists and logs it when
                 // none does; delegating keeps that rule identical across modules.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient.year(yearToFetch).refetchCalendarData(),
                 );
             }
@@ -382,7 +382,7 @@ export default class LiturgyOfAnyDay {
                 this.#currentYearType = YearType.LITURGICAL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient
                         .yearType(YearType.LITURGICAL)
                         .year(year + 1)
@@ -397,7 +397,7 @@ export default class LiturgyOfAnyDay {
                 this.#currentYearType = YearType.CIVIL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient
                         .yearType(YearType.CIVIL)
                         .year(year)
@@ -409,6 +409,33 @@ export default class LiturgyOfAnyDay {
 
         this.#renderEvents();
         return false;
+    }
+
+    /**
+     * Hands a refetch to the client, and clears `#refetchPending` when it lands.
+     *
+     * The flag is cleared by the `calendarFetched` handler on the success path,
+     * which a FAILED request never reaches — so without this, one failed request
+     * would silence the widget for the rest of the page's life, including for
+     * the day and month changes that never refetch at all.
+     *
+     * The settle handler is attached to a DERIVED promise rather than to
+     * `request` itself: rejection tracking is per promise object, so
+     * `_discardRequest()` still receives a promise carrying no handler of its
+     * own and applies its log-or-suppress rule exactly as before. The derived
+     * promise handles both outcomes, so it never rejects and produces no
+     * unhandled rejection of its own.
+     *
+     * @param {Promise<import('../typedefs.js').CalendarData>} request - The refetch.
+     * @returns {void}
+     * @private
+     */
+    #issueRefetch(request) {
+        const settled = () => {
+            this.#refetchPending = false;
+        };
+        request.then(settled, settled);
+        this.#apiClient._discardRequest(request);
     }
 
     /**

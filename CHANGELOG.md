@@ -187,6 +187,13 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Fixed
 
+- **`LiturgyOfAnyDay` no longer goes permanently silent after a failed year refetch.** The
+  `#refetchPending` flag that keeps the stale, pre-refetch render from being announced was cleared only by
+  the `calendarFetched` handler, which a rejected request never reaches — so a single failed request would
+  have suppressed every later announcement, including for the day and month changes that never refetch at
+  all. It is now cleared whichever way the request settles, through a handler attached to a derived promise
+  so `_discardRequest()`'s log-or-suppress rule is untouched. Introduced and fixed within #65.
+
 - **`SubscriptionUrl`'s copy region was not actually clipped**, and gains `role="status"` and
   `aria-atomic="true"` in passing. It wrote `clip: rect(0 0 0 0)`; the space-separated form is not CSS2
   `rect()` syntax, so a strict parser discards the declaration outright — measured in jsdom, where the
