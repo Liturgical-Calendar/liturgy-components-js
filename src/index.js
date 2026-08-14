@@ -16,6 +16,7 @@ import ApiExplorer from './MetaComponents/ApiExplorer.js';
 import SubscriptionBuilder from './SubscriptionBuilder/SubscriptionBuilder.js';
 import Input from './ApiOptions/Input/Input.js';
 import Utils from './Utils.js';
+import { VERSION } from './Version.js';
 import {
     Grouping,
     ColorAs,
@@ -60,4 +61,5 @@ export {
     YearType,
     Rite,
     RiteProperties,
+    VERSION,
 };
