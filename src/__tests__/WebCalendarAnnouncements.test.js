@@ -158,14 +158,35 @@ describe('WebCalendar live region', () => {
         );
     });
 
-    it('keeps the very same region node across the table swap', async () => {
-        // Removing and re-inserting a live region is what stops it being
-        // announced, so this is the property the swap exists to hold.
+    it('never takes the region out of the DOM across the table swap', async () => {
+        // The property the swap exists to hold. Asserted on the MUTATIONS
+        // rather than on node identity, because `replaceChildren( table )`
+        // followed by re-appending the region leaves identity intact while
+        // still removing and re-inserting the node — which is precisely what
+        // stops a live region being announced. An identity check passes against
+        // that broken implementation; this does not.
         const { container } = mounted();
         await render(calendarData());
-        const first = container.querySelector('[role="status"]');
+        const region = container.querySelector('[role="status"]');
+
+        // Collected in the CALLBACK, not from `takeRecords()` afterwards:
+        // `takeRecords()` returns only records not yet delivered, and the
+        // observer's microtask has already run by the time `render()`'s
+        // `setTimeout` resolves — so a `takeRecords()`-only check reads an empty
+        // queue and passes against anything at all.
+        const removed = [];
+        const collect = (records) =>
+            records.forEach((record) =>
+                removed.push(...Array.from(record.removedNodes)),
+            );
+        const observer = new MutationObserver(collect);
+        observer.observe(container, { childList: true });
         await render(calendarData({}, 2));
-        expect(container.querySelector('[role="status"]')).toBe(first);
+        collect(observer.takeRecords());
+        observer.disconnect();
+
+        expect(removed).not.toContain(region);
+        expect(container.querySelector('[role="status"]')).toBe(region);
     });
 
     it('still clears whatever the consumer left in the container', async () => {
