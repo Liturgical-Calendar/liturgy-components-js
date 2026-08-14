@@ -52,7 +52,8 @@ prepared under that number was skipped, and everything it was to have delivered 
   entry count (`General Roman Calendar - 2026, 561 entries`), reusing the very string the `<caption>` carries
   so the two cannot drift and announcing it even when `removeCaption( true )` hides the element;
   `LiturgyOfAnyDay` announces the date (`Liturgy for Friday, 14 August 2026 updated`). The **first** render is
-  deliberately silent, since it is the page loading rather than a user action — and since it is also the
+  deliberately silent — per REGION rather than per instance, so `dispose()` and a `announceUpdates( false )`
+  followed by a `( true )` restore the silence — since it is the page loading rather than a user action — and since it is also the
   render that mounts the region, which has to be in the DOM before its content changes to be announced at
   all. `announceUpdates: false`, as a constructor option or as a chainable setter on either component, turns
   it off for a consumer that already owns a live region for the surrounding page. Confirmed by

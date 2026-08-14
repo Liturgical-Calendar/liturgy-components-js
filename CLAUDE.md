@@ -701,9 +701,12 @@ load-bearing:
   least likely to know the option exists. The opt-out exists for a page that already owns a live region for
   this content and would otherwise announce it twice. A boolean rather than a bag, because the wording is
   already localized through `Messages`; widening it later is backward compatible.
-- **The first render is silent.** It is the page loading, not a user action, and a region firing then talks
-  over whatever else is being announced. It is also the render that MOUNTS the region, and a live region has
-  to be in the DOM before its content changes to be announced at all — so skipping it is not merely manners.
+- **The first render is silent**, and "first" is per REGION, not per instance. It is the page loading, not a
+  user action, and a region firing then talks over whatever else is being announced. It is also the render
+  that MOUNTS the region, and a live region has to be in the DOM before its content changes to be announced
+  at all — so skipping it is not merely manners. That is why `#hasRendered` is reset wherever a region is
+  detached or replaced: `WebCalendar.dispose()`, and `announceUpdates( true )` after a `( false )` on either
+  component. Both rebuild or re-insert the region, so the render that does so has to be silent again.
 - **`WebCalendar`'s region must survive the table swap.** Its `calendarFetched` handler used
   `replaceChildren( table )`, which would take the region with it; `#swapIn()` removes every child except the
   region instead, then inserts the table before it. Do not "simplify" that back into `replaceChildren()` — a
