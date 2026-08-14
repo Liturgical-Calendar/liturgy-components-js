@@ -81,17 +81,25 @@ export const FULL_METADATA = {
     ],
     wider_regions_keys: ['Europe'],
     locales: ['en', 'it', 'la'],
+    // Exactly what `GET /calendars` returns for this entry — `calendar_id`,
+    // `locales` and `rite`, and nothing else. Verified against the dev API.
+    //
+    // It previously carried a `missals: []` and a `settings` block with the four
+    // temporal options the Ambrosian Missal fixes. **The API serves neither.** A
+    // fixture that is AHEAD of the API is the worst direction for one to be wrong
+    // in: a test asserting that a rite's settings reach the option inputs would
+    // have passed against this while production did nothing at all, because there
+    // is no `settings` to read. See issue #70, and
+    // Liturgical-Calendar/LiturgicalCalendarAPI#776 for publishing them.
+    //
+    // Nothing in the library reads more than `calendar_id` and `locales` from a
+    // rite calendar — `ApiOptions.#applyRiteToLocaleInput()` is the only consumer
+    // — so the removed keys were never exercised, only believed.
     ambrosian_calendars: [
         {
             calendar_id: 'ambrosian',
+            rite: 'ambrosian',
             locales: ['it', 'la'],
-            missals: [],
-            settings: {
-                epiphany: 'JAN6',
-                ascension: 'THURSDAY',
-                corpus_christi: 'THURSDAY',
-                eternal_high_priest: false,
-            },
         },
     ],
 };
