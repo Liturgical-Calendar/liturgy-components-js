@@ -13,6 +13,7 @@
 
 import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { assertTheme, narrowTheme } from './Theme.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
@@ -121,7 +122,16 @@ export default class CalendarViewer {
         // touched. Same reasoning as `SubscriptionBuilder`'s own early locale
         // check. The function is pure, so running it twice costs nothing.
         resolveInputVisibility(bag.inputs, 'CalendarViewer');
-        this.#controls = new CalendarControls(bag);
+        // The theme, for the same reason and by the same shape (#78). What is
+        // FORWARDED is narrowed to the keys `CalendarControls` itself owns, so
+        // this class stays free to gain a themed child of its own later without
+        // the inner guard rejecting the key that child would read — see
+        // `narrowTheme()`, and `SubscriptionBuilder`, where that case is real.
+        assertTheme(bag.theme, 'CalendarViewer');
+        this.#controls = new CalendarControls({
+            ...bag,
+            theme: narrowTheme(bag.theme, 'CalendarControls'),
+        });
     }
 
     /**

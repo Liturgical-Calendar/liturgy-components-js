@@ -28,7 +28,11 @@ import {
     normalizeComponentOptions,
 } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
-import { resolveChildTheme } from '../MetaComponents/Theme.js';
+import {
+    assertTheme,
+    narrowTheme,
+    resolveChildTheme,
+} from '../MetaComponents/Theme.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -80,7 +84,17 @@ export default class SubscriptionBuilder {
             'SubscriptionBuilder',
         );
         const language = intlLocale.language;
-        this.#controls = new CalendarControls({ ...bag, locale: intlLocale });
+        // The theme, under THIS class' name and before forwarding (#78). Both
+        // halves are load-bearing here, and this is the component that proves
+        // why: `subscriptionUrl` names a child `CalendarControls` has never
+        // heard of, so the inner guard could neither accept it nor report it
+        // honestly. `narrowTheme()` hands down only the keys the controls own.
+        assertTheme(bag.theme, 'SubscriptionBuilder');
+        this.#controls = new CalendarControls({
+            ...bag,
+            locale: intlLocale,
+            theme: narrowTheme(bag.theme, 'CalendarControls'),
+        });
         // The rite -> calendar chain, wired directly rather than through
         // `CalendarControls.listenTo()`: that method also installs
         // `apiClient.listenTo( … )`, which fetches on every change.
@@ -98,6 +112,9 @@ export default class SubscriptionBuilder {
         // `language` is derived above, where the normalized locale lives, and
         // passed in: the locale input exposes no locale accessor for
         // `SubscriptionUrl` to read.
+        // `bag.theme`, deliberately, not the narrowed bag handed to the controls
+        // above: `subscriptionUrl` is THIS component's own child, and narrowing
+        // concerns only what the controls receive.
         const urlTheme = resolveChildTheme(bag.theme, 'subscriptionUrl');
         this.#url = new SubscriptionUrl(
             this.#controls.apiOptions,
