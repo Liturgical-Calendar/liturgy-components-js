@@ -120,48 +120,85 @@ const buildPage = async () => {
         .listenTo(apiOptions);
 
     // Every non-empty text the region has held, in order.
+    //
+    // Read from each RECORD's added text node, not from the region's current
+    // `textContent` once per callback. `MutationObserver` batches every record
+    // in a microtask checkpoint into ONE callback, so a per-callback read
+    // collapses two announcements written in the same checkpoint into one push —
+    // and "one action, two announcements" is the exact failure this file exists
+    // to catch. Measured: two writes in one checkpoint give 1 callback and 2
+    // records.
     const announced = [];
-    const observer = new MutationObserver(() => {
-        const text = webCalendar._liveRegion.textContent;
-        if ('' !== text) {
-            announced.push(text);
-        }
-    });
+    const collect = (records) =>
+        records.forEach((record) =>
+            record.addedNodes.forEach((node) => {
+                if ('' !== node.textContent) {
+                    announced.push(node.textContent);
+                }
+            }),
+        );
+    const observer = new MutationObserver(collect);
     observer.observe(webCalendar._liveRegion, {
         childList: true,
         characterData: true,
         subtree: true,
     });
-    return { apiClient, announced, riteSelect, calendarSelect };
+    return {
+        apiClient,
+        announced,
+        riteSelect,
+        calendarSelect,
+        localeElement: apiOptions._localeInput._domElement,
+        drain: () => collect(observer.takeRecords()),
+    };
 };
 
 describe('one user action produces one announcement', () => {
     it('announces once for a rite change', async () => {
-        const { apiClient, announced, riteSelect } = await buildPage();
+        const { apiClient, announced, riteSelect, drain } = await buildPage();
         await apiClient.fetchCalendar('it');
         await settle();
         announced.length = 0;
 
         userSelects(riteSelect._domElement, 'ambrosian');
         await settle();
+        drain();
 
         expect(announced).toHaveLength(1);
     });
 
     it('announces once for a calendar change', async () => {
-        const { apiClient, announced, calendarSelect } = await buildPage();
+        const { apiClient, announced, calendarSelect, drain } =
+            await buildPage();
         await apiClient.fetchCalendar('it');
         await settle();
         announced.length = 0;
 
         userSelects(calendarSelect._domElement, 'VA');
         await settle();
+        drain();
 
         expect(announced).toHaveLength(1);
     });
 
+    it('announces once for a locale change', async () => {
+        // The third input the design names. It moves only the locale, so the
+        // announcement changes language while the calendar and count do not.
+        const { apiClient, announced, localeElement, drain } =
+            await buildPage();
+        await apiClient.fetchCalendar('it');
+        await settle();
+        announced.length = 0;
+
+        userSelects(localeElement, 'en');
+        await settle();
+        drain();
+
+        expect(announced).toEqual(['General Roman Calendar - 2026, 1 entry']);
+    });
+
     it('announces once per action across three separate actions', async () => {
-        const { apiClient, announced, riteSelect, calendarSelect } =
+        const { apiClient, announced, riteSelect, calendarSelect, drain } =
             await buildPage();
         await apiClient.fetchCalendar('it');
         await settle();
@@ -173,6 +210,7 @@ describe('one user action produces one announcement', () => {
         await settle();
         userSelects(calendarSelect._domElement, 'VA');
         await settle();
+        drain();
 
         // Asserted as a SEQUENCE, not a count: a length of three would also be
         // satisfied by one action announcing nothing and another announcing

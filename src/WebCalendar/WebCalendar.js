@@ -316,6 +316,9 @@ export default class WebCalendar {
      * - dateFormat: DateFormat, the format to use for dates
      * - columnOrder: ColumnOrder, the order of the columns
      * - gradeDisplay: GradeDisplay, the display of grades
+     * - latinInterface: LatinInterface, the Latin weekday-name style
+     * - announceUpdates: boolean, whether to announce each replacement in the
+     *   live region (default true)
      *
      * @param {Object} [options] - An object containing any of the above properties.
      * @throws {Error} If any of the properties in the options object are invalid.
@@ -1523,9 +1526,16 @@ export default class WebCalendar {
                 diocese: this.#calendarData.metadata.diocese_name,
                 year: this.#calendarData.settings.year,
             };
-            return Messages[this.#baseLocale][
-                'DIOCESAN_CALENDAR_CAPTION'
-            ].replace(/{(.*?)}/g, (match, p1) => {
+            // Guarded like the rite branch below. Before `#announce()` existed
+            // this ran only when a caption was rendered; it now runs under
+            // `removeCaption( true )` too, and a throw here would escape the
+            // synchronous `calendarFetched` emit. No locale the API serves lacks
+            // a block, so this is defence for a surface that widened, not a
+            // reachable bug.
+            return (
+                Messages[this.#baseLocale]?.['DIOCESAN_CALENDAR_CAPTION'] ??
+                Messages['en']['DIOCESAN_CALENDAR_CAPTION']
+            ).replace(/{(.*?)}/g, (match, p1) => {
                 return replacements[p1];
             });
         }
@@ -1537,9 +1547,10 @@ export default class WebCalendar {
                 nation: nation,
                 year: this.#calendarData.settings.year,
             };
-            return Messages[this.#baseLocale][
-                'NATIONAL_CALENDAR_CAPTION'
-            ].replace(/{(.*?)}/g, (match, p1) => {
+            return (
+                Messages[this.#baseLocale]?.['NATIONAL_CALENDAR_CAPTION'] ??
+                Messages['en']['NATIONAL_CALENDAR_CAPTION']
+            ).replace(/{(.*?)}/g, (match, p1) => {
                 return replacements[p1];
             });
         }
@@ -1562,7 +1573,8 @@ export default class WebCalendar {
         const captionTemplate =
             Messages[this.#baseLocale]?.[captionKey] ??
             Messages['en'][captionKey] ??
-            Messages[this.#baseLocale]['GENERAL_ROMAN_CALENDAR_CAPTION'];
+            Messages[this.#baseLocale]?.['GENERAL_ROMAN_CALENDAR_CAPTION'] ??
+            Messages['en']['GENERAL_ROMAN_CALENDAR_CAPTION'];
         return captionTemplate.replace(/{(.*?)}/g, (match, p1) => {
             return replacements[p1];
         });
@@ -2049,6 +2061,10 @@ export default class WebCalendar {
 
     /**
      * The live region element, or `null` when announcements are turned off.
+     *
+     * Non-null does NOT mean mounted: the element exists from construction and
+     * is inserted by the first `#swapIn()`, so before any render this returns an
+     * element the mount does not yet contain.
      *
      * @type {HTMLSpanElement|null}
      */

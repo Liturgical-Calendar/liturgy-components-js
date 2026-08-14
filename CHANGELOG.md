@@ -30,6 +30,11 @@ prepared under that number was skipped, and everything it was to have delivered 
   arise from anything it owns. The duplication is a real, separate defect, recorded here rather than fixed
   under this issue.
 
+- `LiturgyOfAnyDay.listenTo()` still attaches its `calendarFetched` listener without releasing a previous
+  one, unlike `WebCalendar.listenTo()`, so calling it twice renders — and now announces — twice per fetch.
+  Pre-existing and untouched by #65, but recorded here because "exactly one announcement per user action" is
+  now a stated contract that this one path can break.
+
 - `LiturgyOfAnyDay`'s announcement names the date but not the calendar, so changing only the calendar or the
   rite while the date stays put produces identical text and a screen reader may not repeat it. Naming the
   calendar would mean giving that widget `WebCalendar`'s three-branch caption derivation and its rite
@@ -51,14 +56,18 @@ prepared under that number was skipped, and everything it was to have delivered 
   live region carrying the table would be catastrophic. `WebCalendar` announces the caption text and the
   entry count (`General Roman Calendar - 2026, 561 entries`), reusing the very string the `<caption>` carries
   so the two cannot drift and announcing it even when `removeCaption( true )` hides the element;
-  `LiturgyOfAnyDay` announces the date (`Liturgy for Friday, 14 August 2026 updated`). The **first** render is
-  deliberately silent — per REGION rather than per instance, so `dispose()` and a `announceUpdates( false )`
-  followed by a `( true )` restore the silence — since it is the page loading rather than a user action — and since it is also the
-  render that mounts the region, which has to be in the DOM before its content changes to be announced at
-  all. `announceUpdates: false`, as a constructor option or as a chainable setter on either component, turns
-  it off for a consumer that already owns a live region for the surrounding page. Confirmed by
-  `src/__tests__/AnnouncementFrequency.test.js` to fire exactly once per user action, which the request
-  coalescing added in 2.5.0 is what makes true.
+  `LiturgyOfAnyDay` announces the date (`Liturgy for Friday, 14 August 2026 updated`).
+
+  The **first** render is deliberately silent, for two reasons: it is the page loading rather than a user
+  action, and it is also the render that mounts the region, which has to be in the DOM before its content
+  changes to be announced at all. "First" counts per REGION, not per instance, so `WebCalendar.dispose()` and
+  an `announceUpdates( false )` followed by an `( true )` each restore the silence — all three rebuild or
+  re-insert the region.
+
+  `announceUpdates: false`, as a constructor option or as a chainable setter on either component, turns it off
+  for a consumer that already owns a live region for the surrounding page.
+  `src/__tests__/AnnouncementFrequency.test.js` confirms it fires exactly once per user action across a rite,
+  a calendar and a locale change, which the request coalescing added in 2.5.0 is what makes true.
 
 - **`src/MessageFormat.js` and `src/LiveAnnouncer.js`**, both internal and neither exported from
   `src/index.js`, on the same reasoning as `LocaleValidation.js` and `Theme.js`. The first gives the

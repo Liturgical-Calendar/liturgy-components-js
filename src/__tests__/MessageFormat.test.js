@@ -83,4 +83,19 @@ describe('formatPluralMessage', () => {
             }),
         ).toBe('X, 5 entries');
     });
+
+    it("falls back to English's OTHER when English has no key for the category", () => {
+        // The LAST link in the chain, and the only one nothing else reaches.
+        // Russian has a Messages block but no announcement keys, and its rules
+        // select `many` for 5 — a category English has no key for either, since
+        // only _ONE and _OTHER are populated. `zz` above stops at the third
+        // link, because its category is already `other`.
+        expect(new Intl.PluralRules('ru').select(5)).toBe('many');
+        expect(
+            formatPluralMessage('CALENDAR_UPDATED_ANNOUNCEMENT', 'ru', 5, {
+                calendar: 'X',
+                count: '5',
+            }),
+        ).toBe('X, 5 entries');
+    });
 });

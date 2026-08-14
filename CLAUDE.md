@@ -729,6 +729,11 @@ its own change. `src/LiveAnnouncer.js` owns the hidden-region markup, shared wit
 no policy about **when** to announce — that belongs to each caller, since `SubscriptionUrl` must announce on
 its first use while the two renderers must not.
 
+Two known gaps, both recorded rather than papered over: `LiturgyOfAnyDay`'s announcement names the date and
+not the calendar, so changing only the calendar or the rite leaves the text identical and a screen reader may
+not repeat it; and `LiturgyOfAnyDay.listenTo()` — unlike `WebCalendar.listenTo()` — does not release a
+previous subscription, so calling it twice announces twice per fetch. Both predate or fall outside #65.
+
 `LiturgyOfTheDay` has no region, deliberately: `#updateEventDetails()` appends without clearing, so a second
 fetch duplicates rather than replaces, and "updated" would misdescribe that. Fixing the duplication is a
 separate defect.
