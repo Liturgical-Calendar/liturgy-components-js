@@ -165,13 +165,99 @@ export const API_OPTIONS_INPUT_KEYS = Object.freeze(
 const LEGACY_TOP_LEVEL_INPUT_KEYS = Object.freeze(['localeInput']);
 
 /**
+ * The per-child theme keys `CalendarControls` itself resolves, named once
+ * because three components forward their whole bag to it and share this set.
+ *
+ * `apiOptions` is here even though it is a nested bundle rather than a per-child
+ * override: it is still a key the receiving component either has a use for or
+ * does not, and a component bundling no `ApiOptions` must reject it.
+ * `localeInput` is here for the same reason — it is the one input that also
+ * answers to a top-level key (see {@link LEGACY_TOP_LEVEL_INPUT_KEYS}), so it
+ * belongs to exactly the components that have an `ApiOptions` for it to reach.
+ *
+ * @type {Readonly<string[]>}
+ */
+const CALENDAR_CONTROLS_CHILD_KEYS = Object.freeze([
+    'riteSelect',
+    'calendarSelect',
+    API_OPTIONS_KEY,
+    ...LEGACY_TOP_LEVEL_INPUT_KEYS,
+]);
+
+/**
+ * The theme keys each component actually resolves, by component name (issue #78).
+ *
+ * This is what makes {@link assertTheme} catch a MISPLACEMENT and not only a
+ * misspelling. Before it, any key outside {@link FLAT_KEYS} was read as a
+ * per-child override, accepted, and then dropped in silence by
+ * {@link resolveChildTheme} when the component had no such child —
+ * `theme.apiOptions` on a `CalendarResourcePicker`, `theme.liturgy` on a
+ * `CalendarViewer` — which is precisely the issue-#43 failure mode this module's
+ * comments are elsewhere emphatic about, arriving by a different route.
+ *
+ * Every entry is derived by reading that component's own `resolveChildTheme()`
+ * and `applyApiOptionsTheme()` calls; nothing here is aspirational. Adding a
+ * themed child to a meta-component means adding its key here, or the bag will
+ * reject the very key the new child reads.
+ *
+ * `CalendarViewer` and `ApiExplorer` repeat `CalendarControls`' set rather than
+ * extending it: their own children take no theme from this bag —
+ * `CalendarViewer`'s `WebCalendar` is configured through the separate
+ * `webCalendar` option, and `ApiExplorer`'s `PathBuilder` reads no theme at all.
+ *
+ * @type {Readonly<Object<string, Readonly<string[]>>>}
+ */
+export const THEME_CHILD_KEYS = Object.freeze({
+    CalendarResourcePicker: Object.freeze(['riteSelect', 'calendarSelect']),
+    CalendarControls: CALENDAR_CONTROLS_CHILD_KEYS,
+    CalendarViewer: CALENDAR_CONTROLS_CHILD_KEYS,
+    ApiExplorer: CALENDAR_CONTROLS_CHILD_KEYS,
+    DayViewer: Object.freeze([
+        'riteSelect',
+        'calendarSelect',
+        'liturgy',
+        'dateControls',
+        API_OPTIONS_KEY,
+        ...LEGACY_TOP_LEVEL_INPUT_KEYS,
+    ]),
+    SubscriptionBuilder: Object.freeze([
+        ...CALENDAR_CONTROLS_CHILD_KEYS,
+        'subscriptionUrl',
+    ]),
+});
+
+/**
+ * Which components accept each child key, derived from {@link THEME_CHILD_KEYS}.
+ *
+ * Used only to finish a rejection message with where the key WOULD be valid,
+ * which is the difference between "this is wrong" and "you wrote this on the
+ * wrong component" — the latter being what issue #78 was actually about.
+ * Derived rather than written out, so the two cannot drift.
+ *
+ * @type {Readonly<Object<string, Readonly<string[]>>>}
+ */
+const COMPONENTS_BY_CHILD_KEY = Object.freeze(
+    Object.entries(THEME_CHILD_KEYS).reduce((map, [component, keys]) => {
+        for (const key of keys) {
+            map[key] = Object.freeze([...(map[key] ?? []), component]);
+        }
+        return map;
+    }, {}),
+);
+
+/**
  * Every key any role accepts, for {@link assertTheme}'s typo check.
  *
- * A key legitimate for one role but named on a child of another role still passes
- * this check and is then dropped by {@link resolveChildTheme} — `assertTheme()`
- * validates a bag without knowing which children a given meta-component has, so it
- * can catch a misspelling but not a misplacement. The narrower per-role lists above
- * are what decide what actually reaches a setter.
+ * A key legitimate for one ROLE but named on a child of another role still passes
+ * this check and is then dropped by {@link resolveChildTheme}: this list is the
+ * union across roles, because the two-level check does not know the child's role
+ * the way {@link assertApiOptionsTheme}'s per-input check does. The narrower
+ * per-role lists above are what decide what actually reaches a setter.
+ *
+ * That is now the ONLY misplacement this module accepts in silence. Issue #78
+ * closed the wider one: which CHILDREN a bag may name is decided per component by
+ * {@link THEME_CHILD_KEYS}, so `theme.liturgy` on a `CalendarViewer` throws
+ * rather than being accepted and dropped.
  *
  * @type {Readonly<string[]>}
  */
@@ -191,39 +277,52 @@ const ALL_OVERRIDE_KEYS = Object.freeze([
  * valid class name is (that lives in `Utils.validateClassName()`), which is the
  * whole point of the role vocabulary.
  *
+ * Since issue #78 it also checks WHICH CHILDREN the named component has, from
+ * {@link THEME_CHILD_KEYS} — see {@link unknownThemeKeyError}.
+ *
  * @param {unknown} theme - The candidate theme bag.
- * @param {string} componentName - The rejecting component's class name.
+ * @param {string} componentName - The rejecting component's class name, AND the
+ *        key this guard reads its allowed child keys under. Semantically
+ *        significant since issue #78, not merely message text: a name with no
+ *        entry in {@link THEME_CHILD_KEYS} throws.
  * @returns {void}
- * @throws {Error} If the bag or any per-child override has the wrong shape.
+ * @throws {Error} If the bag names a key the component has no child for, or if
+ *         the bag or any per-child override has the wrong shape.
  */
 export function assertTheme(theme, componentName) {
+    // Looked UP rather than passed in, so a component's name and its key set can
+    // never disagree. That pairing is exactly what went wrong in the second half
+    // of issue #78 — a `CalendarViewer` bag reported under `CalendarControls`'
+    // name — and a `childKeys` argument would leave a call site free to
+    // reintroduce it. An unregistered name throws rather than falling back to
+    // the old permissive behaviour, which would silently restore the bug.
+    const childKeys = THEME_CHILD_KEYS[componentName];
+    if (undefined === childKeys) {
+        throw new Error(
+            `assertTheme: no theme key set is registered for ${componentName}. Add one to THEME_CHILD_KEYS in Theme.js.`,
+        );
+    }
     if (null === theme || undefined === theme) {
         return;
     }
     assertPlainOptions(theme, `${componentName}: theme`);
+    const validKeys = [...FLAT_KEYS, ...childKeys];
     for (const key of Object.keys(theme)) {
         const value = theme[key];
+        // FIRST, ahead of every shape check: a component with no `ApiOptions`
+        // must report `theme.epiphanyInput` as a key it does not have, rather
+        // than advising a nested spelling it would also reject.
+        if (false === validKeys.includes(key)) {
+            throw unknownThemeKeyError(
+                key,
+                componentName,
+                validKeys,
+                childKeys,
+            );
+        }
         if (API_OPTIONS_KEY === key) {
             assertApiOptionsTheme(value, componentName);
             continue;
-        }
-        // An `ApiOptions` input named at the TOP level, where only `localeInput`
-        // is answered. Rejected rather than accepted-and-dropped, because issue
-        // #60 is exactly what makes this misplacement plausible: it ships ten key
-        // names that work under `apiOptions` while ONE of them, `localeInput`,
-        // also works here — so `{ localeInput: …, yearInput: … }` written by
-        // analogy would otherwise have half of it silently ignored, which is the
-        // issue-#43 failure mode arriving by a new route. No meta-component has a
-        // per-child key sharing any of the ten names, so nothing legitimate is
-        // caught here; a child added later under one of those names would have to
-        // reconcile with this list.
-        if (
-            API_OPTIONS_INPUT_KEYS.includes(key) &&
-            false === LEGACY_TOP_LEVEL_INPUT_KEYS.includes(key)
-        ) {
-            throw new Error(
-                `${componentName}: theme.${key} is an ApiOptions input, which the theme bag reaches through the nested key. Write it as theme.${API_OPTIONS_KEY}.${key} instead.`,
-            );
         }
         if (FLAT_KEYS.includes(key)) {
             if (typeof value !== 'string') {
@@ -272,6 +371,88 @@ export function assertTheme(theme, componentName) {
             }
         }
     }
+}
+
+/**
+ * Builds the error for a top-level theme key the named component does not accept.
+ *
+ * Three shapes, most specific first:
+ *
+ * 1. An `ApiOptions` input name on a component that HAS an `ApiOptions` keeps the
+ *    message issue #60 added, pointing at the nested spelling. That misplacement
+ *    is plausible precisely because #60 ships ten key names that work under
+ *    `apiOptions` while ONE of them, `localeInput`, also works at the top level —
+ *    so `{ localeInput: …, yearInput: … }` written by analogy would otherwise
+ *    have half of it silently ignored. On a component with no `ApiOptions` this
+ *    branch is skipped, since the nested spelling would be rejected too and the
+ *    advice would only send the caller from one throw to another.
+ * 2. A key valid on some OTHER component names those components. This is the
+ *    difference between "this is wrong" and "you wrote this on the wrong
+ *    component", and it is the case issue #78 was filed about.
+ * 3. Anything else — a genuine misspelling — gets the same sentence without the
+ *    closing hint.
+ *
+ * @param {string} key - The offending top-level key.
+ * @param {string} componentName - The rejecting component's class name.
+ * @param {string[]} validKeys - Every top-level key this component does accept.
+ * @param {Readonly<string[]>} childKeys - Its child keys, without the flat ones.
+ * @returns {Error} The error for {@link assertTheme} to throw.
+ */
+function unknownThemeKeyError(key, componentName, validKeys, childKeys) {
+    if (
+        API_OPTIONS_INPUT_KEYS.includes(key) &&
+        childKeys.includes(API_OPTIONS_KEY)
+    ) {
+        return new Error(
+            `${componentName}: theme.${key} is an ApiOptions input, which the theme bag reaches through the nested key. Write it as theme.${API_OPTIONS_KEY}.${key} instead.`,
+        );
+    }
+    const validOn = COMPONENTS_BY_CHILD_KEY[key];
+    const hint =
+        undefined === validOn
+            ? ''
+            : ` theme.${key} is valid on ${validOn.join(', ')}.`;
+    return new Error(
+        `${componentName}: theme.${key} is not a recognised theme key for this component. Valid keys are: ${validKeys.join(', ')}.${hint}`,
+    );
+}
+
+/**
+ * Narrows a theme bag to the keys one component owns, for forwarding (issue #78).
+ *
+ * `CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` each hand their whole
+ * options bag — `theme` included — to a `CalendarControls`, which validates it
+ * again under its own name. Now that {@link assertTheme} is component-aware, that
+ * inner pass would reject a key that is legitimately the OUTER component's:
+ * `SubscriptionBuilder`'s `subscriptionUrl` names a child `CalendarControls` has
+ * never heard of. Narrowing states the rule instead — a key naming this
+ * component's own child is not the controls' business — rather than widening
+ * `CalendarControls`' own set, which would re-admit `subscriptionUrl` on a bare
+ * `CalendarControls` and reopen the very hole this closes.
+ *
+ * Flat keys always survive: they are the shared vocabulary, and the controls'
+ * own children read them.
+ *
+ * All three forwarders call this, not only the one whose set differs today, so
+ * the rule holds mechanically if either of the other two ever gains a themed
+ * child of its own.
+ *
+ * @param {Object|null|undefined} theme - The caller's whole theme bag.
+ * @param {string} componentName - The component the narrowed bag is FOR.
+ * @returns {Object|null|undefined} A fresh narrowed bag, or the nullish input.
+ */
+export function narrowTheme(theme, componentName) {
+    if (null === theme || undefined === theme) {
+        return theme;
+    }
+    const keep = [...FLAT_KEYS, ...(THEME_CHILD_KEYS[componentName] ?? [])];
+    const narrowed = {};
+    for (const key of Object.keys(theme)) {
+        if (keep.includes(key)) {
+            narrowed[key] = theme[key];
+        }
+    }
+    return narrowed;
 }
 
 /**
