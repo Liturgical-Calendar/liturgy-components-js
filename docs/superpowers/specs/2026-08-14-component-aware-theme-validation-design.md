@@ -28,7 +28,7 @@ A second, related defect at the same boundary: a bad theme key passed to `Calend
 today under the name **`CalendarControls`**, because `CalendarViewer`, `ApiExplorer` and
 `SubscriptionBuilder` do not call `assertTheme()` at all — they forward `theme` to `CalendarControls`,
 which validates under its own name. PR #76 deliberately had `CalendarViewer` and `ApiExplorer` validate
-their `inputs` bag under their own names *before forwarding*, for exactly this reason.
+their `inputs` bag under their own names _before forwarding_, for exactly this reason.
 
 ## Goals
 
@@ -52,8 +52,8 @@ their `inputs` bag under their own names *before forwarding*, for exactly this r
 
 Derived by reading every `resolveChildTheme()` / `applyApiOptionsTheme()` call in each component:
 
-| Component                | Child keys it actually resolves                                                              |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
+| Component                | Child keys it actually resolves                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `CalendarResourcePicker` | `riteSelect`, `calendarSelect`                                                                 |
 | `CalendarControls`       | `riteSelect`, `calendarSelect`, `apiOptions`, `localeInput`                                    |
 | `CalendarViewer`         | `CalendarControls`' set (its `WebCalendar` is configured by the separate `webCalendar` option) |
@@ -91,7 +91,7 @@ back to the permissive behaviour.
 The alternative — a third `childKeys` argument, which is what the issue sketched — was weighed and
 declined on three grounds:
 
-1. **The name and the set can never disagree.** Defect 2 in this very issue *is* a name/owner mismatch at
+1. **The name and the set can never disagree.** Defect 2 in this very issue _is_ a name/owner mismatch at
    a forwarding boundary; a signature that lets a call site pair `'CalendarViewer'` with `DayViewer`'s set
    reintroduces the same class of mistake in a new place.
 2. **A registry is needed anyway** for the "valid on …" hint, so the argument form would not avoid the
@@ -119,7 +119,7 @@ Two halves, and both are needed:
   `CalendarControls` validation under a class that has never heard of it.
 
 Narrowing is applied by all three, not only by `SubscriptionBuilder` whose set differs today, so the rule
-is mechanical: *a key naming this component's own child is not the controls' business*. For
+is mechanical: _a key naming this component's own child is not the controls' business_. For
 `CalendarViewer` and `ApiExplorer` it is a no-op copy; if either ever gains a theme child of its own, the
 rule already holds.
 
@@ -135,11 +135,11 @@ Three shapes, in this order of preference:
 
 1. An `ApiOptions` input name written at the top level, on a component that **has** an `ApiOptions` —
    unchanged from PR #75: `theme.yearInput is an ApiOptions input, which the theme bag reaches through
-   the nested key. Write it as theme.apiOptions.yearInput instead.`
+the nested key. Write it as theme.apiOptions.yearInput instead.`
 2. Any other key not in the component's set, which **is** valid on some other component:
    `CalendarResourcePicker: theme.apiOptions is not a recognised theme key for this component. Valid keys
-   are: select, input, label, wrapper, riteSelect, calendarSelect. theme.apiOptions is valid on
-   CalendarControls, CalendarViewer, ApiExplorer, DayViewer, SubscriptionBuilder.`
+are: select, input, label, wrapper, riteSelect, calendarSelect. theme.apiOptions is valid on
+CalendarControls, CalendarViewer, ApiExplorer, DayViewer, SubscriptionBuilder.`
 3. A key valid nowhere — the same sentence without the final hint.
 
 The existing per-child and per-input override messages are unchanged.
@@ -184,7 +184,7 @@ New suite `src/__tests__/MetaComponentThemeComponentAware.test.js`:
 
 ## Interaction with held issues
 
-- **#67 (theme presets)** — this makes presets *easier*: `THEME_CHILD_KEYS` is the authoritative list of
+- **#67 (theme presets)** — this makes presets _easier_: `THEME_CHILD_KEYS` is the authoritative list of
   what a preset may legally emit per component, so a preset can be expanded and then validated by the
   same guard rather than trusted. No preset is implemented here.
 - **#63 / #68** — edits to `CalendarControls.js` are confined to theme validation.

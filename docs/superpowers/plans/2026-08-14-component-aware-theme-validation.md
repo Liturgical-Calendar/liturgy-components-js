@@ -1,10 +1,18 @@
 # Component-Aware Theme Validation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended)
+> or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax
+> for tracking.
 
-**Goal:** Make `assertTheme()` reject a theme key naming a child the receiving component does not have, under that component's own name, instead of accepting it and silently dropping it.
+**Goal:** Make `assertTheme()` reject a theme key naming a child the receiving component does not have,
+under that component's own name, instead of accepting it and silently dropping it.
 
-**Architecture:** A frozen `THEME_CHILD_KEYS` registry in `src/MetaComponents/Theme.js` maps each of the six theme-taking components to the child keys it actually resolves; `assertTheme()` looks its allowed set up by the `componentName` it is already given. The three components that forward `theme` to `CalendarControls` validate under their own name before forwarding and hand down a bag narrowed to `CalendarControls`' own keys, so a legitimate outer key (`subscriptionUrl`) is never rejected by an inner class that has never heard of it.
+**Architecture:** A frozen `THEME_CHILD_KEYS` registry in `src/MetaComponents/Theme.js` maps each of the
+six theme-taking components to the child keys it actually resolves; `assertTheme()` looks its allowed set
+up by the `componentName` it is already given. The three components that forward `theme` to
+`CalendarControls` validate under their own name before forwarding and hand down a bag narrowed to
+`CalendarControls`' own keys, so a legitimate outer key (`subscriptionUrl`) is never rejected by an inner
+class that has never heard of it.
 
 **Tech Stack:** ES2022 JavaScript modules, Jest 30, prettier (`tabWidth: 4`, `singleQuote: true`), markdownlint-cli2.
 
@@ -14,7 +22,8 @@
 
 - Work exclusively in `/home/johnrdorazio/development/LiturgicalCalendar/liturgy-components-js/.claude/worktrees/issue-78`, branch `fix/component-aware-theme-validation`.
 - `Theme.js` stays internal — never export it or its new constants from `src/index.js`.
-- Do **not** make the nested `apiOptions` bag filter-aware: all ten inputs exist regardless of `filter`, and theming a filtered-out input stays inert. The test pinning that must keep passing untouched.
+- Do **not** make the nested `apiOptions` bag filter-aware: all ten inputs exist regardless of `filter`,
+  and theming a filtered-out input stays inert. The test pinning that must keep passing untouched.
 - Do **not** implement named theme presets (`bootstrap4`/`bootstrap5`) — that is held issue #67, next in this same file.
 - Edits to `CalendarControls.js` are confined to theme validation (held issues #63 and #68 will touch that file).
 - Stay out of `src/ApiOptions/**`, `src/WebCalendar/**`, `src/LiturgyOfAnyDay/**` and `src/Messages.js` (issues #69, #70, #65 are running there now).
@@ -25,14 +34,14 @@
 
 ## File Structure
 
-| File                                                     | Responsibility                                                                              |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `src/MetaComponents/Theme.js`                             | The registry, the reverse map, the component-aware `assertTheme()`, and `narrowTheme()`.    |
-| `src/MetaComponents/CalendarViewer.js`                    | Validates `theme` under its own name before forwarding; narrows what it forwards.           |
-| `src/MetaComponents/ApiExplorer.js`                       | Same.                                                                                        |
-| `src/SubscriptionBuilder/SubscriptionBuilder.js`          | Same, with `subscriptionUrl` resolved from the unnarrowed bag first.                        |
-| `src/__tests__/MetaComponentThemeComponentAware.test.js`  | The new suite: per-component acceptance/rejection, attribution, hints, unknown name.         |
-| `CLAUDE.md`, `docs/meta-components.md`, `CHANGELOG.md`    | Correct the passages that describe the limitation as permanent; record the behaviour change. |
+| File                                                     | Responsibility                                                                               |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `src/MetaComponents/Theme.js`                            | The registry, the reverse map, the component-aware `assertTheme()`, and `narrowTheme()`.     |
+| `src/MetaComponents/CalendarViewer.js`                   | Validates `theme` under its own name before forwarding; narrows what it forwards.            |
+| `src/MetaComponents/ApiExplorer.js`                      | Same.                                                                                        |
+| `src/SubscriptionBuilder/SubscriptionBuilder.js`         | Same, with `subscriptionUrl` resolved from the unnarrowed bag first.                         |
+| `src/__tests__/MetaComponentThemeComponentAware.test.js` | The new suite: per-component acceptance/rejection, attribution, hints, unknown name.         |
+| `CLAUDE.md`, `docs/meta-components.md`, `CHANGELOG.md`   | Correct the passages that describe the limitation as permanent; record the behaviour change. |
 
 ---
 
@@ -404,7 +413,8 @@ EOF
 **Interfaces:**
 
 - Consumes: `THEME_CHILD_KEYS` and `assertTheme()` from Task 1.
-- Produces: `export function narrowTheme( theme, componentName )` — returns the bag unchanged when nullish, otherwise a fresh bag holding every flat key plus only the child keys `componentName` owns.
+- Produces: `export function narrowTheme( theme, componentName )` — returns the bag unchanged when
+  nullish, otherwise a fresh bag holding every flat key plus only the child keys `componentName` owns.
 
 - [ ] **Step 1: Write the failing tests**
 
