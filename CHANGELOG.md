@@ -6,7 +6,7 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ## [Unreleased]
 
-### Changed
+### Behaviour changes
 
 - **Every `ApiOptions` input now renders a localized `<label>`**, closing #59. Nine inputs shipped the raw
   snake_case API parameter name — `ascension`, `corpus_christi`, `epiphany`, `eternal_high_priest`,
@@ -20,6 +20,9 @@ prepared under that number was skipped, and everything it was to have delivered 
   and still win, since all of them are applied after construction: a meta-component theme's `labelText`,
   `LiturgyOfAnyDay`'s `dayInputConfig`/`monthInputConfig`/`yearInputConfig` bags, and direct assignment to
   `input._labelElement.textContent`.
+
+### Documentation
+
 - `Theme.js`'s `applyLocaleInputTheme()` is unchanged in behaviour but its rationale is not: it justified
   writing the label unconditionally by citing `LocaleInput`'s hardcoded `'locale'`, which no longer exists.
   The write is now a no-op for every caller in this library — `CalendarControls.#language` is the same

@@ -88,9 +88,10 @@ which is what a screen reader announced for the control.
 
 `LiturgyOfAnyDay`'s own date controls follow the same rule, keyed `DAY`, `MONTH` and `YEAR`.
 
-Only twelve of `Messages.js`' 84 locale blocks carry the six newer keys; every other locale falls back to
-English for them rather than throwing, through the usual `Messages[language]?.[KEY] ?? Messages['en'][KEY]`.
-`MONTH` is present in all 84.
+Nine of these ten keys are carried by only twelve of `Messages.js`' 84 locale blocks — the six newer ones
+and the reused `DAY`, `YEAR` and `LANGUAGE` alike. Every other locale falls back to English for them rather
+than throwing, through `Messages[language]?.[KEY] ?? Messages['en'][KEY]`. `MONTH` is the one exception,
+present in all 84 because `WebCalendar` has long used it as a column header.
 
 `_acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it
 takes no locale and its label flips at runtime in `asReturnTypeParam()`.

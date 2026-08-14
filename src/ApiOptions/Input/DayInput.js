@@ -18,6 +18,11 @@ export default class DayInput extends NumberInput {
      */
     constructor(locale = null) {
         super();
+        // Guard BEFORE `_claimDefaultId()`, unlike the five inputs that predate
+        // #59 and throw after it: a throwing constructor here leaves the id
+        // registry untouched. Deliberate, and not an inconsistency to "fix" in
+        // either direction — reordering the older five would change which ids a
+        // throwing constructor has already claimed.
         if (null !== locale && false === locale instanceof Intl.Locale) {
             throw new Error(
                 'DayInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' +

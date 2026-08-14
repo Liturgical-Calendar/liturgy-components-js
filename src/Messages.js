@@ -964,7 +964,7 @@ const Messages = {
         ASCENSION: 'Urunk mennybemenetele',
         CORPUS_CHRISTI: 'Úrnapja',
         ETERNAL_HIGH_PRIEST: 'Jézus Krisztus, az örök főpap',
-        HOLYDAYS_OF_OBLIGATION: 'Kötelező ünnepek',
+        HOLYDAYS_OF_OBLIGATION: 'Parancsolt ünnepek',
         GENERAL_ROMAN_CALENDAR: 'Általános római naptár',
         AMBROSIAN_CALENDAR: 'Ambrozián naptár',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambrozián naptár - {year}',

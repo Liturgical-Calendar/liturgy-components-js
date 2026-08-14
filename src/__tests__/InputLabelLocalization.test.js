@@ -26,6 +26,17 @@ import ApiOptions from '../ApiOptions/ApiOptions.js';
 import ApiBase from '../ApiClient/ApiBase.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 import { applyLocaleInputTheme } from '../MetaComponents/Theme.js';
+import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
+
+/**
+ * There is deliberately NO constructor-level "falls back to English for a
+ * language with no catalogue block" case here, though `defaultLabelText()` does
+ * fall back. `EpiphanyInput`, `EternalHighPriestInput` and `YearTypeInput` read
+ * their OPTION labels through an unguarded `Messages[locale.language][key]`, so
+ * `new EpiphanyInput( new Intl.Locale( 'zz' ) )` throws before the label is ever
+ * set. That unguarded read is issue #69's and is deliberately left alone here.
+ * The fallback itself is pinned one layer down, in `InputLabels.test.js`.
+ */
 
 /** Every input that requires a locale, with the Messages key it must use. */
 const LOCALE_REQUIRED = [
@@ -185,5 +196,32 @@ describe('a caller-supplied label still wins', () => {
         expect(apiOptions._localeInput._labelElement.textContent).toBe(
             'Idioma',
         );
+    });
+
+    it('LiturgyOfAnyDay localizes its three date controls by default', () => {
+        const widget = new LiturgyOfAnyDay('it');
+        expect(widget._dayInput._labelElement.textContent).toBe(
+            Messages['it']['DAY'],
+        );
+        expect(widget._monthInput._labelElement.textContent).toBe(
+            Messages['it']['MONTH'],
+        );
+        expect(widget._yearInput._labelElement.textContent).toBe(
+            Messages['it']['YEAR'],
+        );
+    });
+
+    it('a *InputConfig labelText overrides the constructor default', () => {
+        const widget = new LiturgyOfAnyDay('it')
+            .dayInputConfig({ labelText: 'Giorno del mese' })
+            .monthInputConfig({ labelText: 'Mese scelto' })
+            .yearInputConfig({ labelText: 'Anno scelto' });
+        expect(widget._dayInput._labelElement.textContent).toBe(
+            'Giorno del mese',
+        );
+        expect(widget._monthInput._labelElement.textContent).toBe(
+            'Mese scelto',
+        );
+        expect(widget._yearInput._labelElement.textContent).toBe('Anno scelto');
     });
 });

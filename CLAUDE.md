@@ -624,6 +624,12 @@ supplied" and yields the English label; anything else non-`Intl.Locale` throws).
 theming is applied after construction — which is also why `Theme.js`'s `applyLocaleInputTheme()` keeps writing
 the label unconditionally even though that write is now a no-op.
 
+The label lookup is safe for a language that has no `Messages` block at all, not merely a sparse one. The
+inputs' **option** labels are not: `EpiphanyInput`, `EternalHighPriestInput` and `YearTypeInput` still read
+`Messages[locale.language][KEY]` unguarded, so an unknown language throws there before the label is ever
+reached. Every key those three read is present in all 84 blocks, so no real locale hits it — it is issue #69's
+bug, deliberately left alone by #59.
+
 ## Important Notes
 
 - **No build step for production** - Components work as-is with ES6 module imports
