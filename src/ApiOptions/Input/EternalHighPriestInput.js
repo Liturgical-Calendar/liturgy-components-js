@@ -1,5 +1,5 @@
 import SelectInput from './SelectInput.js';
-import Messages from '../../Messages.js';
+import { message } from '../../MessageLookup.js';
 import { defaultLabelText } from './InputLabels.js';
 
 export default class EternalHighPriestInput extends SelectInput {
@@ -36,8 +36,8 @@ export default class EternalHighPriestInput extends SelectInput {
         );
         this.#options = Object.freeze(
             Object.entries({
-                false: Messages[locale.language]['FALSE'],
-                true: Messages[locale.language]['TRUE'],
+                false: message('FALSE', locale),
+                true: message('TRUE', locale),
             }),
         );
         this.#options.forEach(([value, label]) => {

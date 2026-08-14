@@ -140,6 +140,23 @@ prepared under that number was skipped, and everything it was to have delivered 
   own versioned base URLs (`/api/dev`), so a `version` there would read as the API's version rather than
   this package's. See `CLAUDE.md`'s Releasing section for the rejected alternatives.
 
+- **`src/MessageLookup.js`, exporting `message( key, locale )`**: the canonical guarded read of the message
+  catalogue for the call sites migrated onto it, added for #69. Not the library's only one:
+  `src/MetaComponents/` still applies the same shape inline, correctly, and `WebCalendar`/`LiturgyOfAnyDay`
+  remain unguarded (issue #83). Internal, and deliberately not exported from `src/index.js`, on the same
+  reasoning as `LocaleValidation.js`, `OptionsValidation.js` and `WrapperOptions.js`. It accepts an
+  `Intl.Locale`, a locale tag string or `null`, falls back to English for a missing block or a missing key,
+  throws by name for an unparseable tag (through `toIntlLocale()`, so the underscore form every other locale
+  entry point accepts is accepted here too), and throws by name for a key absent even from English. There is deliberately
+  **no** `console.warn` on the fallback: a sparse block is the documented normal case here — several keys are
+  carried by only twelve of the 84 locales — so a warning would fire once per input constructed for 72 locales
+  that are working exactly as designed, and would start logging on four paths that already fell back silently.
+  `InputLabels.js`'s `defaultLabelText()`, `RiteSelect`, `CalendarSelect` and `SubscriptionUrl` now delegate to
+  it instead of each applying the guard by hand.
+- `src/__tests__/MessageLookup.test.js` scans `src/` for the unguarded `Messages[ EXPR ][ KEY ]` shape and
+  fails on any hit, so a seventh occurrence cannot be added silently. `WebCalendar.js` and
+  `LiturgyOfAnyDay.js` are allow-listed with the reason stated in the test; guarding them keeps it green.
+
 ### Changed
 
 - **`settled` now observes the constructor path too**, closing the second half of #61. It was documented
@@ -205,12 +222,39 @@ prepared under that number was skipped, and everything it was to have delivered 
   the rite change then dispatches `change` straight into the crash — so an ordinary rite change on such a
   select, wired to an `ApiClient`, was affected.
 
+- **A locale the message catalogue does not carry no longer throws**, closing #69. `Messages.js` holds 84
+  locale blocks, and six sites read `Messages[locale.language][KEY]` — two unguarded index operations — so a
+  language with no block at all failed on the first, with a bare
+  `TypeError: Cannot read properties of undefined` naming neither the component, nor the locale, nor the fact
+  that it was the message catalogue rather than the API that lacked the language. The worst of the six was
+  `EpiphanyInput`, which `ApiOptions` builds in its constructor: since five of the six composed components
+  build an `ApiOptions` — `CalendarControls` and `DayViewer` directly, the other three through
+  `CalendarControls`; `CalendarResourcePicker` builds none — `new CalendarViewer( { locale: 'ceb' } )`, or any
+  `locale` wired straight from `document.documentElement.lang`, died at construction inside a component the
+  consumer never touched. The
+  other five were
+  `EternalHighPriestInput`'s, `YearTypeInput`'s and `CalendarPathInput`'s option and label text,
+  `CalendarSelect.label()`'s default text, and `LiturgyOfTheDay`'s title. All six now fall back to English.
+  Only a language with **no block at all** was affected: every key those sites read is present in all 84
+  blocks, so a locale that merely lacks translations never reached it.
+- `CalendarPathInput`'s `?? 'Select route'` fallback sat outside the throwing index and so could never have
+  run; it is replaced by the catalogue's own English string. Constructing the input with no `locale` — which
+  its own argument check deliberately permits — now yields the English label instead of a `TypeError`.
+
 ### Known gaps
 
 - `AcceptHeaderInput` still renders `return_type` / `Accept Header` raw. It takes no locale, its label flips
   at runtime in `asReturnTypeParam()`, and it is `PathBuilder`-only; left for its own issue.
 - `Input` has no public `labelText()` setter — the supported override remains
   `input._labelElement.textContent`, which the library itself uses.
+- **#69's symptom is still reachable through two components**, because `WebCalendar.js` and
+  `LiturgyOfAnyDay.js` still read the catalogue unguarded and are left to the issue already editing them.
+  `LiturgyOfAnyDay` throws in its constructor, so `new DayViewer( { locale: 'ceb' } )` and
+  `DayViewer.mountInto()` still throw; `WebCalendar` throws inside `buildTable()`, so a `CalendarViewer`
+  now constructs under such a locale but still throws when it renders. `src/MetaComponents/` also still
+  applies the guard inline rather than through `message()` — a consolidation left undone, not a bug. The
+  source scan in `MessageLookup.test.js` allow-lists only those two files, so the gap cannot spread; it
+  matches the shape the bug took rather than proving absence, and its doc comment lists what it does not see.
 
 ## 2.7.0
 

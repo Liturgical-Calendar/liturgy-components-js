@@ -522,7 +522,13 @@ The date controls (`DAY`, `YEAR`) and the locale input's label (`LANGUAGE`) are 
 12 locales that carry `SELECT_A_RITE`, while `MONTH` and `SELECT_A_CALENDAR` are translated for all 84
 locales the library ships messages for. The fallback to English is per **key**, not per **locale**: a
 locale missing only `DAY` still shows its own translation for `MONTH` rather than reverting the whole
-viewer to English.
+viewer to English. A locale whose language the library ships **no** block for — not merely a sparse one
+— also falls back rather than throwing, which it did not before #69.
+
+**That covers the controls, not yet the renderers.** `LiturgyOfAnyDay.js` and `WebCalendar.js` still carry
+unguarded reads (issue #83), so `new DayViewer({ locale: 'ceb' })` still throws at construction and a
+`CalendarViewer` constructs but throws in `buildTable()`. #69 closed every route through the form; those two
+remain.
 
 ### `mountInto()` versus the constructor
 
