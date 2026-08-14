@@ -1,17 +1,22 @@
 # Localize the `ApiOptions` input labels — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Every `ApiOptions`/`LiturgyOfAnyDay` form control renders a localized `<label>` instead of the raw snake_case API parameter name, for every consumer — meta-component or not.
 
-**Architecture:** Each `Input` subclass looks its own label up in `Messages` from the locale it already receives, through one shared internal helper that applies the `??` English fallback. Theming continues to overwrite the label after construction, so a theme-supplied `labelText` still wins.
+**Architecture:** Each `Input` subclass looks its own label up in `Messages` from the locale it already
+receives, through one shared internal helper that applies the `??` English fallback. Theming continues to
+overwrite the label after construction, so a theme-supplied `labelText` still wins.
 
 **Tech Stack:** ES2022 JavaScript modules, Jest 29 (jsdom), prettier, markdownlint-cli2, Yarn 4 PnP.
 
 ## Global Constraints
 
 - Work only in `/home/johnrdorazio/development/LiturgicalCalendar/liturgy-components-js/.claude/worktrees/issue-59`, branch `feat/localize-api-options-input-labels`.
-- Every `Messages` read added by this plan MUST use `Messages[language]?.[KEY] ?? Messages['en'][KEY]`. Do not "fix" any pre-existing unguarded read (`EpiphanyInput`, `EternalHighPriestInput`, `YearTypeInput`, `CalendarPathInput`) — that is issue #69.
+- Every `Messages` read added by this plan MUST use `Messages[language]?.[KEY] ?? Messages['en'][KEY]`.
+  Do not "fix" any pre-existing unguarded read (`EpiphanyInput`, `EternalHighPriestInput`, `YearTypeInput`,
+  `CalendarPathInput`) — that is issue #69.
 - `src/MetaComponents/Theme.js`: comments only. No code change, no restructuring of override resolution (issue #60 owns it).
 - Do not rename or alias `ApiOptions`' underscore accessors (issue #62 on hold). Do not add aria-live regions (issue #65 on hold).
 - Do not add a public `Input.labelText()` setter.
@@ -30,7 +35,9 @@
 
 **Interfaces:**
 
-- Produces: `Messages[lang].YEAR_TYPE`, `.EPIPHANY`, `.ASCENSION`, `.CORPUS_CHRISTI`, `.ETERNAL_HIGH_PRIEST`, `.HOLYDAYS_OF_OBLIGATION` — all `string`, defined for exactly the twelve locales above.
+- Produces: `Messages[lang].YEAR_TYPE`, `.EPIPHANY`, `.ASCENSION`, `.CORPUS_CHRISTI`,
+  `.ETERNAL_HIGH_PRIEST`, `.HOLYDAYS_OF_OBLIGATION` — all `string`, defined for exactly the twelve
+  locales above.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -229,7 +236,8 @@ git commit -m "Add six ApiOptions input label keys to Messages (#59)"
 **Interfaces:**
 
 - Consumes: `Messages` from Task 1.
-- Produces: `export function defaultLabelText( key, locale = null ): string`. `locale` is `Intl.Locale | null`; `null` (or a locale whose language has no block) yields the English value.
+- Produces: `export function defaultLabelText( key, locale = null ): string`. `locale` is
+  `Intl.Locale | null`; `null` (or a locale whose language has no block) yields the English value.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -350,7 +358,8 @@ git commit -m "Add the shared defaultLabelText() label lookup (#59)"
 
 **Files:**
 
-- Modify: `src/ApiOptions/Input/AscensionInput.js`, `CorpusChristiInput.js`, `EpiphanyInput.js`, `EternalHighPriestInput.js`, `YearTypeInput.js`, `LocaleInput.js`, `MonthInput.js` (label line only)
+- Modify: `src/ApiOptions/Input/AscensionInput.js`, `CorpusChristiInput.js`, `EpiphanyInput.js`,
+  `EternalHighPriestInput.js`, `YearTypeInput.js`, `LocaleInput.js`, `MonthInput.js` (label line only)
 - Modify: `src/ApiOptions/Input/DayInput.js`, `YearInput.js`, `HolydaysOfObligationInput.js` (new optional `locale` parameter)
 - Modify: `src/ApiOptions/ApiOptions.js:218-220` (pass `this.#locale`)
 - Modify: `src/LiturgyOfAnyDay/LiturgyOfAnyDay.js:195,197` (pass `this.#locale`)
