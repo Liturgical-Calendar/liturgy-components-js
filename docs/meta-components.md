@@ -197,6 +197,13 @@ across the whole library, not just for the theme bag.
 [`rite-select.md`](rite-select.md#wrapperwrapperoptions)), so `calendarSelect` and `riteSelect` both
 support a wrapper here, resolved the same way as every other role.
 
+**`apiOptions` is a reserved key, not a per-child override.** It is the one nested bag the vocabulary
+has: flat role keys plus per-input overrides for a whole `ApiOptions` form, documented under
+[`CalendarControls`](#themeapioptions--the-whole-apioptions-form). `CalendarResourcePicker` bundles no
+`ApiOptions`, so naming it in this component's bag styles nothing — the same "a misspelling is caught, a
+misplacement is not" limitation that applies to every key here, since the bag is validated without
+knowing which children the component receiving it actually has.
+
 ### Public getters
 
 All four throw once this picker has been disposed — see [`dispose()`](#dispose) below.
@@ -408,8 +415,17 @@ theme: {
     localeInput: { class: '...', wrapperClass: 'col-md-4' }, // wrapperClass: see below
     liturgy: { class: '...' },                   // per-child override for the LiturgyOfAnyDay widget's own root
     dateControls: { class: '...' },              // per-child override for all three date inputs together
+    apiOptions: { localeInput: { class: '...' } }, // the ApiOptions bundle — see the note below
 }
 ```
+
+**`apiOptions` works here too, but reaches only the locale input in practice.** The nested key is the same
+one [`CalendarControls` documents](#themeapioptions--the-whole-apioptions-form), resolved identically — so
+`theme.apiOptions.localeInput` and the older `theme.localeInput` mean the same thing here as they do
+there, with the former winning key by key. This viewer's `ApiOptions` is `LOCALE_ONLY`-filtered, though,
+so `localeInput` is the only one of the ten inputs it ever renders; naming any of the other nine resolves
+and applies without error and shows nothing. The date controls are `LiturgyOfAnyDay`'s own inputs, not
+`ApiOptions`', and stay under the `dateControls` key.
 
 `dateControls` is shared by the day, month and year inputs rather than split three ways: styling them
 differently from one another is a case nobody has needed, and the `liturgy` getter (below) reaches the
@@ -680,8 +696,9 @@ controls.onCalendarFetched((data) => console.log('Fetched:', data));
   [below](#the-locale-cascade-1) for the `CalendarControls`-specific detail.
 
 **Two deliberate non-goals:** this class does not call `Input.setGlobalInputClass()` or its siblings —
-those are process-wide mutations that leak onto every other component on the page, and the theme bag is
-the scoped replacement — and it does not absorb any jQuery/Bootstrap-plugin treatment of an individual
+those are process-wide mutations that leak onto every other component on the page, and the theme bag's
+[`apiOptions` key](#themeapioptions--the-whole-apioptions-form) is the scoped replacement that now covers
+the same ground — and it does not absorb any jQuery/Bootstrap-plugin treatment of an individual
 `ApiOptions` input (such as a `multiselect` widget on the holydays-of-obligation input). That stays with
 the consumer, reached through `controls.apiOptions._holydaysOfObligationInput`.
 
@@ -716,45 +733,108 @@ which names neither class.
 
 The same HTML-role vocabulary as `CalendarResourcePicker` and `DayViewer` — see
 [that component's section](#the-theme-bags-role-vocabulary) for the general resolution rules and the
-class-name character constraint. Three children are themeable — `riteSelect`, `calendarSelect` and
-`localeInput` — and `wrapperClass` (as well as the flat `wrapper` key) reaches all three:
+class-name character constraint. Two children are themeable directly — `riteSelect` and
+`calendarSelect` — and `wrapperClass` (as well as the flat `wrapper` key) reaches both. The whole
+`ApiOptions` form is themeable through the nested `apiOptions` key, documented in the next section:
 
 ```javascript
 theme: {
-    select: 'form-select',                       // flat default, applied to all three children
+    select: 'form-select',                       // flat default, applied to both children
     label: 'form-label',                          // flat default for their labels
     riteSelect: { class: 'form-select mb-2', labelText: 'Choose a rite', wrapperClass: 'col col-md-2' },
     calendarSelect: { class: '...', labelClass: '...', wrapperClass: 'col-md-4' },
-    localeInput: { class: '...', labelClass: '...', wrapperClass: 'col-md-3' },
+    localeInput: { class: '...', labelClass: '...', wrapperClass: 'col-md-3' }, // see below
+    apiOptions: { select: 'form-select', label: 'form-label', wrapper: 'col col-md-2' },
 }
 ```
 
 **`localeInput` reaches one specific `ApiOptions` input, since 2.7.0.** `theme.localeInput` (and the flat
-`select`/`label`/`wrapper` defaults) style `apiOptions._localeInput` through the same
-`applyLocaleInputTheme()` helper `DayViewer` uses for its own copy of that input, via
-`resolveChildTheme( theme, 'localeInput' )` — so the two components theme this one child identically
-rather than each carrying its own near-duplicate block. **Its label text is themed unconditionally**,
-even when the theme bag is entirely absent: `LocaleInput`'s constructor hardcodes its label to the raw,
-untranslated string `'locale'`, so `CalendarControls` (like `DayViewer`) always supplies a localized
-`LANGUAGE` label from the message catalogue unless `theme.localeInput.labelText` names one explicitly.
-This is a **behaviour change** from before 2.7.0, when the raw `'locale'` string shipped instead.
+`select`/`label`/`wrapper` defaults) style `apiOptions._localeInput` through the same helper `DayViewer`
+uses for its own copy of that input — so the two components theme this one child identically rather than
+each carrying its own near-duplicate block. **Its label text is themed unconditionally**, even when the
+theme bag is entirely absent: `LocaleInput`'s constructor hardcodes its label to the raw, untranslated
+string `'locale'`, so `CalendarControls` (like `DayViewer`) always supplies a localized `LANGUAGE` label
+from the message catalogue unless a `labelText` names one explicitly. This is a **behaviour change** from
+before 2.7.0, when the raw `'locale'` string shipped instead. `theme.localeInput` remains supported
+exactly as shipped; `theme.apiOptions.localeInput` is the newer, more precisely scoped spelling of the
+same thing.
 
-**`apiOptions` as a whole is still not a themeable child.** Beyond `localeInput`, neither the flat
-`select`/`label` keys nor a per-child `apiOptions` override key reach any other `ApiOptions` input —
-`filter` controls which inputs render, but their styling is untouched by this bag. `ApiOptions` bundles a
-variable number of inputs depending on `filter`, so there is no fixed set of per-child keys to name the
-way `riteSelect`/`calendarSelect`/`localeInput` are named. Reach the remaining inputs directly through
-`controls.apiOptions` for anything the theme bag does not cover.
+#### `theme.apiOptions` — the whole `ApiOptions` form
 
-**That escape hatch can throw when aimed at the locale input specifically.** `Input.wrapper()` is
+The bag reaches every one of `ApiOptions`' ten inputs through a nested `apiOptions` key, carrying flat
+role defaults for the bundle plus per-input overrides by name:
+
+```javascript
+theme: {
+    apiOptions: {
+        select: 'form-select',                                    // flat: every <select> input
+        input: 'form-control',                                     // flat: the year input
+        label: 'form-label d-block mb-1',                          // flat: every input's label
+        wrapper: 'form-group col col-md-2',                        // flat: every input's wrapper CLASS
+        epiphanyInput: { wrapperClass: 'form-group col col-md-3' }, // per-input override
+        holydaysOfObligationInput: { wrapperClass: 'form-group col col-md-3' },
+    },
+}
+```
+
+**This is what replaced the four process-wide `Input.setGlobal*` calls** every consumer of these
+components used to open with. Those are mutations on the `Input` class itself: they leak onto every other
+component on the page, and two embeds wanting different styling cannot coexist behind them. Until this key
+existed the theme bag did not actually cover the form it claimed to, so the leak was mandatory.
+
+**The ten per-input key names** are `ApiOptions`' own accessors with the leading underscore stripped:
+
+| Key                         | Role     | Renders under                                                   |
+| --------------------------- | -------- | --------------------------------------------------------------- |
+| `epiphanyInput`             | `select` | `GENERAL_ROMAN`, `NONE`                                         |
+| `ascensionInput`            | `select` | `GENERAL_ROMAN`, `NONE`                                         |
+| `corpusChristiInput`        | `select` | `GENERAL_ROMAN`, `NONE`                                         |
+| `eternalHighPriestInput`    | `select` | `GENERAL_ROMAN`, `NONE`                                         |
+| `holydaysOfObligationInput` | `select` | `GENERAL_ROMAN`, `NONE`                                         |
+| `localeInput`               | `select` | `ALL_CALENDARS`, `LOCALE_ONLY`, `NONE`                          |
+| `yearTypeInput`             | `select` | `ALL_CALENDARS`, `NONE`                                         |
+| `yearInput`                 | `input`  | `ALL_CALENDARS`, `PATH_BUILDER`, `YEAR_ONLY`, `NONE`            |
+| `acceptHeaderInput`         | `select` | `ALL_CALENDARS`, `NONE` — unless `hide()` has been called on it |
+| `calendarPathInput`         | `select` | `PATH_BUILDER`                                                  |
+
+Only `yearInput` takes the `input` role; the other nine are `<select>`s. The shorter spellings (`epiphany`,
+`holydaysOfObligation`) are **not** accepted — they would make the already-shipped `localeInput` the odd
+one out, and they collide with the API query parameters of the same name. An unrecognised key throws,
+naming it and listing the accepted ones.
+
+**Theming an input the current `filter` never renders is inert, not an error.** All ten exist on every
+`ApiOptions`; `filter` decides only which are appended. One bag can therefore be written once and reused
+across filters.
+
+**The key is an opt-in gate.** While `theme.apiOptions` is absent, the flat `select`/`input`/`label`/
+`wrapper` keys reach `riteSelect`, `calendarSelect` and `localeInput` exactly as they did in 2.7.0 and no
+further — so no existing theme bag restyles anything on upgrading. Naming the key at all opens the gate,
+`{}` included. This is deliberate: letting the flat keys reach all ten automatically would restyle every
+existing consumer's form in a minor release, and a flat `wrapper` would silently consume
+`Input.wrapper()`'s one-shot allowance on ten inputs (see below), so the consumer's own later
+`wrapperClass()` calls would begin to throw.
+
+**Resolution is per key, most specific first, over four tiers:**
+
+| Tier | Source                         | Applies to                          |
+| ---- | ------------------------------ | ----------------------------------- |
+| 1    | `theme.apiOptions[ inputKey ]` | that input                          |
+| 2    | `theme.localeInput`            | the locale input only (2.7.0's key) |
+| 3    | `theme.apiOptions`' flat keys  | every input, once the gate is open  |
+| 4    | `theme`'s own flat keys        | every input, once the gate is open  |
+
+Tier 2 exists only because `theme.localeInput` shipped as public API in 2.7.0. It is a tier of one
+resolution, not a competing path: the two merge key by key, with the more specific spelling winning each
+key, exactly as a per-child override already wins over a flat default.
+
+**The escape hatch can throw when aimed at an input the bag already themed.** `Input.wrapper()` is
 one-shot (2.6.0), and a bag naming a class also closes `wrapperClass()` for the rest of that instance's
-life. Once any `theme.wrapper` or `theme.localeInput.wrapperClass`/`wrapper` is in play, `CalendarControls`
-consumes that one allowance on `apiOptions._localeInput` at construction time — so a later
-`controls.apiOptions._localeInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already been
-set on Input instance, and cannot be set twice.` (or the equivalent message from `wrapperClass()`). The
-escape hatch still works, unchanged, for `year_type`, `year` and the rest of `ApiOptions`' inputs, which
-this theme bag never touches — it is only the locale input, themed once already by `CalendarControls`
-itself, that is closed to it.
+life. Any `wrapper`/`wrapperClass` the theme resolves for an input is consumed at construction time — so a
+later `controls.apiOptions._yearInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already
+been set on Input instance, and cannot be set twice.` (or the equivalent message from `wrapperClass()`).
+Before this key existed only the locale input could be closed this way; with the gate open, any input the
+bag wraps can be. `controls.apiOptions` remains the escape hatch for everything the bag does not cover — ids, data
+attributes, `hide()`, a jQuery multiselect widget — and for any input the bag never wrapped.
 
 ### Public getters
 
@@ -1071,14 +1151,24 @@ viewer.controls.apiOptions
 viewer.listenTo(apiClient);
 ```
 
-**Since 2.7.0, this same flat `wrapper` also reaches `locale`, but not `year_type` or `year`.** The theme
-bag's `wrapper: 'form-group col col-md-2'` now column-wraps the locale input the same way it wraps
-`riteSelect` and `calendarSelect` — see `CalendarControls`' "The theme bag" section above — while
-`year_type` and `year` are plain `ApiOptions` inputs the theme bag does not reach at all, so they render
-unwrapped in row one. That is an asymmetric row this example did not produce before 2.7.0. A consumer who
-wants a symmetric row should either style `year_type` and `year` directly through
-`viewer.controls.apiOptions` (subject to the one-shot `wrapper()` caveat noted above) or drop the flat
-`wrapper` key here and wrap all three by hand.
+**The flat `wrapper` above reaches `riteSelect`, `calendarSelect` and `locale`, but stops there.** For a
+symmetric row — `year_type` and `year` column-wrapped like the other three, and the five General Roman
+inputs on row two wrapped too — add the `apiOptions` key, which opts the whole form in:
+
+```javascript
+theme: {
+    select: 'form-select',
+    label: 'form-label',
+    wrapper: 'form-group col col-md-2',
+    apiOptions: {},                       // inherit the three flat keys above, for all ten inputs
+}
+```
+
+That is the whole change; an empty bundle is an explicit "these defaults apply to the form as well". Name
+keys inside it to diverge from the outer defaults, or a per-input key to diverge for one input — see
+[`CalendarControls`' `theme.apiOptions` section](#themeapioptions--the-whole-apioptions-form). Between
+2.7.0 and that key's arrival this example produced an asymmetric row, and the only remedy was to style
+`year_type` and `year` by hand through `viewer.controls.apiOptions`.
 
 | Container              | Receives                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------ |

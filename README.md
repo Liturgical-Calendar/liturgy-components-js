@@ -89,8 +89,10 @@ mount call, and expose the wired children publicly for anything a theme bag does
 
 All five take a synchronous constructor plus a static async `mountInto()`, and a `theme` bag written in
 HTML roles (`select`, `input`, `label`, `wrapper`) rather than framework class names — the library ships
-no framework-specific CSS. See [the meta-components documentation][meta-components] for the full
-contract, including the theme bag's resolution rules and the reject/resolve behaviour of `mountInto()`.
+no framework-specific CSS. A nested `apiOptions` key extends the same vocabulary to every one of an
+`ApiOptions`' ten inputs, so styling a bundled form needs none of the process-wide `Input.setGlobal*`
+mutations. See [the meta-components documentation][meta-components] for the full contract, including the
+theme bag's resolution rules and the reject/resolve behaviour of `mountInto()`.
 
 ## Using two API bases on one page
 
