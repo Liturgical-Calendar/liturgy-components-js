@@ -119,9 +119,12 @@ listener afterwards — reads back `''`. There is nothing left downstream to nam
 deliberately lands on `selectedIndex === -1`.
 
 Writing to the element directly — `calendarSelect._domElement.value = 'NOT_A_REAL_ID'` — bypasses this
-check, because there is no setter to intercept. The library treats the resulting empty selection as the
-rite-level calendar rather than crashing, so a request still goes out; it is simply a request for
-`/calendar/{rite}` rather than for the calendar that was asked for.
+check, because there is no setter to intercept. Such an assignment also dispatches no `change`, so
+nothing happens at the moment of writing: no request goes out, and the select is simply left with an
+empty selection. When a `change` event next arrives — a user picking an option, a rite change, or an
+explicit `dispatchEvent()` — the library reads that empty selection as the rite-level calendar rather
+than crashing, and the request that goes out is for `/calendar/{rite}` rather than for the calendar that
+was asked for.
 
 A rite change rebuilds the option list, so a value that was valid a moment ago may not be. Set the
 value after the rebuild, not before.

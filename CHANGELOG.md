@@ -52,7 +52,9 @@ prepared under that number was skipped, and everything it was to have delivered 
   degrades to the rite-level calendar silently. `''` itself is still always accepted, including on a select
   with no empty option, because it is the documented way to ask for the rite-level calendar and lands on
   `selectedIndex === -1` by design. Writing to `_domElement.value` directly is unaffected — there is no
-  setter to intercept — and now yields a rite-level request rather than a crash.
+  setter to intercept — and issues no request of its own, since a property assignment dispatches no
+  `change`; it simply leaves an empty selection, and the next `change` event to arrive is then handled
+  as the rite-level calendar rather than crashing.
 
 ## 2.7.0
 

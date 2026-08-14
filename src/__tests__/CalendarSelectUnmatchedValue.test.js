@@ -105,6 +105,24 @@ describe('a CalendarSelect whose value matches no option', () => {
         expect(calendarSelect._domElement.value).toBe('');
     });
 
+    it('issues no request from the assignment alone, which dispatches no change', async () => {
+        // Pins the boundary the docs draw. Writing to `_domElement` bypasses
+        // `value()`'s check AND fires no `change`, so NOTHING is requested at the
+        // moment of assignment; the rite-level request below happens only once an
+        // event actually arrives. Without this test, "yields a rite-level request"
+        // reads as though the assignment itself issued one — the imprecision
+        // CodeRabbit caught on PR #73.
+        const calendarSelect = new CalendarSelect('en');
+        calendarSelect.appendTo('#calendarContainer');
+        const apiClient = await ApiClient.init(API_URL);
+        apiClient.listenTo(calendarSelect);
+
+        calendarSelect._domElement.value = 'NOT_A_REAL_ID';
+        await settle();
+
+        expect(sentUrls).toHaveLength(0);
+    });
+
     it('raises nothing from inside the ApiClient change listener', async () => {
         const calendarSelect = new CalendarSelect('en');
         calendarSelect.appendTo('#calendarContainer');
