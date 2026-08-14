@@ -1,4 +1,5 @@
 import SelectInput from './SelectInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class MonthInput extends SelectInput {
     /** @type {Intl.Locale} */
@@ -25,7 +26,7 @@ export default class MonthInput extends SelectInput {
         this.#locale = locale;
         this._domElement.name = 'month';
         this._claimDefaultId('month');
-        this._labelElement.textContent = 'month';
+        this._labelElement.textContent = defaultLabelText('MONTH', locale);
 
         const currentMonth = new Date().getMonth() + 1; // 1-12
         const formatter = new Intl.DateTimeFormat(locale.baseName, {
