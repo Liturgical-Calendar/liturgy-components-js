@@ -1,4 +1,4 @@
-import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
@@ -172,8 +172,10 @@ export default class LiturgyOfTheDay {
         this.#domElement = document.createElement('div');
 
         this.#titleElement = document.createElement('h1');
-        this.#titleElement.textContent =
-            Messages[this.#locale.language]['LITURGY_OF_THE_DAY'];
+        this.#titleElement.textContent = message(
+            'LITURGY_OF_THE_DAY',
+            this.#locale,
+        );
         this.#domElement.appendChild(this.#titleElement);
 
         this.#dateElement = document.createElement('div');

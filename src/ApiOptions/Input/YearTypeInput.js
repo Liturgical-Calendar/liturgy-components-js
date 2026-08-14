@@ -1,5 +1,5 @@
 import SelectInput from './SelectInput.js';
-import Messages from '../../Messages.js';
+import { message } from '../../MessageLookup.js';
 import { defaultLabelText } from './InputLabels.js';
 
 export default class YearTypeInput extends SelectInput {
@@ -33,8 +33,8 @@ export default class YearTypeInput extends SelectInput {
         this._labelElement.textContent = defaultLabelText('YEAR_TYPE', locale);
         this.#options = Object.freeze(
             Object.entries({
-                LITURGICAL: Messages[locale.language]['LITURGICAL_YEAR'],
-                CIVIL: Messages[locale.language]['CIVIL_YEAR'],
+                LITURGICAL: message('LITURGICAL_YEAR', locale),
+                CIVIL: message('CIVIL_YEAR', locale),
             }),
         );
         this.#options.forEach(([value, label]) => {

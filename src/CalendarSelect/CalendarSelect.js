@@ -1,5 +1,5 @@
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
-import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
@@ -289,11 +289,8 @@ export default class CalendarSelect {
      * @private
      */
     #riteLevelOptionHtml() {
-        const locale = new Intl.Locale(this.#locale);
         const key = RiteProperties[this.#rite].emptyOptionLabelKey;
-        const emptyLabel =
-            Messages[locale.language]?.[key] ?? Messages['en'][key];
-        return `<option value="">${emptyLabel}</option>`;
+        return `<option value="">${message(key, this.#locale)}</option>`;
     }
 
     /**
@@ -964,9 +961,10 @@ export default class CalendarSelect {
             labelOptions.text = Utils.sanitizeInput(labelOptions.text);
             this.#labelElement.textContent = labelOptions.text;
         } else {
-            const locale = new Intl.Locale(this.#locale);
-            this.#labelElement.textContent =
-                Messages[locale.language]['SELECT_A_CALENDAR'];
+            this.#labelElement.textContent = message(
+                'SELECT_A_CALENDAR',
+                this.#locale,
+            );
         }
 
         /*

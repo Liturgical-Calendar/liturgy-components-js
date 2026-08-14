@@ -1,5 +1,5 @@
 import SelectInput from './SelectInput.js';
-import Messages from '../../Messages.js';
+import { message } from '../../MessageLookup.js';
 
 export default class CalendarPathInput extends SelectInput {
     static #CALENDAR_PATHS = Object.freeze([
@@ -26,8 +26,14 @@ export default class CalendarPathInput extends SelectInput {
         }
         this._domElement.name = 'calendar_path';
         this._claimDefaultId('calendar_path');
-        this._labelElement.textContent =
-            Messages[locale.language]['SELECT_ROUTE'] ?? 'Select route';
+        // The `?? 'Select route'` this replaces was unreachable in practice:
+        // `SELECT_ROUTE` is present in all 84 blocks, so the only way past the
+        // first index was a language with NO block — and that threw on the
+        // second index before `??` was ever evaluated. (Its English string is
+        // `'Select route'` anyway, so no rendered text changes.) An omitted
+        // `locale` — which the check above deliberately permits — now yields
+        // English too, rather than a `TypeError` on `locale.language`.
+        this._labelElement.textContent = message('SELECT_ROUTE', locale);
         this._domElement.append(
             ...CalendarPathInput.#CALENDAR_PATHS.map((path) => {
                 const option = document.createElement('option');
