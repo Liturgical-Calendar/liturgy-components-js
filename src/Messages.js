@@ -727,7 +727,7 @@ const Messages = {
         YEAR_TYPE: "Type d'année",
         EPIPHANY: 'Épiphanie',
         ASCENSION: 'Ascension',
-        CORPUS_CHRISTI: 'Fête-Dieu',
+        CORPUS_CHRISTI: 'Saint-Sacrement',
         ETERNAL_HIGH_PRIEST: 'Jésus-Christ, Souverain Prêtre',
         HOLYDAYS_OF_OBLIGATION: "Fêtes d'obligation",
         GENERAL_ROMAN_CALENDAR: 'Calendrier romain général',
