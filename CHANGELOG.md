@@ -41,6 +41,23 @@ prepared under that number was skipped, and everything it was to have delivered 
   `null` (the default) means "not supplied" and yields the English label, so existing calls are unaffected;
   anything that is neither `null` nor an `Intl.Locale` throws, naming the class.
 
+- **`VERSION`**, closing #64 — the package's own version as an exported string, so a running page can
+  report which build it is on. `LiturgicalCalendarFrontend` resolves this library through a symlinked
+  local build in development and a pinned CDN tag in production; the two silently diverged by five minor
+  versions, and a pinned importmap could not settle it either, since jsDelivr rebuilds `+esm` bundles and
+  a stale cache can serve an old module from a current-looking URL. The constant is hand-maintained in
+  `src/Version.js` rather than generated, so **a release is now a two-file bump** — `package.json` and
+  `src/Version.js`. Forgetting the second is a red build, not a false claim:
+  `src/__tests__/Version.test.js` reads `package.json` off disk and fails on drift. It is declared
+  `string` rather than a string literal type, so a consumer's version-floor comparison type-checks
+  instead of raising TS2367 — enforced by `type-fixtures/dts-consumer.ts`, a new home for compile-time
+  assertions about the emitted declarations, which `tsconfig.dts-check.json` checks against `dist/` the
+  way a consumer would. Neither `yarn compile` (with `checkJs` off) nor a runtime test can see that
+  regression, and `yarn lint:dts` could not either until the fixture existed, since a narrowed literal
+  is valid TypeScript. There is no `ApiClient.version`: `ApiClient` and `ApiBase` deal in the API's
+  own versioned base URLs (`/api/dev`), so a `version` there would read as the API's version rather than
+  this package's. See `CLAUDE.md`'s Releasing section for the rejected alternatives.
+
 ### Known gaps
 
 - `AcceptHeaderInput` still renders `return_type` / `Accept Header` raw. It takes no locale, its label flips

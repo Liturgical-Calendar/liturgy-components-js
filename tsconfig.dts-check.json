@@ -15,5 +15,9 @@
     "skipLibCheck": false,
     "esModuleInterop": true
   },
-  "files": ["dist/index.d.ts"]
+  // `type-fixtures/` holds compile-time assertions about the emitted declarations
+  // that no runtime test can reach — see its own file comment. Listed here rather
+  // than in tsconfig.json so the fixtures are checked against `dist/` as a consumer
+  // sees it, and never reach the build.
+  "files": ["dist/index.d.ts", "type-fixtures/dts-consumer.ts"]
 }
