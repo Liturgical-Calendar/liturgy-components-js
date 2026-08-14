@@ -294,14 +294,19 @@ export function resolveWrapperBag(childTheme) {
  * meta-components (`DayViewer`, and formerly `SubscriptionBuilder`) needed the
  * identical block and had started to drift the moment the second copy existed.
  *
- * **The label text is set UNCONDITIONALLY, unlike every other key here.**
- * `LocaleInput`'s constructor hardcodes its label to the literal string
- * `'locale'` (`LocaleInput.js:48`), with no i18n of its own — so a caller that
- * themes nothing would otherwise ship that raw, untranslated string to every
- * locale. This is the one key this function cannot leave to "not themed means
- * library default", because the library default is wrong. A theme-supplied
- * `labelText` still wins, since it is read first; `defaultLabelText` is what a
- * caller sees only in its absence.
+ * **The label text is still set UNCONDITIONALLY, but no longer because it has
+ * to be.** It once did: `LocaleInput`'s constructor hardcoded its label to the
+ * literal string `'locale'`, with no i18n of its own, so a caller that themed
+ * nothing shipped that raw, untranslated string to every locale — the library
+ * default was simply wrong, and this was the one key that could not be left to
+ * "not themed means library default". Since issue #59 the constructor looks
+ * `LANGUAGE` up in `Messages` from its own locale, which is the very lookup
+ * every caller here passes as `defaultLabelText`: `CalendarControls.#language`
+ * is `new Intl.Locale( locale ).language`, exactly what `ApiOptions` hands
+ * `LocaleInput`. The write is therefore a no-op in every current call. It is
+ * kept rather than removed so that a caller passing a `defaultLabelText` drawn
+ * from a different catalogue still has it honoured. A theme-supplied
+ * `labelText` wins over both, since it is read first.
  *
  * Takes an already-resolved child theme, not the whole bag — call
  * `resolveChildTheme( theme, 'localeInput' )` first, exactly as every other
@@ -330,10 +335,10 @@ export function applyLocaleInputTheme(
     if (null !== wrapper) {
         localeInput.wrapper(wrapper);
     }
-    // Set UNCONDITIONALLY: LocaleInput's constructor hardcodes its label to the
-    // literal string 'locale' with no i18n of its own, so a caller that themes
-    // nothing would otherwise ship that raw string to every locale. A
-    // theme-supplied labelText still wins, being read first.
+    // Still unconditional, though since #59 LocaleInput's constructor already
+    // produces this same string from its own locale. Kept so a caller passing a
+    // defaultLabelText from another catalogue is still honoured; a theme-supplied
+    // labelText wins over both, being read first.
     localeInput._labelElement.textContent = Object.hasOwn(
         childTheme,
         'labelText',

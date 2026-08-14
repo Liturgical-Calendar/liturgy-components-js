@@ -1,4 +1,5 @@
 import SelectInput from './SelectInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class AscensionInput extends SelectInput {
     #options = null;
@@ -19,7 +20,6 @@ export default class AscensionInput extends SelectInput {
         super();
         this._domElement.name = 'ascension';
         this._claimDefaultId('ascension');
-        this._labelElement.textContent = 'ascension';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -29,6 +29,7 @@ export default class AscensionInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText('ASCENSION', locale);
         const weekdayFormatter = new Intl.DateTimeFormat(locale.language, {
             weekday: 'long',
         });

@@ -77,3 +77,66 @@ describe('day/year/language keys', () => {
         expect(Messages['en'].DAY).toBe('Day');
     });
 });
+
+describe('ApiOptions input label keys', () => {
+    // The same twelve locales that already carry SELECT_A_RITE, DAY, YEAR and
+    // LANGUAGE. Every other block reaches English through the `??` fallback.
+    const TRANSLATED = [
+        'de',
+        'en',
+        'es',
+        'fr',
+        'hu',
+        'id',
+        'it',
+        'la',
+        'nl',
+        'pt',
+        'sk',
+        'vi',
+    ];
+
+    const LABEL_KEYS = [
+        'YEAR_TYPE',
+        'EPIPHANY',
+        'ASCENSION',
+        'CORPUS_CHRISTI',
+        'ETERNAL_HIGH_PRIEST',
+        'HOLYDAYS_OF_OBLIGATION',
+    ];
+
+    it.each(LABEL_KEYS)(
+        'defines %s in English, the fallback for all',
+        (key) => {
+            expect(typeof Messages['en'][key]).toBe('string');
+            expect(Messages['en'][key].length).toBeGreaterThan(0);
+        },
+    );
+
+    it.each(TRANSLATED)('defines every label key for %s', (lang) => {
+        LABEL_KEYS.forEach((key) => {
+            expect(typeof Messages[lang][key]).toBe('string');
+            expect(Messages[lang][key].length).toBeGreaterThan(0);
+        });
+    });
+
+    it.each(LABEL_KEYS)(
+        'gives %s the same coverage as SELECT_A_RITE',
+        (key) => {
+            const withRite = Object.keys(Messages).filter(
+                (lang) => undefined !== Messages[lang].SELECT_A_RITE,
+            );
+            const withKey = Object.keys(Messages).filter(
+                (lang) => undefined !== Messages[lang][key],
+            );
+            expect(withKey.sort()).toEqual(withRite.sort());
+        },
+    );
+
+    it('reuses DAY, MONTH, YEAR and LANGUAGE rather than adding parallel keys', () => {
+        expect(Messages['en'].DAY).toBe('Day');
+        expect(Messages['en'].MONTH).toBe('Month');
+        expect(Messages['en'].YEAR).toBe('Year');
+        expect(Messages['en'].LANGUAGE).toBe('Language');
+    });
+});

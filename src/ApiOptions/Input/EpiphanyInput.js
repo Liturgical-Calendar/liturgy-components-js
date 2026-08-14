@@ -1,5 +1,6 @@
 import SelectInput from './SelectInput.js';
 import Messages from '../../Messages.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class EpiphanyInput extends SelectInput {
     #options = null;
@@ -19,7 +20,6 @@ export default class EpiphanyInput extends SelectInput {
         super();
         this._domElement.name = 'epiphany';
         this._claimDefaultId('epiphany');
-        this._labelElement.textContent = 'epiphany';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -29,6 +29,7 @@ export default class EpiphanyInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText('EPIPHANY', locale);
         const monthDayFormatter = new Intl.DateTimeFormat(locale.language, {
             month: 'long',
             day: 'numeric',

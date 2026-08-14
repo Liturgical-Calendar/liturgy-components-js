@@ -1,4 +1,5 @@
 import SelectInput from './SelectInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class CorpusChristiInput extends SelectInput {
     #options = null;
@@ -18,7 +19,6 @@ export default class CorpusChristiInput extends SelectInput {
         super();
         this._domElement.name = 'corpus_christi';
         this._claimDefaultId('corpus_christi');
-        this._labelElement.textContent = 'corpus_christi';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -28,6 +28,10 @@ export default class CorpusChristiInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText(
+            'CORPUS_CHRISTI',
+            locale,
+        );
         const weekdayFormatter = new Intl.DateTimeFormat(locale.language, {
             weekday: 'long',
         });

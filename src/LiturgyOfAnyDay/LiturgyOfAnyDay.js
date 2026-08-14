@@ -192,9 +192,9 @@ export default class LiturgyOfAnyDay {
         this.#domElement.appendChild(this.#dateControlsWrapper);
 
         // Create day, month, year inputs
-        this.#dayInput = new DayInput();
+        this.#dayInput = new DayInput(this.#locale);
         this.#monthInput = new MonthInput(this.#locale);
-        this.#yearInput = new YearInput();
+        this.#yearInput = new YearInput(this.#locale);
 
         // Set up event listeners for date changes
         this.#dayInput._domElement.addEventListener('change', () =>
