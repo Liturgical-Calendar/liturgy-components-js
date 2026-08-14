@@ -8,12 +8,25 @@
  * form. These tests pin the shape, the validation, the precedence and the
  * application of the replacement.
  */
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
     assertTheme,
     API_OPTIONS_INPUT_KEYS,
     resolveApiOptionsInputTheme,
+    applyApiOptionsTheme,
 } from '../MetaComponents/Theme.js';
+import ApiBase from '../ApiClient/ApiBase.js';
+import ApiOptions from '../ApiOptions/ApiOptions.js';
+import { ApiOptionsFilter } from '../Enums.js';
+import { FULL_METADATA } from '../__fixtures__/metadata.js';
+
+const API_URL = 'http://localhost:8000';
+
+beforeEach(() => {
+    ApiBase.reset();
+    ApiBase.fromMetadata(API_URL, FULL_METADATA);
+    document.body.innerHTML = '<div id="mount"></div>';
+});
 
 describe('assertTheme — theme.apiOptions', () => {
     it('names all ten ApiOptions inputs', () => {
@@ -283,5 +296,124 @@ describe('resolveApiOptionsInputTheme — precedence', () => {
                 'epiphanyInput',
             ),
         ).toEqual({ wrapperClass: 'col-md-2', wrapper: 'td' });
+    });
+});
+
+describe('applyApiOptionsTheme', () => {
+    it('applies the bundle flat class by role — select to selects, input to the year input', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(
+            apiOptions,
+            { apiOptions: { select: 'form-select', input: 'form-control' } },
+            'Language',
+        );
+        expect(apiOptions._epiphanyInput._domElement.className).toBe(
+            'form-select',
+        );
+        expect(apiOptions._yearTypeInput._domElement.className).toBe(
+            'form-select',
+        );
+        expect(apiOptions._yearInput._domElement.className).toBe(
+            'form-control',
+        );
+    });
+
+    it('applies the bundle label class to every input label', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(
+            apiOptions,
+            { apiOptions: { label: 'form-label' } },
+            'Language',
+        );
+        expect(apiOptions._ascensionInput._labelElement.className).toBe(
+            'form-label',
+        );
+        expect(apiOptions._acceptHeaderInput._labelElement.className).toBe(
+            'form-label',
+        );
+    });
+
+    it('wraps every input from the bundle flat wrapper key, defaulting the element to a div', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(
+            apiOptions,
+            { apiOptions: { wrapper: 'col col-md-2' } },
+            'Language',
+        );
+        const wrapper = apiOptions._corpusChristiInput._wrapperElement;
+        expect(wrapper.tagName).toBe('DIV');
+        expect(wrapper.className).toBe('col col-md-2');
+    });
+
+    it('lets a per-input wrapperClass override the bundle default', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(
+            apiOptions,
+            {
+                apiOptions: {
+                    wrapper: 'col col-md-2',
+                    epiphanyInput: { wrapperClass: 'col col-md-3' },
+                },
+            },
+            'Language',
+        );
+        expect(apiOptions._epiphanyInput._wrapperElement.className).toBe(
+            'col col-md-3',
+        );
+        expect(apiOptions._ascensionInput._wrapperElement.className).toBe(
+            'col col-md-2',
+        );
+    });
+
+    it('applies a per-input labelText, and leaves the others alone', () => {
+        const apiOptions = new ApiOptions('en');
+        const untouched = apiOptions._ascensionInput._labelElement.textContent;
+        applyApiOptionsTheme(
+            apiOptions,
+            { apiOptions: { epiphanyInput: { labelText: 'Epiphany' } } },
+            'Language',
+        );
+        expect(apiOptions._epiphanyInput._labelElement.textContent).toBe(
+            'Epiphany',
+        );
+        expect(apiOptions._ascensionInput._labelElement.textContent).toBe(
+            untouched,
+        );
+    });
+
+    it('still gives the locale input its localized label unconditionally', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(apiOptions, undefined, 'Language');
+        expect(apiOptions._localeInput._labelElement.textContent).toBe(
+            'Language',
+        );
+    });
+
+    it('leaves every other input untouched while the gate is closed', () => {
+        const apiOptions = new ApiOptions('en');
+        applyApiOptionsTheme(
+            apiOptions,
+            { select: 'form-select', label: 'form-label', wrapper: 'col' },
+            'Language',
+        );
+        expect(apiOptions._epiphanyInput._domElement.className).toBe('');
+        expect(apiOptions._epiphanyInput._wrapperElement).toBeNull();
+        expect(apiOptions._localeInput._domElement.className).toBe(
+            'form-select',
+        );
+    });
+
+    it('themes an input the current filter never renders, without throwing', () => {
+        const apiOptions = new ApiOptions('en').filter(
+            ApiOptionsFilter.LOCALE_ONLY,
+        );
+        expect(() =>
+            applyApiOptionsTheme(
+                apiOptions,
+                { apiOptions: { calendarPathInput: { class: 'x' } } },
+                'Language',
+            ),
+        ).not.toThrow();
+        expect(apiOptions._calendarPathInput._domElement.className).toBe('x');
     });
 });

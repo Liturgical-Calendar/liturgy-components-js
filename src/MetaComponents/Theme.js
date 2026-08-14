@@ -563,24 +563,100 @@ export function applyLocaleInputTheme(
     childTheme,
     defaultLabelText,
 ) {
-    if (Object.hasOwn(childTheme, 'class')) {
-        localeInput.class(childTheme.class);
-    }
-    if (Object.hasOwn(childTheme, 'labelClass')) {
-        localeInput.labelClass(childTheme.labelClass);
-    }
-    const wrapper = resolveWrapperBag(childTheme);
-    if (null !== wrapper) {
-        localeInput.wrapper(wrapper);
-    }
+    applyInputTheme(localeInput, childTheme);
     // Set UNCONDITIONALLY: LocaleInput's constructor hardcodes its label to the
     // literal string 'locale' with no i18n of its own, so a caller that themes
     // nothing would otherwise ship that raw string to every locale. A
-    // theme-supplied labelText still wins, being read first.
-    localeInput._labelElement.textContent = Object.hasOwn(
-        childTheme,
-        'labelText',
-    )
-        ? childTheme.labelText
-        : defaultLabelText;
+    // theme-supplied labelText still wins — `applyInputTheme()` has already
+    // written it, which is why this branch fires only in its absence.
+    if (false === Object.hasOwn(childTheme, 'labelText')) {
+        localeInput._labelElement.textContent = defaultLabelText;
+    }
+}
+
+/**
+ * Applies a resolved theme to one `ApiOptions` input.
+ *
+ * The generic half of {@link applyLocaleInputTheme}, which is now this plus one
+ * locale-specific fallback. Every key is applied only when the theme NAMED it,
+ * including `labelText`: the raw-`'locale'` problem that forces the locale input's
+ * label unconditionally is that one input's, and defaulting the other nine here
+ * would silently overwrite whatever label text they carry.
+ *
+ * `wrapper()` rather than `wrapperClass()`, always, and via
+ * {@link resolveWrapperBag}: that helper supplies `as: 'div'` when the theme named
+ * a class but no element type, so the "Wrapper has not been set" failure that
+ * `Input.wrapperClass()` raises on a wrapper-less input cannot arise here. It also
+ * omits `class` entirely rather than passing `undefined`, because a class named in
+ * the bag beats `setGlobalWrapperClass()` AND closes `wrapperClass()` for the rest
+ * of that input's life — neither of which a theme that never mentioned a class
+ * should provoke.
+ *
+ * @param {Object} input - The `Input` to theme.
+ * @param {{class?: string, labelClass?: string, labelText?: string, wrapper?: string, wrapperClass?: string}} childTheme -
+ *   The resolved theme, from {@link resolveApiOptionsInputTheme}.
+ * @returns {void}
+ */
+function applyInputTheme(input, childTheme) {
+    if (Object.hasOwn(childTheme, 'class')) {
+        input.class(childTheme.class);
+    }
+    if (Object.hasOwn(childTheme, 'labelClass')) {
+        input.labelClass(childTheme.labelClass);
+    }
+    const wrapper = resolveWrapperBag(childTheme);
+    if (null !== wrapper) {
+        input.wrapper(wrapper);
+    }
+    if (Object.hasOwn(childTheme, 'labelText')) {
+        input._labelElement.textContent = childTheme.labelText;
+    }
+}
+
+/**
+ * Themes every one of an `ApiOptions`' ten inputs from a meta-component's theme
+ * bag (issue #60).
+ *
+ * This is what replaced the four process-wide `Input.setGlobalInputClass()` /
+ * `setGlobalLabelClass()` / `setGlobalWrapper()` / `setGlobalWrapperClass()` calls
+ * every consumer of the meta-components used to open with. Those are mutations on
+ * the `Input` CLASS: they leak onto every other component on the page, including
+ * ones the caller never meant to touch, and two embeds with different styling
+ * cannot coexist behind them. The theme bag is the scoped replacement, and until
+ * this existed it did not actually cover the form it claimed to.
+ *
+ * All ten are themed unconditionally — the resolver, not this loop, decides what
+ * that amounts to, and for nine of them an absent `theme.apiOptions` means an
+ * empty resolved theme and no setter call at all. `filter` is deliberately not
+ * consulted: every input exists whatever the filter, so theming one the filter
+ * never appends is inert rather than an error, and a caller need not know which
+ * filter renders which input to write a bag that works for all of them.
+ *
+ * The `'_' + inputKey` lookup is a lookup, not a translation table, because
+ * {@link API_OPTIONS_INPUT_ROLES}' keys ARE `ApiOptions`' accessor names minus the
+ * underscore. Should those accessors ever gain non-underscore aliases, that map is
+ * the single place this has to change.
+ *
+ * @param {Object} apiOptions - The `ApiOptions` whose inputs to theme.
+ * @param {Object|null|undefined} theme - The meta-component's whole theme bag,
+ *        unresolved: this function resolves each input itself, since the four
+ *        tiers differ per input.
+ * @param {string} defaultLocaleLabelText - The localized label the locale input
+ *        falls back to; see {@link applyLocaleInputTheme}.
+ * @returns {void}
+ */
+export function applyApiOptionsTheme(
+    apiOptions,
+    theme,
+    defaultLocaleLabelText,
+) {
+    for (const inputKey of API_OPTIONS_INPUT_KEYS) {
+        const childTheme = resolveApiOptionsInputTheme(theme, inputKey);
+        const input = apiOptions[`_${inputKey}`];
+        if ('localeInput' === inputKey) {
+            applyLocaleInputTheme(input, childTheme, defaultLocaleLabelText);
+            continue;
+        }
+        applyInputTheme(input, childTheme);
+    }
 }
