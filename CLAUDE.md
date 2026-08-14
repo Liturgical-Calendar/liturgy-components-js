@@ -29,8 +29,8 @@ for the full coordination strategy across PHP, JavaScript, and React platforms.
 
 - **TypeScript 5.7.2** - Source code written in TypeScript, compiled to ES modules
 - **JavaScript ES6 Modules** - No build step required for CDN usage
-- **Storybook 8.5** - Component documentation and interactive testing
-- **Jest 29.7.0** - Unit testing framework
+- **Storybook 10.5.7** - Component documentation and interactive testing
+- **Jest 30.4.2** - Unit testing framework
 - **Yarn 4.6.0** - Package manager with PnP (Plug'n'Play)
 
 ## Project Structure

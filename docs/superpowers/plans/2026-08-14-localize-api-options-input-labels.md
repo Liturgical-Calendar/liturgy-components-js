@@ -9,7 +9,7 @@
 receives, through one shared internal helper that applies the `??` English fallback. Theming continues to
 overwrite the label after construction, so a theme-supplied `labelText` still wins.
 
-**Tech Stack:** ES2022 JavaScript modules, Jest 29 (jsdom), prettier, markdownlint-cli2, Yarn 4 PnP.
+**Tech Stack:** ES2022 JavaScript modules, Jest 30.4.2 (jsdom), prettier, markdownlint-cli2, Yarn 4 PnP.
 
 ## Global Constraints
 
