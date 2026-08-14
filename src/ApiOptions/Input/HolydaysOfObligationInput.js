@@ -130,7 +130,14 @@ export default class HolydaysOfObligationInput extends SelectInput {
      *   the Ambrosian list omits four base entries and adds three of its own, so
      *   merging would leave the form asserting that `StJoseph` and `StsPeterPaulAp`
      *   are Ambrosian holy days of obligation. See issue #70.
-     * @throws {Error} If any option is malformed.
+     *
+     *   The two branches differ on an EMPTY array, deliberately. Merging one
+     *   yields the base options — which is what makes `setOptions( [] )` the way
+     *   to restore the defaults — while replacing with one empties the select,
+     *   the honest rendering of a calendar that observes no holy days of
+     *   obligation at all.
+     * @throws {Error} If any option is malformed, or — on the replacing branch
+     *   only — if `options` is not an array.
      */
     setOptions(options, merge = true) {
         //console.info('setting holy days of obligation options:', options);

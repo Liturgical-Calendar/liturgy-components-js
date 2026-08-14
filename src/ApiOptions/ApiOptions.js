@@ -369,18 +369,6 @@ export default class ApiOptions {
     }
 
     /**
-     * Enables or disables the `/calendar/nation/` route offered by the
-     * calendar path input, according to whether the rite has a national tier.
-     *
-     * There is no `/calendar/ambrosian/nation/...` route: the API rejects a
-     * non-null national calendar for a rite with no national tier outright. If
-     * that route was already selected when the rite changed, the selection
-     * falls back to the rite-level route.
-     *
-     * @param {boolean} hasNationalTier
-     * @private
-     */
-    /**
      * The metadata entry for a rite's OWN calendar, or `null` when the API
      * publishes none.
      *
@@ -408,7 +396,12 @@ export default class ApiOptions {
      * that displays it. Holy days of obligation are deliberately absent: they are
      * an option LIST rather than a value, and are handled separately below.
      *
+     * A second, differently shaped view of the same `settings` schema that
+     * `#expectedSettingsKeys` describes for the nation/diocese path. A key added
+     * to one is very likely to belong in the other: check both.
+     *
      * @type {Readonly<Object<string, string>>}
+     * @private
      */
     static #riteTemporalSettingInputs = Object.freeze({
         epiphany: 'epiphanyInput',
@@ -457,7 +450,14 @@ export default class ApiOptions {
      * `Circoncisione`, `StAmbrose` and `DedicationDuomo` out of an Ambrosian form
      * and into a General Roman Calendar one. The four temporal values need no
      * equivalent restore, because their published Ambrosian values already agree
-     * with the General Roman defaults.
+     * with the General Roman defaults — so what a Roman form is left holding
+     * describes the calendar it would have asked for anyway.
+     *
+     * That last point is a DEPENDENCY on the only two rites that exist, not a
+     * property of this method, which runs for any rite. A third rite whose fixed
+     * values differed from the General Roman defaults would leave a Roman form —
+     * and, through the dispatches below, `ApiClient`'s own parameters —
+     * describing that rite. Adding one means revisiting the no-restore rule here.
      *
      * @param {string} rite - The newly selected rite.
      * @private
@@ -511,7 +511,14 @@ export default class ApiOptions {
      * assert they are Ambrosian holy days of obligation.
      *
      * `setOptions( [] )` on the restore path takes the merging default precisely
-     * because merging an empty list IS the base list.
+     * because merging an empty list IS the base list. The replacing branch does
+     * NOT share that behaviour: a published `holydays_of_obligation: {}` empties
+     * the select, which is the honest reading of a rite that observes none.
+     *
+     * An array is rejected along with every other non-plain value and falls to
+     * the restore branch. `Object.entries( ['x'] )` would otherwise yield an
+     * option keyed `'0'` — silent nonsense, where the value path above
+     * deliberately degrades to "unchanged" on the same kind of API drift.
      *
      * @param {?Object} settings - The rite's published settings, or `null`.
      * @private
@@ -521,7 +528,11 @@ export default class ApiOptions {
         const published = settings?.holydays_of_obligation ?? null;
         const before = ApiOptions.#holydayStates(input);
 
-        if (null !== published && 'object' === typeof published) {
+        if (
+            null !== published &&
+            'object' === typeof published &&
+            false === Array.isArray(published)
+        ) {
             input.setOptions(
                 Object.entries(published).map(([optionKey, selected]) => ({
                     label: ApiOptions.#prettifyLabel(optionKey),
@@ -548,6 +559,7 @@ export default class ApiOptions {
      *
      * @param {HolydaysOfObligationInput} input
      * @returns {string}
+     * @private
      */
     static #holydayStates(input) {
         return Array.from(
@@ -594,6 +606,18 @@ export default class ApiOptions {
         }
     }
 
+    /**
+     * Enables or disables the `/calendar/nation/` route offered by the
+     * calendar path input, according to whether the rite has a national tier.
+     *
+     * There is no `/calendar/ambrosian/nation/...` route: the API rejects a
+     * non-null national calendar for a rite with no national tier outright. If
+     * that route was already selected when the rite changed, the selection
+     * falls back to the rite-level route.
+     *
+     * @param {boolean} hasNationalTier
+     * @private
+     */
     #applyRiteToCalendarPathInput(hasNationalTier) {
         const calendarPathElement = this.#inputs.calendarPathInput._domElement;
         const nationPathOption = calendarPathElement.querySelector(
@@ -680,11 +704,20 @@ export default class ApiOptions {
             this.#currentEndpoint.rite = rite;
             this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
 
-            // Values BEFORE state, so the enable/disable pass below is the last
-            // word on input state. `HolydaysOfObligationInput.setOptions()`
-            // rebuilds its `<option>` elements without the per-option `disabled`
-            // flag its own `disabled()` override sets, so rebuilding the list
-            // afterwards would silently re-enable them.
+            // Values BEFORE state, matching the calendar path, where
+            // `#applyCalendarToInputs()` likewise runs before its own
+            // `#applyTemporalInputState()`. A convention rather than a bug fix:
+            // `#applyTemporalInputState( false )` below re-enables every one of
+            // these inputs unconditionally on THIS path, so swapping the two
+            // lines would produce the same DOM today and no test would fail.
+            //
+            // Keep the order anyway, because
+            // `HolydaysOfObligationInput.setOptions()` rebuilds its `<option>`
+            // elements without the per-option `disabled` flag that input's own
+            // `disabled()` override sets. The moment this function is ever
+            // reached with a calendar still selected — the only case where the
+            // state pass would disable rather than enable — the reversed order
+            // would silently re-enable the whole list.
             this.#applyRiteToTemporalInputs(rite);
 
             // The selection has just been reset to the rite-level calendar, so the

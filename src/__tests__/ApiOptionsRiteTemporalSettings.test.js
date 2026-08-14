@@ -23,8 +23,10 @@
  *
  * These tests use LOCAL metadata wherever the case needs an `IT` that diverges
  * from the Ambrosian values on all five keys — the shared `FULL_METADATA` has no
- * `holydays_of_obligation` on its nations. The last describe block checks the
- * shared fixture itself, so that fixture and API stay in agreement.
+ * `holydays_of_obligation` on its nations. The last describe block runs the same
+ * path against the shared fixture, so a suite built on it exercises this code
+ * rather than merely believing in it. Whether that fixture still matches what
+ * `/calendars` serves is a human obligation, not something a unit test can reach.
  */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
@@ -348,6 +350,117 @@ describe('a published value the input has no option for', () => {
     });
 });
 
+describe('a malformed or empty published holydays list', () => {
+    it('falls back to the defaults when the list is an array', () => {
+        // `Object.entries( ['x'] )` would otherwise produce an option keyed `'0'`.
+        // The value path deliberately degrades to "unchanged" on this kind of API
+        // drift; the list path degrades to "the defaults".
+        const { riteSelect, apiOptions } = buildForm(
+            metadataWith({
+                ...AMBROSIAN_SETTINGS,
+                holydays_of_obligation: ['Christmas'],
+            }),
+        );
+
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+
+        expect(Object.keys(holydayStates(apiOptions))).toEqual(
+            HolydaysOfObligationInput.BASE_OPTIONS.map(
+                (option) => option.value,
+            ),
+        );
+    });
+
+    it('empties the select when the rite publishes an empty list', () => {
+        // Distinct from "publishes none", which restores the defaults. An empty
+        // object is a positive statement — this rite observes no holy days of
+        // obligation — so it is rendered as one.
+        const { riteSelect, apiOptions } = buildForm(
+            metadataWith({
+                ...AMBROSIAN_SETTINGS,
+                holydays_of_obligation: {},
+            }),
+        );
+
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+
+        expect(Object.keys(holydayStates(apiOptions))).toEqual([]);
+    });
+});
+
+describe('the conditional-dispatch rule', () => {
+    /**
+     * Attaches a counting `change` listener to all five inputs.
+     *
+     * @param {ApiOptions} apiOptions
+     * @returns {Function} Returns the total count when called.
+     */
+    const countChanges = (apiOptions) => {
+        const listener = jest.fn();
+        [
+            apiOptions._epiphanyInput,
+            apiOptions._ascensionInput,
+            apiOptions._corpusChristiInput,
+            apiOptions._eternalHighPriestInput,
+            apiOptions._holydaysOfObligationInput,
+        ].forEach((input) =>
+            input._domElement.addEventListener('change', listener),
+        );
+        return () => listener.mock.calls.length;
+    };
+
+    it('dispatches nothing when the rite publishes what the inputs already show', () => {
+        // `ApiClient` treats a `change` on any of these as "refetch", so a rite
+        // change that moves nothing must stay silent. Covered incidentally by
+        // ApiClientRequestCoalescing's request counts, but that suite is about a
+        // different feature and could be rewritten without noticing this.
+        const { riteSelect, apiOptions } = buildForm(
+            metadataWith(AMBROSIAN_SETTINGS),
+        );
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+
+        const changes = countChanges(apiOptions);
+        // Re-applying the SAME rite re-runs the whole pass over inputs that
+        // already hold its values.
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+
+        expect(changes()).toBe(0);
+    });
+
+    it('dispatches nothing at link time on a Roman page', () => {
+        // `applyRite()` runs once during linking. On the Roman rite it publishes
+        // no settings, and the holydays restore lands on the list already there,
+        // so the whole pass must be inert — otherwise every Roman page using a
+        // RiteSelect would fire a spurious refetch before the user touched
+        // anything.
+        ApiBase.fromMetadata(API_URL, metadataWith(AMBROSIAN_SETTINGS));
+        const calendarSelect = new CalendarSelect('en').allowNull();
+        const riteSelect = new RiteSelect('en');
+        const apiOptions = new ApiOptions('en');
+        const changes = countChanges(apiOptions);
+
+        apiOptions
+            .linkToCalendarSelect(calendarSelect)
+            .linkToRiteSelect(riteSelect);
+
+        expect(changes()).toBe(0);
+    });
+
+    it('dispatches once per input that actually moved', () => {
+        const { riteSelect, apiOptions } = buildForm(
+            metadataWith(AMBROSIAN_SETTINGS),
+        );
+        const changes = countChanges(apiOptions);
+
+        chooseRite(riteSelect, Rite.AMBROSIAN);
+
+        // epiphany, ascension and corpus_christi move off `--`; the holydays list
+        // is replaced. `eternal_high_priest` is already `'false'`, which is what
+        // the rite publishes, so it must NOT dispatch.
+        expect(changes()).toBe(4);
+    });
+});
+
 describe('the request the form produces', () => {
     /** @type {Object[]} */
     let bodies = [];
@@ -434,11 +547,18 @@ describe('HolydaysOfObligationInput.setOptions', () => {
 });
 
 describe('the shared FULL_METADATA fixture', () => {
-    it("carries the API's published Ambrosian settings, and they reach the inputs", () => {
-        // Keeps fixture and API in agreement. The block was removed in `dab21b5`
-        // when the API served none, and restored here now that it does; a fixture
-        // that is ahead of OR behind the API turns a green test into a claim
-        // about nothing.
+    it('carries an Ambrosian settings block, and it reaches the inputs', () => {
+        // What this CAN check: that the shared fixture publishes a settings block
+        // at all, and that whatever it publishes reaches all five inputs — so a
+        // suite built on `FULL_METADATA` exercises this path rather than merely
+        // believing in it.
+        //
+        // What no unit test can check: that the block still matches what
+        // `/calendars` serves. That is a human obligation, restated in
+        // `src/__fixtures__/metadata.js` beside the block itself. The block was
+        // removed in `dab21b5` when the API served none and restored once it did;
+        // a fixture ahead of OR behind the API turns a green test into a claim
+        // about nothing, which is exactly what happened the first time.
         expect(FULL_METADATA.ambrosian_calendars[0].settings).toBeDefined();
 
         ApiBase.fromMetadata(API_URL, FULL_METADATA);

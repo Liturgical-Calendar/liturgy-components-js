@@ -101,9 +101,13 @@ no such key, so the lookup yields `null`. That lookup moves into a private
 ### 2. `#applyRiteToTemporalInputs( rite )`, called from `applyRite()`
 
 Called immediately **before** `#applyTemporalInputState( false )`, so the enable/disable pass stays the
-last word on input state. (`HolydaysOfObligationInput.setOptions()` rebuilds its `<option>` elements
-without the per-option `disabled` flag its own `disabled()` override sets, so rebuilding after the state
-pass would silently re-enable them.)
+last word on input state — a convention borrowed from the calendar path, not a bug fix. `applyRite()`
+passes a hardcoded `false`, which re-enables all five inputs unconditionally, so swapping the two lines
+would produce identical DOM today and no test would fail. The order is still worth keeping:
+`HolydaysOfObligationInput.setOptions()` rebuilds its `<option>` elements without the per-option
+`disabled` flag its own `disabled()` override sets, so the first time this runs with a calendar still
+selected — the only case where the state pass disables rather than enables — the reversed order would
+silently re-enable the whole list.
 
 For each of the four `settings` keys that maps to an input:
 
