@@ -1,5 +1,6 @@
 import SelectInput from './SelectInput.js';
 import Messages from '../../Messages.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class EternalHighPriestInput extends SelectInput {
     #options = null;
@@ -20,7 +21,6 @@ export default class EternalHighPriestInput extends SelectInput {
         super();
         this._domElement.name = 'eternal_high_priest';
         this._claimDefaultId('eternal_high_priest');
-        this._labelElement.textContent = 'eternal_high_priest';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -30,6 +30,10 @@ export default class EternalHighPriestInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText(
+            'ETERNAL_HIGH_PRIEST',
+            locale,
+        );
         this.#options = Object.freeze(
             Object.entries({
                 false: Messages[locale.language]['FALSE'],

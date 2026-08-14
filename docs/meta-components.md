@@ -751,13 +751,15 @@ theme: {
 **`localeInput` reaches one specific `ApiOptions` input, since 2.7.0.** `theme.localeInput` (and the flat
 `select`/`label`/`wrapper` defaults) style `apiOptions._localeInput` through the same helper `DayViewer`
 uses for its own copy of that input — so the two components theme this one child identically rather than
-each carrying its own near-duplicate block. **Its label text is themed unconditionally**, even when the
-theme bag is entirely absent: `LocaleInput`'s constructor hardcodes its label to the raw, untranslated
-string `'locale'`, so `CalendarControls` (like `DayViewer`) always supplies a localized `LANGUAGE` label
-from the message catalogue unless a `labelText` names one explicitly. This is a **behaviour change** from
-before 2.7.0, when the raw `'locale'` string shipped instead. `theme.localeInput` remains supported
-exactly as shipped; `theme.apiOptions.localeInput` is the newer, more precisely scoped spelling of the
-same thing.
+each carrying its own near-duplicate block. **Its label text is written unconditionally**, even when the
+theme bag is entirely absent, unless a `labelText` names one explicitly. That write once did real work —
+`LocaleInput`'s constructor hardcoded its label to the raw, untranslated string `'locale'` — and was a
+**behaviour change** in 2.7.0. Since #59 the constructor performs the same `LANGUAGE` lookup itself, so
+the write is now a no-op for every caller in this library; it is kept only so a caller supplying a
+`defaultLabelText` from another catalogue is still honoured.
+
+`theme.localeInput` remains supported exactly as shipped; `theme.apiOptions.localeInput` is the newer,
+more precisely scoped spelling of the same thing.
 
 #### `theme.apiOptions` — the whole `ApiOptions` form
 
@@ -854,6 +856,11 @@ been set on Input instance, and cannot be set twice.` (or the equivalent message
 Before this key existed only the locale input could be closed this way; with the gate open, any input the
 bag wraps can be. `controls.apiOptions` remains the escape hatch for everything the bag does not cover — ids, data
 attributes, `hide()`, a jQuery multiselect widget — and for any input the bag never wrapped.
+
+Note that this is about **styling and wrappers only**. Since issue #59 every `ApiOptions` input localizes
+its own **label text** in its constructor, so `year_type`, `year`, `epiphany` and the rest read correctly
+in the component's locale whether or not a theme is supplied; a theme-supplied `labelText` still overrides
+that, since theming is applied after construction.
 
 ### Public getters
 
