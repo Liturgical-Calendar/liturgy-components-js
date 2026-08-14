@@ -617,6 +617,52 @@ so an unpopulated block degrades to English for that key rather than throwing.
 - **API dependency** - Components require access to Liturgical Calendar API
 - **Default API URL** - `https://litcal.johnromanodorazio.com/api/dev`
 - **Browser support** - Browsers with ES2022 support (see the Target section under Code Standards): Chrome/Edge 94+, Firefox 93+, Safari 15.4+. ES6 module support alone is not sufficient
+- **Version** - `VERSION` is exported from `src/index.js` so a page can report which build it is running. See Releasing below: bumping a release means editing **two** files
+
+## Releasing
+
+**A version bump is a two-file edit: `package.json` and `src/Version.js`.** Forgetting the second is not
+silent — `src/__tests__/Version.test.js` reads `package.json` off disk and fails on drift, which is the
+whole point of the arrangement: the failure #64 described was a version claim nobody could trust, so an
+untrue claim has to be loud rather than merely wrong.
+
+The constant is hand-maintained rather than generated, and the two obvious alternatives were both measured
+and rejected:
+
+- **A build-time generator** would have to write into `src/`, because `dist/` is gitignored. The result is
+  either committed (identical to what exists now, plus a generator to maintain) or gitignored (breaking
+  `yarn test` and `yarn storybook` on a fresh clone, before a first `yarn compile`). `compile:watch` also
+  cannot regenerate on a `package.json` change, so the watch build would drift exactly where a developer is
+  least likely to look.
+- **Importing `package.json` with `with { type: 'json' }`** does not survive the emit: `tsc` passes the
+  import through **verbatim** into `dist/`, inlining nothing, so every consumer evaluates a real JSON module
+  import at run time. Import attributes need Chrome 123+/Firefox 121+/Safari 17.2+/Node 20.10+, against this
+  package's documented floor of Chrome 94+/Firefox 93+/Safari 15.4+/Node 16.11+.
+
+`VERSION` carries a JSDoc `@type {string}`. **Do not remove it.** Without it `tsc` infers the `const` at its
+literal type and declares `export const VERSION: "2.7.0"`, which makes a consumer's version-floor check —
+`VERSION === '2.8.0'`, the comparison the constant exists for — a TS2367 error rather than a boolean. This is
+the same class of `.d.ts`-only bug as the `@readonly`-on-a-getter trap: invisible to `yarn compile`, because
+`checkJs` is off, and invisible to `yarn lint:dts` on its own, because a narrowed literal is perfectly valid
+TypeScript.
+
+`type-fixtures/dts-consumer.ts` is what actually enforces it. **This is the general home for compile-time
+assertions about the emitted declarations** — things no runtime test can reach, because they are properties of
+the `.d.ts` rather than of any value. `tsconfig.dts-check.json` lists it alongside `dist/index.d.ts`, so it is
+checked against `dist/` the way a consumer's own `tsconfig.json` would check it, and `tsconfig.json` — which
+includes only `./src/**/*` and excludes `**/*.ts` — cannot pull it into the build. Run `yarn compile` before
+`yarn lint:dts`: the fixture imports from `dist/`, which `lint:dts` checks but does not rebuild.
+
+The `VERSION` assertion there is written as an assignment (`const x: typeof VERSION = '' as string`) rather
+than as the version-floor comparison it protects. The comparison only errors while its literal differs from
+the current version, so it would go quiet the moment someone bumped the package to the very version being
+compared against — silently retiring the guard. The assignment fails for any literal type, so it stays honest
+across releases.
+
+There is deliberately no `ApiClient.version`. `ApiClient` and `ApiBase` deal in the API's own versioned base
+URLs (`/api/dev`), so a `version` on the client would read as the API's version rather than this package's.
+The bare `VERSION` export carries the package name at its import site, which is the disambiguation a static
+property would lack.
 
 ## Component Wiring Patterns
 
