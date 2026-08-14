@@ -240,7 +240,12 @@ describe('CalendarViewer', () => {
             { controls: '#controls', calendar: '#calendar' },
             { locale: 'en', apiClient },
         );
-        expect(document.getElementById('calendar').children.length).toBe(1);
+        // The mount holds the table AND `WebCalendar`'s hidden live region
+        // (#65), so this asserts on the table rather than on a child count that
+        // would have to be revised again the next time either grows a sibling.
+        expect(
+            document.getElementById('calendar').querySelector('table'),
+        ).not.toBeNull();
         viewer.dispose();
         expect(document.getElementById('calendar').children.length).toBe(0);
     });
