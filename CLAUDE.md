@@ -497,6 +497,30 @@ the theme bag exists to replace. Four things about it are load-bearing and easy 
 - **Every one of the ten inputs is themed regardless of `filter`.** They all exist; `filter` decides only
   which are appended. Theming one the filter hides must stay inert rather than throwing.
 
+**Theme keys are validated PER COMPONENT, and the forwarding boundary owns its own attribution (#78).**
+`THEME_CHILD_KEYS` in `Theme.js` maps each of the six theme-taking components to the child keys it
+actually resolves, and `assertTheme()` looks its allowed set up by the `componentName` it is already
+given — so the name and the set cannot disagree, which a third `childKeys` argument would have left a
+call site free to get wrong at exactly the boundary where the second half of #78 went wrong. An
+unregistered name throws rather than falling back to the old permissive behaviour, which would silently
+restore the bug. `theme.apiOptions` on a `CalendarResourcePicker`, or `theme.liturgy` on a
+`CalendarViewer`, now throw naming the component, the key, the keys that component does accept and the
+components the key IS valid on, instead of being accepted and dropped by `resolveChildTheme()`. Two
+consequences a change here must preserve:
+
+- **`CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` validate under their OWN names before
+  forwarding** — PR #76's shape for the `inputs` bag, applied to `theme` — and forward
+  `narrowTheme( theme, 'CalendarControls' )`, which keeps the flat keys and drops the outer component's
+  own child keys. Without the narrowing, `SubscriptionBuilder`'s legitimate `subscriptionUrl` would be
+  rejected by a class that has never heard of it; widening `CalendarControls`' own set instead would
+  re-admit that key on a bare `CalendarControls` and reopen the hole. All three narrow, not only the one
+  whose set differs today, so the rule holds if either of the other two gains a themed child.
+- **What is deliberately NOT validated is whether the current `filter` renders a themed `ApiOptions`
+  input.** All ten exist regardless, so theming a hidden one stays inert — see the last bullet above.
+
+Adding a themed child to a meta-component means adding its key to `THEME_CHILD_KEYS`, or the bag will
+reject the very key the new child reads.
+
 `applyApiOptionsTheme()` is the single application helper — `CalendarControls` and `DayViewer` each call
 it once, and `CalendarViewer`/`ApiExplorer`/`SubscriptionBuilder` inherit it through `CalendarControls`.
 It reuses `resolveWrapperBag()` rather than re-inlining the type-vs-class reconciliation, for the reason
