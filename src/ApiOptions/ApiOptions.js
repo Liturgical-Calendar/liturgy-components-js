@@ -381,6 +381,182 @@ export default class ApiOptions {
      * @private
      */
     /**
+     * The metadata entry for a rite's OWN calendar, or `null` when the API
+     * publishes none.
+     *
+     * Looks the rite up by convention rather than by branching on it: metadata
+     * announces a rite's own calendars under `{rite}_calendars`, which is what
+     * `ApiBase.riteCalendars()` reads. The Roman rite has no such key, because
+     * its rite-level calendar is the General Roman Calendar — so this returns
+     * `null` for it, and every caller has to treat that as "nothing published"
+     * rather than as "published as empty".
+     *
+     * @param {string} rite - The rite to look up.
+     * @returns {?Object} The rite-level calendar's metadata entry, or `null`.
+     * @private
+     */
+    #riteLevelCalendar(rite) {
+        return (
+            this.#base
+                .riteCalendars(rite)
+                .find((calendar) => calendar.calendar_id === rite) ?? null
+        );
+    }
+
+    /**
+     * Maps each temporal `settings` key the API publishes for a rite to the input
+     * that displays it. Holy days of obligation are deliberately absent: they are
+     * an option LIST rather than a value, and are handled separately below.
+     *
+     * @type {Readonly<Object<string, string>>}
+     */
+    static #riteTemporalSettingInputs = Object.freeze({
+        epiphany: 'epiphanyInput',
+        ascension: 'ascensionInput',
+        corpus_christi: 'corpusChristiInput',
+        eternal_high_priest: 'eternalHighPriestInput',
+    });
+
+    /**
+     * Applies a rite's own published settings to the five option inputs it
+     * describes — the rite-level counterpart to `#applySettingsToInputs()`, which
+     * does the same job for a selected nation or diocese.
+     *
+     * Without this, `applyRite()` DISABLED the four temporal inputs and never SET
+     * them, so they froze at whatever was last displayed: select Italy
+     * (`ascension: SUNDAY`), switch to Ambrosian, and the greyed-out select still
+     * read `SUNDAY` while the Missal fixes Ascension to the fortieth day of
+     * Easter. Issue #70.
+     *
+     * The values come from `/calendars` rather than from a table in `Enums.js`.
+     * Extending `RiteProperties` with them would ship without an API change, and
+     * `minYear` is already calendar data sitting there — but it would copy
+     * liturgical law into the client, where it can drift from the API in silence.
+     *
+     * Three rules, and each of them is load-bearing:
+     *
+     * - **A rite that publishes nothing changes nothing.** The Roman rite has no
+     *   `roman_calendars` key at all, so `#riteLevelCalendar()` returns `null` for
+     *   it and this is a no-op on every Roman page. "Absent" is not "empty".
+     * - **A value no `<option>` carries is skipped, not assigned.** Assigning an
+     *   unmatched value to a `<select>` leaves `selectedIndex === -1` and the DOM
+     *   DISCARDS it, so the input would read `''`. API drift has to degrade to
+     *   "unchanged", never to "blank".
+     * - **`change` is dispatched only when the value actually moved**, exactly as
+     *   the year clamp and the locale rebuild in the same `applyRite()` are
+     *   conditional. `ApiClient` learns these five parameters ONLY from these
+     *   listeners and POSTs them as the body of a rite-level calendar request, so
+     *   without the dispatch a value the user picked by hand under one rite is
+     *   still sent under the next one — the very request the disable exists to
+     *   prevent. `ApiClient` coalesces the burst into one refetch.
+     *
+     * Holy days of obligation are an option LIST the rite defines, not a value
+     * drawn from a fixed list, so they follow the LOCALE input's rule instead:
+     * narrow to what the rite publishes, and restore the input's own defaults when
+     * it publishes none. Leaving the list alone for the Roman rite would carry
+     * `Circoncisione`, `StAmbrose` and `DedicationDuomo` out of an Ambrosian form
+     * and into a General Roman Calendar one. The four temporal values need no
+     * equivalent restore, because their published Ambrosian values already agree
+     * with the General Roman defaults.
+     *
+     * @param {string} rite - The newly selected rite.
+     * @private
+     */
+    #applyRiteToTemporalInputs(rite) {
+        const settings = this.#riteLevelCalendar(rite)?.settings ?? null;
+
+        Object.entries(ApiOptions.#riteTemporalSettingInputs).forEach(
+            ([settingKey, inputName]) => {
+                if (
+                    null === settings ||
+                    false === Object.hasOwn(settings, settingKey)
+                ) {
+                    return;
+                }
+                const publishedValue = settings[settingKey];
+                const value =
+                    typeof publishedValue === 'boolean'
+                        ? String(publishedValue)
+                        : publishedValue;
+                const element = this.#inputs[inputName]._domElement;
+                if (
+                    false ===
+                    Array.from(element.options).some(
+                        (option) => option.value === value,
+                    )
+                ) {
+                    return;
+                }
+                if (element.value === value) {
+                    return;
+                }
+                element.value = value;
+                element.dispatchEvent(new Event('change'));
+            },
+        );
+
+        this.#applyRiteToHolydaysInput(settings);
+    }
+
+    /**
+     * Narrows the holy days of obligation options to the rite's published list, or
+     * restores the input's own defaults when the rite publishes none.
+     *
+     * `setOptions()` is told NOT to merge: its default overlays the ten Roman base
+     * options, which is right for a nation (every national list the API serves
+     * names all ten) and wrong for a rite, whose list is a different set of
+     * celebrations rather than a re-selection of the Roman one. Merging the
+     * Ambrosian list would leave `CorpusChristi`, `MaryMotherOfGod`, `StJoseph`
+     * and `StsPeterPaulAp` selected, so the form — and the request body — would
+     * assert they are Ambrosian holy days of obligation.
+     *
+     * `setOptions( [] )` on the restore path takes the merging default precisely
+     * because merging an empty list IS the base list.
+     *
+     * @param {?Object} settings - The rite's published settings, or `null`.
+     * @private
+     */
+    #applyRiteToHolydaysInput(settings) {
+        const input = this.#inputs.holydaysOfObligationInput;
+        const published = settings?.holydays_of_obligation ?? null;
+        const before = ApiOptions.#holydayStates(input);
+
+        if (null !== published && 'object' === typeof published) {
+            input.setOptions(
+                Object.entries(published).map(([optionKey, selected]) => ({
+                    label: ApiOptions.#prettifyLabel(optionKey),
+                    value: optionKey,
+                    selected: Boolean(selected),
+                })),
+                false,
+            );
+        } else {
+            input.setOptions([]);
+        }
+
+        if (before !== ApiOptions.#holydayStates(input)) {
+            input._domElement.dispatchEvent(new Event('change'));
+        }
+    }
+
+    /**
+     * A comparable snapshot of a multi-select's options and their selected state.
+     *
+     * Serialized rather than compared structurally because the only question asked
+     * of it is whether the list moved at all, which decides whether to dispatch a
+     * synthetic `change`.
+     *
+     * @param {HolydaysOfObligationInput} input
+     * @returns {string}
+     */
+    static #holydayStates(input) {
+        return Array.from(
+            input._domElement.options,
+            (option) => `${option.value}=${option.selected}`,
+        ).join(',');
+    }
+
+    /**
      * Narrows the locale input to the locales the rite-level calendar is actually
      * published in.
      *
@@ -390,12 +566,11 @@ export default class ApiOptions {
      * globally, so a user could request an Ambrosian calendar in a language that
      * has no Ambrosian books behind it.
      *
-     * Looks the rite up by convention rather than by branching on it: metadata
-     * announces a rite's own calendars under `{rite}_calendars`, which is what
-     * `ApiBase.riteCalendars()` reads. The Roman rite has no such key, because
-     * its rite-level calendar is the General Roman Calendar, served in every
-     * locale the API supports — so `riteCalendars()` yields an empty list and
-     * this correctly falls back to the full one.
+     * Looks the rite up through `#riteLevelCalendar()`, which finds it by
+     * convention rather than by branching on it. The Roman rite has no entry,
+     * because its rite-level calendar is the General Roman Calendar, served in
+     * every locale the API supports — so the lookup yields `null` and this
+     * correctly falls back to the full list.
      *
      * Only the RITE-LEVEL calendar is handled here. Once an actual nation or
      * diocese is selected, its own `locales` take over via
@@ -405,10 +580,7 @@ export default class ApiOptions {
      * @private
      */
     #applyRiteToLocaleInput(rite) {
-        const riteCalendars = this.#base.riteCalendars(rite);
-        const riteLevelCalendar =
-            riteCalendars.find((calendar) => calendar.calendar_id === rite) ??
-            null;
+        const riteLevelCalendar = this.#riteLevelCalendar(rite);
 
         if (
             Array.isArray(riteLevelCalendar?.locales) &&
@@ -507,6 +679,13 @@ export default class ApiOptions {
 
             this.#currentEndpoint.rite = rite;
             this.#riteFixesTemporalOptions = riteProps.hasFixedTemporalOptions;
+
+            // Values BEFORE state, so the enable/disable pass below is the last
+            // word on input state. `HolydaysOfObligationInput.setOptions()`
+            // rebuilds its `<option>` elements without the per-option `disabled`
+            // flag its own `disabled()` override sets, so rebuilding the list
+            // afterwards would silently re-enable them.
+            this.#applyRiteToTemporalInputs(rite);
 
             // The selection has just been reset to the rite-level calendar, so the
             // calendar-selection half of the rule is false here; the rite half is

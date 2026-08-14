@@ -54,11 +54,28 @@ export default class HolydaysOfObligationInput extends SelectInput {
         }),
     ]);
 
-    static mergeOptions(customOptions) {
-        if (!Array.isArray(customOptions) || customOptions.length === 0) {
-            return [...HolydaysOfObligationInput.BASE_OPTIONS];
+    /**
+     * Asserts that every entry is a well-formed option, and returns a shallow copy.
+     *
+     * Extracted from {@link HolydaysOfObligationInput.mergeOptions} so that the
+     * non-merging branch of {@link HolydaysOfObligationInput#setOptions} validates
+     * by exactly the same rule rather than by a second, drifting copy of it.
+     *
+     * Unlike `mergeOptions()`, a non-array is an ERROR here rather than a request
+     * for the base options: there is no base list to fall back to on this path.
+     *
+     * @param {Array<{value:string,label:string,selected:boolean}>} options
+     * @returns {Array<{value:string,label:string,selected:boolean}>}
+     * @throws {Error} If `options` is not an array, or any entry is malformed.
+     */
+    static validateOptions(options) {
+        if (!Array.isArray(options)) {
+            throw new Error(
+                'HolydaysOfObligationInput: options must be an array, but found type: ' +
+                    typeof options,
+            );
         }
-        customOptions.forEach((o, i) => {
+        options.forEach((o, i) => {
             if (
                 !o ||
                 typeof o.value !== 'string' ||
@@ -68,6 +85,14 @@ export default class HolydaysOfObligationInput extends SelectInput {
                 throw new Error(`Invalid option at index ${i}`);
             }
         });
+        return [...options];
+    }
+
+    static mergeOptions(customOptions) {
+        if (!Array.isArray(customOptions) || customOptions.length === 0) {
+            return [...HolydaysOfObligationInput.BASE_OPTIONS];
+        }
+        HolydaysOfObligationInput.validateOptions(customOptions);
 
         // Convert custom options into a map for quick lookup
         const customMap = new Map(customOptions.map((opt) => [opt.value, opt]));
@@ -89,10 +114,30 @@ export default class HolydaysOfObligationInput extends SelectInput {
         return merged;
     }
 
-    setOptions(options) {
+    /**
+     * Replaces the select's options.
+     *
+     * @param {Array<{value:string,label:string,selected:boolean}>} options - The options to apply.
+     * @param {boolean} [merge=true] - Whether to overlay `options` onto
+     *   {@link HolydaysOfObligationInput.BASE_OPTIONS} (the default, and what every
+     *   caller did before this parameter existed) or to use `options` verbatim.
+     *
+     *   The default is right for a NATIONAL or DIOCESAN calendar: every
+     *   `holydays_of_obligation` the API publishes for one names all ten base keys,
+     *   so merging and replacing agree, and merging keeps a partial list from
+     *   shrinking the select. It is wrong for a RITE's published list, which is a
+     *   different set of celebrations rather than a re-selection of the Roman one —
+     *   the Ambrosian list omits four base entries and adds three of its own, so
+     *   merging would leave the form asserting that `StJoseph` and `StsPeterPaulAp`
+     *   are Ambrosian holy days of obligation. See issue #70.
+     * @throws {Error} If any option is malformed.
+     */
+    setOptions(options, merge = true) {
         //console.info('setting holy days of obligation options:', options);
         this.#options = Object.freeze(
-            HolydaysOfObligationInput.mergeOptions(options),
+            merge
+                ? HolydaysOfObligationInput.mergeOptions(options)
+                : HolydaysOfObligationInput.validateOptions(options),
         );
         // Clear existing options
         while (this._domElement.firstChild) {

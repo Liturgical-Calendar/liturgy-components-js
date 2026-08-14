@@ -285,11 +285,41 @@ rite -> calendar chain on every rite change:
 - A linked nation select is hidden for rites with no national tier (e.g. Ambrosian)
 - `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput` and `_eternalHighPriestInput` are disabled
   for rites that fix their own temporal cycle
+- those same four inputs, and `_holydaysOfObligationInput`, are **set** to the rite's own published
+  settings — see below
 - `_yearInput`'s minimum year is adjusted to the rite's floor
 
 When a `RiteSelect` is linked, the resulting request path also spells out the rite explicitly, even for
 the Roman rite (`/calendar/roman/...` instead of `/calendar/...`) — both forms request the same thing.
 Without a `RiteSelect`, paths are unaffected and stay in the shorter form.
+
+#### A rite's own settings
+
+`/calendars` publishes a `settings` block for a rite that has one — `ambrosian_calendars[0].settings`
+carries `epiphany`, `ascension`, `corpus_christi`, `eternal_high_priest` and `holydays_of_obligation` —
+and a rite change applies it, so the form states what the rite fixes rather than freezing at the values
+the previously selected nation put there. The values come from the API, never from a table in the
+library.
+
+Two rules differ between the value inputs and the list input, deliberately:
+
+| Input                                        | Rite publishes settings      | Rite publishes none                 |
+| -------------------------------------------- | ---------------------------- | ----------------------------------- |
+| `_epiphanyInput` … `_eternalHighPriestInput` | set to the published value   | left exactly as they are            |
+| `_holydaysOfObligationInput`                 | options replaced by the list | options restored to the input's own |
+
+The four are values drawn from a fixed list of options, so an unpublished rite has nothing to say about
+them and leaving them untouched is the only non-destructive choice — the **Roman** rite is that case, on
+every page, because the General Roman Calendar has no `roman_calendars` entry to publish anything under.
+Holy days of obligation are an option **list** the rite defines, exactly as locales are, so they follow
+the locale input's rule instead: narrow to what the rite publishes, restore the defaults when it
+publishes none. Without that, an Ambrosian-only entry such as `StAmbrose` would survive a switch back to
+the Roman rite and be offered — and requested — for the General Roman Calendar.
+
+A published value the input has no `<option>` for is skipped rather than assigned, since assigning an
+unmatched value to a `<select>` blanks it. Each input that actually moves dispatches `change`, so a
+listening `ApiClient` sends the rite's values rather than the ones the user picked under the previous
+rite; `ApiClient` coalesces the burst into a single refetch.
 
 `riteSelect` must be `null` (the default) or an instance of `RiteSelect`; passing anything else throws.
 
