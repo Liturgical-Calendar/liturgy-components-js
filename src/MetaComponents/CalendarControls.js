@@ -341,12 +341,6 @@ export default class CalendarControls {
     }
 
     /**
-     * Guards every method a disposed instance cannot honour.
-     *
-     * @returns {void}
-     * @throws {Error} If this instance has been disposed.
-     */
-    /**
      * Resolves once the most recent fetch these controls issued has settled.
      *
      * `mountInto()` resolves to the controls, not to the calendar data, and drops
@@ -403,9 +397,27 @@ export default class CalendarControls {
      */
     get settled() {
         this.#assertUsable();
-        return this.#settled;
+        // Derived on every read rather than stored: `#settled` may be the very
+        // promise `fetch()` handed the caller, and attaching a handler to it
+        // eagerly would silence their unhandled-rejection report. It is also
+        // what makes every clause of the contract structural rather than
+        // conventional — resolves whatever happened, with `undefined` rather
+        // than the payload a `.catch()` alone would pass through, and never
+        // rejects even if an `onError()` callback threw inside the factory's
+        // own rejection handler. The promise is a fresh object each read, but
+        // it always settles at the same instant.
+        return this.#settled.then(
+            () => {},
+            () => {},
+        );
     }
 
+    /**
+     * Guards every method a disposed instance cannot honour.
+     *
+     * @returns {void}
+     * @throws {Error} If this instance has been disposed.
+     */
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -829,16 +841,18 @@ export default class CalendarControls {
         }
         // `settled` tracks the most recent fetch this component issued, so a
         // hand-constructed instance publishes the same signal `mountInto()`
-        // does (#61). The `.catch` is a HANDLED derived branch: the promise
-        // returned below is untouched and still the caller's to handle, so this
-        // neither swallows their rejection nor creates a second, unhandled one.
-        // `mountInto()` overwrites `#settled` immediately afterwards with its
-        // own error-delivering branch — deliberately, so that branch stays the
-        // one a caller awaits there.
-        this.#settled = promise.then(
-            () => {},
-            () => {},
-        );
+        // does (#61).
+        //
+        // Stored RAW, with no handler attached, and normalized only when the
+        // `settled` getter is read. Deriving here instead — `promise.then( …,
+        // … )` — would mark THIS promise object handled, and it is the very
+        // object returned below: a caller who calls `fetch()` and ignores the
+        // result would silently lose the platform's unhandled-rejection report.
+        // That report is the premise of the paragraph above, which declines to
+        // log precisely because the caller holds the promise. Rejection
+        // tracking is per promise object, so the only way to keep it is to
+        // attach nothing until someone actually asks.
+        this.#settled = promise;
         return promise;
     }
 
@@ -1010,27 +1024,22 @@ export default class CalendarControls {
                 // `#deliverError()` tries the callbacks; only if nothing received
                 // the error at all does it fall back to the console, so a failure
                 // is never silent and never double-reported.
-                // Captured rather than merely dropped. The two-callback
-                // `then()` is what makes this expression resolve with
-                // `undefined` whatever happens, which is exactly the contract
-                // `settled` publishes: `.catch( handler )` alone passes a
-                // FULFILLED value straight through, so the success path used to
-                // hand back the whole calendar payload — a second data channel,
-                // free to drift from `onCalendarFetched()`. The rejection
-                // handling below is unchanged. `fetch()` stores a swallowing
-                // branch of its own; this assignment runs after it and wins, so
-                // what a caller awaits here is still the branch that delivers to
-                // `onError()`.
-                controls.#settled = controls.fetch().then(
-                    () => {},
-                    (error) => {
-                        if (false === controls.#deliverError(error)) {
-                            console.error(
-                                `CalendarControls: could not load the calendar: ${error.message}`,
-                            );
-                        }
-                    },
-                );
+                // Captured rather than merely dropped, so `settled` observes
+                // this fetch. The expression assigned is the branch that has
+                // ALREADY delivered the failure — `fetch()` stored the raw
+                // promise a moment ago and this overwrites it, which is what
+                // keeps `await controls.settled` ordered after `onError()`
+                // rather than racing it. The `settled` getter normalizes
+                // whatever is stored here into a promise that resolves with
+                // `undefined`, so this `.catch()` passing a fulfilled payload
+                // through is of no consequence to that contract.
+                controls.#settled = controls.fetch().catch((error) => {
+                    if (false === controls.#deliverError(error)) {
+                        console.error(
+                            `CalendarControls: could not load the calendar: ${error.message}`,
+                        );
+                    }
+                });
             }
         }
 

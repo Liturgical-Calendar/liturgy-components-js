@@ -543,21 +543,27 @@ spinner.hide();
 Its contract, on all three components that have it:
 
 - **It observes the most recent fetch the component issued** — `mountInto()`'s initial one, and every
-  `fetch()` call on either construction path, each replacing what came before. Since 2.8.0 this is no
-  longer a `mountInto()`-only property: a hand-constructed instance publishes the same signal from its own
-  `fetch()` calls, so code awaiting `settled` need not know which path produced the instance. It does
-  **not** observe the refetches `ApiClient`'s `listenTo()` change listeners drive when a user picks a
-  different calendar; those requests are issued inside `ApiClient` and their promises never reach the
-  component.
+  `fetch()` call on either construction path, each replacing what came before. As of the release that
+  closes #61 this is no longer a `mountInto()`-only property: a hand-constructed instance publishes the
+  same signal from its own `fetch()` calls, so code awaiting `settled` need not know which path produced
+  the instance. It does **not** observe the refetches `ApiClient`'s `listenTo()` change listeners drive
+  when a user picks a different calendar; those requests are issued inside `ApiClient` and their promises
+  never reach the component.
 - **It always resolves, never rejects**, with `undefined`. A property present on every mounted instance
   that could reject would produce an unhandled rejection for every caller who never reads it — precisely
-  the trap `mountInto()` avoids by discarding. What is stored is a handled derived branch of the fetch
-  promise, so this costs nothing and changes nothing about how failures are handled — and the promise
-  `fetch()` hands back is untouched, still the caller's to handle.
+  the trap `mountInto()` avoids by discarding. The normalization happens in the **getter**, which derives
+  a fresh `promise.then( () => {}, () => {} )` on every read, so the clause holds structurally: it also
+  survives an `onError()` callback that throws inside the factory's own rejection handler.
+- **Reading it never silences your own unhandled-rejection report.** The promise `fetch()` returns is
+  stored raw, with no handler attached, because rejection tracking is per promise _object_: deriving from
+  it eagerly would mark the very object handed to the caller as handled, and a caller who ignores it
+  would lose the platform's warning — the warning `fetch()` relies on when it declines to log a promise
+  the caller holds. The consequence is that `settled` is a fresh promise each read, settling at the same
+  instant; nothing depends on its identity.
 - **It answers "has it finished", never "did it work".** Outcomes stay with `onError()`, which since 2.3.0
   also reports failures raised before a request is issued, and with `onCalendarFetched()` for the data.
   Resolving to the payload would be a second channel for something `onCalendarFetched()` already delivers,
-  free to drift from it. (Before 2.8.0 the success path did exactly that, resolving with the whole payload
+  free to drift from it. (Until #61 the success path did exactly that, resolving with the whole payload
   — `.catch( handler )` passes a fulfilled value straight through — while only the failure path was
   tested. It resolves with `undefined` either way now.)
 - **It is always a promise**, already resolved when nothing has been issued yet — `initialFetch: false`,
@@ -744,10 +750,17 @@ Four things to know:
 - **It reaches `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, which is wherever the bundled
   `ApiOptions` can render that input at all — `ApiOptions.appendTo()` renders it only under
   `ApiOptionsFilter.ALL_CALENDARS` (the default), `ALL_PATHS` and `NONE`. `DayViewer` and
-  `SubscriptionBuilder` pin their own `ApiOptions` to `LOCALE_ONLY` and never render it.
-- **An unknown key is rejected by name** — `CalendarViewer: unknown inputs option \`acceptHeder\`` — as is
-  a non-boolean value or a non-object bag, and the rejection happens before anything is mounted. A
-  misspelled visibility toggle would otherwise render a control the caller believes they turned off.
+  `SubscriptionBuilder` pin their own `ApiOptions` to `LOCALE_ONLY` and never render it, so the option
+  does nothing there. The two differ in one detail worth knowing before "fixing" either: `DayViewer`
+  ignores an `inputs` bag entirely, while `SubscriptionBuilder` forwards its whole options bag to
+  `CalendarControls` and therefore still **validates** one — a typo'd key throws there even though a
+  correct one would have no effect.
+- **An unknown key is rejected by name** — `` CalendarViewer: unknown inputs option `acceptHeder` `` — as
+  is a non-boolean value or a non-object bag, and the rejection happens before anything is mounted. A
+  misspelled visibility toggle would otherwise render a control the caller believes they turned off. The
+  message names the class **you** called: `CalendarViewer` and `ApiExplorer` each validate the bag under
+  their own name before handing it on, rather than letting the forwarded copy report under
+  `CalendarControls`.
 - **`acceptHeader: true` is the default reasserted, not an un-hide.** `AcceptHeaderInput.hide()` is
   irreversible; the option is applied in the constructor, before the input has been rendered anywhere.
 - **`_acceptHeaderInput.hide()` still works** and is unchanged. It remains the only way to hide the input
@@ -1083,7 +1096,7 @@ callable more than once, and moves its children rather than copying them.
 the reason to reach for the constructor at all: `AcceptHeaderInput.hide()` sets a flag that
 `ApiOptions.appendTo()` reads, so it was only expressible in the window between construction and the
 append — a window `mountInto()` does not open. That cost a caller the whole factory path over one boolean,
-and with it [`settled`](#settled-1). Since 2.8.0 it is `inputs: { acceptHeader: false }`, honoured on both
+and with it [`settled`](#settled-1). It is now `inputs: { acceptHeader: false }`, honoured on both
 paths, so reach for the constructor when you want the instance **synchronously** — the `ApiBase` is
 already loaded, and you are sequencing the mount yourself — not because an option is out of reach. If you
 find another setting that is only meaningful before the append, that is a gap in the options bag worth

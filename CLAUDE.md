@@ -530,11 +530,18 @@ which path produced the instance. It does not observe the refetches `ApiClient`'
 listeners drive; those promises never reach the component. It **always resolves and never rejects**, with
 `undefined`: a property present on every mounted instance that could reject would produce an unhandled
 rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by discarding.
-What is stored is a HANDLED derived branch of the fetch promise, built with a two-callback `then()`, so
-this adds no error handling and changes none, and the promise `fetch()` hands back is untouched. The
-two-callback form is load-bearing: `.catch( handler )` alone passes a **fulfilled** value straight through,
-which is why `settled` used to resolve with the whole calendar payload on the success path — the second
-data channel the contract exists to prevent. Outcomes stay with `onError()` and `onCalendarFetched()`. It
+**The normalization lives in the getter, not in `fetch()`, and that placement is load-bearing twice over.**
+The getter derives a fresh `promise.then( () => {}, () => {} )` on every read, which is what makes the
+contract structural: it resolves with `undefined` rather than the payload `.catch( handler )` alone passes
+straight through (the bug that made `settled` a second data channel on the success path), and it cannot
+reject even when an `onError()` callback throws inside a factory's rejection handler. Deriving eagerly in
+`fetch()` instead would attach a handler to the very promise object handed to the caller — rejection
+tracking is per promise object — silently removing the platform's unhandled-rejection report for anyone
+who calls `fetch()` and ignores the result, which is the report `fetch()` relies on when it declines to
+log a promise the caller holds. The cost is that `settled` is a fresh object per read, settling at the
+same instant; do not "optimize" it back into a stored branch. The factories keep their `.catch( handler )`
+assignment, which runs after `fetch()`'s own store and so keeps `await x.settled` ordered after
+`onError()` delivery. Outcomes stay with `onError()` and `onCalendarFetched()`. It
 is always a promise, already resolved when nothing has been issued (`initialFetch: false`, no `apiClient`,
 or a hand-constructed instance that has not fetched; a `fetch()` that throws synchronously issues nothing
 and leaves it untouched). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither

@@ -362,15 +362,6 @@ export default class DayViewer {
     }
 
     /**
-     * Guards every method a disposed viewer cannot honour.
-     *
-     * A disposed component that quietly does nothing is worse than one that
-     * throws: the caller's next assertion then fails somewhere unrelated.
-     *
-     * @returns {void}
-     * @throws {Error} If this viewer has been disposed.
-     */
-    /**
      * Resolves once the most recent fetch this viewer issued has settled —
      * `mountInto()`'s initial one, or the latest `fetch()` call.
      *
@@ -392,9 +383,30 @@ export default class DayViewer {
      */
     get settled() {
         this.#assertUsable();
-        return this.#settled;
+        // Derived on every read rather than stored: `#settled` may be the very
+        // promise `fetch()` handed the caller, and attaching a handler to it
+        // eagerly would silence their unhandled-rejection report. It is also
+        // what makes every clause of the contract structural rather than
+        // conventional — resolves whatever happened, with `undefined` rather
+        // than the payload a `.catch()` alone would pass through, and never
+        // rejects even if an `onError()` callback threw inside the factory's
+        // own rejection handler. The promise is a fresh object each read, but
+        // it always settles at the same instant.
+        return this.#settled.then(
+            () => {},
+            () => {},
+        );
     }
 
+    /**
+     * Guards every method a disposed viewer cannot honour.
+     *
+     * A disposed component that quietly does nothing is worse than one that
+     * throws: the caller's next assertion then fails somewhere unrelated.
+     *
+     * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
+     */
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -675,17 +687,12 @@ export default class DayViewer {
             );
         }
         const promise = this.#apiClient.fetchCalendar(this.#selectedLocale);
-        // `settled` tracks the most recent fetch this component issued, so a
+        // `settled` tracks the most recent fetch this viewer issued, so a
         // hand-constructed viewer publishes the same signal `mountInto()` does
-        // (#61). The `.catch` is a HANDLED derived branch: the promise returned
-        // below is untouched and still the caller's to handle, so this neither
-        // swallows their rejection nor creates a second, unhandled one.
-        // `mountInto()` overwrites `#settled` afterwards with its own
-        // error-delivering branch.
-        this.#settled = promise.then(
-            () => {},
-            () => {},
-        );
+        // (#61). Stored RAW and normalized in the getter — see
+        // `CalendarControls.fetch()` for why attaching a handler here would
+        // silence the caller's own unhandled-rejection report.
+        this.#settled = promise;
         return promise;
     }
 
@@ -784,26 +791,23 @@ export default class DayViewer {
             // factory's promise resolves to the viewer. Callers wanting the fetch
             // RESULT await `viewer.fetch()` themselves; callers wanting to know
             // when this one finished read `viewer.settled`, which is the promise
-            // captured here — with a two-callback `then()`, so it resolves with
-            // `undefined` either way rather than passing a fulfilled payload
-            // through; see `CalendarControls.mountInto()` for that reasoning.
-            viewer.#settled = viewer.fetch().then(
-                () => {},
-                (error) => {
-                    // The guard here used to be `0 === viewer.#errorCallbacks.length`,
-                    // which assumed "a callback exists, therefore it will handle this".
-                    // That is exactly false for a failure raised before the request goes
-                    // out: no `calendarFetchFailed` is emitted, so the bus-bound callback
-                    // never runs, the log was skipped because a callback existed, and
-                    // this `.catch()` swallowed the rejection — total silence, and
-                    // registering `onError()` made it strictly worse than omitting it.
-                    if (false === viewer.#deliverError(error)) {
-                        console.error(
-                            `DayViewer: could not load the calendar: ${error.message}`,
-                        );
-                    }
-                },
-            );
+            // captured here, and the `settled` getter normalizes it into a
+            // promise that resolves with `undefined` either way; see
+            // `CalendarControls.mountInto()` for that reasoning.
+            viewer.#settled = viewer.fetch().catch((error) => {
+                // The guard here used to be `0 === viewer.#errorCallbacks.length`,
+                // which assumed "a callback exists, therefore it will handle this".
+                // That is exactly false for a failure raised before the request goes
+                // out: no `calendarFetchFailed` is emitted, so the bus-bound callback
+                // never runs, the log was skipped because a callback existed, and
+                // this `.catch()` swallowed the rejection — total silence, and
+                // registering `onError()` made it strictly worse than omitting it.
+                if (false === viewer.#deliverError(error)) {
+                    console.error(
+                        `DayViewer: could not load the calendar: ${error.message}`,
+                    );
+                }
+            });
         }
 
         return viewer;

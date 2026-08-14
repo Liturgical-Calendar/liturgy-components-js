@@ -90,13 +90,30 @@ The option lets a consumer turn it off; it is never off by default anywhere.
 `mountInto()` path, or the latest `fetch()` call on the constructor path. Every clause of the published
 contract is preserved:
 
-- **Always resolves, never rejects, with `undefined`.** `fetch()` stores `promise.catch( () => {} )` — a
-  handled derived branch. The promise the caller receives is unchanged and still theirs to handle, so no
-  unhandled rejection is created or removed.
+- **Always resolves, never rejects, with `undefined`.** `fetch()` stores the **raw** promise, and the
+  `settled` getter derives `promise.then( () => {}, () => {} )` on every read.
+
+  The first draft of this design had `fetch()` store the derived branch eagerly, and claimed "the promise
+  the caller receives is unchanged … so no unhandled rejection is created or removed". **That claim was
+  false**, and code review caught it: rejection tracking is per promise _object_, so attaching a handler
+  to the promise `fetch()` returns marks that object handled — and a caller who calls `fetch()` and
+  ignores the result would silently lose the platform's unhandled-rejection report. Verified directly
+  under node: a bare rejected promise reports, the same promise with a derived branch attached does not.
+  That report is load-bearing here, because `fetch()` deliberately does **not** log for its returned
+  promise, precisely on the grounds that the caller holds it.
+
+  Deriving lazily in the getter keeps the report for a caller who never reads `settled`, and makes every
+  clause of the contract structural rather than conventional: it resolves with `undefined` rather than
+  the payload a `.catch()` alone passes through, and it cannot reject even if an `onError()` callback
+  throws inside the factory's own rejection handler. The cost is that `settled` is a fresh promise object
+  per read; it always settles at the same instant, and nothing in the library or its tests depends on its
+  identity. A caller who _does_ read `settled` thereby marks their own promise handled — acceptable, and
+  the same position the `mountInto()` path has always been in.
+
 - **Always a promise**, already resolved before any fetch has been issued.
-- **Stored after the existing `.catch`** on the `mountInto()` path: those factories keep their current
-  assignment, which runs _after_ `fetch()`'s own, so `settled` remains the error-delivering branch it is
-  today and its resolution ordering relative to `onError()` is unchanged.
+- **The factories keep their existing `.catch( handler )` assignment**, which runs _after_ `fetch()`'s own
+  store and therefore wins — so `await x.settled` stays ordered after `onError()` delivery rather than
+  racing it. Normalization lives in the getter, in one place, so the factories needed no change at all.
 - **Throws once disposed**, via the existing `#assertUsable()` guard.
 
 ### Replacement, not accumulation

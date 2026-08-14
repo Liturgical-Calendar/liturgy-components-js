@@ -15,7 +15,8 @@ prepared under that number was skipped, and everything it was to have delivered 
   publishes. The bag is resolved in `CalendarControls`' constructor (via a new internal
   `src/MetaComponents/InputVisibility.js`, not exported from `src/index.js`, like `Theme.js`), so both
   construction paths honour it. An unknown key is rejected by name, as is a non-boolean value or a
-  non-object bag, before anything is mounted. Defaults are unchanged everywhere — `ApiExplorer` included,
+  non-object bag, before anything is mounted — and under the name of the class the caller actually used,
+  since `CalendarViewer` and `ApiExplorer` each validate the bag themselves before forwarding it. Defaults are unchanged everywhere — `ApiExplorer` included,
   where the accept-header select is part of the path-building UI and drives `PathBuilder`'s `return_type`.
   `_acceptHeaderInput.hide()` still works and is unchanged.
 
@@ -26,10 +27,13 @@ prepared under that number was skipped, and everything it was to have delivered 
   issued", so a hand-constructed `CalendarControls`, `CalendarViewer` or `DayViewer` publishes the same
   signal from its own `fetch()` calls, each call replacing the last. Every other clause of the contract is
   unchanged: always resolves, never rejects, already resolved when nothing has been issued, throws once
-  disposed. The promise `fetch()` returns is untouched and still the caller's to handle — what `settled`
-  holds is a separate, handled branch of it. Refetches driven by `ApiClient`'s own `listenTo()` change
-  listeners are still not observed, on either path, and could not be: their promises never reach the
-  component.
+  disposed. The promise `fetch()` returns is stored **raw** and normalized only when the `settled` getter
+  is read — deriving from it eagerly would mark that very promise object handled and silently remove the
+  platform's unhandled-rejection report for a caller who calls `fetch()` and ignores the result, which is
+  the report `fetch()` relies on when it declines to log a promise the caller holds. `settled` is
+  therefore a fresh promise object per read, settling at the same instant. Refetches driven by
+  `ApiClient`'s own `listenTo()` change listeners are still not observed, on either path, and could not
+  be: their promises never reach the component.
 
 ### Fixed
 
@@ -38,6 +42,10 @@ prepared under that number was skipped, and everything it was to have delivered 
   fulfilled value straight through, so the property became a second data channel beside
   `onCalendarFetched()` — free to drift from it, which is exactly what the contract exists to prevent.
   Only the failure path had ever been covered by a test. Found while widening `settled` for #61.
+
+- **`settled` could reject**, despite "never rejects", when an `onError()` callback threw: the callbacks
+  run inside the very rejection handler each factory builds `settled` from. Normalizing in the getter
+  closes that structurally rather than by convention.
 
 ## 2.7.0
 

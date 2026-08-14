@@ -31,6 +31,7 @@
  */
 
 import CalendarControls from './CalendarControls.js';
+import { resolveInputVisibility } from './InputVisibility.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import {
@@ -89,6 +90,10 @@ export default class ApiExplorer {
      */
     constructor(options) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
+        // Validated here purely for ATTRIBUTION, and the result discarded — see
+        // `CalendarViewer`'s constructor for why: `CalendarControls` applies the
+        // same bag below, but names itself when rejecting it.
+        resolveInputVisibility(bag.inputs, 'ApiExplorer');
         this.#controls = new CalendarControls(bag);
         // The rite -> calendar chain, wired directly rather than through
         // `CalendarControls.listenTo()` — see the class doc comment above for

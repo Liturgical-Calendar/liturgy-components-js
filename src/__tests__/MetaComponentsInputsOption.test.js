@@ -150,21 +150,26 @@ describe('an invalid inputs bag is programmer error', () => {
         ).rejects.toThrow(/inputs\.acceptHeader.*found type: string/);
     });
 
-    it('rejects a bag that is not an object', async () => {
+    it('rejects a bag that is not an object, naming the class the caller used', async () => {
+        // Not `CalendarControls`, which is what forwarding alone would name: a
+        // typo in an option passed to `CalendarViewer` must not be reported
+        // under a class the caller never touched.
         await expect(
             CalendarViewer.mountInto(
                 { controls: '#mount', calendar: '#calendar' },
                 { locale: 'en', inputs: 'acceptHeader' },
             ),
-        ).rejects.toThrow(/inputs must be an object.*found type: string/);
+        ).rejects.toThrow(
+            /CalendarViewer: inputs must be an object.*found type: string/,
+        );
     });
 
-    it('rejects through ApiExplorer too', async () => {
+    it('rejects through ApiExplorer too, under its own name', async () => {
         await expect(
             ApiExplorer.mountInto(
                 { pathBuilder: '#pb' },
                 { locale: 'en', inputs: { nope: true } },
             ),
-        ).rejects.toThrow('unknown inputs option `nope`');
+        ).rejects.toThrow('ApiExplorer: unknown inputs option `nope`');
     });
 });

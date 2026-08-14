@@ -110,18 +110,6 @@ const deferRequests = () => {
 };
 
 /**
- * As {@link deferRequests}, but the held-open response carries one real event.
- *
- * `WebCalendar` and `LiturgyOfAnyDay` both THROW on an empty `litcal[]` from
- * inside their `calendarFetched` listeners, which turns an otherwise successful
- * fetch into a rejected promise. The `mountInto()` tests never notice, because
- * those factories hold the rejection themselves; a constructor-path test that
- * awaits `fetch()` does. So the renderer-bearing components get a payload they
- * accept — the same minimal event `DayViewerMount.test.js` uses.
- *
- * @returns {function(): void} Lands the response.
- */
-/**
  * A response body carrying one real event.
  *
  * `WebCalendar` and `LiturgyOfAnyDay` both THROW on an empty `litcal[]` from
@@ -202,6 +190,31 @@ const deferRequestsWithEvent = () => {
                         status: 200,
                         headers: { get: () => 'application/json' },
                         json: () => Promise.resolve(PAYLOAD_WITH_EVENT),
+                    });
+            }),
+    );
+    return () => land();
+};
+
+/**
+ * A fetch mock whose FAILING response lands only when the returned function is
+ * called — `failRequests()`, held open, so "still pending" and "settled" can be
+ * told apart on the failure path too.
+ *
+ * @returns {function(): void} Lands the failure.
+ */
+const deferFailure = () => {
+    let land;
+    global.fetch = jest.fn(
+        () =>
+            new Promise((resolve) => {
+                land = () =>
+                    resolve({
+                        ok: false,
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        headers: { get: () => 'text/plain' },
+                        text: () => Promise.resolve('down'),
                     });
             }),
     );
@@ -453,18 +466,48 @@ describe('settled tracks a constructor-path fetch()', () => {
     });
 
     it('still resolves when that fetch fails, while the returned promise rejects', async () => {
+        const land = deferFailure();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        controls.listenTo(apiClient);
+
+        // Deferred, so this measures the failure actually arriving. With an
+        // immediate mock the assertion below would be satisfied by the
+        // already-resolved promise the field is initialised with, whatever
+        // `fetch()` did with it.
+        const fetching = controls.fetch();
+        // The caller's promise is theirs, and still rejects. Handled here so
+        // the assertion below cannot pass by way of a swallowed rejection.
+        const rejecting = expect(fetching).rejects.toThrow();
+        let done = false;
+        controls.settled.then(() => {
+            done = true;
+        });
+        await drain();
+        expect(done).toBe(false);
+
+        land();
+        await rejecting;
+        await expect(controls.settled).resolves.toBeUndefined();
+    });
+
+    it('does not silence the unhandled rejection of the promise fetch() returns', async () => {
+        // `settled` is derived when the getter is READ, never eagerly, because
+        // rejection tracking is per promise object: attaching a handler to the
+        // promise `fetch()` returns would mark that very object handled, and a
+        // caller who ignores the result would silently lose the platform's
+        // report. `fetch()`'s own contract — the library deliberately does NOT
+        // log for it, because the caller holds it — depends on that report.
         failRequests();
         const apiClient = await ApiClient.init(API_URL);
         const controls = new CalendarControls({ locale: 'en' });
         controls.appendTo('#mount');
         controls.listenTo(apiClient);
 
-        // The `.catch` `settled` is built from is a HANDLED derived branch: it
-        // neither swallows the caller's rejection nor creates a second,
-        // unhandled one.
         const fetching = controls.fetch();
+        // Nothing must have been attached to it by `fetch()` itself.
         await expect(fetching).rejects.toThrow();
-        await expect(controls.settled).resolves.toBeUndefined();
     });
 
     it('is replaced by each further fetch(), so it tracks the latest one', async () => {
@@ -537,6 +580,76 @@ describe('settled tracks a constructor-path fetch()', () => {
         );
 
         await expect(viewer.settled).resolves.toBeUndefined();
+    });
+
+    it('resolves with undefined after a successful DayViewer mount too', async () => {
+        // The third of the three, and the one the first round of this work
+        // missed: `LiturgyOfAnyDay` throws on an empty `litcal[]` exactly as
+        // `WebCalendar` does, so without a real event this would measure the
+        // failure path and pass however the fulfilment side behaved.
+        captureRequestsWithEvent();
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = await DayViewer.mountInto('#mount', {
+            locale: 'en',
+            apiClient,
+        });
+
+        await expect(viewer.settled).resolves.toBeUndefined();
+    });
+
+    it('resolves only after onError has been delivered, on the constructor path', async () => {
+        // The ordering the factory path gets from overwriting `#settled` with
+        // its own error-delivering branch. On the constructor path it comes
+        // from `ApiClient` itself, which emits `calendarFetchFailed` BEFORE
+        // rejecting the promise — so the bus-bound `onError()` callback has
+        // already run by the time anything derived from that promise resolves.
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const seen = [];
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo('#mount');
+        controls.listenTo(apiClient);
+        controls.onError(() => seen.push('onError'));
+
+        const fetching = controls.fetch();
+        await expect(fetching).rejects.toThrow();
+        await controls.settled;
+        expect(seen).toEqual(['onError']);
+    });
+
+    it('resolves only after onError has been delivered, on DayViewer too', async () => {
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const seen = [];
+        const viewer = new DayViewer({ locale: 'en' });
+        viewer.appendTo('#mount');
+        viewer.listenTo(apiClient);
+        viewer.onError(() => seen.push('onError'));
+
+        const fetching = viewer.fetch();
+        await expect(fetching).rejects.toThrow();
+        await viewer.settled;
+        expect(seen).toEqual(['onError']);
+    });
+
+    it('resolves even when an onError callback throws', async () => {
+        // "Never rejects" has to survive a subscriber's own bug, not only a
+        // failed request: the callbacks run inside the very rejection handler
+        // the factory builds `#settled` from, so a throwing one used to make
+        // `settled` itself reject — an unhandled rejection for every caller who
+        // never reads it, which is the trap the contract exists to avoid.
+        // Normalizing in the getter closes that structurally.
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const controls = await CalendarControls.mountInto('#mount', {
+            locale: 'en',
+            apiClient,
+            onError: () => {
+                throw new Error('a subscriber’s own bug');
+            },
+        });
+
+        await expect(controls.settled).resolves.toBeUndefined();
     });
 
     it('is still the factory’s error-delivering branch on the mountInto path', async () => {
