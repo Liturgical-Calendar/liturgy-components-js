@@ -1933,6 +1933,12 @@ export default class WebCalendar {
         this.#unsubscribe();
         this.#announcer?.dispose();
         this.#attachedElement = null;
+        // Forgetting the mount detaches the live region with it, so the next
+        // render RE-INSERTS the region — and a region written in the same task
+        // it is inserted in is not reliably announced. A remounted calendar
+        // therefore has to be silent on its first render, exactly as a fresh
+        // one is.
+        this.#hasRendered = false;
     }
 
     /**

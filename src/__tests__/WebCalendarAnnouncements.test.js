@@ -196,6 +196,26 @@ describe('WebCalendar live region', () => {
         );
     });
 
+    it('is silent again on the first render after being remounted', async () => {
+        // `dispose()` detaches the region and forgets the mount, so the next
+        // render re-inserts it — and a live region written in the same task it
+        // is inserted in is not reliably announced. A remounted calendar has to
+        // behave like a fresh one.
+        const { webCalendar, container } = mounted();
+        await render(calendarData());
+        await render(calendarData({}, 2));
+        webCalendar.dispose();
+
+        const second = document.createElement('div');
+        document.body.appendChild(second);
+        webCalendar.appendTo(second);
+        webCalendar.listenTo(apiClient);
+        await render(calendarData({}, 3));
+
+        expect(second.querySelector('[role="status"]').textContent).toBe('');
+        expect(container.querySelector('[role="status"]')).toBeNull();
+    });
+
     it('removes the region on dispose', async () => {
         const { webCalendar, container } = mounted();
         await render(calendarData());
