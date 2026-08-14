@@ -652,6 +652,77 @@ describe('settled tracks a constructor-path fetch()', () => {
         await expect(controls.settled).resolves.toBeUndefined();
     });
 
+    it('resolves the CalendarViewer factory even when an onError callback throws', async () => {
+        // The case `CalendarControls` above cannot cover, because its factory
+        // does not await. `CalendarViewer.mountInto()` DOES await its stored
+        // branch — deliberately, so the table is populated before it resolves —
+        // so a throwing `onError()` used to reject the whole factory and hand the
+        // caller no viewer at all. A subscriber's own bug became a failed mount.
+        // Caught by CodeRabbit on PR #76.
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        document.body.innerHTML =
+            '<div id="controls"></div><div id="calendar"></div>';
+        const errors = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+
+        const viewer = await CalendarViewer.mountInto(
+            { controls: '#controls', calendar: '#calendar' },
+            {
+                locale: 'en',
+                apiClient,
+                onError: () => {
+                    throw new Error('a subscriber’s own bug');
+                },
+            },
+        );
+
+        expect(viewer).toBeInstanceOf(CalendarViewer);
+        await expect(viewer.settled).resolves.toBeUndefined();
+        // Reported, not swallowed: the throw is the consumer's own and they must
+        // see it — just not through a promise nobody is placed to catch.
+        expect(
+            errors.mock.calls.some((args) =>
+                String(args[0]).includes('an onError callback threw'),
+            ),
+        ).toBe(true);
+        errors.mockRestore();
+    });
+
+    it('does not leave the stored branch rejecting when an onError callback throws', async () => {
+        // The second half of the same defect, on a path that does NOT await.
+        // `normalizeSettled()` cannot cover this: it only attaches a handler when
+        // somebody actually reads `settled`, so a caller who never reads it used
+        // to get an unhandled-rejection report — precisely what the "never
+        // rejects" clause exists to rule out. Asserted here by never touching
+        // `settled` at all and watching for the rejection instead.
+        failRequests();
+        const apiClient = await ApiClient.init(API_URL);
+        const errors = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        const unhandled = [];
+        const record = (reason) => unhandled.push(reason);
+        process.on('unhandledRejection', record);
+
+        await DayViewer.mountInto('#mount', {
+            locale: 'en',
+            apiClient,
+            onError: () => {
+                throw new Error('a subscriber’s own bug');
+            },
+        });
+        // Two macrotask turns: node reports an unhandled rejection only once the
+        // microtask queue has drained with nothing attached.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        process.off('unhandledRejection', record);
+        errors.mockRestore();
+        expect(unhandled).toEqual([]);
+    });
+
     it('is still the factory’s error-delivering branch on the mountInto path', async () => {
         failRequests();
         const apiClient = await ApiClient.init(API_URL);

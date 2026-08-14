@@ -26,6 +26,7 @@ import {
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
     assertTheme,
     resolveChildTheme,
@@ -398,19 +399,10 @@ export default class CalendarControls {
      */
     get settled() {
         this.#assertUsable();
-        // Derived on every read rather than stored: `#settled` may be the very
-        // promise `fetch()` handed the caller, and attaching a handler to it
-        // eagerly would silence their unhandled-rejection report. It is also
-        // what makes every clause of the contract structural rather than
-        // conventional — resolves whatever happened, with `undefined` rather
-        // than the payload a `.catch()` alone would pass through, and never
-        // rejects even if an `onError()` callback threw inside the factory's
-        // own rejection handler. The promise is a fresh object each read, but
-        // it always settles at the same instant.
-        return this.#settled.then(
-            () => {},
-            () => {},
-        );
+        // The rule, and the reason for it, live in `Settled.js` — one place
+        // rather than three near-identical copies of the same nine-line
+        // rationale.
+        return normalizeSettled(this.#settled);
     }
 
     /**
@@ -1034,13 +1026,15 @@ export default class CalendarControls {
                 // whatever is stored here into a promise that resolves with
                 // `undefined`, so this `.catch()` passing a fulfilled payload
                 // through is of no consequence to that contract.
-                controls.#settled = controls.fetch().catch((error) => {
-                    if (false === controls.#deliverError(error)) {
-                        console.error(
-                            `CalendarControls: could not load the calendar: ${error.message}`,
-                        );
-                    }
-                });
+                controls.#settled = controls
+                    .fetch()
+                    .catch((error) =>
+                        deliverFetchFailure(
+                            'CalendarControls',
+                            error,
+                            (raised) => controls.#deliverError(raised),
+                        ),
+                    );
             }
         }
 

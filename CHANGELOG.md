@@ -146,6 +146,17 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Fixed
 
+- **A throwing `onError()` callback no longer breaks the `settled` contract, or the `CalendarViewer`
+  factory.** The callbacks run inside the very rejection handler each `mountInto()` builds its stored
+  `settled` branch from, and `#deliverError()` invoked them unguarded — so a subscriber's own bug rejected
+  that branch. Two consequences, both real: `CalendarViewer.mountInto()` **awaits** its stored branch, so
+  the whole factory rejected and the caller received no viewer; and on the two paths that do not await, the
+  branch rejected with nothing attached, producing precisely the unhandled-rejection report that
+  `settled`'s "never rejects" clause exists to rule out. Deriving in the getter cannot cover that second
+  case — it only attaches a handler when somebody actually reads `settled`. The delivery now goes through
+  `Settled.js`'s `deliverFetchFailure()`, which cannot throw; a callback that throws is still reported to
+  the console rather than swallowed. Found by CodeRabbit reviewing #76.
+
 - **`settled` resolved with the calendar payload on the success path**, contrary to its documented
   contract of resolving with `undefined`. The factories built it with `.catch( handler )`, which passes a
   fulfilled value straight through, so the property became a second data channel beside

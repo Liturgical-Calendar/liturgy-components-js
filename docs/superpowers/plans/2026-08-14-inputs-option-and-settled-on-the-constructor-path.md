@@ -12,10 +12,11 @@ every consumer onto the constructor path, and the constructor path is no longer 
 `inputs: { acceptHeader: boolean }` bag the way `Theme.js` resolves a theme bag — rejecting an unknown key by
 name. `CalendarControls`' constructor applies it by calling `_acceptHeaderInput.hide()`, which
 `ApiOptions.appendTo()` reads on both construction paths. Separately, `CalendarControls.fetch()`,
-`CalendarViewer.fetch()` and `DayViewer.fetch()` each store `promise.catch( () => {} )` in their existing
-`#settled` field, preserving every clause of the published contract.
+`CalendarViewer.fetch()` and `DayViewer.fetch()` each store the fetch promise **raw** in their existing
+`#settled` field, and the `settled` GETTER normalizes it on every read. Storing a derived branch in
+`fetch()` was tried and rejected during implementation — see the amendment note under Task 3 Step 3.
 
-**Tech Stack:** ES2022 JavaScript modules, Jest 29 (jsdom), TypeScript 5.7 for `.d.ts` emit only, prettier,
+**Tech Stack:** ES2022 JavaScript modules, Jest 30.4.2 (jsdom), TypeScript 5.7 for `.d.ts` emit only, prettier,
 markdownlint-cli2.
 
 ## Global Constraints
@@ -305,14 +306,19 @@ Expected: FAIL — `settled` stays resolved after a constructor-path `fetch()`.
 
 In `CalendarControls.fetch()`, replace the three direct `return` statements with a single stored promise:
 
+> **Amended during implementation.** The version below is what shipped; the original draft of this step
+> stored `promise.catch( () => {} )` here and was rejected. Rejection tracking is per **promise object**, so
+> attaching a handler in `fetch()` marks the very promise returned to the caller as handled — silently
+> removing the platform's unhandled-rejection report for anyone who calls `fetch()` and ignores the result.
+> That report is the premise on which `fetch()` declines to log at all. Store raw; normalize in the getter.
+
 ```javascript
         const promise = this.#fetchFor(element, value);
         // `settled` tracks the most recent fetch this component issued —
         // `mountInto()`'s initial one, or this call on the constructor path.
-        // The `.catch` is a HANDLED derived branch: the promise returned below
-        // is untouched and still the caller's to handle, so this neither
-        // creates nor removes an unhandled rejection (#61).
-        this.#settled = promise.catch(() => {});
+        // Stored RAW, with no handler attached: deriving here would mark THIS
+        // promise object handled, and it is the one returned below (#61).
+        this.#settled = promise;
         return promise;
 ```
 
@@ -321,7 +327,13 @@ better; the three-way `''`/`diocesan`/national dispatch must not change). `Calen
 `DayViewer.fetch()` get the same two lines around their own single call.
 
 `mountInto()` in all three classes keeps its existing `#settled = …catch( … )` assignment, which runs after
-`fetch()`'s and therefore still wins — do not delete it.
+`fetch()`'s and therefore still wins — do not delete it. Its handler must not be able to throw, since it
+calls consumer callbacks; that guard lives in `Settled.js`'s `deliverFetchFailure()` (added in review of
+PR #76).
+
+Each `settled` getter returns `normalizeSettled( this.#settled )` — a fresh
+`promise.then( () => {}, () => {} )` per read — which is what makes "resolves with `undefined`, never
+rejects" structural rather than conventional.
 
 Update the three `settled` getters' JSDoc from "Resolves once `mountInto()`'s initial fetch has settled" to
 the fetch-most-recently-issued wording, keeping every other clause verbatim.

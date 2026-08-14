@@ -570,7 +570,13 @@ who calls `fetch()` and ignores the result, which is the report `fetch()` relies
 log a promise the caller holds. The cost is that `settled` is a fresh object per read, settling at the
 same instant; do not "optimize" it back into a stored branch. The factories keep their `.catch( handler )`
 assignment, which runs after `fetch()`'s own store and so keeps `await x.settled` ordered after
-`onError()` delivery. Outcomes stay with `onError()` and `onCalendarFetched()`. It
+`onError()` delivery. **That handler must not be able to throw**, which is why it goes through
+`Settled.js`'s `deliverFetchFailure()` rather than calling the delivery directly: the delivery invokes
+consumer callbacks, and a throwing `onError()` used to reject the stored branch — making
+`CalendarViewer.mountInto()` (which awaits it) reject and hand back no viewer at all, and producing on the
+other two paths exactly the unhandled rejection the "never rejects" clause rules out. `normalizeSettled()`
+cannot cover that second case, because it only attaches a handler when somebody actually _reads_ `settled`.
+A callback that throws is still reported to the console, never swallowed. Outcomes stay with `onError()` and `onCalendarFetched()`. It
 is always a promise, already resolved when nothing has been issued (`initialFetch: false`, no `apiClient`,
 or a hand-constructed instance that has not fetched; a `fetch()` that throws synchronously issues nothing
 and leaves it untouched). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
