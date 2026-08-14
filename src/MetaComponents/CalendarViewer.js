@@ -12,7 +12,9 @@
  */
 
 import CalendarControls from './CalendarControls.js';
+import { resolveInputVisibility } from './InputVisibility.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
+import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
     normalizeComponentOptions,
     assertPlainOptions,
@@ -83,8 +85,9 @@ export default class CalendarViewer {
     #disposed = false;
 
     /**
-     * The initial fetch `mountInto()` performed, already resolved when it
-     * performed none. See the `settled` getter for the contract.
+     * The most recent fetch this component issued — `mountInto()`'s initial one,
+     * or the caller's own `fetch()` — already resolved when none has been
+     * issued. See the `settled` getter for the contract.
      *
      * @type {Promise<void>}
      * @private
@@ -97,6 +100,8 @@ export default class CalendarViewer {
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
+     *   forwarded to `CalendarControls`, e.g. `{ acceptHeader: false }`.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
      * @param {Object} [options.webCalendar] - `WebCalendar` methods to call, by
      *   name — see {@link WEB_CALENDAR_KEYS}. An unknown key throws, naming it.
@@ -109,6 +114,13 @@ export default class CalendarViewer {
         // controls first.
         this.#webCalendar = new WebCalendar();
         CalendarViewer.#applyWebCalendarBag(this.#webCalendar, bag.webCalendar);
+        // Validated here purely for ATTRIBUTION, and the result discarded:
+        // `CalendarControls` validates and applies the same bag a line below,
+        // but it would name ITSELF in the message — reporting a typo in an
+        // option the caller passed to `CalendarViewer` under a class they never
+        // touched. Same reasoning as `SubscriptionBuilder`'s own early locale
+        // check. The function is pure, so running it twice costs nothing.
+        resolveInputVisibility(bag.inputs, 'CalendarViewer');
         this.#controls = new CalendarControls(bag);
     }
 
@@ -150,35 +162,39 @@ export default class CalendarViewer {
     }
 
     /**
-     * Guards every method a disposed viewer cannot honour.
-     *
-     * @returns {void}
-     * @throws {Error} If this viewer has been disposed.
-     */
-    /**
-     * Resolves once `mountInto()`'s initial fetch has settled.
+     * Resolves once the most recent fetch this viewer issued has settled —
+     * `mountInto()`'s initial one, or the latest `fetch()` call.
      *
      * Always resolves with `undefined`, never rejects, and is already resolved
-     * when no initial fetch ran. `CalendarControls#settled` carries the full
+     * when nothing has been issued. `CalendarControls#settled` carries the full
      * contract and the reasoning; this is the same property on the viewer.
      *
      * Note that this factory, alone among the three, `await`s its initial fetch
      * before resolving — so by the time a caller of `mountInto()` can read this,
      * it has already settled. That is not a reason to drop it: a viewer built
-     * with the constructor and mounted by hand still has one, and code that
-     * awaits `settled` should not have to know which construction path produced
-     * the instance.
+     * with the constructor and mounted by hand still has one, tracking its own
+     * `fetch()` calls, and code that awaits `settled` should not have to know
+     * which construction path produced the instance.
      *
      * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
      *
-     * @returns {Promise<void>} Settles when the initial fetch has finished.
+     * @returns {Promise<void>} Settles when the latest fetch has finished.
      * @throws {Error} If this viewer has been disposed.
      */
     get settled() {
         this.#assertUsable();
-        return this.#settled;
+        // The rule, and the reason for it, live in `Settled.js` — one place
+        // rather than three near-identical copies of the same nine-line
+        // rationale.
+        return normalizeSettled(this.#settled);
     }
 
+    /**
+     * Guards every method a disposed viewer cannot honour.
+     *
+     * @returns {void}
+     * @throws {Error} If this viewer has been disposed.
+     */
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
@@ -296,7 +312,14 @@ export default class CalendarViewer {
      */
     fetch() {
         this.#assertUsable();
-        return this.#controls.fetch();
+        const promise = this.#controls.fetch();
+        // `settled` tracks the most recent fetch this viewer issued, so a
+        // hand-constructed viewer publishes the same signal `mountInto()` does
+        // (#61). Stored RAW and normalized in the getter — see
+        // `CalendarControls.fetch()` for why attaching a handler here would
+        // silence the caller's own unhandled-rejection report.
+        this.#settled = promise;
+        return promise;
     }
 
     /**
@@ -579,15 +602,17 @@ export default class CalendarViewer {
                 // must not resolve while the request — and, on an empty `litcal`,
                 // the WebCalendar listener's throw and the messages render that must
                 // precede it — are still pending.
-                // Captured before being awaited, so `settled` is the SAME promise
-                // this factory waits on rather than a second one describing it.
-                viewer.#settled = viewer.fetch().catch((error) => {
-                    if (false === viewer.#controls._deliverError(error)) {
-                        console.error(
-                            `CalendarViewer: could not load the calendar: ${error.message}`,
-                        );
-                    }
-                });
+                // Captured before being awaited, so `settled` reports the very
+                // fetch this factory waits on rather than a second one
+                // describing it. The getter normalizes what is stored here — see
+                // `CalendarControls.mountInto()`.
+                viewer.#settled = viewer
+                    .fetch()
+                    .catch((error) =>
+                        deliverFetchFailure('CalendarViewer', error, (raised) =>
+                            viewer.#controls._deliverError(raised),
+                        ),
+                    );
                 await viewer.#settled;
             }
         }

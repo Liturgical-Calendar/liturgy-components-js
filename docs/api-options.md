@@ -193,6 +193,12 @@ apiOptions._acceptHeaderInput.hide();
 | `options()`               | Returns array of option values (for select elements only)          |
 | `hide()`                  | Hide the control — `_acceptHeaderInput` only, and not reversible   |
 
+**`hide()` is read at append time**, by `ApiOptions.appendTo()`, so it must be called before the append.
+On a bare `ApiOptions` that is simply the order to write it in. Inside `CalendarControls`, `CalendarViewer`
+or `ApiExplorer` there is no such window on the `mountInto()` path, so those take the same instruction as
+an option instead — `inputs: { acceptHeader: false }`; see
+[the `inputs` bag](meta-components.md#the-inputs-bag).
+
 ### The wrapper bag
 
 `wrapper()` takes the same `{ as, class, id }` bag `CalendarSelect.wrapper()` and `RiteSelect.wrapper()`

@@ -31,6 +31,7 @@
  */
 
 import CalendarControls from './CalendarControls.js';
+import { resolveInputVisibility } from './InputVisibility.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import {
@@ -78,12 +79,21 @@ export default class ApiExplorer {
      *   forwarded to `CalendarControls` as-is.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
+     *   forwarded to `CalendarControls`. `{ acceptHeader: false }` drops the
+     *   accept-header select from the `allPaths` slot — which is rendered by
+     *   default here, and deliberately so: `PathBuilder` turns that select's
+     *   `change` into the composed URL's `return_type`.
      * @param {Object} [options.apiClient] - Binds the controls to that client's
      *   API base, so the selects populate from `/calendars` metadata. Never used
      *   to fetch a calendar — see the class doc comment above.
      */
     constructor(options) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
+        // Validated here purely for ATTRIBUTION, and the result discarded — see
+        // `CalendarViewer`'s constructor for why: `CalendarControls` applies the
+        // same bag below, but names itself when rejecting it.
+        resolveInputVisibility(bag.inputs, 'ApiExplorer');
         this.#controls = new CalendarControls(bag);
         // The rite -> calendar chain, wired directly rather than through
         // `CalendarControls.listenTo()` — see the class doc comment above for

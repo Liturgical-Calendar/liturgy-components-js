@@ -550,20 +550,51 @@ its populated table, and resolving before the fetch's promise chain has run at a
 is a deliberate divergence, not something to reconcile by removing the `await`. `ApiExplorer` never
 fetches, so it has no such case at all.
 
-**`settled` observes the initial fetch; it does not report its outcome.** `mountInto()` resolves to the
-component and drops the initial fetch's promise, so `CalendarControls`, `CalendarViewer` and `DayViewer`
-each expose a `settled` promise that resolves once that fetch has finished. It **always resolves and never
-rejects**, with `undefined`: a property present on every mounted instance that could reject would produce an
-unhandled rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by
-discarding. What is stored is the promise _after_ each factory's existing `.catch`, so this adds no error
-handling and changes none. Outcomes stay with `onError()` and `onCalendarFetched()` — resolving to the
-payload would be a second channel for what `onCalendarFetched()` already delivers, free to drift from it.
-It is always a promise, already resolved when no initial fetch ran (`initialFetch: false`, no `apiClient`,
-or a hand-constructed instance). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
+**`settled` observes a fetch; it does not report its outcome.** `mountInto()` resolves to the component and
+drops the initial fetch's promise, so `CalendarControls`, `CalendarViewer` and `DayViewer` each expose a
+`settled` promise that resolves once that fetch has finished. Since #61 it observes **the most recent fetch
+the component issued** — the initial one, and every `fetch()` call on either construction path, each
+replacing the last — so a hand-constructed instance publishes the same signal and callers need not know
+which path produced the instance. It does not observe the refetches `ApiClient`'s own `listenTo()` change
+listeners drive; those promises never reach the component. It **always resolves and never rejects**, with
+`undefined`: a property present on every mounted instance that could reject would produce an unhandled
+rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by discarding.
+**The normalization lives in the getter, not in `fetch()`, and that placement is load-bearing twice over.**
+The getter derives a fresh `promise.then( () => {}, () => {} )` on every read, which is what makes the
+contract structural: it resolves with `undefined` rather than the payload `.catch( handler )` alone passes
+straight through (the bug that made `settled` a second data channel on the success path), and it cannot
+reject even when an `onError()` callback throws inside a factory's rejection handler. Deriving eagerly in
+`fetch()` instead would attach a handler to the very promise object handed to the caller — rejection
+tracking is per promise object — silently removing the platform's unhandled-rejection report for anyone
+who calls `fetch()` and ignores the result, which is the report `fetch()` relies on when it declines to
+log a promise the caller holds. The cost is that `settled` is a fresh object per read, settling at the
+same instant; do not "optimize" it back into a stored branch. The factories keep their `.catch( handler )`
+assignment, which runs after `fetch()`'s own store and so keeps `await x.settled` ordered after
+`onError()` delivery. **That handler must not be able to throw**, which is why it goes through
+`Settled.js`'s `deliverFetchFailure()` rather than calling the delivery directly: the delivery invokes
+consumer callbacks, and a throwing `onError()` used to reject the stored branch — making
+`CalendarViewer.mountInto()` (which awaits it) reject and hand back no viewer at all, and producing on the
+other two paths exactly the unhandled rejection the "never rejects" clause rules out. `normalizeSettled()`
+cannot cover that second case, because it only attaches a handler when somebody actually _reads_ `settled`.
+A callback that throws is still reported to the console, never swallowed. Outcomes stay with `onError()` and `onCalendarFetched()`. It
+is always a promise, already resolved when nothing has been issued (`initialFetch: false`, no `apiClient`,
+or a hand-constructed instance that has not fetched; a `fetch()` that throws synchronously issues nothing
+and leaves it untouched). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
 fetches — the same asymmetry, on the same grounds, as their reject/resolve behaviour above. On
 `CalendarViewer` it is the very promise `mountInto()` already awaits, so it has settled by the time a caller
-can read it; do not remove it there on that account, since a hand-constructed viewer still has one and
-callers should not need to know which construction path produced the instance.
+of that factory can read it; do not remove it there on that account.
+
+**The `inputs` bag says which `ApiOptions` inputs render, and exists so `mountInto()` can express what
+only the constructor path could.** `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads,
+so it was meaningful only between construction and the append — a window `mountInto()` does not open, which
+put every real consumer on the constructor path and out of reach of `settled` (#61). `CalendarControls`,
+`CalendarViewer` and `ApiExplorer` now take `inputs: { acceptHeader: boolean }`, resolved in
+`CalendarControls`' constructor by `src/MetaComponents/InputVisibility.js` — internal, not exported from
+`src/index.js`, like `Theme.js`. An unknown key is rejected by name, as is a non-boolean value, before
+anything is mounted. `acceptHeader: true` is the default reasserted, not an un-hide: `hide()` is
+irreversible. `DayViewer` and `SubscriptionBuilder` pin their `ApiOptions` to `LOCALE_ONLY` and never
+render the input, so the option does not reach them. **`ApiExplorer` renders it by default and must keep
+doing so** — `PathBuilder` turns that select's `change` into the composed URL's `return_type`.
 
 **`wrapper` means a CLASS flat and a TYPE per-child, and `resolveWrapperBag()` is the only place that
 reconciles them.** `resolveChildTheme()` maps the flat `theme.wrapper` onto `wrapperClass`; a per-child

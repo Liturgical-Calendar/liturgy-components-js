@@ -31,6 +31,18 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Added
 
+- **`inputs: { acceptHeader: false }` on `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, closing
+  the first half of #61. `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads, so it was
+  only expressible between construction and the append — a window `mountInto()` does not open. One boolean
+  toggle therefore cost a caller the whole factory path, and with it `settled`, the signal that path
+  publishes. The bag is resolved in `CalendarControls`' constructor (via a new internal
+  `src/MetaComponents/InputVisibility.js`, not exported from `src/index.js`, like `Theme.js`), so both
+  construction paths honour it. An unknown key is rejected by name, as is a non-boolean value or a
+  non-object bag, before anything is mounted — and under the name of the class the caller actually used,
+  since `CalendarViewer` and `ApiExplorer` each validate the bag themselves before forwarding it. Defaults are unchanged everywhere — `ApiExplorer` included,
+  where the accept-header select is part of the path-building UI and drives `PathBuilder`'s `return_type`.
+  `_acceptHeaderInput.hide()` still works and is unchanged.
+
 - **`theme.apiOptions`, making the whole `ApiOptions` form themeable**, closing #60. The theme bag reached
   `riteSelect`, `calendarSelect` and (since 2.7.0) `localeInput` and nothing else, so every consumer of the
   meta-components still had to open with four process-wide `Input.setGlobalInputClass()` /
@@ -105,7 +117,55 @@ prepared under that number was skipped, and everything it was to have delivered 
   own versioned base URLs (`/api/dev`), so a `version` there would read as the API's version rather than
   this package's. See `CLAUDE.md`'s Releasing section for the rejected alternatives.
 
+### Changed
+
+- **`settled` now observes the constructor path too**, closing the second half of #61. It was documented
+  and implemented as "`mountInto()`'s initial fetch"; it is now "the most recent fetch this component
+  issued", so a hand-constructed `CalendarControls`, `CalendarViewer` or `DayViewer` publishes the same
+  signal from its own `fetch()` calls, each call replacing the last. Every other clause of the contract is
+  unchanged: always resolves, never rejects, already resolved when nothing has been issued, throws once
+  disposed. The promise `fetch()` returns is stored **raw** and normalized only when the `settled` getter
+  is read — deriving from it eagerly would mark that very promise object handled and silently remove the
+  platform's unhandled-rejection report for a caller who calls `fetch()` and ignores the result, which is
+  the report `fetch()` relies on when it declines to log a promise the caller holds. `settled` is
+  therefore a fresh promise object per read, settling at the same instant. Refetches driven by
+  `ApiClient`'s own `listenTo()` change listeners are still not observed, on either path, and could not
+  be: their promises never reach the component.
+
+- **`CalendarSelect.value( val )` now throws for a non-empty value no option carries**, naming the select
+  (with its element id, when it has one) and the offending value. This is the last point at which that
+  particular mistake can be named at all: the DOM discards an unmatched value at assignment, so `value()`
+  and every listener afterwards read back only `''`. The check is point-in-time and cannot be otherwise —
+  a value accepted now stops matching when a rite change rebuilds the option list, and the selection then
+  degrades to the rite-level calendar silently. `''` itself is still always accepted, including on a select
+  with no empty option, because it is the documented way to ask for the rite-level calendar and lands on
+  `selectedIndex === -1` by design. Writing to `_domElement.value` directly is unaffected — there is no
+  setter to intercept — and issues no request of its own, since a property assignment dispatches no
+  `change`; it simply leaves an empty selection, and the next `change` event to arrive is then handled
+  as the rite-level calendar rather than crashing.
+
 ### Fixed
+
+- **A throwing `onError()` callback no longer breaks the `settled` contract, or the `CalendarViewer`
+  factory.** The callbacks run inside the very rejection handler each `mountInto()` builds its stored
+  `settled` branch from, and `#deliverError()` invoked them unguarded — so a subscriber's own bug rejected
+  that branch. Two consequences, both real: `CalendarViewer.mountInto()` **awaits** its stored branch, so
+  the whole factory rejected and the caller received no viewer; and on the two paths that do not await, the
+  branch rejected with nothing attached, producing precisely the unhandled-rejection report that
+  `settled`'s "never rejects" clause exists to rule out. Deriving in the getter cannot cover that second
+  case — it only attaches a handler when somebody actually reads `settled`. The delivery now goes through
+  `Settled.js`'s `deliverFetchFailure()`, which cannot throw; a callback that throws is still reported to
+  the console rather than swallowed. Found by CodeRabbit reviewing #76.
+
+- **`settled` resolved with the calendar payload on the success path**, contrary to its documented
+  contract of resolving with `undefined`. The factories built it with `.catch( handler )`, which passes a
+  fulfilled value straight through, so the property became a second data channel beside
+  `onCalendarFetched()` — free to drift from it, which is exactly what the contract exists to prevent.
+  Only the failure path had ever been covered by a test. Found while widening `settled` for #61.
+
+- **`settled` could reject**, despite "never rejects", when an `onError()` callback threw: the callbacks
+  run inside the very rejection handler each factory builds `settled` from. Normalizing in the getter
+  closes that structurally rather than by convention.
 
 - **A `CalendarSelect` with nothing selected no longer crashes `ApiClient`'s `change` listener**, closing
   #66. Assigning a value no option carries leaves `selectedIndex` at `-1`, and the listener read
@@ -121,20 +181,6 @@ prepared under that number was skipped, and everything it was to have delivered 
   `''` around its rebuild, an `allowNull( false )` select (the default) has no empty option to match, and
   the rite change then dispatches `change` straight into the crash — so an ordinary rite change on such a
   select, wired to an `ApiClient`, was affected.
-
-### Changed
-
-- **`CalendarSelect.value( val )` now throws for a non-empty value no option carries**, naming the select
-  (with its element id, when it has one) and the offending value. This is the last point at which that
-  particular mistake can be named at all: the DOM discards an unmatched value at assignment, so `value()`
-  and every listener afterwards read back only `''`. The check is point-in-time and cannot be otherwise —
-  a value accepted now stops matching when a rite change rebuilds the option list, and the selection then
-  degrades to the rite-level calendar silently. `''` itself is still always accepted, including on a select
-  with no empty option, because it is the documented way to ask for the rite-level calendar and lands on
-  `selectedIndex === -1` by design. Writing to `_domElement.value` directly is unaffected — there is no
-  setter to intercept — and issues no request of its own, since a property assignment dispatches no
-  `change`; it simply leaves an empty selection, and the next `change` event to arrive is then handled
-  as the rite-level calendar rather than crashing.
 
 ### Known gaps
 
