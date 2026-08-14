@@ -520,6 +520,45 @@ describe('CalendarControls — theme.apiOptions', () => {
         );
     });
 
+    it('lets a per-input labelClass beat the flat label WITHOUT tripping the one-shot', () => {
+        // The interaction is easy to get wrong in the reading: `labelClass()`
+        // refuses a second, different value, and both a flat `label` and a
+        // per-input `labelClass` name the same property — so it looks as though
+        // the more specific one would arrive second and throw.
+        //
+        // It cannot, and the reason is the ordering rather than any tolerance in
+        // the setter: `resolveApiOptionsInputTheme()` merges all four tiers into
+        // ONE object first, and `applyInputTheme()` then calls `labelClass()`
+        // exactly once per input with the merged value. The flat default is never
+        // applied-then-overwritten on the specific input; it is simply never
+        // applied there at all. The one-shot governs a LATER call by the caller —
+        // the `controls.apiOptions` escape hatch — not the theme's own layering.
+        let controls;
+        expect(() => {
+            controls = new CalendarControls({
+                locale: 'en',
+                theme: {
+                    apiOptions: {
+                        label: 'generic-label',
+                        yearInput: { labelClass: 'specific-label' },
+                    },
+                },
+            });
+            controls.appendTo('#mount');
+        }).not.toThrow();
+
+        expect(controls.apiOptions._yearInput._labelElement.className).toBe(
+            'specific-label',
+        );
+        expect(controls.apiOptions._epiphanyInput._labelElement.className).toBe(
+            'generic-label',
+        );
+        // One call each, so both are closed to the escape hatch afterwards —
+        // the specific input no differently from its nine siblings.
+        expect(controls.apiOptions._yearInput._labelClassSet).toBe(true);
+        expect(controls.apiOptions._epiphanyInput._labelClassSet).toBe(true);
+    });
+
     it('does not throw when theming an input the chosen filter never renders', () => {
         expect(
             () =>
