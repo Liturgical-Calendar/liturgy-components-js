@@ -424,6 +424,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Allgemeiner römischer Kalender',
         AMBROSIAN_CALENDAR: 'Ambrosianischer Kalender',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambrosianischer Kalender - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} Eintrag',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} Einträge',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgie für {date} aktualisiert',
     },
     ee: {
         SUNDAY_JAN2_JAN8: 'Kwasiɖagbe le January 2nd kple 8th dome',
@@ -506,6 +509,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'General Roman Calendar',
         AMBROSIAN_CALENDAR: 'Ambrosian Calendar',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambrosian Calendar - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} entry',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} entries',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgy for {date} updated',
     },
     eo: {
         SUNDAY_JAN2_JAN8: 'Dimanĉo de 2 al 8 de januo',
@@ -566,6 +572,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Calendario romano general',
         AMBROSIAN_CALENDAR: 'Calendario ambrosiano',
         AMBROSIAN_CALENDAR_CAPTION: 'Calendario ambrosiano - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} entrada',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} entradas',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia del {date} actualizada',
     },
     et: {
         SUNDAY_JAN2_JAN8: 'Pühapäev 2. ja 8. jaanuaril',
@@ -733,6 +742,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Calendrier romain général',
         AMBROSIAN_CALENDAR: 'Calendrier ambrosien',
         AMBROSIAN_CALENDAR_CAPTION: 'Calendrier ambrosien - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} entrée',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} entrées',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgie du {date} mise à jour',
     },
     ga: {
         SUNDAY_JAN2_JAN8: 'Seoimhneann 2 agus 8 Eanáir',
@@ -968,6 +980,11 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Általános római naptár',
         AMBROSIAN_CALENDAR: 'Ambrozián naptár',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambrozián naptár - {year}',
+        // Hungarian takes a singular noun after a numeral, so both plural
+        // forms are identical. That is the language, not an oversight.
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} bejegyzés',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} bejegyzés',
+        LITURGY_UPDATED_ANNOUNCEMENT: '{date} liturgiája frissítve',
     },
     hy: {
         SUNDAY_JAN2_JAN8: 'Երկուշակյան 2 երկուշակյան 8',
@@ -1027,6 +1044,10 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Kalender Romawi Umum',
         AMBROSIAN_CALENDAR: 'Kalender Ambrosian',
         AMBROSIAN_CALENDAR_CAPTION: 'Kalender Ambrosian - {year}',
+        // Indonesian does not inflect for number.
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} entri',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} entri',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgi untuk {date} diperbarui',
     },
     ig: {
         SUNDAY_JAN2_JAN8: 'Nwenu 2 na 8 nwa mma',
@@ -1108,6 +1129,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Calendario Romano Generale',
         AMBROSIAN_CALENDAR: 'Calendario Ambrosiano',
         AMBROSIAN_CALENDAR_CAPTION: 'Calendario Ambrosiano - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} voce',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} voci',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia del {date} aggiornata',
     },
     ja: {
         SUNDAY_JAN2_JAN8: '1月2日から1月8日までの日曜日',
@@ -1299,6 +1323,10 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Calendarium Romanum Generale',
         AMBROSIAN_CALENDAR: 'Calendarium Ambrosianum',
         AMBROSIAN_CALENDAR_CAPTION: 'Calendarium Ambrosianum - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} celebratio',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER:
+            '{calendar}, {count} celebrationes',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia diei {date} renovata',
     },
     lb: {
         SUNDAY_JAN2_JAN8: 'Sonntag zwischen dem 2. und dem 8. Januar',
@@ -1530,6 +1558,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Algemene Romeinse kalender',
         AMBROSIAN_CALENDAR: 'Ambrosiaanse kalender',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambrosiaanse kalender - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} item',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} items',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgie voor {date} bijgewerkt',
     },
     pl: {
         SUNDAY_JAN2_JAN8: 'Niedziela pomiedzy 2 i 8 stycznia',
@@ -1590,6 +1621,9 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Calendário romano geral',
         AMBROSIAN_CALENDAR: 'Calendário ambrosiano',
         AMBROSIAN_CALENDAR_CAPTION: 'Calendário ambrosiano - {year}',
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} entrada',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} entradas',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia de {date} atualizada',
     },
     qu: {
         SUNDAY_JAN2_JAN8: 'Suyuk 2 a 8 Mawrth',
@@ -1693,6 +1727,12 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Všeobecný rímsky kalendár',
         AMBROSIAN_CALENDAR: 'Ambroziánsky kalendár',
         AMBROSIAN_CALENDAR_CAPTION: 'Ambroziánsky kalendár - {year}',
+        // _OTHER carries the genitive plural Slovak uses from five upwards,
+        // which is also what the `few` category (2-4) falls back to. See
+        // `formatPluralMessage()` in MessageFormat.js.
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} záznam',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} záznamov',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Liturgia na {date} aktualizovaná',
     },
     sl: {
         SUNDAY_JAN2_JAN8: 'Nedelja med 2. in 8. januarju',
@@ -1966,6 +2006,10 @@ const Messages = {
         GENERAL_ROMAN_CALENDAR: 'Lịch La Mã chủ đạo',
         AMBROSIAN_CALENDAR: 'Lịch Ambrôsiô',
         AMBROSIAN_CALENDAR_CAPTION: 'Lịch Ambrôsiô - {year}',
+        // Vietnamese does not inflect for number.
+        CALENDAR_UPDATED_ANNOUNCEMENT_ONE: '{calendar}, {count} mục',
+        CALENDAR_UPDATED_ANNOUNCEMENT_OTHER: '{calendar}, {count} mục',
+        LITURGY_UPDATED_ANNOUNCEMENT: 'Phụng vụ ngày {date} đã được cập nhật',
     },
     yi: {
         SUNDAY_JAN2_JAN8: 'ראשון בין 2 ו-8 ינואר',
