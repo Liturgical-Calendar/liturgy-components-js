@@ -121,6 +121,76 @@ const deferRequests = () => {
  *
  * @returns {function(): void} Lands the response.
  */
+/**
+ * A response body carrying one real event.
+ *
+ * `WebCalendar` and `LiturgyOfAnyDay` both THROW on an empty `litcal[]` from
+ * inside their `calendarFetched` listeners, which turns an otherwise successful
+ * fetch into a REJECTED promise. A test meaning to exercise the success path of
+ * a renderer-bearing component must therefore send an event, or it silently
+ * measures the failure path instead. The same minimal event
+ * `DayViewerMount.test.js` uses.
+ *
+ * @type {Object}
+ */
+const PAYLOAD_WITH_EVENT = {
+    litcal: [
+        {
+            event_key: 'StJohnVianney',
+            event_idx: 1,
+            name: 'Saint John Mary Vianney, Priest',
+            color: ['white'],
+            color_lcl: ['white'],
+            grade: 3,
+            grade_lcl: 'Memorial',
+            grade_abbr: 'M',
+            grade_display: null,
+            common: ['Pastors'],
+            common_lcl: 'Pastors',
+            type: 'fixed',
+            date: '2026-06-15T00:00:00+00:00',
+            year: 2026,
+            month: 6,
+            month_short: 'Jun.',
+            month_long: 'June',
+            day: 15,
+            day_of_the_week_iso8601: 1,
+            day_of_the_week_short: 'Mon',
+            day_of_the_week_long: 'Monday',
+            liturgical_year: null,
+            is_vigil_mass: false,
+            psalter_week: 2,
+            liturgical_season: 'ORDINARY_TIME',
+            liturgical_season_lcl: 'Ordinary Time',
+            holy_day_of_obligation: false,
+        },
+    ],
+    settings: { year: 2026, locale: 'en', year_type: 'CIVIL' },
+    metadata: { version: 'test' },
+    messages: [],
+};
+
+/** Mocks an immediately-successful response carrying one real event. */
+const captureRequestsWithEvent = () => {
+    const urls = [];
+    global.fetch = jest.fn((url) => {
+        urls.push(String(url));
+        return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/json' },
+            json: () => Promise.resolve(PAYLOAD_WITH_EVENT),
+        });
+    });
+    return urls;
+};
+
+/**
+ * As {@link deferRequests}, but the held-open response carries one real event —
+ * see {@link PAYLOAD_WITH_EVENT} for why a renderer-bearing component needs it.
+ *
+ * @returns {function(): void} Lands the response.
+ */
 const deferRequestsWithEvent = () => {
     let land;
     global.fetch = jest.fn(
@@ -131,47 +201,7 @@ const deferRequestsWithEvent = () => {
                         ok: true,
                         status: 200,
                         headers: { get: () => 'application/json' },
-                        json: () =>
-                            Promise.resolve({
-                                litcal: [
-                                    {
-                                        event_key: 'StJohnVianney',
-                                        event_idx: 1,
-                                        name: 'Saint John Mary Vianney, Priest',
-                                        color: ['white'],
-                                        color_lcl: ['white'],
-                                        grade: 3,
-                                        grade_lcl: 'Memorial',
-                                        grade_abbr: 'M',
-                                        grade_display: null,
-                                        common: ['Pastors'],
-                                        common_lcl: 'Pastors',
-                                        type: 'fixed',
-                                        date: '2026-06-15T00:00:00+00:00',
-                                        year: 2026,
-                                        month: 6,
-                                        month_short: 'Jun.',
-                                        month_long: 'June',
-                                        day: 15,
-                                        day_of_the_week_iso8601: 1,
-                                        day_of_the_week_short: 'Mon',
-                                        day_of_the_week_long: 'Monday',
-                                        liturgical_year: null,
-                                        is_vigil_mass: false,
-                                        psalter_week: 2,
-                                        liturgical_season: 'ORDINARY_TIME',
-                                        liturgical_season_lcl: 'Ordinary Time',
-                                        holy_day_of_obligation: false,
-                                    },
-                                ],
-                                settings: {
-                                    year: 2026,
-                                    locale: 'en',
-                                    year_type: 'CIVIL',
-                                },
-                                metadata: { version: 'test' },
-                                messages: [],
-                            }),
+                        json: () => Promise.resolve(PAYLOAD_WITH_EVENT),
                     });
             }),
     );
@@ -495,7 +525,11 @@ describe('settled tracks a constructor-path fetch()', () => {
     });
 
     it('resolves with undefined after a successful CalendarViewer mount too', async () => {
-        captureRequests();
+        // A payload with an event, so `WebCalendar`'s listener accepts it and
+        // this measures the SUCCESS path: with an empty `litcal[]` that listener
+        // throws, the fetch rejects, and the assertion would pass by way of the
+        // rejection handler no matter what the fulfilment handler did.
+        captureRequestsWithEvent();
         const apiClient = await ApiClient.init(API_URL);
         const viewer = await CalendarViewer.mountInto(
             { controls: '#mount', calendar: '#calendar' },
