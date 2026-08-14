@@ -15,9 +15,11 @@ import {
     THEME_CHILD_KEYS,
 } from '../MetaComponents/Theme.js';
 import ApiBase from '../ApiClient/ApiBase.js';
+import CalendarResourcePicker from '../MetaComponents/CalendarResourcePicker.js';
 import CalendarViewer from '../MetaComponents/CalendarViewer.js';
 import ApiExplorer from '../MetaComponents/ApiExplorer.js';
 import SubscriptionBuilder from '../SubscriptionBuilder/SubscriptionBuilder.js';
+import { CalendarSelectFilter } from '../Enums.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 const API_URL = 'http://localhost:8000';
@@ -133,6 +135,42 @@ describe('assertTheme is component-aware', () => {
         expect(() => assertTheme({}, 'NotAComponent')).toThrow(/NotAComponent/);
     });
 
+    // `assertPlainOptions()` accepts a bag carrying an own key of any name,
+    // including one that collides with `Object.prototype` — and its own doc
+    // comment warns that every reader must therefore use `Object.hasOwn()`.
+    // Read with a bare `[key]`, the registry lookups hand back an inherited
+    // FUNCTION instead of `undefined`, and the guard crashes with an opaque
+    // `TypeError` on the very path that exists to produce a legible message.
+    it.each(['toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+        'rejects theme.%s with the unknown-key message, not a TypeError',
+        (key) => {
+            let error;
+            try {
+                assertTheme({ [key]: 'x' }, 'CalendarResourcePicker');
+            } catch (caught) {
+                error = caught;
+            }
+            expect(error).toBeInstanceOf(Error);
+            expect(error).not.toBeInstanceOf(TypeError);
+            expect(error.message).toMatch(
+                new RegExp(
+                    `CalendarResourcePicker: theme\\.${key} is not a recognised theme key`,
+                ),
+            );
+        },
+    );
+
+    it('reports an unregistered component name that collides with Object.prototype', () => {
+        let error;
+        try {
+            assertTheme({}, 'toString');
+        } catch (caught) {
+            error = caught;
+        }
+        expect(error).not.toBeInstanceOf(TypeError);
+        expect(error.message).toMatch(/no theme key set is registered/);
+    });
+
     it('accepts every key each component actually resolves', () => {
         for (const [name, keys] of Object.entries(THEME_CHILD_KEYS)) {
             for (const key of keys) {
@@ -183,6 +221,16 @@ describe('narrowTheme', () => {
         narrowTheme(theme, 'CalendarControls');
         expect(theme).toEqual({ select: 'form-select', subscriptionUrl: 'b' });
     });
+
+    // Silently returning "flat keys only" for an unregistered name would strip
+    // `riteSelect`, `calendarSelect`, `apiOptions` and `localeInput` from every
+    // forwarded bag, and every existing test would still pass — the same
+    // silent-fallback failure `assertTheme()` refuses three lines away.
+    it('throws for an unregistered target rather than silently stripping every child key', () => {
+        expect(() =>
+            narrowTheme({ select: 'a', riteSelect: 'b' }, 'CalenderControls'),
+        ).toThrow(/no theme key set is registered for CalenderControls/);
+    });
 });
 
 describe('forwarding components own their theme attribution', () => {
@@ -216,6 +264,21 @@ describe('forwarding components own their theme attribution', () => {
             () =>
                 new SubscriptionBuilder({ theme: { liturgy: { class: 'x' } } }),
         ).toThrow(/^SubscriptionBuilder: theme\.liturgy/);
+    });
+
+    // The issue's headline example, and the one place where reject-versus-resolve
+    // is a live decision: `assertTheme()` sits BEFORE the `try` whose `catch`
+    // resolves with a disabled failure control. Moving it inside would quietly
+    // downgrade a programmer error into a `dataset.loadFailed` stand-in.
+    it('rejects a misplaced key from CalendarResourcePicker.mountInto(), rather than resolving with a failure control', async () => {
+        document.body.innerHTML = '<div id="picker"></div>';
+        await expect(
+            CalendarResourcePicker.mountInto('#picker', {
+                filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+                theme: { apiOptions: { select: 'form-select' } },
+            }),
+        ).rejects.toThrow(/CalendarResourcePicker: theme\.apiOptions/);
+        expect(document.querySelector('#picker').children).toHaveLength(0);
     });
 
     it('still accepts subscriptionUrl, which the CalendarControls it forwards to has never heard of', () => {

@@ -131,7 +131,10 @@ re-configuring something the theme bag already configured.
 
 **Per-child keys depend on what the child is.** A `<select>`-shaped child (`riteSelect`,
 `calendarSelect`, `localeInput`, `dateControls`) accepts `class`, `labelClass`, `labelText`,
-`wrapperClass` and `wrapper`.
+`wrapperClass` and `wrapper`. Which of those children a given component actually HAS — and therefore
+which of these keys it accepts — is listed under
+[Theme keys are per component](#theme-keys-are-per-component); this picker, for one, has neither
+`localeInput` nor `dateControls`.
 
 **`wrapper` means two different things depending on where it appears, and both are deliberate.** As a
 **flat** key, `theme.wrapper` is a wrapper **class** applied to every child that can take a wrapper. As a
@@ -165,8 +168,8 @@ further class setters and no label or wrapper of its own, so it accepts `class` 
 Those eight were accepted by the bag but silently discarded before 2.3.0 (issue #43), so a consumer
 theming the event rows or the date header got library defaults with no throw and no warning. They work
 now. **An unrecognised per-child key throws**, naming the key — the same misspelling that produced that
-issue is now reported rather than ignored. Since 2.8.0 a key naming a child _this component does not
-have_ throws too; see [Theme keys are per component](#theme-keys-are-per-component).
+issue is now reported rather than ignored. A key naming a child _this component does not have_ throws
+too (issue #78); see [Theme keys are per component](#theme-keys-are-per-component).
 
 **What a class-string value may contain:** every class string in this bag — flat or per-child —
 reaches the same validator every other class-taking method in this library uses
@@ -202,8 +205,8 @@ support a wrapper here, resolved the same way as every other role.
 has: flat role keys plus per-input overrides for a whole `ApiOptions` form, documented under
 [`CalendarControls`](#themeapioptions--the-whole-apioptions-form). `CalendarResourcePicker` bundles no
 `ApiOptions`, so naming it in this component's bag **throws** — as does `localeInput`, the one
-`ApiOptions` input that answers to a top-level key elsewhere. Before 2.8.0 both were accepted and then
-styled nothing.
+`ApiOptions` input that answers to a top-level key elsewhere. Before issue #78 both were accepted and
+then styled nothing.
 
 ### Theme keys are per component
 
@@ -219,16 +222,15 @@ the child keys it resolves:
 | `DayViewer`              | `riteSelect`, `calendarSelect`, `liturgy`, `dateControls`, `apiOptions`, `localeInput` |
 | `SubscriptionBuilder`    | as `CalendarControls`, plus `subscriptionUrl`                                          |
 
-Anything else **throws** since 2.8.0, naming the rejecting component, the offending key, the keys that
-component does accept and — when the key is valid somewhere — the components it is valid on:
+Anything else **throws** (issue #78), naming the rejecting component, the offending key, the keys that
+component does accept and — when the key is valid somewhere — the components it is valid on, all on one
+line:
 
 ```text
-CalendarResourcePicker: theme.apiOptions is not a recognised theme key for this component.
-Valid keys are: select, input, label, wrapper, riteSelect, calendarSelect.
-theme.apiOptions is valid on CalendarControls, CalendarViewer, ApiExplorer, DayViewer, SubscriptionBuilder.
+CalendarResourcePicker: theme.apiOptions is not a recognised theme key for this component. Valid keys are: select, input, label, wrapper, riteSelect, calendarSelect. theme.apiOptions is valid on CalendarControls, CalendarViewer, ApiExplorer, DayViewer, SubscriptionBuilder.
 ```
 
-Before 2.8.0 such a key was accepted by the guard and then dropped in silence by the resolver, because
+Before issue #78 such a key was accepted by the guard and then dropped in silence by the resolver, because
 the bag was validated without knowing which children the component receiving it actually had. That is
 the issue-#43 failure mode by a different route: markup rendered with library defaults, no throw and no
 warning, and nothing to notice until an end-to-end selector broke. **This is a behaviour change** — a

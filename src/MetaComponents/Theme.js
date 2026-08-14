@@ -234,6 +234,14 @@ export const THEME_CHILD_KEYS = Object.freeze({
  * wrong component" — the latter being what issue #78 was actually about.
  * Derived rather than written out, so the two cannot drift.
  *
+ * Seeded with `Object.create( null )`, which is not a style preference: the key
+ * looked up here is a THEME KEY the caller wrote, and `assertPlainOptions()`
+ * accepts a bag carrying an own key of any name. Over an ordinary object literal
+ * `{ toString: 'x' }` would find the INHERITED function rather than `undefined`,
+ * and the hint would crash with `validOn.join is not a function` — an opaque
+ * `TypeError` on the one path whose whole job is a legible message.
+ * `OptionsValidation.js`'s own doc comment warns about exactly this.
+ *
  * @type {Readonly<Object<string, Readonly<string[]>>>}
  */
 const COMPONENTS_BY_CHILD_KEY = Object.freeze(
@@ -242,8 +250,37 @@ const COMPONENTS_BY_CHILD_KEY = Object.freeze(
             map[key] = Object.freeze([...(map[key] ?? []), component]);
         }
         return map;
-    }, {}),
+    }, Object.create(null)),
 );
+
+/**
+ * The child keys registered for one component, or a throw.
+ *
+ * The single reader of {@link THEME_CHILD_KEYS}, so the two callers cannot
+ * diverge on what an unregistered name means. An unregistered name is a
+ * programmer error in THIS library — every call site passes a literal — and it
+ * throws rather than falling back to a permissive or an empty set: a silent
+ * fallback in `assertTheme()` would restore the very bug issue #78 closes, and
+ * one in `narrowTheme()` would strip every child key out of a forwarded bag
+ * while leaving every test passing.
+ *
+ * `Object.hasOwn()` rather than a bare lookup, for the reason
+ * {@link COMPONENTS_BY_CHILD_KEY} gives: `THEME_CHILD_KEYS` is an object
+ * literal, so `'toString'` would otherwise resolve to an inherited function and
+ * fail later as `childKeys is not iterable`.
+ *
+ * @param {string} componentName - The component whose key set is wanted.
+ * @returns {Readonly<string[]>} Its registered child keys.
+ * @throws {Error} If no set is registered under that name.
+ */
+function childKeysFor(componentName) {
+    if (false === Object.hasOwn(THEME_CHILD_KEYS, componentName)) {
+        throw new Error(
+            `Theme: no theme key set is registered for ${componentName}. Add one to THEME_CHILD_KEYS in Theme.js.`,
+        );
+    }
+    return THEME_CHILD_KEYS[componentName];
+}
 
 /**
  * Every key any role accepts, for {@link assertTheme}'s typo check.
@@ -296,12 +333,7 @@ export function assertTheme(theme, componentName) {
     // name — and a `childKeys` argument would leave a call site free to
     // reintroduce it. An unregistered name throws rather than falling back to
     // the old permissive behaviour, which would silently restore the bug.
-    const childKeys = THEME_CHILD_KEYS[componentName];
-    if (undefined === childKeys) {
-        throw new Error(
-            `assertTheme: no theme key set is registered for ${componentName}. Add one to THEME_CHILD_KEYS in Theme.js.`,
-        );
-    }
+    const childKeys = childKeysFor(componentName);
     if (null === theme || undefined === theme) {
         return;
     }
@@ -407,11 +439,9 @@ function unknownThemeKeyError(key, componentName, validKeys, childKeys) {
             `${componentName}: theme.${key} is an ApiOptions input, which the theme bag reaches through the nested key. Write it as theme.${API_OPTIONS_KEY}.${key} instead.`,
         );
     }
-    const validOn = COMPONENTS_BY_CHILD_KEY[key];
-    const hint =
-        undefined === validOn
-            ? ''
-            : ` theme.${key} is valid on ${validOn.join(', ')}.`;
+    const hint = Object.hasOwn(COMPONENTS_BY_CHILD_KEY, key)
+        ? ` theme.${key} is valid on ${COMPONENTS_BY_CHILD_KEY[key].join(', ')}.`
+        : '';
     return new Error(
         `${componentName}: theme.${key} is not a recognised theme key for this component. Valid keys are: ${validKeys.join(', ')}.${hint}`,
     );
@@ -440,12 +470,16 @@ function unknownThemeKeyError(key, componentName, validKeys, childKeys) {
  * @param {Object|null|undefined} theme - The caller's whole theme bag.
  * @param {string} componentName - The component the narrowed bag is FOR.
  * @returns {Object|null|undefined} A fresh narrowed bag, or the nullish input.
+ * @throws {Error} If no key set is registered under `componentName`.
  */
 export function narrowTheme(theme, componentName) {
+    // Resolved BEFORE the nullish shortcut, so a mistyped target is caught on
+    // every call rather than only on the calls that happen to carry a theme.
+    const childKeys = childKeysFor(componentName);
     if (null === theme || undefined === theme) {
         return theme;
     }
-    const keep = [...FLAT_KEYS, ...(THEME_CHILD_KEYS[componentName] ?? [])];
+    const keep = [...FLAT_KEYS, ...childKeys];
     const narrowed = {};
     for (const key of Object.keys(theme)) {
         if (keep.includes(key)) {

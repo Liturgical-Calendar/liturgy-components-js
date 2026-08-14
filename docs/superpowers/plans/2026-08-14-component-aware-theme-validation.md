@@ -59,7 +59,7 @@ class that has never heard of it.
   - `export const THEME_CHILD_KEYS` — frozen object, keys are the six component names, values frozen `string[]`.
   - `assertTheme( theme, componentName )` — unchanged signature; now throws for a key outside `FLAT_KEYS ∪ THEME_CHILD_KEYS[ componentName ]`, and throws for an unrecognised `componentName`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/__tests__/MetaComponentThemeComponentAware.test.js`:
 
@@ -165,12 +165,12 @@ describe('assertTheme is component-aware', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `yarn test src/__tests__/MetaComponentThemeComponentAware.test.js`
 Expected: FAIL — `THEME_CHILD_KEYS` is not exported, and the rejection tests do not throw.
 
-- [ ] **Step 3: Add the registry and the reverse map to `Theme.js`**
+- [x] **Step 3: Add the registry and the reverse map to `Theme.js`**
 
 Insert after the `LEGACY_TOP_LEVEL_INPUT_KEYS` constant:
 
@@ -256,7 +256,7 @@ const COMPONENTS_BY_CHILD_KEY = Object.freeze(
 );
 ```
 
-- [ ] **Step 4: Make `assertTheme()` consult the registry**
+- [x] **Step 4: Make `assertTheme()` consult the registry**
 
 Replace the body of the `for` loop's opening in `assertTheme()` so the
 unknown-key check runs FIRST. The whole function becomes:
@@ -373,7 +373,7 @@ function unknownThemeKeyError(key, componentName, validKeys, childKeys) {
 }
 ```
 
-- [ ] **Step 5: Run the new suite and the whole suite**
+- [x] **Step 5: Run the new suite and the whole suite**
 
 Run: `yarn test src/__tests__/MetaComponentThemeComponentAware.test.js`
 Expected: PASS.
@@ -386,7 +386,7 @@ means the registry entry is wrong and must be corrected; a key that does not
 belong means the test was relying on the old permissive behaviour and its
 component name (not the assertion) should be corrected.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/MetaComponents/Theme.js src/__tests__/MetaComponentThemeComponentAware.test.js
@@ -416,7 +416,7 @@ EOF
 - Produces: `export function narrowTheme( theme, componentName )` — returns the bag unchanged when
   nullish, otherwise a fresh bag holding every flat key plus only the child keys `componentName` owns.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `src/__tests__/MetaComponentThemeComponentAware.test.js`:
 
@@ -496,13 +496,13 @@ Note: read the neighbouring suites (`CalendarViewer.test.js`,
 accessor used to read a select's class before writing the last assertion; match
 whatever they already do rather than inventing a new accessor.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `yarn test src/__tests__/MetaComponentThemeComponentAware.test.js`
 Expected: FAIL — `narrowTheme` is not exported, and the three constructors report
 `CalendarControls:` rather than their own names.
 
-- [ ] **Step 3: Add `narrowTheme()` to `Theme.js`**
+- [x] **Step 3: Add `narrowTheme()` to `Theme.js`**
 
 ```javascript
 /**
@@ -542,7 +542,7 @@ export function narrowTheme(theme, componentName) {
 }
 ```
 
-- [ ] **Step 4: Wire `CalendarViewer`**
+- [x] **Step 4: Wire `CalendarViewer`**
 
 In `src/MetaComponents/CalendarViewer.js`, add to the existing `Theme.js` import
 (create one if the file has none — it currently imports `resolveInputVisibility`
@@ -571,12 +571,12 @@ and in the constructor, immediately after the existing
 
 replacing the existing `this.#controls = new CalendarControls( bag );`.
 
-- [ ] **Step 5: Wire `ApiExplorer`**
+- [x] **Step 5: Wire `ApiExplorer`**
 
 Same two edits in `src/MetaComponents/ApiExplorer.js`, with `'ApiExplorer'` as
 the name, replacing its own `this.#controls = new CalendarControls( bag );`.
 
-- [ ] **Step 6: Wire `SubscriptionBuilder`**
+- [x] **Step 6: Wire `SubscriptionBuilder`**
 
 In `src/SubscriptionBuilder/SubscriptionBuilder.js`, extend the existing
 `Theme.js` import to `import { assertTheme, narrowTheme, resolveChildTheme } from '../MetaComponents/Theme.js';`
@@ -599,13 +599,13 @@ The existing `const urlTheme = resolveChildTheme( bag.theme, 'subscriptionUrl' )
 stays where it is and keeps reading the UNNARROWED bag — it is this component's
 own child, and narrowing is only about what the controls receive.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 Run: `yarn test`
 Expected: all suites pass, including `CalendarViewer.test.js`,
 `ApiExplorer.test.js` and `SubscriptionBuilder.test.js`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/MetaComponents/Theme.js src/MetaComponents/CalendarViewer.js src/MetaComponents/ApiExplorer.js src/SubscriptionBuilder/SubscriptionBuilder.js src/__tests__/MetaComponentThemeComponentAware.test.js
@@ -632,7 +632,7 @@ EOF
 - Consumes: the behaviour implemented in Tasks 1 and 2.
 - Produces: nothing code depends on.
 
-- [ ] **Step 1: Correct `docs/meta-components.md`**
+- [x] **Step 1: Correct `docs/meta-components.md`**
 
 Replace the `apiOptions` paragraph under `CalendarResourcePicker` (which
 currently ends "… the same 'a misspelling is caught, a misplacement is not'
@@ -693,7 +693,7 @@ inputs exist whatever the filter; theming one the filter hides is inert, not an 
 should not need to know which filter renders which input.
 ```
 
-- [ ] **Step 2: Correct `CLAUDE.md`**
+- [x] **Step 2: Correct `CLAUDE.md`**
 
 Rewrite the third bullet of the `apiOptions` list in the Meta-Components section
 (the one beginning "**`assertTheme()` catches typos at the new depth too**") so
@@ -727,7 +727,7 @@ validated is whether the current `filter` renders a themed `ApiOptions` input: a
 so theming a hidden one stays inert.
 ```
 
-- [ ] **Step 3: Add the CHANGELOG entry**
+- [x] **Step 3: Add the CHANGELOG entry**
 
 Under `## [Unreleased]` → `### Behaviour changes`, append:
 
@@ -753,14 +753,14 @@ Under `## [Unreleased]` → `### Behaviour changes`, append:
   owns, which is what keeps `SubscriptionBuilder`'s `subscriptionUrl` working.
 ```
 
-- [ ] **Step 4: Run the markdown gates**
+- [x] **Step 4: Run the markdown gates**
 
 Run: `yarn format:md:fix && yarn format:md && yarn lint:md`
 Expected: prettier reports nothing to change, markdownlint reports zero errors.
 MD013 (180-char lines) and MD029 are not fixed by prettier — wrap by hand if
 either is reported.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add CLAUDE.md docs/meta-components.md CHANGELOG.md
@@ -778,7 +778,7 @@ EOF
 
 **Files:** none modified unless a gate fails.
 
-- [ ] **Step 1: Run every gate, in order, and keep the real output**
+- [x] **Step 1: Run every gate, in order, and keep the real output**
 
 ```bash
 yarn test
@@ -794,12 +794,12 @@ exported from `src/index.js`, so the new exports should not reach
 `dist/index.d.ts` at all; if they do, that is a signal something exported them by
 mistake.
 
-- [ ] **Step 2: Fix anything a gate reports, then re-run that gate and `yarn test`**
+- [x] **Step 2: Fix anything a gate reports, then re-run that gate and `yarn test`**
 
 `yarn format:js` failures are fixed by `yarn format:js:fix`. Commit any fix
 separately with the same trailer.
 
-- [ ] **Step 3: Commit the spec and plan if not already committed**
+- [x] **Step 3: Commit the spec and plan if not already committed**
 
 ```bash
 git add docs/superpowers/specs docs/superpowers/plans
