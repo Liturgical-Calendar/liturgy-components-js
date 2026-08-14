@@ -23,6 +23,18 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Documentation
 
+- `LiturgyOfTheDay` is deliberately **not** given a live region under #65. It appends to its events wrapper
+  and never clears it, so a second `calendarFetched` duplicates the day's events rather than replacing them —
+  announcing "updated" over a component that is accumulating would describe something that did not happen. It
+  is also pinned to today's date and owns no controls, so the select-driven silence #65 describes does not
+  arise from anything it owns. The duplication is a real, separate defect, recorded here rather than fixed
+  under this issue.
+
+- `LiturgyOfAnyDay`'s announcement names the date but not the calendar, so changing only the calendar or the
+  rite while the date stays put produces identical text and a screen reader may not repeat it. Naming the
+  calendar would mean giving that widget `WebCalendar`'s three-branch caption derivation and its rite
+  tracking, neither of which it has. Recorded as a follow-up.
+
 - `Theme.js`'s `applyLocaleInputTheme()` is unchanged in behaviour but its rationale is not: it justified
   writing the label unconditionally by citing `LocaleInput`'s hardcoded `'locale'`, which no longer exists.
   The write is now a no-op for every caller in this library — `CalendarControls.#language` is the same
@@ -30,6 +42,35 @@ prepared under that number was skipped, and everything it was to have delivered 
   `defaultLabelText` from another catalogue is still honoured.
 
 ### Added
+
+- **A visually-hidden live region on `WebCalendar` and `LiturgyOfAnyDay`**, closing #65. Both replace all of
+  their content when a `<select>` changes — a whole table, a whole event list — while focus stays on the
+  select, so a screen-reader user got silence, and no way to tell a successful update from a request that did
+  nothing. Each now owns a `role="status"` / `aria-live="polite"` / `aria-atomic="true"` region, following the
+  precedent `SubscriptionUrl` set in 2.7.0, announcing a short localized summary and never the content — a
+  live region carrying the table would be catastrophic. `WebCalendar` announces the caption text and the
+  entry count (`General Roman Calendar - 2026, 561 entries`), reusing the very string the `<caption>` carries
+  so the two cannot drift and announcing it even when `removeCaption( true )` hides the element;
+  `LiturgyOfAnyDay` announces the date (`Liturgy for Friday, 14 August 2026 updated`). The **first** render is
+  deliberately silent, since it is the page loading rather than a user action — and since it is also the
+  render that mounts the region, which has to be in the DOM before its content changes to be announced at
+  all. `announceUpdates: false`, as a constructor option or as a chainable setter on either component, turns
+  it off for a consumer that already owns a live region for the surrounding page. Confirmed by
+  `src/__tests__/AnnouncementFrequency.test.js` to fire exactly once per user action, which the request
+  coalescing added in 2.5.0 is what makes true.
+
+- **`src/MessageFormat.js` and `src/LiveAnnouncer.js`**, both internal and neither exported from
+  `src/index.js`, on the same reasoning as `LocaleValidation.js` and `Theme.js`. The first gives the
+  `{placeholder}` convention `Messages.js` already used — `AMBROSIAN_CALENDAR_CAPTION` and the two other
+  captions — one home, adding the English fallback each call site wrote by hand and an `Intl.PluralRules`
+  form selection. The second owns the hidden-region markup; `SubscriptionUrl` now uses it too.
+
+- **Three `Messages` keys** — `CALENDAR_UPDATED_ANNOUNCEMENT_ONE`, `CALENDAR_UPDATED_ANNOUNCEMENT_OTHER` and
+  `LITURGY_UPDATED_ANNOUNCEMENT` — in the twelve locales that already carry `SELECT_A_RITE`. Every other
+  locale reaches English through the `??` fallback, as before. Only `_ONE` and `_OTHER` are populated, so a
+  language whose plural rules select `few` or `many` takes its own `_OTHER`; each `_OTHER` is therefore
+  written in the form its language uses with a large count, which is the only count a full liturgical year
+  produces.
 
 - **`inputs: { acceptHeader: false }` on `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, closing
   the first half of #61. `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads, so it was
@@ -145,6 +186,14 @@ prepared under that number was skipped, and everything it was to have delivered 
   as the rite-level calendar rather than crashing.
 
 ### Fixed
+
+- **`SubscriptionUrl`'s copy region was not actually clipped**, and gains `role="status"` and
+  `aria-atomic="true"` in passing. It wrote `clip: rect(0 0 0 0)`; the space-separated form is not CSS2
+  `rect()` syntax, so a strict parser discards the declaration outright — measured in jsdom, where the
+  property reads back empty — leaving the region a 1x1 `overflow: hidden` box rather than a clipped one. It
+  is now written as `rect(0, 0, 0, 0)`, with `clip-path: inset(50%)` alongside it since `clip` is deprecated,
+  and `white-space: nowrap` so a long announcement cannot lay out as a tall column. Found while moving the
+  markup into the shared `LiveAnnouncer` for #65.
 
 - **A throwing `onError()` callback no longer breaks the `settled` contract, or the `CalendarViewer`
   factory.** The callbacks run inside the very rejection handler each `mountInto()` builds its stored

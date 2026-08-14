@@ -115,6 +115,7 @@ webCalendar.eventColorColumns(Column.EVENT_DETAILS | Column.GRADE);
 | `latinInterface(type)`  | `LatinInterface.ECCLESIASTICAL`, `CIVIL`                 | Latin weekday names style                          |
 | `rite(rite)`            | `Rite.ROMAN`, `Rite.AMBROSIAN`                           | Rite the calendar belongs to, used for the caption |
 | `locale(locale)`        | a `string` or an `Intl.Locale`                           | Locale for month and date formatting               |
+| `announceUpdates(bool)` | `true` (default), `false`                                | Announce each replacement in a live region         |
 
 `locale()` accepts a BCP 47 tag or an `Intl.Locale`, interchangeably, and stores the canonical form — so
 `_locale` reads back `'en-US'` for `'EN-us'`, `'en_us'` or `new Intl.Locale('EN-us')` alike. Underscores are
@@ -128,6 +129,35 @@ National and diocesan captions are named after the calendar itself and need no r
 
 Calling it is unnecessary when the instance uses `listenTo(apiClient)`: the rite is taken from the client
 on every fetch, so it follows a linked `RiteSelect` automatically.
+
+### Screen-reader announcements
+
+`WebCalendar` replaces its entire table on every `calendarFetched`, and the change is usually driven from a
+`<select>` that keeps focus. Without help that is silence for a screen-reader user: nothing says the rows
+underneath were replaced, and nothing distinguishes a successful update from a request that did nothing.
+
+The table's mount therefore also carries a visually-hidden `role="status"` / `aria-live="polite"` /
+`aria-atomic="true"` region, holding a short summary — never the content, which would be catastrophic to
+announce:
+
+```text
+General Roman Calendar - 2026, 561 entries
+```
+
+The calendar's name and year are the very string the `<caption>` carries, so the two cannot drift, and they
+are announced even when `removeCaption(true)` hides the caption element. The count is pluralized with
+`Intl.PluralRules`.
+
+Two behaviours worth knowing:
+
+- **The first render is not announced.** It is the page loading rather than a user action, and a live region
+  firing then talks over whatever else is being announced.
+- **The region is never removed and re-inserted**, since a live region has to be in the DOM before its
+  content changes to be announced at all. It stays as the mount's last child across every table swap, and
+  the swap still clears any placeholder content the consumer left there.
+
+Turn it off with `announceUpdates(false)`, or `new WebCalendar({ announceUpdates: false })`, when the
+surrounding page already owns a live region for this content and would otherwise announce it twice.
 
 ### Event Handling
 

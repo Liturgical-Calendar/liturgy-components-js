@@ -234,6 +234,10 @@ instead of raising TS2367.
 - **Automatic caching** - Reduces redundant API requests
 - **Locale support** - 13 languages supported; every component takes a locale as either a `string` or an
   `Intl.Locale`, and treats `null` and `undefined` alike as "not supplied"
+- **Screen-reader announcements** - `WebCalendar` and `LiturgyOfAnyDay` replace all of their content when
+  a select changes, and each announces a short summary of what it now shows through a visually-hidden
+  `aria-live="polite"` region, so the change is not silent. The first render is not announced, and
+  `announceUpdates(false)` turns the region off for a page that owns its own
 - **Bootstrap compatible** - Easy integration with Bootstrap 5
 - **TypeScript definitions** - Full type support in `dist/index.d.ts`
 

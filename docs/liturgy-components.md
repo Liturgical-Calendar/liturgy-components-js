@@ -122,6 +122,7 @@ Includes all `LiturgyOfTheDay` methods plus:
 | `monthInputConfig(options)`    | Configure month input                                   |
 | `yearInputConfig(options)`     | Configure year input                                    |
 | `buildDateControls()`          | Build and append date controls (must call after config) |
+| `announceUpdates(bool)`        | Announce each update in a live region (default `true`)  |
 
 ### Input Configuration Options
 
@@ -172,6 +173,30 @@ liturgyOfAnyDay
 
 - **High-contrast text**: White text on dark backgrounds (green, red, purple), black on light
 - **White background border**: Events with white backgrounds have a subtle border
+
+### Screen-reader announcements
+
+`LiturgyOfAnyDay` replaces its whole event list when the date or the calendar changes, while focus stays on
+the control that changed — silence, for a screen-reader user. It therefore carries a visually-hidden
+`role="status"` / `aria-live="polite"` / `aria-atomic="true"` region as its last child, announcing a short
+summary of what is now shown:
+
+```text
+Liturgy for Friday, 14 August 2026 updated
+```
+
+- **The first render is not announced**: it is the page loading, not a user action.
+- **A year change is announced once, not twice.** The year listener re-renders from the cached payload
+  immediately and only then refetches; the first of those two renders still shows the previous year, so it
+  stays silent.
+- **The announcement names the date, not the calendar.** Changing only the calendar or the rite while the
+  date stays put therefore produces identical text, which a screen reader may not repeat.
+
+Turn it off with `announceUpdates(false)`, or `new LiturgyOfAnyDay({ announceUpdates: false })`, when the
+surrounding page already owns a live region for this content.
+
+`LiturgyOfTheDay` has no such region: it appends to its events wrapper without clearing it, so a second
+fetch duplicates the day's events rather than replacing them, and "updated" would not describe what happened.
 
 ---
 

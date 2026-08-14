@@ -690,6 +690,52 @@ inputs' **option** labels are not: `EpiphanyInput`, `EternalHighPriestInput` and
 reached. Every key those three read is present in all 84 blocks, so no real locale hits it — it is issue #69's
 bug, deliberately left alone by #59.
 
+## Live-region announcements
+
+`WebCalendar` and `LiturgyOfAnyDay` each own a visually-hidden `role="status"` / `aria-live="polite"` /
+`aria-atomic="true"` region and announce a **short summary** — never their content — whenever they replace it.
+`announceUpdates` (constructor option and chainable setter, default `true`) turns it off. Six points are
+load-bearing:
+
+- **Default on.** An accessibility fix that is off by default fixes nobody: the consumers who need it are the
+  least likely to know the option exists. The opt-out exists for a page that already owns a live region for
+  this content and would otherwise announce it twice. A boolean rather than a bag, because the wording is
+  already localized through `Messages`; widening it later is backward compatible.
+- **The first render is silent.** It is the page loading, not a user action, and a region firing then talks
+  over whatever else is being announced. It is also the render that MOUNTS the region, and a live region has
+  to be in the DOM before its content changes to be announced at all — so skipping it is not merely manners.
+- **`WebCalendar`'s region must survive the table swap.** Its `calendarFetched` handler used
+  `replaceChildren( table )`, which would take the region with it; `#swapIn()` removes every child except the
+  region instead, then inserts the table before it. Do not "simplify" that back into `replaceChildren()` — a
+  region that is removed and re-inserted is not reliably announced. With announcements off the two are
+  equivalent, including clearing the consumer's placeholder content.
+- **`WebCalendar` announces the caption's own string**, via `#captionText()`, extracted from `buildTable()`
+  for exactly that reason. Deriving the calendar's name a second time would mean a second set of translations
+  free to drift from the captions. It is called even when `removeCaption( true )` hides the element.
+- **`LiturgyOfAnyDay` renders twice for one year change** — once from the cached payload, once from the
+  refetch — so `#refetchPending` keeps the first, stale one silent. This is the ONE path where coalescing
+  does not already give one render per action; `src/__tests__/AnnouncementFrequency.test.js` confirms the
+  `ApiClient` path does, by counting announcements through real `change` events rather than assuming.
+- **No meta-component option.** `CalendarViewer` and `DayViewer` expose the child, so
+  `viewer.webCalendar.announceUpdates( false )` reaches it without a further key in their option bags.
+
+`src/MessageFormat.js` is where a `Messages` key with `{placeholders}` is resolved, interpolated and — via
+`Intl.PluralRules`, with only `_ONE`/`_OTHER` populated — pluralized. Internal, like `LocaleValidation.js`.
+The three caption sites in `WebCalendar.js` still inline the same regex; converting them is a refactor for
+its own change. `src/LiveAnnouncer.js` owns the hidden-region markup, shared with `SubscriptionUrl`, and holds
+no policy about **when** to announce — that belongs to each caller, since `SubscriptionUrl` must announce on
+its first use while the two renderers must not.
+
+`LiturgyOfTheDay` has no region, deliberately: `#updateEventDetails()` appends without clearing, so a second
+fetch duplicates rather than replaces, and "updated" would misdescribe that. Fixing the duplication is a
+separate defect.
+
+**The tests are structural.** jsdom has no accessibility tree and no assistive technology, so nothing in
+`WebCalendarAnnouncements.test.js`, `LiturgyOfAnyDayAnnouncements.test.js` or `AnnouncementFrequency.test.js`
+proves a screen reader speaks. They prove the markup is present, correctly attributed, stable across a
+re-render, and written exactly once per action. Verifying the announcement itself needs a real browser and a
+real screen reader.
+
 ## Important Notes
 
 - **No build step for production** - Components work as-is with ES6 module imports
