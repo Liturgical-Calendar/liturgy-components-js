@@ -17,17 +17,20 @@
  * `LocaleValidation.js`, `OptionsValidation.js` and `WrapperOptions.js`: internal
  * contract between the components, not public API.
  *
- * **The `??` fallback is the point of this function existing** rather than ten
- * inlined lookups. `Messages` holds 84 unevenly populated locale blocks, so an
- * unguarded `Messages[language][key]` throws for a language with no block at all
- * and yields `undefined` for a block that simply lacks the key. Centralizing the
- * guard makes that class of bug impossible for these labels.
+ * **The fallback is the point of this function existing** rather than ten
+ * inlined lookups. It now delegates to `src/MessageLookup.js`'s `message()`,
+ * which is the library's single guarded read of the catalogue (issue #69): four
+ * of the six sites that still threw were neither inputs nor labels, so the guard
+ * had to move somewhere both this module and `CalendarSelect` could reach. This
+ * wrapper survives that move because it carries a rationale `message()` does not
+ * — the `null`-means-English default appropriate to a LABEL — and because ten
+ * call sites read better naming what they are looking up.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
  */
 
-import Messages from '../../Messages.js';
+import { message } from '../../MessageLookup.js';
 
 /**
  * Looks up a label in the message catalogue, falling back to English.
@@ -39,6 +42,5 @@ import Messages from '../../Messages.js';
  * @returns {string} The localized label, or the English one.
  */
 export function defaultLabelText(key, locale = null) {
-    const language = locale?.language ?? 'en';
-    return Messages[language]?.[key] ?? Messages['en'][key];
+    return message(key, locale);
 }

@@ -1,5 +1,5 @@
 import SelectInput from './SelectInput.js';
-import Messages from '../../Messages.js';
+import { message } from '../../MessageLookup.js';
 import { defaultLabelText } from './InputLabels.js';
 
 export default class EpiphanyInput extends SelectInput {
@@ -45,7 +45,7 @@ export default class EpiphanyInput extends SelectInput {
             Object.entries({
                 '': '--',
                 JAN6: monthDayFormatter.format(jan6),
-                SUNDAY_JAN2_JAN8: Messages[locale.language]['SUNDAY_JAN2_JAN8'],
+                SUNDAY_JAN2_JAN8: message('SUNDAY_JAN2_JAN8', locale),
             }),
         );
         this.#options.forEach(([value, label]) => {

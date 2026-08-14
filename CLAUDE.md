@@ -41,6 +41,7 @@ liturgy-components-js/
 │   ├── index.js                    # Main entry point
 │   ├── Enums.js                    # Type-safe enumerations
 │   ├── Messages.js                 # Localized UI strings (84 locale blocks, unevenly populated)
+│   ├── MessageLookup.js            # The one guarded read of Messages, falling back to English
 │   ├── Utils.js                    # Utility functions
 │   ├── typedefs.js                 # Shared JSDoc typedefs
 │   ├── ApiClient/
@@ -669,9 +670,37 @@ Type-safe enumerations for component configuration:
 `COPY_TO_CLIPBOARD`/`COPIED_TO_CLIPBOARD` for `SubscriptionUrl`'s copy control, and the six `ApiOptions`
 input labels added for #59 (`YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`, `ETERNAL_HIGH_PRIEST`,
 `HOLYDAYS_OF_OBLIGATION`) — are present in exactly twelve of the 84, the same twelve that carry
-`SELECT_A_RITE`. Every other locale reaches English through the `??` fallback each call site already applies
-(`Messages[language]?.[KEY] ?? Messages['en'][KEY]`), so an unpopulated block degrades to English for that key
-rather than throwing.
+`SELECT_A_RITE`. Every other locale reaches English through a fallback, so an unpopulated block degrades to
+English for that key rather than throwing.
+
+**`src/MessageLookup.js`'s `message( key, locale )` is the one place that fallback lives.** It is internal and
+not exported from `src/index.js`, on the same reasoning as `LocaleValidation.js`, `OptionsValidation.js` and
+`WrapperOptions.js`. It takes an `Intl.Locale`, a locale tag string (`'it'`, `'it-IT'` and `'it_IT'` alike,
+since a string goes through `toIntlLocale()` rather than a bare `new Intl.Locale()`) or `null`/`undefined` for
+"not supplied", and returns the English message when the catalogue has no block for the language, or a block
+without the key. Two things it does **not** do, both deliberate:
+
+- **It does not warn.** A sparse block is the documented normal case, not an anomaly — the twelve-locale keys
+  above mean a warning would fire for 72 working locales, once per input constructed, and would start logging
+  on four paths that already fell back silently. Coverage is asserted instead, for the keys that are only
+  partly translated, in `src/__tests__/Messages.test.js`.
+- **It does not tolerate a key missing from English**, which it throws on by name. A key is a string literal in
+  the source, so one absent from English is a typo broken in every locale rather than a translation gap, and
+  failing loudly beats assigning `undefined` to a `textContent`.
+
+This replaced the hand-written `Messages[language]?.[KEY] ?? Messages['en'][KEY]` that each call site used to
+apply for itself — the shape that produced issue #69, where six sites had remembered the guard and six had
+forgotten it, so `new ApiOptions( 'ceb' )` threw a bare `TypeError` naming neither the component, the locale,
+nor the catalogue. Since every meta-component builds an `ApiOptions`, all six inherited that.
+
+**#69 closed the `ApiOptions` route, not the whole symptom**, because two files were left to the issue already
+editing them. `LiturgyOfAnyDay.js` still reads the catalogue unguarded in its constructor, so
+`new DayViewer( { locale: 'ceb' } )` still throws; `WebCalendar.js` does the same inside `buildTable()`, so a
+`CalendarViewer` now constructs under such a locale but still throws when it renders. `src/MetaComponents/`
+carries a correct inline guard rather than calling `message()` — a consolidation, not a bug.
+`src/__tests__/MessageLookup.test.js` scans `src/` for the unguarded shape and allow-lists exactly those two
+files, so the bug cannot spread. That scan is a tripwire, not a proof: it is written against the shape the bug
+took, and its doc comment lists what it knowingly does not see.
 
 **Input labels are localized by the input's own constructor**, through
 `src/ApiOptions/Input/InputLabels.js`'s `defaultLabelText( key, locale )` — internal, and not exported from
@@ -684,11 +713,11 @@ supplied" and yields the English label; anything else non-`Intl.Locale` throws).
 theming is applied after construction — which is also why `Theme.js`'s `applyLocaleInputTheme()` keeps writing
 the label unconditionally even though that write is now a no-op.
 
-The label lookup is safe for a language that has no `Messages` block at all, not merely a sparse one. The
-inputs' **option** labels are not: `EpiphanyInput`, `EternalHighPriestInput` and `YearTypeInput` still read
-`Messages[locale.language][KEY]` unguarded, so an unknown language throws there before the label is ever
-reached. Every key those three read is present in all 84 blocks, so no real locale hits it — it is issue #69's
-bug, deliberately left alone by #59.
+`defaultLabelText()` is now a one-line delegate to `message()` and is kept rather than inlined, because it
+carries a rationale `message()` does not — the `null`-means-English default that is right for a **label** — and
+because ten call sites read better naming what they look up. The inputs' **option** labels, which #59 left
+reading `Messages[locale.language][KEY]` unguarded, go through `message()` too since #69, as do
+`CalendarPathInput`'s label, `CalendarSelect`'s default label and `LiturgyOfTheDay`'s title.
 
 ## Important Notes
 

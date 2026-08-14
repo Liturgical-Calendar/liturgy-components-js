@@ -90,8 +90,15 @@ which is what a screen reader announced for the control.
 
 Nine of these ten keys are carried by only twelve of `Messages.js`' 84 locale blocks — the six newer ones
 and the reused `DAY`, `YEAR` and `LANGUAGE` alike. Every other locale falls back to English for them rather
-than throwing, through `Messages[language]?.[KEY] ?? Messages['en'][KEY]`. `MONTH` is the one exception,
-present in all 84 because `WebCalendar` has long used it as a column header.
+than throwing, through the internal `message( key, locale )` in `src/MessageLookup.js`. `MONTH` is the one
+exception, present in all 84 because `WebCalendar` has long used it as a column header.
+
+The controls' **option** text follows the same rule since #69. `_epiphanyInput`, `_yearTypeInput`,
+`_eternalHighPriestInput` and `_calendarPathInput` used to read their option and route labels through an
+unguarded `Messages[locale.language][KEY]`, which threw for any language with no block at all — and, because
+`ApiOptions` builds every input in its constructor and all six meta-components build an `ApiOptions`, took
+the whole page with it. There is no warning on the fallback: a block that lacks a key is the documented
+normal case here, not an anomaly.
 
 `_acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it
 takes no locale and its label flips at runtime in `asReturnTypeParam()`.

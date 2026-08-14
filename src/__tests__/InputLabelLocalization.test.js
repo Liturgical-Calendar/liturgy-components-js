@@ -29,13 +29,11 @@ import { applyLocaleInputTheme } from '../MetaComponents/Theme.js';
 import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 
 /**
- * There is deliberately NO constructor-level "falls back to English for a
- * language with no catalogue block" case here, though `defaultLabelText()` does
- * fall back. `EpiphanyInput`, `EternalHighPriestInput` and `YearTypeInput` read
- * their OPTION labels through an unguarded `Messages[locale.language][key]`, so
- * `new EpiphanyInput( new Intl.Locale( 'zz' ) )` throws before the label is ever
- * set. That unguarded read is issue #69's and is deliberately left alone here.
- * The fallback itself is pinned one layer down, in `InputLabels.test.js`.
+ * There is deliberately no constructor-level "falls back to English for a
+ * language with no catalogue block" case here: that is issue #69's story, and it
+ * covers four components outside `ApiOptions/Input/` as well, so it lives whole
+ * in `MessageLookup.test.js` rather than half here. The label lookup's own
+ * fallback is pinned one layer down, in `InputLabels.test.js`.
  */
 
 /** Every input that requires a locale, with the Messages key it must use. */
