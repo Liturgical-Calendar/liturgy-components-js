@@ -823,6 +823,18 @@ calendarSelect.appendTo('#container');
 calendarSelect.value(''); // Empty value = General Roman Calendar
 ```
 
+`value( val )` **throws** for any other value no option carries, naming the select and the value. That
+throw sits there because it is the last place the mistake is nameable: assigning an unmatched value to a
+`<select>` leaves `selectedIndex === -1` and the DOM **discards the value**, so every later reader —
+`value()`, `ApiClient`'s `change` listener, `PathBuilder` — sees only `''`. `''` is exempt and must stay
+exempt: `#allowNull` is `false` by default and `#applyLinkedRite()` writes `''` on every rite change, so
+on most selects the documented recipe above lands on `selectedIndex === -1` deliberately.
+
+Downstream of that, `selectedIndex === -1` is read as the rite-level calendar and never throws — the
+listeners cannot distinguish it from the empty option being selected, and a throw inside a `change`
+listener is swallowed by the DOM anyway. `ApiClient`, `PathBuilder`, `SubscriptionUrl` and
+`CalendarControls.fetch()` all agree on this; do not "harden" one of them into throwing (issue #66).
+
 ### LocaleInput Selection Logic
 
 When setting up LocaleInput, match the user's locale with available options:
