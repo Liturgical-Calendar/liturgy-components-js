@@ -32,6 +32,7 @@
 
 import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { assertTheme, narrowTheme } from './Theme.js';
 import PathBuilder from '../PathBuilder/PathBuilder.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import {
@@ -94,7 +95,13 @@ export default class ApiExplorer {
         // `CalendarViewer`'s constructor for why: `CalendarControls` applies the
         // same bag below, but names itself when rejecting it.
         resolveInputVisibility(bag.inputs, 'ApiExplorer');
-        this.#controls = new CalendarControls(bag);
+        // The theme likewise, and narrowed before it is forwarded (#78) — see
+        // `CalendarViewer`'s constructor and `narrowTheme()` for the reasoning.
+        assertTheme(bag.theme, 'ApiExplorer');
+        this.#controls = new CalendarControls({
+            ...bag,
+            theme: narrowTheme(bag.theme, 'CalendarControls'),
+        });
         // The rite -> calendar chain, wired directly rather than through
         // `CalendarControls.listenTo()` — see the class doc comment above for
         // why: that method also installs `apiClient.listenTo( … )`, which is

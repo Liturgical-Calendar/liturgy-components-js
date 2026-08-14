@@ -8,6 +8,29 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Behaviour changes
 
+- **A meta-component theme key naming a child that component does not have now throws**, closing #78.
+  `assertTheme()` validated a theme bag without knowing which children the receiving component actually
+  had, so any key outside the four flat role keys was read as a per-child override, accepted, and then
+  dropped in silence by `resolveChildTheme()` — `theme.apiOptions` on a `CalendarResourcePicker`, which
+  bundles no `ApiOptions`, or `theme.liturgy` on a `CalendarViewer`, which has no `LiturgyOfAnyDay`. That
+  is the issue-#43 failure mode by a different route: markup rendered with library defaults, no throw and
+  no warning, and nothing to notice until an end-to-end selector broke. **A consumer currently passing a
+  misplaced key gets a new exception where it previously got silently unstyled markup.** That is the
+  intent — a key that styles nothing is a bug the consumer cannot otherwise see — but it is a behaviour
+  change, and the fix is to move the key to the component that owns it or delete it. The message names
+  the rejecting component, the key, the keys that component does accept, and the components the key is
+  valid on. Nothing that styles something today stops styling it: the per-component sets are derived from
+  what each component actually resolves. What is deliberately still accepted is theming an `ApiOptions`
+  input the current `filter` never renders — all ten exist regardless of the filter, so that stays inert
+  rather than becoming an error.
+- **A bad theme key passed to `CalendarViewer`, `ApiExplorer` or `SubscriptionBuilder` is now reported
+  under that component's own name**, not `CalendarControls`', also #78. All three forward their options
+  bag to an internal `CalendarControls`, which named ITSELF when rejecting an option the caller had
+  passed to a class they never touched — the misattribution PR #76 fixed for the `inputs` bag, and this
+  fixes for `theme`. Each now validates under its own name before forwarding, and forwards only the keys
+  `CalendarControls` owns, which is what keeps `SubscriptionBuilder`'s `subscriptionUrl` working while
+  `CalendarControls` itself still rejects it.
+
 - **Every `ApiOptions` input now renders a localized `<label>`**, closing #59. Nine inputs shipped the raw
   snake_case API parameter name — `ascension`, `corpus_christi`, `epiphany`, `eternal_high_priest`,
   `holydays_of_obligation`, `year_type`, `year`, `day`, `month` — and `LocaleInput` shipped `locale`, in

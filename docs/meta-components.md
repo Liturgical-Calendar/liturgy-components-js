@@ -131,7 +131,10 @@ re-configuring something the theme bag already configured.
 
 **Per-child keys depend on what the child is.** A `<select>`-shaped child (`riteSelect`,
 `calendarSelect`, `localeInput`, `dateControls`) accepts `class`, `labelClass`, `labelText`,
-`wrapperClass` and `wrapper`.
+`wrapperClass` and `wrapper`. Which of those children a given component actually HAS — and therefore
+which of these keys it accepts — is listed under
+[Theme keys are per component](#theme-keys-are-per-component); this picker, for one, has neither
+`localeInput` nor `dateControls`.
 
 **`wrapper` means two different things depending on where it appears, and both are deliberate.** As a
 **flat** key, `theme.wrapper` is a wrapper **class** applied to every child that can take a wrapper. As a
@@ -165,7 +168,8 @@ further class setters and no label or wrapper of its own, so it accepts `class` 
 Those eight were accepted by the bag but silently discarded before 2.3.0 (issue #43), so a consumer
 theming the event rows or the date header got library defaults with no throw and no warning. They work
 now. **An unrecognised per-child key throws**, naming the key — the same misspelling that produced that
-issue is now reported rather than ignored.
+issue is now reported rather than ignored. A key naming a child _this component does not have_ throws
+too (issue #78); see [Theme keys are per component](#theme-keys-are-per-component).
 
 **What a class-string value may contain:** every class string in this bag — flat or per-child —
 reaches the same validator every other class-taking method in this library uses
@@ -200,9 +204,48 @@ support a wrapper here, resolved the same way as every other role.
 **`apiOptions` is a reserved key, not a per-child override.** It is the one nested bag the vocabulary
 has: flat role keys plus per-input overrides for a whole `ApiOptions` form, documented under
 [`CalendarControls`](#themeapioptions--the-whole-apioptions-form). `CalendarResourcePicker` bundles no
-`ApiOptions`, so naming it in this component's bag styles nothing — the same "a misspelling is caught, a
-misplacement is not" limitation that applies to every key here, since the bag is validated without
-knowing which children the component receiving it actually has.
+`ApiOptions`, so naming it in this component's bag **throws** — as does `localeInput`, the one
+`ApiOptions` input that answers to a top-level key elsewhere. Before issue #78 both were accepted and
+then styled nothing.
+
+### Theme keys are per component
+
+Each component accepts the four flat role keys — `select`, `input`, `label`, `wrapper` — plus exactly
+the child keys it resolves:
+
+| Component                | Child keys                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| `CalendarResourcePicker` | `riteSelect`, `calendarSelect`                                                         |
+| `CalendarControls`       | `riteSelect`, `calendarSelect`, `apiOptions`, `localeInput`                            |
+| `CalendarViewer`         | as `CalendarControls`                                                                  |
+| `ApiExplorer`            | as `CalendarControls`                                                                  |
+| `DayViewer`              | `riteSelect`, `calendarSelect`, `liturgy`, `dateControls`, `apiOptions`, `localeInput` |
+| `SubscriptionBuilder`    | as `CalendarControls`, plus `subscriptionUrl`                                          |
+
+Anything else **throws** (issue #78), naming the rejecting component, the offending key, the keys that
+component does accept and — when the key is valid somewhere — the components it is valid on, all on one
+line:
+
+```text
+CalendarResourcePicker: theme.apiOptions is not a recognised theme key for this component. Valid keys are: select, input, label, wrapper, riteSelect, calendarSelect. theme.apiOptions is valid on CalendarControls, CalendarViewer, ApiExplorer, DayViewer, SubscriptionBuilder.
+```
+
+Before issue #78 such a key was accepted by the guard and then dropped in silence by the resolver, because
+the bag was validated without knowing which children the component receiving it actually had. That is
+the issue-#43 failure mode by a different route: markup rendered with library defaults, no throw and no
+warning, and nothing to notice until an end-to-end selector broke. **This is a behaviour change** — a
+misplaced key that used to style nothing now raises an exception. The fix is to move it to the component
+that owns it, or delete it.
+
+`CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` forward their bag to an internal
+`CalendarControls`, and each validates it under **its own** name first, then hands down only the keys
+the controls own. That is both why `subscriptionUrl` works on a `SubscriptionBuilder` and nowhere else,
+and why a bad key on a `CalendarViewer` is now reported as a `CalendarViewer` problem rather than as a
+`CalendarControls` one.
+
+What this does **not** do is reject an `ApiOptions` input the current `filter` never renders. All ten
+inputs exist whatever the filter, so theming one the filter hides stays inert rather than an error, and
+a caller need not know which filter renders which input to write a bag that works for all of them.
 
 ### Public getters
 
