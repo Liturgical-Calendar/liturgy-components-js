@@ -19,7 +19,7 @@
 
 import { CalendarType } from '../PathBuilder/CurrentEndpoint.js';
 import LiveAnnouncer from '../LiveAnnouncer.js';
-import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 
 /** The schemes a subscription URL may be rendered under. */
 const SCHEMES = Object.freeze(['https', 'webcal']);
@@ -154,14 +154,10 @@ export default class SubscriptionUrl {
         const language = options.language ?? 'en';
         this.#domElement.setAttribute(
             'title',
-            options.copyTitle ??
-                Messages[language]?.['COPY_TO_CLIPBOARD'] ??
-                Messages['en']['COPY_TO_CLIPBOARD'],
+            options.copyTitle ?? message('COPY_TO_CLIPBOARD', language),
         );
         this.#copiedText =
-            options.copiedText ??
-            Messages[language]?.['COPIED_TO_CLIPBOARD'] ??
-            Messages['en']['COPIED_TO_CLIPBOARD'];
+            options.copiedText ?? message('COPIED_TO_CLIPBOARD', language);
         this.#copiedClass = options.copiedClass ?? 'is-copied';
         this.#onCopy =
             typeof options.onCopy === 'function' ? options.onCopy : null;

@@ -1,4 +1,4 @@
-import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 import Utils from '../Utils.js';
 import { Rite } from '../Enums.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
@@ -54,8 +54,6 @@ export default class RiteSelect {
             this.#locale = canonicalizeLocale(inputLocale, 'RiteSelect');
         }
 
-        const language = new Intl.Locale(this.#locale).language;
-
         this.#domElement = document.createElement('select');
         this.#domElement.innerHTML = Object.values(Rite)
             .map((rite) => {
@@ -63,8 +61,7 @@ export default class RiteSelect {
                 // Not `label`: that name now belongs to the destructured option
                 // below. The shadowing was harmless while nothing outside this
                 // callback used it, and stops being obvious the moment something does.
-                const optionLabel =
-                    Messages[language]?.[key] ?? Messages['en'][key];
+                const optionLabel = message(key, this.#locale);
                 return `<option value="${rite}">${optionLabel}</option>`;
             })
             .join('');
@@ -346,10 +343,10 @@ export default class RiteSelect {
             labelOptions.text = Utils.sanitizeInput(labelOptions.text);
             this.#labelElement.textContent = labelOptions.text;
         } else {
-            const language = new Intl.Locale(this.#locale).language;
-            this.#labelElement.textContent =
-                Messages[language]?.['SELECT_A_RITE'] ??
-                Messages['en']['SELECT_A_RITE'];
+            this.#labelElement.textContent = message(
+                'SELECT_A_RITE',
+                this.#locale,
+            );
         }
 
         return this;

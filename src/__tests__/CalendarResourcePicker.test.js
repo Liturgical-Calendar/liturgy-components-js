@@ -317,10 +317,12 @@ describe('CalendarResourcePicker theme labelText', () => {
     });
 });
 
-// I4: `CalendarSelect.label()`, unlike `RiteSelect.label()`, has no English
-// fallback of its own — it reads `Messages[language]['SELECT_A_CALENDAR']`
-// directly, which throws for a locale outside the catalogue. The picker must
-// never reach that code path with no `text`, whatever locale it was built with.
+// I4: `CalendarSelect.label()` used to have no English fallback of its own — it
+// read `Messages[language]['SELECT_A_CALENDAR']` directly, which threw for a
+// locale outside the catalogue until issue #69 routed it through `message()`.
+// The picker must still never reach that code path with no `text`, whatever
+// locale it was built with: the assertion here is about the picker's own
+// contract, not about the throw that used to back it.
 // I7: an explicitly-`undefined` per-child override key is the ordinary shape
 // `theme: { riteSelect: { class: config.riteClass } }` takes when `config.riteClass`
 // is absent — not a contrived input. It must fall back to the flat default rather
