@@ -1,6 +1,8 @@
 # `inputs` option and `settled` on the constructor path — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended)
+> or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`)
+> syntax for tracking.
 
 **Goal:** Make the accept-header input's visibility expressible in the meta-components' options bag, and make
 `settled` observe the constructor path's own `fetch()` calls — so `mountInto()` covers the case that forced
@@ -213,7 +215,7 @@ The test must cover, with `ApiBase.fromMetadata( API_URL, FULL_METADATA )` in `b
 3. `new CalendarControls( { locale: 'en', inputs: { acceptHeader: false } } )` + `appendTo( '#mount' )`
    renders none — the option works on the constructor path too.
 4. `CalendarViewer.mountInto( { controls: '#mount', calendar: '#calendar' }, { inputs: { acceptHeader:
-   false } } )` renders none in `#mount`.
+false } } )` renders none in `#mount`.
 5. `ApiExplorer.mountInto( { pathBuilder: '#pb', allPaths: '#all' }, { locale: 'en' } )` renders the input
    in `#all` **by default** — the regression guard for `PathBuilder`'s `return_type` wiring — and renders
    none with `inputs: { acceptHeader: false }`.

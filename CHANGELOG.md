@@ -4,6 +4,41 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Added
+
+- **`inputs: { acceptHeader: false }` on `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, closing
+  the first half of #61. `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads, so it was
+  only expressible between construction and the append — a window `mountInto()` does not open. One boolean
+  toggle therefore cost a caller the whole factory path, and with it `settled`, the signal that path
+  publishes. The bag is resolved in `CalendarControls`' constructor (via a new internal
+  `src/MetaComponents/InputVisibility.js`, not exported from `src/index.js`, like `Theme.js`), so both
+  construction paths honour it. An unknown key is rejected by name, as is a non-boolean value or a
+  non-object bag, before anything is mounted. Defaults are unchanged everywhere — `ApiExplorer` included,
+  where the accept-header select is part of the path-building UI and drives `PathBuilder`'s `return_type`.
+  `_acceptHeaderInput.hide()` still works and is unchanged.
+
+### Changed
+
+- **`settled` now observes the constructor path too**, closing the second half of #61. It was documented
+  and implemented as "`mountInto()`'s initial fetch"; it is now "the most recent fetch this component
+  issued", so a hand-constructed `CalendarControls`, `CalendarViewer` or `DayViewer` publishes the same
+  signal from its own `fetch()` calls, each call replacing the last. Every other clause of the contract is
+  unchanged: always resolves, never rejects, already resolved when nothing has been issued, throws once
+  disposed. The promise `fetch()` returns is untouched and still the caller's to handle — what `settled`
+  holds is a separate, handled branch of it. Refetches driven by `ApiClient`'s own `listenTo()` change
+  listeners are still not observed, on either path, and could not be: their promises never reach the
+  component.
+
+### Fixed
+
+- **`settled` resolved with the calendar payload on the success path**, contrary to its documented
+  contract of resolving with `undefined`. The factories built it with `.catch( handler )`, which passes a
+  fulfilled value straight through, so the property became a second data channel beside
+  `onCalendarFetched()` — free to drift from it, which is exactly what the contract exists to prevent.
+  Only the failure path had ever been covered by a test. Found while widening `settled` for #61.
+
 ## 2.7.0
 
 `SubscriptionBuilder`, the sixth meta-component, plus `ApiOptions`' locale-input theming extracted to one

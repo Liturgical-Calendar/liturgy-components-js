@@ -521,20 +521,38 @@ its populated table, and resolving before the fetch's promise chain has run at a
 is a deliberate divergence, not something to reconcile by removing the `await`. `ApiExplorer` never
 fetches, so it has no such case at all.
 
-**`settled` observes the initial fetch; it does not report its outcome.** `mountInto()` resolves to the
-component and drops the initial fetch's promise, so `CalendarControls`, `CalendarViewer` and `DayViewer`
-each expose a `settled` promise that resolves once that fetch has finished. It **always resolves and never
-rejects**, with `undefined`: a property present on every mounted instance that could reject would produce an
-unhandled rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by
-discarding. What is stored is the promise _after_ each factory's existing `.catch`, so this adds no error
-handling and changes none. Outcomes stay with `onError()` and `onCalendarFetched()` — resolving to the
-payload would be a second channel for what `onCalendarFetched()` already delivers, free to drift from it.
-It is always a promise, already resolved when no initial fetch ran (`initialFetch: false`, no `apiClient`,
-or a hand-constructed instance). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
+**`settled` observes a fetch; it does not report its outcome.** `mountInto()` resolves to the component and
+drops the initial fetch's promise, so `CalendarControls`, `CalendarViewer` and `DayViewer` each expose a
+`settled` promise that resolves once that fetch has finished. Since #61 it observes **the most recent fetch
+the component issued** — the initial one, and every `fetch()` call on either construction path, each
+replacing the last — so a hand-constructed instance publishes the same signal and callers need not know
+which path produced the instance. It does not observe the refetches `ApiClient`'s own `listenTo()` change
+listeners drive; those promises never reach the component. It **always resolves and never rejects**, with
+`undefined`: a property present on every mounted instance that could reject would produce an unhandled
+rejection for every caller who never reads it, which is the very trap `mountInto()` avoids by discarding.
+What is stored is a HANDLED derived branch of the fetch promise, built with a two-callback `then()`, so
+this adds no error handling and changes none, and the promise `fetch()` hands back is untouched. The
+two-callback form is load-bearing: `.catch( handler )` alone passes a **fulfilled** value straight through,
+which is why `settled` used to resolve with the whole calendar payload on the success path — the second
+data channel the contract exists to prevent. Outcomes stay with `onError()` and `onCalendarFetched()`. It
+is always a promise, already resolved when nothing has been issued (`initialFetch: false`, no `apiClient`,
+or a hand-constructed instance that has not fetched; a `fetch()` that throws synchronously issues nothing
+and leaves it untouched). `CalendarResourcePicker` and `ApiExplorer` do not have it, because neither
 fetches — the same asymmetry, on the same grounds, as their reject/resolve behaviour above. On
 `CalendarViewer` it is the very promise `mountInto()` already awaits, so it has settled by the time a caller
-can read it; do not remove it there on that account, since a hand-constructed viewer still has one and
-callers should not need to know which construction path produced the instance.
+of that factory can read it; do not remove it there on that account.
+
+**The `inputs` bag says which `ApiOptions` inputs render, and exists so `mountInto()` can express what
+only the constructor path could.** `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads,
+so it was meaningful only between construction and the append — a window `mountInto()` does not open, which
+put every real consumer on the constructor path and out of reach of `settled` (#61). `CalendarControls`,
+`CalendarViewer` and `ApiExplorer` now take `inputs: { acceptHeader: boolean }`, resolved in
+`CalendarControls`' constructor by `src/MetaComponents/InputVisibility.js` — internal, not exported from
+`src/index.js`, like `Theme.js`. An unknown key is rejected by name, as is a non-boolean value, before
+anything is mounted. `acceptHeader: true` is the default reasserted, not an un-hide: `hide()` is
+irreversible. `DayViewer` and `SubscriptionBuilder` pin their `ApiOptions` to `LOCALE_ONLY` and never
+render the input, so the option does not reach them. **`ApiExplorer` renders it by default and must keep
+doing so** — `PathBuilder` turns that select's `change` into the composed URL's `return_type`.
 
 **`wrapper` means a CLASS flat and a TYPE per-child, and `resolveWrapperBag()` is the only place that
 reconciles them.** `resolveChildTheme()` maps the flat `theme.wrapper` onto `wrapperClass`; a per-child

@@ -29,11 +29,11 @@ Two fixes, implemented together:
 
 Three shapes were weighed.
 
-| Shape                            | Verdict                                                                                                                                                                                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `acceptHeader: false` (flat)     | Rejected. Shortest, but reads ambiguously at the top level of a bag that already carries `locale`, `filter`, `theme`, `apiClient`, `signal`, `onError`, `initialFetch`, `webCalendar` — is `acceptHeader: false` a visibility toggle or "send no Accept header"? And a second such toggle would put `year`/`yearType` beside `filter` at the top level, where they read as values rather than as visibility. |
-| `inputs: { acceptHeader: false }` | **Chosen.** Names its domain — which `ApiOptions` inputs render — and is extensible without further top-level keys. It has an exact precedent in this codebase: `CalendarViewer`'s `webCalendar: { … }` bag, a namespaced bag of child configuration whose unknown keys are rejected by name (`CalendarViewer.js`'s `#applyWebCalendarBag`). |
-| `onBeforeMount( instance )` hook | Rejected. It is an open-ended escape hatch for arbitrary ordering-sensitive code — the very thing the meta-components exist to encapsulate — it cannot be validated at all (a hook is correct by construction), and it muddies `mountInto()`'s reject-versus-resolve contract, since a consumer callback throwing mid-mount would surface as a rejection indistinguishable from a library one. The concrete need here is one boolean. |
+| Shape                             | Verdict                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `acceptHeader: false` (flat)      | Rejected. Shortest, but reads ambiguously at the top level of a bag that already carries `locale`, `filter`, `theme`, `apiClient`, `signal`, `onError`, `initialFetch`, `webCalendar` — is `acceptHeader: false` a visibility toggle or "send no Accept header"? And a second such toggle would put `year`/`yearType` beside `filter` at the top level, where they read as values rather than as visibility.                          |
+| `inputs: { acceptHeader: false }` | **Chosen.** Names its domain — which `ApiOptions` inputs render — and is extensible without further top-level keys. It has an exact precedent in this codebase: `CalendarViewer`'s `webCalendar: { … }` bag, a namespaced bag of child configuration whose unknown keys are rejected by name (`CalendarViewer.js`'s `#applyWebCalendarBag`).                                                                                          |
+| `onBeforeMount( instance )` hook  | Rejected. It is an open-ended escape hatch for arbitrary ordering-sensitive code — the very thing the meta-components exist to encapsulate — it cannot be validated at all (a hook is correct by construction), and it muddies `mountInto()`'s reject-versus-resolve contract, since a consumer callback throwing mid-mount would surface as a rejection indistinguishable from a library one. The concrete need here is one boolean. |
 
 ### Semantics
 
@@ -60,7 +60,7 @@ Following `assertTheme()` and the `webCalendar` bag:
 The validator is a new internal module, `src/MetaComponents/InputVisibility.js`, exporting
 `resolveInputVisibility( inputs, componentName )` → `{ acceptHeader: boolean }`. It is deliberately **not**
 put in `Theme.js` (that module resolves styling, and is being edited on a sibling branch) and not in
-`OptionsValidation.js` (which knows what shape an options *argument* may take, not what an `ApiOptions`
+`OptionsValidation.js` (which knows what shape an options _argument_ may take, not what an `ApiOptions`
 input is). It is not exported from `src/index.js`, on the same reasoning as `Theme.js`,
 `LocaleValidation.js` and `OptionsValidation.js`.
 
@@ -69,14 +69,14 @@ input is). It is not exported from `src/index.js`, on the same reasoning as `The
 The option is honoured wherever the bundled `ApiOptions` can actually render the accept-header input —
 which `ApiOptions.appendTo()` does only under the `ALL_CALENDARS`/`ALL_PATHS` and `NONE` filters:
 
-| Component                | Takes `inputs`? | Why                                                                                              |
-| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------- |
-| `CalendarControls`       | Yes             | Owns the `ApiOptions`; its filter defaults to `ALL_CALENDARS` and the caller may set it.         |
-| `CalendarViewer`         | Yes             | Forwards its whole bag to `CalendarControls`.                                                    |
-| `ApiExplorer`            | Yes             | Its `allPaths` slot appends under `ALL_PATHS`, which **does** render the input.                  |
-| `SubscriptionBuilder`    | Accepted, inert | Forwards its bag, so the option is validated, but it pins its `ApiOptions` to `LOCALE_ONLY`.     |
-| `DayViewer`              | No              | Builds its own `ApiOptions`, pinned to `LOCALE_ONLY`; the input never renders.                   |
-| `CalendarResourcePicker` | No              | Has no `ApiOptions` at all.                                                                      |
+| Component                | Takes `inputs`? | Why                                                                                          |
+| ------------------------ | --------------- | -------------------------------------------------------------------------------------------- |
+| `CalendarControls`       | Yes             | Owns the `ApiOptions`; its filter defaults to `ALL_CALENDARS` and the caller may set it.     |
+| `CalendarViewer`         | Yes             | Forwards its whole bag to `CalendarControls`.                                                |
+| `ApiExplorer`            | Yes             | Its `allPaths` slot appends under `ALL_PATHS`, which **does** render the input.              |
+| `SubscriptionBuilder`    | Accepted, inert | Forwards its bag, so the option is validated, but it pins its `ApiOptions` to `LOCALE_ONLY`. |
+| `DayViewer`              | No              | Builds its own `ApiOptions`, pinned to `LOCALE_ONLY`; the input never renders.               |
+| `CalendarResourcePicker` | No              | Has no `ApiOptions` at all.                                                                  |
 
 **`ApiExplorer`'s default must not change.** It deliberately shows the accept-header input as part of its
 path-building UI: `PathBuilder` listens to that select's `change` to set `return_type` in the composed URL.
@@ -95,7 +95,7 @@ contract is preserved:
   unhandled rejection is created or removed.
 - **Always a promise**, already resolved before any fetch has been issued.
 - **Stored after the existing `.catch`** on the `mountInto()` path: those factories keep their current
-  assignment, which runs *after* `fetch()`'s own, so `settled` remains the error-delivering branch it is
+  assignment, which runs _after_ `fetch()`'s own, so `settled` remains the error-delivering branch it is
   today and its resolution ordering relative to `onError()` is unchanged.
 - **Throws once disposed**, via the existing `#assertUsable()` guard.
 
