@@ -17,7 +17,11 @@ prepared under that number was skipped, and everything it was to have delivered 
   `src/Version.js`. Forgetting the second is a red build, not a false claim:
   `src/__tests__/Version.test.js` reads `package.json` off disk and fails on drift. It is declared
   `string` rather than a string literal type, so a consumer's version-floor comparison type-checks
-  instead of raising TS2367. There is no `ApiClient.version`: `ApiClient` and `ApiBase` deal in the API's
+  instead of raising TS2367 — enforced by `type-fixtures/dts-consumer.ts`, a new home for compile-time
+  assertions about the emitted declarations, which `tsconfig.dts-check.json` checks against `dist/` the
+  way a consumer would. Neither `yarn compile` (with `checkJs` off) nor a runtime test can see that
+  regression, and `yarn lint:dts` could not either until the fixture existed, since a narrowed literal
+  is valid TypeScript. There is no `ApiClient.version`: `ApiClient` and `ApiBase` deal in the API's
   own versioned base URLs (`/api/dev`), so a `version` there would read as the API's version rather than
   this package's. See `CLAUDE.md`'s Releasing section for the rejected alternatives.
 

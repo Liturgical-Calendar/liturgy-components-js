@@ -642,8 +642,22 @@ and rejected:
 `VERSION` carries a JSDoc `@type {string}`. **Do not remove it.** Without it `tsc` infers the `const` at its
 literal type and declares `export const VERSION: "2.7.0"`, which makes a consumer's version-floor check —
 `VERSION === '2.8.0'`, the comparison the constant exists for — a TS2367 error rather than a boolean. This is
-the same class of `.d.ts`-only bug as the `@readonly`-on-a-getter trap: invisible to `yarn compile`, caught
-only by reading the emit.
+the same class of `.d.ts`-only bug as the `@readonly`-on-a-getter trap: invisible to `yarn compile`, because
+`checkJs` is off, and invisible to `yarn lint:dts` on its own, because a narrowed literal is perfectly valid
+TypeScript.
+
+`type-fixtures/dts-consumer.ts` is what actually enforces it. **This is the general home for compile-time
+assertions about the emitted declarations** — things no runtime test can reach, because they are properties of
+the `.d.ts` rather than of any value. `tsconfig.dts-check.json` lists it alongside `dist/index.d.ts`, so it is
+checked against `dist/` the way a consumer's own `tsconfig.json` would check it, and `tsconfig.json` — which
+includes only `./src/**/*` and excludes `**/*.ts` — cannot pull it into the build. Run `yarn compile` before
+`yarn lint:dts`: the fixture imports from `dist/`, which `lint:dts` checks but does not rebuild.
+
+The `VERSION` assertion there is written as an assignment (`const x: typeof VERSION = '' as string`) rather
+than as the version-floor comparison it protects. The comparison only errors while its literal differs from
+the current version, so it would go quiet the moment someone bumped the package to the very version being
+compared against — silently retiring the guard. The assignment fails for any literal type, so it stays honest
+across releases.
 
 There is deliberately no `ApiClient.version`. `ApiClient` and `ApiBase` deal in the API's own versioned base
 URLs (`/api/dev`), so a `version` on the client would read as the API's version rather than this package's.

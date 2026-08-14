@@ -18,7 +18,9 @@
  * Annotated `string` rather than left to infer its literal type: without the
  * annotation `tsc` declares `export const VERSION: "2.7.0"`, and a consumer
  * comparing it against any other literal — the version-floor check this constant
- * exists for — gets TS2367 instead of a boolean.
+ * exists for — gets TS2367 instead of a boolean. Removing the annotation is
+ * caught by `type-fixtures/dts-consumer.ts` under `yarn lint:dts`; neither
+ * `yarn compile` nor the runtime tests can see it.
  *
  * @type {string}
  */
