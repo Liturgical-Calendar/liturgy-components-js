@@ -147,9 +147,22 @@ describe('LiturgyOfAnyDay live region', () => {
         );
     });
 
-    it('keeps the same region node across renders', async () => {
+    it('never takes the region out of the DOM across renders', async () => {
+        // `#renderEvents()` clears only `#eventsElementsWrapper`, so the region
+        // — a sibling of it — must never be touched. Asserted on the MUTATIONS
+        // rather than on node identity, which survives a remove-then-re-append
+        // and so would pass against exactly the implementation this rules out.
         const { widget, apiClient } = await mounted();
         const region = widget._liveRegion;
+
+        const removed = [];
+        const collect = (records) =>
+            records.forEach((record) =>
+                removed.push(...Array.from(record.removedNodes)),
+            );
+        const observer = new MutationObserver(collect);
+        observer.observe(widget._domElement, { childList: true });
+
         apiClient._eventBus.emit(
             'calendarFetched',
             payloadFor(selectedDate(widget)),
@@ -158,6 +171,10 @@ describe('LiturgyOfAnyDay live region', () => {
             'calendarFetched',
             payloadFor(selectedDate(widget)),
         );
+        collect(observer.takeRecords());
+        observer.disconnect();
+
+        expect(removed).not.toContain(region);
         expect(widget._domElement.querySelector('[role="status"]')).toBe(
             region,
         );
