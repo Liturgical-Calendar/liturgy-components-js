@@ -97,6 +97,8 @@ export default class CalendarViewer {
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
+     *   forwarded to `CalendarControls`, e.g. `{ acceptHeader: false }`.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
      * @param {Object} [options.webCalendar] - `WebCalendar` methods to call, by
      *   name — see {@link WEB_CALENDAR_KEYS}. An unknown key throws, naming it.

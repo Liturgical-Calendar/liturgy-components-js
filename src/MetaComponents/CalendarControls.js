@@ -25,6 +25,7 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import { resolveInputVisibility } from './InputVisibility.js';
 import {
     assertTheme,
     resolveChildTheme,
@@ -137,11 +138,15 @@ export default class CalendarControls {
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
+     *   see `InputVisibility.js`. Only `{ acceptHeader: boolean }` today, and
+     *   only meaningful under a filter that renders that input at all
+     *   (`ALL_CALENDARS`, which is the default, and `NONE`).
      * @param {Object} [options.apiClient] - Binds to that client's API base.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarControls');
-        const { locale, filter, theme, apiClient } = options;
+        const { locale, filter, theme, inputs, apiClient } = options;
 
         if (locale !== undefined && locale !== null) {
             this.#locale = canonicalizeLocale(locale, 'CalendarControls');
@@ -151,6 +156,14 @@ export default class CalendarControls {
         // children receive `this.#locale` directly and derive their own.
         this.#language = new Intl.Locale(this.#locale).language;
         assertTheme(theme, 'CalendarControls');
+        // Resolved BEFORE `resolveBase()` and before any child is built, so a
+        // misspelled key rejects as the programmer error it is rather than
+        // behind an unrelated runtime failure, and never half-applies. Applied
+        // further down, once `#apiOptions` exists.
+        const inputVisibility = resolveInputVisibility(
+            inputs,
+            'CalendarControls',
+        );
         this.#base = resolveBase(apiClient, 'CalendarControls');
 
         const riteTheme = resolveChildTheme(theme, 'riteSelect');
@@ -228,6 +241,21 @@ export default class CalendarControls {
             locale: this.#locale,
             apiClient,
         }).filter(resolvedFilter);
+
+        // Applied HERE rather than left to the caller between construction and
+        // the append. `AcceptHeaderInput.hide()` sets a flag that
+        // `ApiOptions.appendTo()` reads, so a caller could only express it in a
+        // window `mountInto()` never opens — which is what forced every real
+        // consumer onto the constructor path and away from `settled` (#61).
+        // Setting the flag in the constructor makes both paths equivalent,
+        // because the flag is read at append time either way.
+        //
+        // There is no `true` branch: `hide()` is irreversible and the input
+        // starts visible, so `acceptHeader: true` is the default reasserted,
+        // not an un-hide.
+        if (false === inputVisibility.acceptHeader) {
+            this.#apiOptions._acceptHeaderInput.hide();
+        }
 
         // Unlike `riteSelect`/`calendarSelect` above, this is a NEW theming
         // path (issue #56): `CalendarControls` previously had no notion of the
