@@ -51,6 +51,16 @@ loading the CDN build directly into an engine below the floor.
 >
 > Replace `X.Y.Z` with the current version number from the
 > [npm package page](https://www.npmjs.com/package/@liturgical-calendar/components-js).
+>
+> Pinning states an intent; it does not confirm an outcome. To see which build actually loaded, read the
+> exported `VERSION` constant. It comes from the module itself, so it stays correct even when a cached page
+> and a freshly served bundle disagree:
+>
+> ```javascript
+> import { VERSION } from 'https://cdn.jsdelivr.net/npm/@liturgical-calendar/components-js@X.Y.Z/+esm';
+>
+> console.debug(`components-js ${VERSION}`);
+> ```
 
 ## Using Import Maps
 

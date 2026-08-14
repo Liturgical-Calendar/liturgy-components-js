@@ -199,9 +199,31 @@ export {
     YearType,
     LatinInterface,
     Rite,
-    RiteProperties
+    RiteProperties,
+
+    // Metadata
+    VERSION
 }
 ```
+
+## Version
+
+`VERSION` is this package's own version as a string, so a running page can report which build it is on:
+
+```javascript
+import { VERSION } from '@liturgical-calendar/components-js';
+
+console.debug(`components-js ${VERSION}`);
+```
+
+This matters when the library is resolved more than one way. A page that loads it from a symlinked local
+build in development and a pinned CDN tag in production can silently run two different versions, and a
+pinned importmap is not evidence of what actually loaded: jsDelivr rebuilds `+esm` bundles, and a stale
+browser cache can serve an old module from a URL that reads current. `VERSION` is what the loaded module
+itself says, so it answers the question the URL cannot.
+
+It is typed `string` rather than a string literal, so a consumer's version-floor comparison type-checks
+instead of raising TS2367.
 
 ## Key Features
 
