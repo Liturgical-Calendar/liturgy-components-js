@@ -30,7 +30,7 @@ import {
     assertTheme,
     resolveChildTheme,
     resolveWrapperBag,
-    applyLocaleInputTheme,
+    applyApiOptionsTheme,
 } from './Theme.js';
 
 /**
@@ -258,17 +258,18 @@ export default class CalendarControls {
             this.#apiOptions._acceptHeaderInput.hide();
         }
 
-        // Unlike `riteSelect`/`calendarSelect` above, this is a NEW theming
-        // path (issue #56): `CalendarControls` previously had no notion of the
-        // `ApiOptions` inputs it wraps, so `theme.localeInput` (and the flat
-        // `select`/`label`/`wrapper` defaults) reached every child except this
-        // one. `applyLocaleInputTheme()` is the same helper `DayViewer` calls
-        // for its own copy of this input, so the two behave alike rather than
-        // each inventing their own version of the same theming.
-        const localeTheme = resolveChildTheme(theme, 'localeInput');
-        applyLocaleInputTheme(
-            this.#apiOptions._localeInput,
-            localeTheme,
+        // Unlike `riteSelect`/`calendarSelect` above, the `ApiOptions` inputs
+        // were reached by the theme bag only from 2.7.0 (issue #56) and then
+        // only for `localeInput`; issue #60 extended it to the whole bundle
+        // through `theme.apiOptions`. One call covers both, because
+        // `applyApiOptionsTheme()` resolves each input itself and, with no
+        // `apiOptions` key in the bag, resolves the other nine to nothing —
+        // so a 2.7.0 theme still styles exactly what it styled then. It is the
+        // same helper `DayViewer` calls for its own `ApiOptions`, so the two
+        // behave alike rather than each inventing their own version.
+        applyApiOptionsTheme(
+            this.#apiOptions,
+            theme,
             Messages[this.#language]?.['LANGUAGE'] ??
                 Messages['en']['LANGUAGE'],
         );
