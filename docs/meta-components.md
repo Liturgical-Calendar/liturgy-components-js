@@ -734,14 +734,20 @@ theme: {
 `applyLocaleInputTheme()` helper `DayViewer` uses for its own copy of that input, via
 `resolveChildTheme( theme, 'localeInput' )` — so the two components theme this one child identically
 rather than each carrying its own near-duplicate block. **Its label text is themed unconditionally**,
-even when the theme bag is entirely absent: `LocaleInput`'s constructor hardcodes its label to the raw,
-untranslated string `'locale'`, so `CalendarControls` (like `DayViewer`) always supplies a localized
-`LANGUAGE` label from the message catalogue unless `theme.localeInput.labelText` names one explicitly.
-This is a **behaviour change** from before 2.7.0, when the raw `'locale'` string shipped instead.
+even when the theme bag is entirely absent, so `CalendarControls` (like `DayViewer`) always supplies a
+localized `LANGUAGE` label from the message catalogue unless `theme.localeInput.labelText` names one
+explicitly. That unconditional write once did real work — `LocaleInput`'s constructor hardcoded its label
+to the raw, untranslated string `'locale'` — and was a **behaviour change** in 2.7.0. Since #59 the
+constructor performs the same `LANGUAGE` lookup itself, so the write is now a no-op for every caller in
+this library; it is kept only so a caller supplying a `defaultLabelText` from another catalogue is still
+honoured.
 
 **`apiOptions` as a whole is still not a themeable child.** Beyond `localeInput`, neither the flat
 `select`/`label` keys nor a per-child `apiOptions` override key reach any other `ApiOptions` input —
-`filter` controls which inputs render, but their styling is untouched by this bag. `ApiOptions` bundles a
+`filter` controls which inputs render, but their styling is untouched by this bag. Their **label text**,
+however, no longer depends on this bag at all: since #59 every `ApiOptions` input localizes its own label
+in its constructor, so `year_type`, `year`, `epiphany` and the rest read correctly in the component's
+locale whether or not a theme is supplied. `ApiOptions` bundles a
 variable number of inputs depending on `filter`, so there is no fixed set of per-child keys to name the
 way `riteSelect`/`calendarSelect`/`localeInput` are named. Reach the remaining inputs directly through
 `controls.apiOptions` for anything the theme bag does not cover.
@@ -754,7 +760,8 @@ consumes that one allowance on `apiOptions._localeInput` at construction time �
 set on Input instance, and cannot be set twice.` (or the equivalent message from `wrapperClass()`). The
 escape hatch still works, unchanged, for `year_type`, `year` and the rest of `ApiOptions`' inputs, which
 this theme bag never touches — it is only the locale input, themed once already by `CalendarControls`
-itself, that is closed to it.
+itself, that is closed to it. Note that those other inputs are nonetheless **localized** by default since
+issue #59; the escape hatch is about styling and wrappers, not about label text.
 
 ### Public getters
 

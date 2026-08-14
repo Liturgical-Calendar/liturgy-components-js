@@ -606,10 +606,23 @@ Type-safe enumerations for component configuration:
 ## Internationalization
 
 `Messages.js` holds 84 locale blocks, unevenly populated: not every key exists in every block. Newer keys —
-including `COPY_TO_CLIPBOARD`/`COPIED_TO_CLIPBOARD`, added for `SubscriptionUrl`'s copy control — are present
-in exactly twelve of the 84, the same twelve that carry `SELECT_A_RITE`. Every other locale reaches English
-through the `??` fallback each call site already applies (`Messages[language]?.[KEY] ?? Messages['en'][KEY]`),
-so an unpopulated block degrades to English for that key rather than throwing.
+`COPY_TO_CLIPBOARD`/`COPIED_TO_CLIPBOARD` for `SubscriptionUrl`'s copy control, and the six `ApiOptions`
+input labels added for #59 (`YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`, `ETERNAL_HIGH_PRIEST`,
+`HOLYDAYS_OF_OBLIGATION`) — are present in exactly twelve of the 84, the same twelve that carry
+`SELECT_A_RITE`. Every other locale reaches English through the `??` fallback each call site already applies
+(`Messages[language]?.[KEY] ?? Messages['en'][KEY]`), so an unpopulated block degrades to English for that key
+rather than throwing.
+
+**Input labels are localized by the input's own constructor**, through
+`src/ApiOptions/Input/InputLabels.js`'s `defaultLabelText( key, locale )` — internal, and not exported from
+`src/index.js`, on the same reasoning as `LocaleValidation.js`. That layer, and not a meta-component's theming
+pass, is what reaches a consumer who writes `new ApiOptions( 'it' )` with no meta-component anywhere; 2.7.0
+fixed only `LocaleInput`, and only on the theming path, which such a consumer never runs. `DayInput`,
+`YearInput` and `HolydaysOfObligationInput` therefore take an optional `Intl.Locale` (`null` means "not
+supplied" and yields the English label; anything else non-`Intl.Locale` throws). The four keys `DAY`, `MONTH`,
+`YEAR` and `LANGUAGE` are reused rather than duplicated. A theme-supplied `labelText` still wins, because all
+theming is applied after construction — which is also why `Theme.js`'s `applyLocaleInputTheme()` keeps writing
+the label unconditionally even though that write is now a no-op.
 
 ## Important Notes
 

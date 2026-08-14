@@ -68,6 +68,43 @@ These fine-tune the General Roman Calendar when national/diocesan data is not re
 | -------------------- | ------ | ---------------- |
 | `_calendarPathInput` | select | API request path |
 
+### Input labels
+
+Each control localizes its own `<label>` from the locale the `ApiOptions` was constructed with, so
+`new ApiOptions( 'it' )` renders Italian labels with no meta-component and no theming involved. Before #59
+these labels were the raw snake_case API parameter names (`year_type`, `epiphany`, …) in every language,
+which is what a screen reader announced for the control.
+
+| Control                      | `Messages` key           |
+| ---------------------------- | ------------------------ |
+| `_yearInput`                 | `YEAR`                   |
+| `_yearTypeInput`             | `YEAR_TYPE`              |
+| `_localeInput`               | `LANGUAGE`               |
+| `_epiphanyInput`             | `EPIPHANY`               |
+| `_ascensionInput`            | `ASCENSION`              |
+| `_corpusChristiInput`        | `CORPUS_CHRISTI`         |
+| `_eternalHighPriestInput`    | `ETERNAL_HIGH_PRIEST`    |
+| `_holydaysOfObligationInput` | `HOLYDAYS_OF_OBLIGATION` |
+
+`LiturgyOfAnyDay`'s own date controls follow the same rule, keyed `DAY`, `MONTH` and `YEAR`.
+
+Only twelve of `Messages.js`' 84 locale blocks carry the six newer keys; every other locale falls back to
+English for them rather than throwing, through the usual `Messages[language]?.[KEY] ?? Messages['en'][KEY]`.
+`MONTH` is present in all 84.
+
+`_acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it
+takes no locale and its label flips at runtime in `asReturnTypeParam()`.
+
+To override a label, assign to the control's `_labelElement` after construction:
+
+```javascript
+apiOptions._yearTypeInput._labelElement.textContent = 'Tipo de año';
+```
+
+A meta-component theme's `localeInput.labelText` and `LiturgyOfAnyDay`'s
+`dayInputConfig`/`monthInputConfig`/`yearInputConfig` bags do the same thing, and still win, because all of
+them are applied after construction.
+
 ## Filtering Form Controls
 
 Filter which controls are displayed using `ApiOptionsFilter`:

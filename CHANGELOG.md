@@ -4,6 +4,47 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Changed
+
+- **Every `ApiOptions` input now renders a localized `<label>`**, closing #59. Nine inputs shipped the raw
+  snake_case API parameter name — `ascension`, `corpus_christi`, `epiphany`, `eternal_high_priest`,
+  `holydays_of_obligation`, `year_type`, `year`, `day`, `month` — and `LocaleInput` shipped `locale`, in
+  every language. Since the `<label>` is what a screen reader announces for the control, this was an
+  accessibility defect and not only a cosmetic one. 2.7.0 fixed only `locale`, and only for callers who
+  mounted a meta-component. The lookup now lives in each input's own constructor, via the internal
+  `defaultLabelText( key, locale )` in `src/ApiOptions/Input/InputLabels.js`, so a consumer who writes
+  `new ApiOptions( 'it' )` with no meta-component anywhere gets localized labels too. **This changes
+  rendered text for any consumer that never set a label of its own.** The existing overrides are unchanged
+  and still win, since all of them are applied after construction: a meta-component theme's `labelText`,
+  `LiturgyOfAnyDay`'s `dayInputConfig`/`monthInputConfig`/`yearInputConfig` bags, and direct assignment to
+  `input._labelElement.textContent`.
+- `Theme.js`'s `applyLocaleInputTheme()` is unchanged in behaviour but its rationale is not: it justified
+  writing the label unconditionally by citing `LocaleInput`'s hardcoded `'locale'`, which no longer exists.
+  The write is now a no-op for every caller in this library — `CalendarControls.#language` is the same
+  `locale.language` `ApiOptions` hands `LocaleInput` — and is kept only so a caller supplying a
+  `defaultLabelText` from another catalogue is still honoured.
+
+### Added
+
+- Six `Messages` keys backing those labels — `YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`,
+  `ETERNAL_HIGH_PRIEST`, `HOLYDAYS_OF_OBLIGATION` — populated for the same twelve locales that already carry
+  `SELECT_A_RITE`, with the other 72 blocks degrading to English through the usual
+  `Messages[language]?.[KEY] ?? Messages['en'][KEY]`. The four existing keys `DAY`, `MONTH`, `YEAR` and
+  `LANGUAGE` are reused rather than duplicated.
+- `DayInput`, `YearInput` and `HolydaysOfObligationInput` take an optional `Intl.Locale` —
+  `new DayInput( locale )`, `new YearInput( locale )`, `new HolydaysOfObligationInput( options, locale )`.
+  `null` (the default) means "not supplied" and yields the English label, so existing calls are unaffected;
+  anything that is neither `null` nor an `Intl.Locale` throws, naming the class.
+
+### Known gaps
+
+- `AcceptHeaderInput` still renders `return_type` / `Accept Header` raw. It takes no locale, its label flips
+  at runtime in `asReturnTypeParam()`, and it is `PathBuilder`-only; left for its own issue.
+- `Input` has no public `labelText()` setter — the supported override remains
+  `input._labelElement.textContent`, which the library itself uses.
+
 ## 2.7.0
 
 `SubscriptionBuilder`, the sixth meta-component, plus `ApiOptions`' locale-input theming extracted to one
