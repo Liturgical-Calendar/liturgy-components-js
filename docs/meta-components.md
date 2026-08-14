@@ -857,6 +857,15 @@ Before this key existed only the locale input could be closed this way; with the
 bag wraps can be. `controls.apiOptions` remains the escape hatch for everything the bag does not cover — ids, data
 attributes, `hide()`, a jQuery multiselect widget — and for any input the bag never wrapped.
 
+**`labelClass()` closes the same way, and the asymmetry with the globals is the part worth knowing.**
+A `label` the theme resolves for an input is applied through `Input.labelClass()`, which then refuses any
+_different_ value (re-asserting the same string is allowed). An `Input.setGlobalLabelClass()` value does
+**not** close it: the constructor assigns that straight to the element without marking the class as set,
+which is exactly what keeps the globals-plus-per-input-override pairing working on a page that has not
+migrated. So `theme.apiOptions.label` and `setGlobalLabelClass()` produce the same rendered class and
+different escape-hatch behaviour afterwards. Both directions are pinned in
+`src/__tests__/MetaComponentThemeApiOptionsGlobals.test.js`.
+
 Note that this is about **styling and wrappers only**. Since issue #59 every `ApiOptions` input localizes
 its own **label text** in its constructor, so `year_type`, `year`, `epiphany` and the rest read correctly
 in the component's locale whether or not a theme is supplied; a theme-supplied `labelText` still overrides

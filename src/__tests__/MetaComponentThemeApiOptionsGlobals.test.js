@@ -110,4 +110,53 @@ describe('theme.apiOptions alongside the Input globals', () => {
         // migration-in-one-step trap the opt-in gate exists to avoid.
         expect(() => input.wrapperClass('col col-md-2')).not.toThrow();
     });
+
+    // The fourth setter. This file opens by naming all four, and covered three:
+    // `setGlobalLabelClass()` had no case at all, even though it is the one whose
+    // one-shot behaviour differs most visibly from the input class beside it.
+    it('lets theme.apiOptions.label beat the global label class, and CLOSES labelClass() after', () => {
+        Input.setGlobalLabelClass('legacy-label');
+
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: { apiOptions: { label: 'form-label d-block mb-1' } },
+        });
+        controls.appendTo('#mount');
+
+        const input = controls.apiOptions._epiphanyInput;
+        expect(input._labelElement.className).toBe('form-label d-block mb-1');
+        // `labelClass()` is one-shot on a CHANGED value, and unlike the wrapper
+        // there is no `resolveWrapperBag()`-style omission to keep it open: the
+        // theme named a label class, so `applyInputTheme()` called the setter and
+        // `#labelClassSet` is now true. Same consequence the wrapper carries, and
+        // the reason this is a documented behaviour change rather than a pure
+        // addition.
+        expect(() => input.labelClass('something-else')).toThrow(
+            /Label class has already been set/,
+        );
+        // Re-asserting the SAME value is not a change, so it is still allowed.
+        expect(() => input.labelClass('form-label d-block mb-1')).not.toThrow();
+    });
+
+    it('leaves the global label class in force, and labelClass() free, while the gate is closed', () => {
+        Input.setGlobalLabelClass('legacy-label');
+
+        const controls = new CalendarControls({
+            locale: 'en',
+            // A flat `label`, with no `apiOptions` key: the gate stays shut, so
+            // this reaches riteSelect/calendarSelect/localeInput and no further.
+            theme: { label: 'ignored-by-the-gate' },
+        });
+        controls.appendTo('#mount');
+
+        const input = controls.apiOptions._epiphanyInput;
+        expect(input._labelElement.className).toBe('legacy-label');
+        // Free, and this is the asymmetry worth pinning: the constructor assigns
+        // the global straight to the element WITHOUT setting `#labelClassSet`, so
+        // an inherited global — unlike a themed class — leaves the per-input
+        // override every consuming page still relies on available.
+        expect(input._labelClassSet).toBe(false);
+        expect(() => input.labelClass('form-label')).not.toThrow();
+        expect(input._labelElement.className).toBe('form-label');
+    });
 });

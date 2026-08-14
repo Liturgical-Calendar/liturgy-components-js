@@ -54,6 +54,15 @@ prepared under that number was skipped, and everything it was to have delivered 
   release from silently restyling existing forms, and from consuming `Input.wrapper()`'s one-shot
   allowance on ten inputs that a consumer may still be styling by hand.
 
+  **With the gate open, a themed input's `wrapper()`/`wrapperClass()` and `labelClass()` are consumed at
+  construction**, so a later `controls.apiOptions._yearInput.wrapper( … )` or `.labelClass( … )` throws
+  where it previously worked — the escape hatch `docs/meta-components.md` recommends. Before this key
+  existed only the locale input could be closed this way. The `Input.setGlobal*` values do **not** close
+  either: the constructor assigns them without marking the class as set, which is what keeps the
+  globals-plus-per-input-override pairing working on a page mid-migration. Same rendered class, different
+  behaviour afterwards, and both directions are pinned in
+  `src/__tests__/MetaComponentThemeApiOptionsGlobals.test.js`.
+
   **An unrecognised key inside `apiOptions` throws, naming it**, at both new levels — the typo check that
   issue #43 was filed over now holds at the added depth. So does naming one of the other nine inputs at
   the TOP level, where only `localeInput` is answered: `theme: { localeInput: …, yearInput: … }` written
