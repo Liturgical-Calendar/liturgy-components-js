@@ -214,10 +214,12 @@ export default class ApiOptions {
         this.#inputs.eternalHighPriestInput = new EternalHighPriestInput(
             this.#locale,
         );
-        this.#inputs.holydaysOfObligationInput =
-            new HolydaysOfObligationInput();
+        this.#inputs.holydaysOfObligationInput = new HolydaysOfObligationInput(
+            [],
+            this.#locale,
+        );
         this.#inputs.localeInput = new LocaleInput(this.#locale, this.#base);
-        this.#inputs.yearInput = new YearInput();
+        this.#inputs.yearInput = new YearInput(this.#locale);
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
         this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
         this.#inputs.calendarPathInput = new CalendarPathInput(this.#locale);

@@ -1,21 +1,32 @@
 import NumberInput from './NumberInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class DayInput extends NumberInput {
     /**
      * Constructor for DayInput class.
      *
      * Calls the parent constructor with no arguments.
-     * Sets the name, id, and label text content of the input element.
+     * Sets the name, id, and localized label text content of the input element.
      * Sets the minimum value to 1, maximum value to 31, and step to 1.
      * Sets the current day of the month as the default value.
      *
+     * @param {Intl.Locale|null} [locale=null] - The locale whose `DAY` label to use.
+     *        `null` means "not supplied" and yields the English label, which is the
+     *        only sane default for an input constructed without a locale.
+     * @throws {Error} If `locale` is neither `null` nor an instance of `Intl.Locale`.
      * @memberof DayInput
      */
-    constructor() {
+    constructor(locale = null) {
         super();
+        if (null !== locale && false === locale instanceof Intl.Locale) {
+            throw new Error(
+                'DayInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' +
+                    typeof locale,
+            );
+        }
         this._domElement.name = 'day';
         this._claimDefaultId('day');
-        this._labelElement.textContent = 'day';
+        this._labelElement.textContent = defaultLabelText('DAY', locale);
         this._domElement.min = 1;
         this._domElement.max = 31;
         this._domElement.step = 1;

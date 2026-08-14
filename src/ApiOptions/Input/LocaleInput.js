@@ -1,4 +1,5 @@
 import SelectInput from './SelectInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class LocaleInput extends SelectInput {
     /**
@@ -45,7 +46,6 @@ export default class LocaleInput extends SelectInput {
         super();
         this._domElement.name = 'locale';
         this._claimDefaultId('locale');
-        this._labelElement.textContent = 'locale';
         if (null === base) {
             throw new Error(
                 'LocaleInput requires an ApiBase. It is constructed by ApiOptions, which supplies one; construct an ApiOptions rather than a LocaleInput directly, or pass the base of a client explicitly as `new LocaleInput( locale, apiClient.base )`.',
@@ -61,6 +61,7 @@ export default class LocaleInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText('LANGUAGE', locale);
         //this.#regionNames = new Intl.DisplayNames([locale.language], { type: 'region' });
         this.#languageNames = new Intl.DisplayNames([locale.language], {
             type: 'language',

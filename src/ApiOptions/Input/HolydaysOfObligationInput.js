@@ -1,4 +1,5 @@
 import SelectInput from './SelectInput.js';
+import { defaultLabelText } from './InputLabels.js';
 //import Messages from "../../Messages.js";
 
 export default class HolydaysOfObligationInput extends SelectInput {
@@ -123,17 +124,32 @@ export default class HolydaysOfObligationInput extends SelectInput {
      *   - label: The text content for the option element.
      *   - selected: A boolean indicating whether the option is selected by default (i.e. whether the liturgical event is celebrated as a holy day of obligation or not).
      *
+     * @param {Intl.Locale|null} [locale=null] - The locale whose `HOLYDAYS_OF_OBLIGATION`
+     *   label to use. `null` means "not supplied" and yields the English label, which is
+     *   the only sane default for an input constructed without a locale.
+     *
      * This constructor initializes the holy days of obligation input select element, setting its name, id, and
-     * label text content, with the multiple attribute set to true.
+     * localized label text content, with the multiple attribute set to true.
      * It also populates the select options with a minimal set of base options merged with any provided custom options,
      * which can override the base options. The options are immutable and each option's
      * selected state is determined by the `selected` boolean property for each option.
+     *
+     * @throws {Error} If `locale` is neither `null` nor an instance of `Intl.Locale`.
      */
-    constructor(options = []) {
+    constructor(options = [], locale = null) {
         super(true);
+        if (null !== locale && false === locale instanceof Intl.Locale) {
+            throw new Error(
+                'HolydaysOfObligationInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' +
+                    typeof locale,
+            );
+        }
         this._domElement.name = 'holydays_of_obligation';
         this._claimDefaultId('holydays_of_obligation');
-        this._labelElement.textContent = 'holydays_of_obligation';
+        this._labelElement.textContent = defaultLabelText(
+            'HOLYDAYS_OF_OBLIGATION',
+            locale,
+        );
         this.#options = Object.freeze(
             HolydaysOfObligationInput.mergeOptions(options),
         );

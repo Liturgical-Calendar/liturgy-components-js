@@ -1,5 +1,6 @@
 import SelectInput from './SelectInput.js';
 import Messages from '../../Messages.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class YearTypeInput extends SelectInput {
     #options = null;
@@ -20,7 +21,6 @@ export default class YearTypeInput extends SelectInput {
         super();
         this._domElement.name = 'year_type';
         this._claimDefaultId('year_type');
-        this._labelElement.textContent = 'year_type';
         if (locale === null) {
             throw new Error('Locale cannot be null.');
         }
@@ -30,6 +30,7 @@ export default class YearTypeInput extends SelectInput {
                     typeof locale,
             );
         }
+        this._labelElement.textContent = defaultLabelText('YEAR_TYPE', locale);
         this.#options = Object.freeze(
             Object.entries({
                 LITURGICAL: Messages[locale.language]['LITURGICAL_YEAR'],

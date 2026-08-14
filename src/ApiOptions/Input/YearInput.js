@@ -1,21 +1,32 @@
 import NumberInput from './NumberInput.js';
+import { defaultLabelText } from './InputLabels.js';
 
 export default class YearInput extends NumberInput {
     /**
      * Constructor for YearInput class.
      *
      * Calls the parent constructor with no arguments.
-     * Sets the name, id, and label text content of the input element.
+     * Sets the name, id, and localized label text content of the input element.
      * Sets the minimum value to 1970, maximum value to 9999, and step to 1.
      * Sets the current year as the default value.
      *
+     * @param {Intl.Locale|null} [locale=null] - The locale whose `YEAR` label to use.
+     *        `null` means "not supplied" and yields the English label, which is the
+     *        only sane default for an input constructed without a locale.
+     * @throws {Error} If `locale` is neither `null` nor an instance of `Intl.Locale`.
      * @memberof YearInput
      */
-    constructor() {
+    constructor(locale = null) {
         super();
+        if (null !== locale && false === locale instanceof Intl.Locale) {
+            throw new Error(
+                'YearInput: Invalid type for locale, must be of type `Intl.Locale` but found type: ' +
+                    typeof locale,
+            );
+        }
         this._domElement.name = 'year';
         this._claimDefaultId('year');
-        this._labelElement.textContent = 'year';
+        this._labelElement.textContent = defaultLabelText('YEAR', locale);
         this._domElement.min = 1970;
         this._domElement.max = 9999;
         this._domElement.step = 1;
