@@ -940,6 +940,63 @@ because ten call sites read better naming what they look up. The inputs' **optio
 reading `Messages[locale.language][KEY]` unguarded, go through `message()` too since #69, as do
 `CalendarPathInput`'s label, `CalendarSelect`'s default label and `LiturgyOfTheDay`'s title.
 
+## API-supplied markup
+
+The API's `messages` array carries real markup — anchors to Vatican decrees, `<i>`/`<b>` emphasis,
+highlighted `<span>`s. `src/SanitizeHtml.js`'s `sanitizeHtml()` is the one place it becomes DOM, and
+`CalendarControls.#renderMessages()` is its only caller. Internal, not exported from `src/index.js`, on
+the same reasoning as `LocaleValidation.js` and `MessageLookup.js`.
+
+**"Trust the API" is not available, and that is structural rather than cautious.** The API interpolates
+calendar SOURCE DATA into an href without escaping it — `'<a href="' . $metadata->url . '" …'` in
+`CalendarHandler.php` and the same shape in two model classes. Those fields ARE marked `format: uri` in
+`DiocesanCalendar.json`, `NationalCalendar.json` and `WiderRegionCalendar.json`, which is weaker than it
+looks: JSON Schema treats `format` as an annotation rather than an assertion unless a validator opts in,
+and `javascript:alert(1)` is a valid RFC 3986 URI regardless — scheme plus opaque path — so `format: uri`
+does not exclude the one scheme that matters. Only a scheme allowlist does. Independently,
+`ApiClient.init( url )` accepts ANY base URL and multi-base is a documented feature, so the library cannot
+assume a response came from an origin the consumer trusts. Tracked API-side as Liturgical-Calendar/LiturgicalCalendarAPI#789.
+
+Five properties are load-bearing:
+
+- **The allowlist is CONSTRUCTIVE, not destructive.** It never adopts a parsed node: it walks the parse and
+  BUILDS fresh elements in the caller's document, copying only approved attributes. A destructive
+  sanitizer — parse, then remove what you dislike — lets anything it failed to think of survive, which is
+  what every historical bypass is a variation on. Here nothing survives by default, which is why `on*`,
+  `style`, `id` and `ping` need no enumeration. `ownerDocument` is asserted in the tests to pin this.
+- **`DOMParser` is the parse step because it is inert**: no script execution AND no resource loads, unlike
+  `innerHTML` on a detached element, which is script-inert but still fetches `<img src>`.
+  `Utils.sanitizeInput()` already used it, and stays as it is — for a CSS class name or an id, "strip
+  everything" remains correct, and it is not part of this path.
+- **`href` is validated by PARSING, never by prefix-matching.** `href.startsWith( 'javascript:' )` is
+  defeated three ways, all pinned in the tests: `JaVaScRiPt:`, `java\tscript:` (the HTML parser strips
+  tabs and newlines from attribute values), and leading whitespace. `new URL()` normalizes exactly as the
+  browser does before navigating. Only `http:`/`https:` pass. The ORIGINAL string is written back, so a
+  relative link stays relative.
+- **Unknown elements are UNWRAPPED, not deleted** — the element goes, the prose stays, because a message
+  is information. The exceptions in `DROPPED_ELEMENTS` are the ones whose text is not prose (`script`,
+  `style`, `title`, `textarea`, `noscript`); unwrapping those would print CSS rules or JS source as
+  visible copy, which is harmless but reads exactly like a sanitizer that failed. `<img>`/`<iframe>` need
+  no entry — they are not allowed and have no children, so unwrapping already yields nothing.
+- **It returns a `DocumentFragment`, never a string.** A string return would invite the caller to reach
+  for `innerHTML`, which is the sink the function exists to remove.
+
+**`style` is stripped even though the API emits it** on twelve highlighted spans. The library documents
+that it takes no position on CSS, so an API response must not inject declarations into a consumer's page —
+and CSS is not inert regardless (`background:url()` exfiltrates, `position:fixed` redresses). The `<span>`
+survives, so no text is lost. If that highlight matters, the fix is a class the consumer can style, not an
+inline declaration.
+
+**`Element.setHTML()` was weighed and rejected, though it is the right long-term answer.** As of August
+2026: Chrome/Edge 146+, Firefox 148+, 68% global support, and MDN still labels it "Limited availability —
+not Baseline". **Safari has not implemented it in any version, on macOS or iOS.** Since every iOS browser
+is WebKit-backed, adopting it would exclude every iOS user regardless of the browser they chose — not
+merely users on old versions — so the floor cannot simply be raised to reach it. Feature-detecting with a
+fallback was rejected on a narrower ground: jsdom implements no `setHTML`, so the native branch cannot be
+covered by this suite at all, and shipping an untested path to the majority while testing the minority
+path is backwards. Revisit when Safari ships and it reaches Baseline, at which point the module becomes a
+one-line delegate.
+
 ## Live-region announcements
 
 `WebCalendar` and `LiturgyOfAnyDay` each own a visually-hidden `role="status"` / `aria-live="polite"` /

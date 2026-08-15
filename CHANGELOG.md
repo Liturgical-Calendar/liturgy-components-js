@@ -8,63 +8,37 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Behaviour changes
 
-- **A flat theme class no longer reaches a child that is not a control**, part of #67. `resolveChildTheme()`
-  read its flat class key as `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry —
-  `DayViewer`'s `liturgy` child, a `LiturgyOfAnyDay` card, and the copy `<button>`
-  `SubscriptionBuilder` renders — silently inherited `theme.select`. A bag writing
-  `select: 'form-select'` therefore put a border, padding and a dropdown-arrow background image onto a
-  card and onto a button, neither of which is a `<select>` and neither of which the documentation has
-  ever claimed the flat key applies to. The flat `label` and `wrapper` are gated the same way, on the
-  role's own key list, since neither child has a label or a wrapper of its own.
+- **The API's `messages` array now renders its markup, sanitized, instead of as literal text.** The
+  messages the API emits genuinely carry markup — anchors to Vatican decrees, `<i>`/`<b>` emphasis,
+  highlighted `<span>`s — and `CalendarControls`' messages slot built its cells with `textContent`, so a
+  reader saw `See the <a href="https://www.vatican.va/…">decree</a>.` verbatim, tags and all. It now goes
+  through a new internal `src/SanitizeHtml.js`, so anchors are real links and emphasis renders.
 
-  **A consumer writing a flat `select`, `label` or `wrapper` on a `DayViewer` or a `SubscriptionBuilder`
-  will see those two children lose that class.** Style them with their per-child key instead —
-  `liturgy: { class: … }`, `subscriptionUrl: { class: … }` — which is how they were always meant to be
-  styled, and which is unchanged. This is a prerequisite for the preset above rather than a tidy-up:
-  `theme: 'bootstrap5'` would otherwise be unusable on both components.
+  **This is a visible rendering change for any page mounting the `messages` slot**, and it is on by
+  default: showing raw tags was broken output rather than a behaviour anything could depend on.
 
-- **A bare string `theme` is now read as a preset name.** It was previously rejected outright by
-  `assertPlainOptions()` as "not an object", so nothing that worked stops working — but the message a
-  consumer sees for `theme: 'form-select'` changes from a type complaint to
-  `theme preset 'form-select' is not recognised. Valid presets are: bootstrap4, bootstrap5.` The
-  per-child string form (`theme.riteSelect: 'form-select'`, meaning `{ class }`) is one level down and is
-  untouched.
+  It is an allowlist of eight elements (`a`, `b`, `br`, `em`, `i`, `p`, `span`, `strong`) and one
+  attribute set (`href`, `target`, `rel`, on `<a>` only). Everything else is unwrapped — the element goes,
+  the prose stays — except `script`/`style`/`title`/`textarea`/`noscript`, which are dropped whole because
+  their text is not prose. `href` is restricted to `http:`/`https:`, validated by parsing with `new URL()`
+  rather than by prefix-matching, so `JaVaScRiPt:`, `java\tscript:` and leading whitespace are all
+  rejected. `target="_blank"` gets `rel="noopener noreferrer"` written unconditionally rather than merged.
 
-- **A meta-component theme key naming a child that component does not have now throws**, closing #78.
-  `assertTheme()` validated a theme bag without knowing which children the receiving component actually
-  had, so any key outside the four flat role keys was read as a per-child override, accepted, and then
-  dropped in silence by `resolveChildTheme()` — `theme.apiOptions` on a `CalendarResourcePicker`, which
-  bundles no `ApiOptions`, or `theme.liturgy` on a `CalendarViewer`, which has no `LiturgyOfAnyDay`. That
-  is the issue-#43 failure mode by a different route: markup rendered with library defaults, no throw and
-  no warning, and nothing to notice until an end-to-end selector broke. **A consumer currently passing a
-  misplaced key gets a new exception where it previously got silently unstyled markup.** That is the
-  intent — a key that styles nothing is a bug the consumer cannot otherwise see — but it is a behaviour
-  change, and the fix is to move the key to the component that owns it or delete it. The message names
-  the rejecting component, the key, the keys that component does accept, and the components the key is
-  valid on. Nothing that styles something today stops styling it: the per-component sets are derived from
-  what each component actually resolves. What is deliberately still accepted is theming an `ApiOptions`
-  input the current `filter` never renders — all ten exist regardless of the filter, so that stays inert
-  rather than becoming an error.
-- **A bad theme key passed to `CalendarViewer`, `ApiExplorer` or `SubscriptionBuilder` is now reported
-  under that component's own name**, not `CalendarControls`', also #78. All three forward their options
-  bag to an internal `CalendarControls`, which named ITSELF when rejecting an option the caller had
-  passed to a class they never touched — the misattribution PR #76 fixed for the `inputs` bag, and this
-  fixes for `theme`. Each now validates under its own name before forwarding, and forwards only the keys
-  `CalendarControls` owns, which is what keeps `SubscriptionBuilder`'s `subscriptionUrl` working while
-  `CalendarControls` itself still rejects it.
+  `style` is stripped even though the API emits it on twelve highlighted spans: the library takes no
+  position on CSS, so an API response must not inject declarations into a consumer's page. The `<span>`
+  survives, so no text is lost.
 
-- **Every `ApiOptions` input now renders a localized `<label>`**, closing #59. Nine inputs shipped the raw
-  snake_case API parameter name — `ascension`, `corpus_christi`, `epiphany`, `eternal_high_priest`,
-  `holydays_of_obligation`, `year_type`, `year`, `day`, `month` — and `LocaleInput` shipped `locale`, in
-  every language. Since the `<label>` is what a screen reader announces for the control, this was an
-  accessibility defect and not only a cosmetic one. 2.7.0 fixed only `locale`, and only for callers who
-  mounted a meta-component. The lookup now lives in each input's own constructor, via the internal
-  `defaultLabelText( key, locale )` in `src/ApiOptions/Input/InputLabels.js`, so a consumer who writes
-  `new ApiOptions( 'it' )` with no meta-component anywhere gets localized labels too. **This changes
-  rendered text for any consumer that never set a label of its own.** The existing overrides are unchanged
-  and still win, since all of them are applied after construction: a meta-component theme's `labelText`,
-  `LiturgyOfAnyDay`'s `dayInputConfig`/`monthInputConfig`/`yearInputConfig` bags, and direct assignment to
-  `input._labelElement.textContent`.
+  The sanitizer is **constructive rather than destructive** — it never adopts a parsed node, but rebuilds
+  fresh elements in the caller's document and copies across only approved attributes — so anything it does
+  not understand cannot survive. That is what removes `on*` handlers, `id`, `class` and `ping` without
+  enumerating them. It returns a `DocumentFragment` rather than a string, so there is no second parse and
+  nothing to hand to `innerHTML`.
+
+  No new dependency and no build step: it is roughly forty lines on `DOMParser`, which is inert (no script
+  execution, and no resource loads either, unlike `innerHTML` on a detached element). `Element.setHTML()`
+  would be the right long-term answer but Safari has not implemented it in any version on macOS or iOS,
+  and every iOS browser is WebKit-backed — see CLAUDE.md for the full reasoning, including why
+  feature-detection with a fallback was also rejected.
 
 ### Documentation
 

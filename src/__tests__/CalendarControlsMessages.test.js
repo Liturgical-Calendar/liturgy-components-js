@@ -66,19 +66,68 @@ describe('CalendarControls messages slot', () => {
         expect(document.querySelectorAll('#messages tr').length).toBe(0);
     });
 
-    // Both examples build these rows with innerHTML from API-supplied strings.
-    it('renders a message containing markup as text, not as elements', async () => {
-        captureRequests(['<img src=x onerror=alert(1)> plain']);
+    /**
+     * Mounts, fetches, and hands back the messages container.
+     *
+     * @param {string[]} messages - The messages the API should return.
+     * @returns {Promise<HTMLElement>} The `#messages` element, populated.
+     */
+    const renderMessages = async (messages) => {
+        captureRequests(messages);
         const apiClient = await ApiClient.init(API_URL);
         const controls = new CalendarControls({ locale: 'en' });
         controls.appendTo({ controls: '#mount', messages: '#messages' });
         controls.listenTo(apiClient);
         await controls.fetch();
+        return document.querySelector('#messages');
+    };
 
-        expect(document.querySelectorAll('#messages img').length).toBe(0);
-        expect(document.querySelector('#messages').textContent).toContain(
-            '<img',
+    // The API's messages genuinely carry markup — anchors to Vatican decrees,
+    // `<i>`/`<b>` emphasis, highlighted `<span>`s. This renderer used to use
+    // `textContent`, which was safe but showed the reader literal `<a href=…>`
+    // tags. It now goes through `sanitizeHtml()`. The allowlist itself is
+    // specified in `SanitizeHtml.test.js`; these tests prove the RENDERER is
+    // wired to it, which no test of the sanitizer alone can show.
+    it('renders an anchor in a message as a real link', async () => {
+        const container = await renderMessages([
+            'See the <a href="https://www.vatican.va/d.html" target="_blank">decree</a>.',
+        ]);
+        const anchor = container.querySelector('a');
+        expect(anchor).not.toBeNull();
+        expect(anchor.getAttribute('href')).toBe(
+            'https://www.vatican.va/d.html',
         );
+        expect(anchor.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(container.textContent).toContain('See the decree.');
+    });
+
+    it('drops an executable payload instead of rendering it', async () => {
+        const container = await renderMessages([
+            '<img src=x onerror=alert(1)> plain',
+        ]);
+        expect(container.querySelectorAll('img').length).toBe(0);
+        // It is no longer shown as literal text either — that was the old
+        // `textContent` behaviour, and it is what this change replaces.
+        expect(container.textContent).not.toContain('<img');
+        expect(container.textContent).toContain('plain');
+    });
+
+    it('neutralizes a javascript: href while keeping the link text', async () => {
+        const container = await renderMessages([
+            '<a href="javascript:alert(1)">Decree</a>',
+        ]);
+        expect(container.querySelector('a').hasAttribute('href')).toBe(false);
+        expect(container.textContent).toContain('Decree');
+    });
+
+    it('leaves the index cell as plain text', async () => {
+        // The index is a number this renderer generates, so it has nothing to
+        // sanitize; asserted so a later refactor does not route it through the
+        // parser and imply otherwise.
+        const container = await renderMessages(['<b>one</b>', '<b>two</b>']);
+        const firstCells = container.querySelectorAll('tr')[1].children;
+        expect(firstCells[0].textContent).toBe('1');
+        expect(firstCells[1].innerHTML).toBe('<b>two</b>');
     });
 
     it('replaces earlier messages rather than appending on a refetch', async () => {
