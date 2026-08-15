@@ -1,4 +1,4 @@
-import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { DayInput, MonthInput, YearInput } from '../ApiOptions/Input/index.js';
 import { YearType } from '../Enums.js';
@@ -209,9 +209,14 @@ export default class LiturgyOfAnyDay {
         this.#domElement = document.createElement('div');
 
         this.#titleElement = document.createElement('h1');
-        this.#titleElement.textContent =
-            Messages[this.#locale.language]['LITURGY_OF_THE_DAY'] ||
-            'Liturgy of the Day';
+        // The `|| 'Liturgy of the Day'` this replaces guarded the VALUE, not the
+        // first index: a language with no catalogue block threw before the
+        // fallback could apply. `message()` guards both, and its English is the
+        // catalogue's own rather than a second copy of the string inline.
+        this.#titleElement.textContent = message(
+            'LITURGY_OF_THE_DAY',
+            this.#locale,
+        );
         this.#domElement.appendChild(this.#titleElement);
 
         this.#dateElement = document.createElement('div');

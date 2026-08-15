@@ -11,7 +11,7 @@
  * through. These tests pin its contract; the source scan at the bottom is what
  * keeps a seventh unguarded read from being written next time.
  */
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,8 +24,13 @@ import EternalHighPriestInput from '../ApiOptions/Input/EternalHighPriestInput.j
 import YearTypeInput from '../ApiOptions/Input/YearTypeInput.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClient from '../ApiClient/ApiClient.js';
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import LiturgyOfTheDay from '../LiturgyOfTheDay/LiturgyOfTheDay.js';
+import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
+import WebCalendar from '../WebCalendar/WebCalendar.js';
+import DayViewer from '../MetaComponents/DayViewer.js';
+import CalendarViewer from '../MetaComponents/CalendarViewer.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 /**
@@ -35,6 +40,55 @@ import { FULL_METADATA } from '../__fixtures__/metadata.js';
  * no block at all did, which is why these cases must not use `zh`.
  */
 const NO_BLOCK = 'ceb';
+
+const API_URL = 'http://localhost:8000';
+
+/**
+ * One event, shaped like a real `/calendar` response entry.
+ *
+ * `WebCalendar` throws on an empty `litcal` (see its `listenTo()`), so a
+ * payload that renders nothing cannot tell a working header row from a
+ * `TypeError` thrown before one was built. This one can: it drives
+ * `buildTable()` all the way through the caption, the header row and the
+ * per-event `'OR'` join, which is where the four remaining unguarded reads
+ * lived.
+ */
+const CALENDAR_DATA = {
+    litcal: [
+        {
+            event_key: 'Advent1',
+            event_idx: 1,
+            name: 'Dominica I in Adventu Domini',
+            color: ['morello'],
+            color_lcl: ['violaceus'],
+            grade: 7,
+            grade_lcl: 'sollemnitas',
+            grade_abbr: 'S',
+            grade_display: '',
+            common: [],
+            common_lcl: '',
+            type: 'mobile',
+            date: '2026-11-15T00:00:00+00:00',
+            year: 2026,
+            month: 11,
+            month_short: 'Nov.',
+            month_long: 'November',
+            day: 15,
+            day_of_the_week_iso8601: 7,
+            day_of_the_week_short: 'Sun',
+            day_of_the_week_long: 'Sunday',
+            liturgical_year: 'A',
+            is_vigil_mass: false,
+            psalter_week: 1,
+            liturgical_season: 'ADVENT',
+            liturgical_season_lcl: 'Advent',
+            holy_day_of_obligation: false,
+        },
+    ],
+    settings: { year: 2026, locale: NO_BLOCK, year_type: 'LITURGICAL' },
+    metadata: { version: 'test' },
+    messages: [],
+};
 
 describe('message()', () => {
     it('returns the English message when no locale is supplied', () => {
@@ -185,18 +239,79 @@ describe('a language the catalogue has no block for', () => {
             Messages['en']['LITURGY_OF_THE_DAY'],
         );
     });
-});
 
-/**
- * Files that still carry the unguarded pattern. `src/WebCalendar/WebCalendar.js`
- * and `src/LiturgyOfAnyDay/LiturgyOfAnyDay.js` belong to issue #65, which is
- * editing them; they are excluded here rather than fixed from under it. The
- * list is a ceiling, not a floor — guarding them keeps this test green.
- */
-const ALLOWED_UNGUARDED = [
-    join('WebCalendar', 'WebCalendar.js'),
-    join('LiturgyOfAnyDay', 'LiturgyOfAnyDay.js'),
-];
+    it('gives LiturgyOfAnyDay the English title', () => {
+        // Its read LOOKED defended — `Messages[lang]['LITURGY_OF_THE_DAY'] ||
+        // 'Liturgy of the Day'` — but the `||` guards the VALUE, not the first
+        // index, so a language with no block threw before the fallback could
+        // apply. See issue #83.
+        const liturgy = new LiturgyOfAnyDay({ locale: NO_BLOCK });
+        expect(liturgy._domElement.querySelector('h1').textContent).toBe(
+            Messages['en']['LITURGY_OF_THE_DAY'],
+        );
+    });
+
+    it('does not stop DayViewer from being constructed', () => {
+        // `DayViewer` builds a `LiturgyOfAnyDay`, so it inherited that throw at
+        // construction — the first of the two meta-component routes issue #83
+        // names.
+        expect(() => new DayViewer({ locale: NO_BLOCK })).not.toThrow();
+    });
+
+    it('gives WebCalendar English header cells rather than throwing', async () => {
+        // The second route: `CalendarViewer` CONSTRUCTS under such a locale and
+        // throws later, inside `buildTable()`. Driving a real payload through
+        // `listenTo()` is what reaches the header row and the per-event `'OR'`.
+        const apiClient = await ApiClient.init(API_URL);
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const webCalendar = new WebCalendar({ locale: NO_BLOCK });
+        webCalendar.appendTo(container);
+        webCalendar.listenTo(apiClient);
+
+        apiClient._eventBus.emit('calendarFetched', CALENDAR_DATA);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const headings = [...container.querySelectorAll('thead th')].map(
+            (th) => th.textContent,
+        );
+        expect(headings).toContain(Messages['en']['DATE']);
+        expect(headings).toContain(Messages['en']['LITURGICAL_CELEBRATION']);
+    });
+
+    it('lets a CalendarViewer render its table', async () => {
+        // `CalendarViewer` CONSTRUCTS under such a locale and throws later,
+        // inside `buildTable()` — so only a test that renders can see it.
+        document.body.innerHTML =
+            '<div id="controls"></div><div id="calendar"></div>';
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: true,
+                status: 200,
+                headers: { get: () => 'application/json' },
+                json: () => Promise.resolve(CALENDAR_DATA),
+            }),
+        );
+        // The cache is keyed on locale/year/yearType/rite/mobile-feast
+        // settings, not on response content, so without this an earlier
+        // suite's payload could answer this request. See CLAUDE.md.
+        ApiClient.clearCache();
+        const apiClient = await ApiClient.init(API_URL);
+        await CalendarViewer.mountInto(
+            { controls: '#controls', calendar: '#calendar' },
+            { locale: NO_BLOCK, apiClient },
+        );
+        // `buildTable()` attaches the shell synchronously but fills the
+        // `<tbody>` from an un-awaited async IIFE, so yield first.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const table = document.querySelector('#calendar table');
+        expect(table).not.toBeNull();
+        expect(
+            [...table.querySelectorAll('thead th')].map((th) => th.textContent),
+        ).toContain(Messages['en']['LITURGICAL_CELEBRATION']);
+    });
+});
 
 /**
  * A read of the shape `Messages[ EXPR ][` where EXPR is not the literal `'en'`.
@@ -274,9 +389,15 @@ describe('no unguarded catalogue reads remain', () => {
         expect(sources.length).toBeGreaterThan(30);
     });
 
-    it.each(
-        sources.filter((file) => false === ALLOWED_UNGUARDED.includes(file)),
-    )('%s indexes Messages safely', (file) => {
+    // There is deliberately no exemption mechanism. #80 shipped an
+    // `ALLOWED_UNGUARDED` array holding `WebCalendar.js` and
+    // `LiturgyOfAnyDay.js`, described in its own comment as a ceiling that the
+    // then-in-flight issue #65 would lift. #65 shipped (PR #82) without
+    // touching those reads, at which point the ceiling had quietly become a
+    // permanent exemption carving two files out of a guard the other ~15 call
+    // sites obey — issue #83. It was removed rather than emptied: an empty
+    // allow-list is an invitation to add the next file to it.
+    it.each(sources)('%s indexes Messages safely', (file) => {
         const code = stripComments(readFileSync(join(SRC_DIR, file), 'utf8'));
         expect(code.match(UNGUARDED_READ)).toBeNull();
     });
@@ -299,6 +420,17 @@ describe('no unguarded catalogue reads remain', () => {
         // nullish, which it never is, and not against the missing block.
         expect(
             "Messages?.[locale.language]['SUNDAY_JAN2_JAN8']".match(
+                UNGUARDED_READ,
+            ),
+        ).not.toBeNull();
+        // A trailing `|| fallback` LOOKS guarded and is not: `||` defends the
+        // VALUE the second index yields, and the throw happens at the FIRST
+        // index, before it can apply. This was `LiturgyOfAnyDay.js`'s single
+        // read, and the reason issue #83 asked for the shape to be pinned here
+        // rather than merely fixed — a reader who trusts the `||` is the most
+        // likely author of the next one.
+        expect(
+            "Messages[this.#locale.language]['LITURGY_OF_THE_DAY'] || 'Liturgy of the Day'".match(
                 UNGUARDED_READ,
             ),
         ).not.toBeNull();

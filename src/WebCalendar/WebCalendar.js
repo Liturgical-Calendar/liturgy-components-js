@@ -13,6 +13,7 @@ import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import LiveAnnouncer from '../LiveAnnouncer.js';
 import Messages from '../Messages.js';
+import { message } from '../MessageLookup.js';
 import { formatPluralMessage } from '../MessageFormat.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 
@@ -1412,7 +1413,7 @@ export default class WebCalendar {
             eventDetailsCell,
             Column.EVENT_DETAILS,
         );
-        const fragmentContents = `${litevent.name}${currentCycle} - <i>${litevent.color_lcl.join(` ${Messages[this.#baseLocale]['OR']} `)}</i><br><i>${litevent.common_lcl}</i>`;
+        const fragmentContents = `${litevent.name}${currentCycle} - <i>${litevent.color_lcl.join(` ${message('OR', this.#baseLocale)} `)}</i><br><i>${litevent.common_lcl}</i>`;
         const eventDetailsContents = document
             .createRange()
             .createContextualFragment(fragmentContents);
@@ -1620,13 +1621,13 @@ export default class WebCalendar {
             let textNode;
             if (this.#firstColumnGrouping === Grouping.BY_MONTH) {
                 textNode = document.createTextNode(
-                    Messages[this.#baseLocale]['MONTH'],
+                    message('MONTH', this.#baseLocale),
                 );
             } else if (
                 this.#firstColumnGrouping === Grouping.BY_LITURGICAL_SEASON
             ) {
                 textNode = document.createTextNode(
-                    Messages[this.#baseLocale]['LITURGICAL_SEASON'],
+                    message('LITURGICAL_SEASON', this.#baseLocale),
                 );
             }
             th1.appendChild(textNode);
@@ -1634,21 +1635,21 @@ export default class WebCalendar {
 
             const th2 = document.createElement('th');
             th2.appendChild(
-                document.createTextNode(Messages[this.#baseLocale]['DATE']),
+                document.createTextNode(message('DATE', this.#baseLocale)),
             );
             theadRow.appendChild(th2);
 
             const th3 = document.createElement('th');
             th3.appendChild(
                 document.createTextNode(
-                    Messages[this.#baseLocale]['LITURGICAL_CELEBRATION'],
+                    message('LITURGICAL_CELEBRATION', this.#baseLocale),
                 ),
             );
 
             const th4 = document.createElement('th');
             th4.appendChild(
                 document.createTextNode(
-                    Messages[this.#baseLocale]['LITURGICAL_GRADE'],
+                    message('LITURGICAL_GRADE', this.#baseLocale),
                 ),
             );
 

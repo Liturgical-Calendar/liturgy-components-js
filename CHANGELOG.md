@@ -521,6 +521,27 @@ prepared under that number was skipped, and everything it was to have delivered 
   run; it is replaced by the catalogue's own English string. Constructing the input with no `locale` — which
   its own argument check deliberately permits — now yields the English label instead of a `TypeError`.
 
+- **`WebCalendar` and `LiturgyOfAnyDay` no longer throw for a locale the catalogue has no block for**,
+  closing #83 and finishing what #69 started. Those two files were the only ones #69 left unguarded,
+  because issue #65 was already editing them; #65 shipped without touching the reads, so the two routes it
+  was meant to close stayed open. `new DayViewer( { locale: 'ceb' } )` threw at construction, and a
+  `CalendarViewer` constructed and then threw inside `buildTable()` — in both cases a bare
+  `TypeError: Cannot read properties of undefined` naming neither the component, the locale, nor the fact
+  that it was the message catalogue rather than the API that lacked the language. Both take `locale` as a
+  top-level constructor option, commonly wired straight from `document.documentElement.lang`. All seven
+  remaining reads now go through `message()` and fall back to English.
+
+  `LiturgyOfAnyDay`'s read **looked** defended and was not: `Messages[ lang ][ 'LITURGY_OF_THE_DAY' ] ||
+'Liturgy of the Day'` guards the value the second index yields, while the throw happens at the first
+  index, before the `||` can apply. That shape is now pinned in the source scan's self-test alongside
+  `Messages?.[lang][KEY]`, which fails the same way for the same reason.
+
+- **The source scan that enforces this has no exemption mechanism any more.**
+  `src/__tests__/MessageLookup.test.js`'s `ALLOWED_UNGUARDED` array was described in its own comment as a
+  temporary ceiling; once #65 shipped without lifting it, it had silently become a permanent exemption for
+  two files. It was deleted rather than emptied — an empty allow-list is an invitation to add the next file
+  to it.
+
 ### Known gaps
 
 - `AcceptHeaderInput` still renders `return_type` / `Accept Header` raw. It takes no locale, its label flips

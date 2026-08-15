@@ -902,14 +902,26 @@ apply for itself — the shape that produced issue #69, where six sites had reme
 forgotten it, so `new ApiOptions( 'ceb' )` threw a bare `TypeError` naming neither the component, the locale,
 nor the catalogue. Since every meta-component builds an `ApiOptions`, all six inherited that.
 
-**#69 closed the `ApiOptions` route, not the whole symptom**, because two files were left to the issue already
-editing them. `LiturgyOfAnyDay.js` still reads the catalogue unguarded in its constructor, so
-`new DayViewer( { locale: 'ceb' } )` still throws; `WebCalendar.js` does the same inside `buildTable()`, so a
-`CalendarViewer` now constructs under such a locale but still throws when it renders. `src/MetaComponents/`
-carries a correct inline guard rather than calling `message()` — a consolidation, not a bug.
-`src/__tests__/MessageLookup.test.js` scans `src/` for the unguarded shape and allow-lists exactly those two
-files, so the bug cannot spread. That scan is a tripwire, not a proof: it is written against the shape the bug
-took, and its doc comment lists what it knowingly does not see.
+**#69 closed the `ApiOptions` route and #83 closed the remaining two files.** #69 left
+`WebCalendar.js` and `LiturgyOfAnyDay.js` unguarded because issue #65 was already editing them, and
+`src/__tests__/MessageLookup.test.js`'s scan allow-listed exactly those two — a ceiling its own comment
+said #65 would lift. #65 shipped without touching those reads, at which point the ceiling had become a
+permanent exemption carving two files out of a guard the other call sites obeyed. #83 routed all seven
+remaining reads through `message()` and **deleted the allow-list rather than emptying it**: an empty
+exemption array is an invitation to add the next file to it, so the scan now has no exemption mechanism
+at all. Do not reintroduce one — a file that cannot be guarded yet is a reason to fix it, not to list it.
+
+`LiturgyOfAnyDay`'s read is the one worth remembering, because it **looked** defended:
+`Messages[ lang ][ 'LITURGY_OF_THE_DAY' ] || 'Liturgy of the Day'` guards the VALUE the second index
+yields, while the throw happens at the FIRST index, before the `||` can apply. That shape is now pinned
+in the scan's own self-test beside `Messages?.[lang][KEY]`, which fails the same way for the same reason.
+
+`src/MetaComponents/` still carries a correct inline guard rather than calling `message()` — a
+consolidation, not a bug — as do `WebCalendar.#captionText()`'s three caption reads, whose rite-level
+lookup falls back across TWO keys (`AMBROSIAN_CALENDAR_CAPTION` then `GENERAL_ROMAN_CALENDAR_CAPTION`)
+and so must not throw when English lacks the first, which is exactly what `message()` does. That scan is
+a tripwire, not a proof: it is written against the shape the bug took, and its doc comment lists what it
+knowingly does not see.
 
 **Input labels are localized by the input's own constructor**, through
 `src/ApiOptions/Input/InputLabels.js`'s `defaultLabelText( key, locale )` — internal, and not exported from
