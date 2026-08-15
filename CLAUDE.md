@@ -162,13 +162,25 @@ about the project's style depends on a prettier option, so there was no remainin
 enforce formatting instead of letting the formatter do it. `.prettierrc` scopes the JS options to
 JS/TS via an `overrides` block for `*.md` that resets `tabWidth`/`singleQuote` back to prettier's
 own defaults, so `yarn format:md` output is unaffected — verify this after touching `.prettierrc`
-by confirming `yarn format:md` still reports no files needing changes. `endOfLine` is `"auto"` for
-JS (preserve each file's existing line ending) rather than the default `"lf"`, because 5 of the 91
-tracked JS files under `src/` and `examples/` are CRLF (see `.editorconfig`) and a formatting pass
-should not silently rewrite line endings as a side effect.
+by confirming `yarn format:md` still reports no files needing changes. `endOfLine` is `"lf"`.
 
-There is now an `.editorconfig` (4-space `[*.js]`, `end_of_line = lf` to match the repo's dominant
-convention) so an editor's live indentation matches what prettier will enforce after the fact.
+**Line endings are enforced by `.gitattributes`, and that is the only layer that can enforce them.**
+`* text=auto eol=lf` normalizes on checkin, so no editor, script or platform default reintroduces CRLF.
+The other two layers state the convention but cannot hold it: git never reads `.editorconfig`, and
+prettier only touches the files it is pointed at, so a scripted rewrite or a `sed -i` slips past both.
+
+That was not a theoretical gap. Before issue #84, seven tracked files carried CRLF **in the index**
+(`.storybook/preview-head.html`, `DayInput.js`, `MonthInput.js`, `LiturgyOfAnyDay.js`, two
+`LiturgyOfAnyDay*.stories.js`, `liturgyofanyday.css`) and `endOfLine` was `"auto"` specifically to
+preserve them. The convention then broke twice in a single day's work — a whole-file rewrite in PR #74
+and a scripted one in PR #82 — each caught only by a manual `file -b` check, because no test, linter or
+formatter reports it and `yarn format:js` passes either way by design. #84 added the attributes file,
+renormalized those seven in one dedicated commit, and flipped `endOfLine` to `"lf"`, which is now
+meaningful: with normalization upstream, `"auto"` would only let a stray CRLF survive a formatting pass.
+
+`.editorconfig` (4-space `[*.js]`, `end_of_line = lf`) remains the "get it right live" half, so an
+editor's behaviour matches what git and prettier will enforce afterwards — it is simply no longer the
+only line of defence, which is what it used to be and could not sustain.
 
 **Key Patterns:**
 

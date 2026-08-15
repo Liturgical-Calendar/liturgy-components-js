@@ -218,6 +218,22 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Changed
 
+- **Line endings are now enforced, not merely documented**, closing #84. A new `.gitattributes` carries
+  `* text=auto eol=lf`, and the seven files that had CRLF **in the index** — `.storybook/preview-head.html`,
+  `DayInput.js`, `MonthInput.js`, `LiturgyOfAnyDay.js`, the two `LiturgyOfAnyDay*.stories.js` and
+  `liturgyofanyday.css` — were renormalized in one dedicated commit that changes nothing else.
+  `.prettierrc`'s `endOfLine` moves from `"auto"` to `"lf"`, which only becomes the right setting once
+  normalization happens upstream: `"auto"` preserves whatever a file already has, so it would let a stray
+  CRLF survive a formatting pass rather than fixing it.
+
+  The convention was already stated in `.editorconfig` and honoured by prettier, but **neither can enforce
+  it** — git never reads `.editorconfig`, and prettier only touches the files it is pointed at, so a
+  scripted rewrite or a `sed -i` slips past both. It broke twice in a single day's work (PR #74 rewrote
+  `MonthInput.js` whole-file, PR #82 did the same to `LiturgyOfAnyDay.js`), each caught only by a manual
+  `file -b` check, since no test, linter or formatter reports it and `yarn format:js` passes either way by
+  design. Nothing else changed: every renormalized file is byte-identical to its parent once `\r` is
+  stripped, verified per file rather than assumed.
+
 - **`settled` now observes the constructor path too**, closing the second half of #61. It was documented
   and implemented as "`mountInto()`'s initial fetch"; it is now "the most recent fetch this component
   issued", so a hand-constructed `CalendarControls`, `CalendarViewer` or `DayViewer` publishes the same
