@@ -81,25 +81,46 @@ export const FULL_METADATA = {
     ],
     wider_regions_keys: ['Europe'],
     locales: ['en', 'it', 'la'],
-    // Exactly what `GET /calendars` returns for this entry — `calendar_id`,
-    // `locales` and `rite`, and nothing else. Verified against the dev API.
+    // Exactly what `GET /calendars` returns for this entry, verified against the
+    // dev API on 2026-08-14 — including the `settings` block, which the API now
+    // publishes (Liturgical-Calendar/LiturgicalCalendarAPI#776, shipped in PR 779).
+    // There is still no `missals` key.
     //
-    // It previously carried a `missals: []` and a `settings` block with the four
-    // temporal options the Ambrosian Missal fixes. **The API serves neither.** A
-    // fixture that is AHEAD of the API is the worst direction for one to be wrong
-    // in: a test asserting that a rite's settings reach the option inputs would
-    // have passed against this while production did nothing at all, because there
-    // is no `settings` to read. See issue #70, and
-    // Liturgical-Calendar/LiturgicalCalendarAPI#776 for publishing them.
+    // This block has been wrong in BOTH directions, which is why it is worth a
+    // comment. It once carried a hand-written `settings` the API did not serve, so
+    // a test asserting that a rite's settings reach the option inputs passed while
+    // production did nothing at all; `dab21b5` (PR #71) removed it. The API then
+    // shipped one, leaving the fixture behind reality instead of ahead of it —
+    // equally wrong, and the reason issue #70 could not be tested against the
+    // shared fixture until this commit. Keep it byte-identical to what the live
+    // response serves, and re-check it whenever the API's metadata changes.
     //
-    // Nothing in the library reads more than `calendar_id` and `locales` from a
-    // rite calendar — `ApiOptions.#applyRiteToLocaleInput()` is the only consumer
-    // — so the removed keys were never exercised, only believed.
+    // `ApiOptions.#applyRiteToLocaleInput()` reads `locales`;
+    // `ApiOptions.#applyRiteToTemporalInputs()` reads `settings`. Nothing reads
+    // `rite` off a rite calendar, but the API serves it, so it stays.
     ambrosian_calendars: [
         {
             calendar_id: 'ambrosian',
             rite: 'ambrosian',
             locales: ['it', 'la'],
+            settings: {
+                epiphany: 'JAN6',
+                ascension: 'THURSDAY',
+                corpus_christi: 'THURSDAY',
+                eternal_high_priest: false,
+                holydays_of_obligation: {
+                    Christmas: true,
+                    Circoncisione: true,
+                    Epiphany: true,
+                    Ascension: true,
+                    Pentecost: true,
+                    ImmaculateConception: true,
+                    Assumption: true,
+                    AllSaints: true,
+                    StAmbrose: true,
+                    DedicationDuomo: true,
+                },
+            },
         },
     ],
 };

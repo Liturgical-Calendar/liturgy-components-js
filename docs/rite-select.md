@@ -156,6 +156,11 @@ Once linked, `ApiOptions` drives the whole rite -> calendar chain on every chang
   enabled: the rite must not fix the celebration itself, **and** no nation or diocese may be selected.
   So under a rite that fixes them, selecting a diocese and then returning to the rite-level calendar
   leaves them disabled — they are not released by the calendar half alone.
+- Those same four inputs, and `ApiOptions._holydaysOfObligationInput`, are **set** to the rite's own
+  published settings, so the form states what the rite fixes rather than freezing at the values a
+  previously selected nation left there. See
+  [A rite's own settings](api-options.md#a-rites-own-settings) for the exact rule, which differs between
+  the four value inputs and the holydays option list.
 - `ApiOptions._yearInput`'s minimum year is adjusted to the rite's floor.
 - The `/calendar/nation/` route offered by `ApiOptions._calendarPathInput` (the `PATH_BUILDER` filter)
   is disabled for a rite with no national tier, since no such route exists for it. If that route was
@@ -179,15 +184,25 @@ Selecting Ambrosian:
 - **Hides the nation select**, when a paired national + diocesan `CalendarSelect` array is linked. The
   Ambrosian rite has no national tier: it is celebrated in a small number of dioceses only, so there is
   nothing to group by nation.
-- **Disables the Epiphany, Ascension, Corpus Christi and Eternal High Priest inputs.** This is not an
-  arbitrary restriction: the reformed Ambrosian Missal fixes these celebrations itself — Epiphany to 6
-  January, Ascension to the fortieth day of Easter, and Corpus Domini to the Thursday after Trinity —
-  so the corresponding API parameters have no meaning under that rite. The Eternal High Priest is not
-  established in the Ambrosian rite at all.
+- **Disables the Epiphany, Ascension, Corpus Christi and Eternal High Priest inputs, and sets them to
+  what the Missal fixes.** This is not an arbitrary restriction: the reformed Ambrosian Missal fixes
+  these celebrations itself — Epiphany to 6 January, Ascension to the fortieth day of Easter, and Corpus
+  Domini to the Thursday after Trinity — so the corresponding API parameters have no meaning under that
+  rite. The Eternal High Priest is not established in the Ambrosian rite at all. The values are read
+  from `ambrosian_calendars[0].settings` in the API's metadata, never from a table in the library.
+- **Replaces the holy days of obligation options** with the Ambrosian list, which is a different set of
+  celebrations rather than a re-selection of the Roman one: it adds `Circoncisione`, `Pentecost`,
+  `StAmbrose` and `DedicationDuomo`, and drops `CorpusChristi`, `MaryMotherOfGod`, `StJoseph` and
+  `StsPeterPaulAp`.
 - **Raises the year floor to 1976**, the first year of the reformed Ambrosian Missal. Years before that
   cannot be computed under the Ambrosian rite.
 
-Switching back to Roman reverses all of the above.
+Switching back to Roman reverses all of the above, with one deliberate exception: the four temporal
+inputs keep the values they were set to rather than reverting to the empty `--` option. The Roman rite
+publishes no settings of its own — the General Roman Calendar has no metadata entry to publish them
+under — and blanking a value is a worse failure than leaving one that is, in this case, exactly the
+General Roman default anyway. The holy days of obligation **list** does revert, to the input's own
+defaults, so no Ambrosian-only entry is left being offered for a Roman calendar.
 
 ## Driving a CalendarSelect without an ApiOptions
 

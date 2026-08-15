@@ -105,6 +105,14 @@ prepared under that number was skipped, and everything it was to have delivered 
   written in the form its language uses with a large count, which is the only count a full liturgical year
   produces.
 
+- **`HolydaysOfObligationInput.setOptions( options, merge = true )`** takes a second parameter, for #70.
+  The default is unchanged and overlays `BASE_OPTIONS`, which is right for a national or diocesan calendar
+  — every `holydays_of_obligation` the API publishes for one names all ten base keys. `false` uses the
+  array verbatim, which is what a rite's list needs: merging it would leave the form asserting that
+  `StJoseph` and `StsPeterPaulAp` are Ambrosian holy days of obligation. The validation `mergeOptions()`
+  already did is now shared with the new branch as `HolydaysOfObligationInput.validateOptions()`, which
+  differs from `mergeOptions()` in one respect: a non-array is an error rather than a request for the base
+  options, since there is no base list to fall back to on that path.
 - **`inputs: { acceptHeader: false }` on `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, closing
   the first half of #61. `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads, so it was
   only expressible between construction and the append — a window `mountInto()` does not open. One boolean
@@ -251,6 +259,35 @@ prepared under that number was skipped, and everything it was to have delivered 
   is now written as `rect(0, 0, 0, 0)`, with `clip-path: inset(50%)` alongside it since `clip` is deprecated,
   and `white-space: nowrap` so a long announcement cannot lay out as a tall column. Found while moving the
   markup into the shared `LiveAnnouncer` for #65.
+
+- **A rite change now SETS the five option inputs whose values the rite fixes, instead of only disabling
+  four of them**, closing #70. `ApiOptions`' `applyRite()` disabled `_epiphanyInput`, `_ascensionInput`,
+  `_corpusChristiInput` and `_eternalHighPriestInput` and stopped there, with no rite-level counterpart to
+  the `#applySettingsToInputs()` that applies a nation's settings — so the four froze at whatever was last
+  displayed. Select Italy (`ascension: SUNDAY`), switch to Ambrosian, and the greyed-out select still read
+  `SUNDAY` for a feast the Ambrosian Missal fixes to Thursday. It hid on an untouched form because the
+  four inputs start at the empty `--` option, which lets the API apply the very defaults the Ambrosian
+  rite happens to fix. The values are read from the rite's own `settings` block, which `/calendars` now
+  publishes under `ambrosian_calendars[]` (LiturgicalCalendarAPI#776, shipped in PR 779) — not from a
+  hardcoded table in `Enums.js`, which would copy liturgical law into the client where it can drift from
+  the API in silence. A rite that publishes no settings, which is every Roman page, changes no value.
+- **The request body follows the rite too**, which is the invisible half of the same defect.
+  `ApiClient.fetchCalendar()` POSTs those four parameters plus `holydays_of_obligation` as the body of a
+  rite-level calendar request, and learns them only from `change` listeners on the inputs — so a value
+  picked by hand under the Roman rite was still sent to `/calendar/ambrosian`, the exact request the
+  disable exists to prevent. Each input that actually moves now dispatches `change`, and `ApiClient`
+  coalesces the burst into a single refetch.
+- **`_holydaysOfObligationInput` is a fifth affected input**, which the issue's own table omitted. The
+  published Ambrosian list is not a re-selection of the Roman one: it drops `CorpusChristi`,
+  `MaryMotherOfGod`, `StJoseph` and `StsPeterPaulAp`, and adds `Circoncisione`, `Pentecost`, `StAmbrose`
+  and `DedicationDuomo`. Because it is an option **list** the rite defines rather than a value, it follows
+  the locale input's rule instead of the four values' rule — replaced by the rite's list, and restored to
+  the input's own defaults for a rite that publishes none, so an Ambrosian-only entry cannot survive a
+  switch back to the Roman rite.
+- `src/__fixtures__/metadata.js` carries the Ambrosian `settings` block again, copied verbatim from the
+  live `/calendars` response. It was removed in `dab21b5` because the API served none; the API then
+  shipped one, leaving the fixture behind reality rather than ahead of it. Both directions turn a green
+  test into a claim about nothing.
 
 - **A throwing `onError()` callback no longer breaks the `settled` contract, or the `CalendarViewer`
   factory.** The callbacks run inside the very rejection handler each `mountInto()` builds its stored
