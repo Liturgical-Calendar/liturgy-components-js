@@ -554,6 +554,39 @@ never fetches at all — it is a form field, and has no `listenTo()` — and `Ap
 does not, because it composes request URLs rather than issuing them. `appendTo()` returns `undefined`, per the library-wide
 contract: nothing can be chained off it, and its result must never be assigned.
 
+**The `controls` slot's VALUE may be a single target or an object keyed by `ApiOptions` filter; the slot
+NAMES are unchanged.** `CalendarControls` and `CalendarViewer` accept
+`controls: { allCalendars: '#row1', generalRoman: '#row2' }`, which mounts one pass per filter and
+replaces the two-pass `filter().appendTo()` idiom 2.5.0 documented (#63). Four points are load-bearing:
+
+- **The filter -> inputs mapping has ONE copy**, `src/ApiOptions/FilterInputs.js`, which
+  `ApiOptions.appendTo()` iterates and `src/MetaComponents/ControlSlots.js` reads for its overlap check.
+  It used to be five `if` branches inside `appendTo()`; a second copy beside them would drift the first
+  time a filter gained an input, and overlap cannot be computed from key names — `localeOnly` and
+  `allCalendars` are different names that both mount the locale input.
+  `src/__tests__/FilterInputs.test.js` re-derives the table from a real append, per filter, so the two
+  cannot disagree. Both new modules are internal and not exported from `src/index.js`, like `Theme.js`
+  and `InputVisibility.js`.
+- **Ordering is the component's, and canonical rather than the caller's.** `PATH_BUILDER` runs before
+  `ALL_CALENDARS` so `ApiOptions`' `#pathBuilderEnabled` is set before the pass that would otherwise
+  mount the year input twice — the precedence `ApiExplorer.appendTo()` already hard-codes. That is also
+  what makes the one overlap exemption (`allCalendars` does not claim `yearInput` when `pathBuilder` is
+  present) order-independent; under caller order the two spellings of that bag would put the year input
+  in different containers, which is the silent failure relocated rather than removed. The rite and
+  calendar selects, by contrast, follow the caller's FIRST key — that is layout intent, not ordering.
+- **Key spelling is the camelCase member names, with `basePath`/`allPaths` as aliases.** The enum already
+  ships `BASE_PATH`/`ALL_PATHS` as alias members of exactly those two, their runtime values ARE those
+  strings (so a computed `{ [ApiOptionsFilter.GENERAL_ROMAN]: t }` key must work), and `ApiExplorer`'s
+  slot names are literally `basePath`/`allPaths`. Naming one filter under both spellings is rejected as a
+  duplicate rather than silently collapsed.
+- **`ApiExplorer` and `SubscriptionBuilder` are deliberately untouched.** `ApiExplorer` already has
+  dedicated ordered slots, bypasses `CalendarControls.appendTo()` entirely, and positions its calendar
+  select with `insertAfter()` rather than into a container — giving it a `controls` slot would be a new
+  slot name and a second way to say one thing. `SubscriptionBuilder` mounts the three children itself
+  rather than through `CalendarControls.appendTo()`. The two-pass idiom stays supported and unwarned: it
+  is `ApiOptions` public API, both examples use it, `ApiExplorer` uses it internally, and it is still the
+  only way to reach a container the component does not own.
+
 **Reject for programmer error, resolve for runtime failure — except where there is no form left to
 resolve with.** `mountInto()` **rejects** on invalid options — an unparseable locale, an unknown filter, a
 target that matches nothing — because a typo should not be silently papered over, on all five components.
