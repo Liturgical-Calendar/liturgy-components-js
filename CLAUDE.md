@@ -1079,6 +1079,12 @@ top-level entry set exactly (which is what catches a stray), that the entry poin
 without pinning a number), and that no test tree leaked. It runs under `yarn test`, so CI already covers
 it with no extra workflow step.
 
+**It needs `yarn compile` to have run first**, exactly as `yarn lint:dts` does and for the same reason:
+`dist/` is gitignored, so a fresh clone has none. It fails with that instruction by name rather than
+skipping — a skip would let the guard pass vacuously the day a change dropped the compile step from CI,
+which is precisely when it should object — and rather than compiling for itself, which would make every
+`yarn test` pay for a full `tsc` and make the file something other than a test.
+
 ## Component Wiring Patterns
 
 ### Basic Wiring

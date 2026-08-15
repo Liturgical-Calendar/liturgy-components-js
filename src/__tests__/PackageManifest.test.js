@@ -29,6 +29,8 @@
  */
 import { describe, it, expect, beforeAll } from '@jest/globals';
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -37,6 +39,25 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 let paths;
 
 beforeAll(() => {
+    // `dist/` is gitignored, so a fresh clone has none until `yarn compile`
+    // runs. CI compiles before it tests, but a developer running `yarn test`
+    // directly would otherwise see three of the four assertions below fail as
+    // unrelated-looking mismatches — a missing top-level entry, an absent
+    // `dist/index.js`, a `0 !== 57` count — none of which names the cause.
+    //
+    // It THROWS rather than skipping. A skip would let the guard pass
+    // vacuously the day a change dropped `yarn compile` from CI, which is
+    // exactly when this file is the thing that should object. `yarn lint:dts`
+    // carries the same prerequisite for the same reason, and CLAUDE.md
+    // documents it as intended rather than papering over it with a rebuild:
+    // a test that builds is slow on every run and is no longer only a test.
+    if (false === existsSync(join(ROOT, 'dist', 'index.js'))) {
+        throw new Error(
+            'dist/ has not been built. Run `yarn compile` before `yarn test`: ' +
+                'this file inspects what `npm pack` would ship, and dist/ is ' +
+                'gitignored, so it does not exist on a fresh clone.',
+        );
+    }
     // `--dry-run` writes no tarball; `--json` puts the manifest on stdout.
     const output = execFileSync('npm', ['pack', '--dry-run', '--json'], {
         cwd: ROOT,
