@@ -1006,6 +1006,31 @@ rule: sanitize where markup is expected and wanted (`messages`), build nodes whe
 else).** `WebCalendarEventDetails.test.js` pins both the unchanged output and the closed hole, including
 the `</i>` breakout, which injects no element and so is easy to forget.
 
+**`CalendarSelect` ESCAPES rather than building nodes, and that asymmetry is deliberate.** It interpolates
+`/calendars` metadata into `<option>` strings assigned to `innerHTML`, and `nationsInnerHtml` /
+`diocesesInnerHtml` are PUBLIC getters returning that markup — so rebuilding it around nodes would be a
+breaking API change rather than a security fix. `escapeHtml()` (also in `SanitizeHtml.js`) is applied at
+the three interpolation sites instead. **The distinction to keep: `sanitizeHtml()` where markup is wanted
+and must be filtered, node-building where it is not, `escapeHtml()` only where a public string API forces
+the string to stay.** Escaping is correct for text and QUOTED attributes only — never for an unquoted
+attribute, a `javascript:`-capable one such as `href`, or anything inside `<script>`/`<style>`.
+
+Two findings there are worth not re-deriving. The `value="…"` breakout was the real vector: an unescaped
+`"` in `calendar_id` ends the attribute and the rest is parsed as further attributes on a tag the parser
+already accepts, which is why it survives the "in select" insertion mode that discards most injected
+ELEMENTS. The `<optgroup label="…">` was NOT reachable: the nation code passes through
+`Intl.DisplayNames.of()`, which throws `RangeError` for a malformed region code and returns a localized
+display name otherwise, so nothing capable of ending the attribute gets through. It is escaped anyway,
+since that safety belongs to a platform API's argument validation rather than to this component.
+`escapeHtml()` is therefore unit-tested directly, not only through the component.
+
+**Known rough edge, not security:** an invalid nation code in metadata surfaces as a bare
+`RangeError: invalid_argument` from inside `Intl`, where the sibling inconsistency (a diocese whose nation
+has no national calendar) gets an explicit message naming the component and the value.
+
+`Input.labelAfter()` and `CalendarSelect.after()` also use `createContextualFragment()`, but on
+CONSUMER-supplied strings — that is their documented purpose and not the same boundary.
+
 ## Live-region announcements
 
 `WebCalendar` and `LiturgyOfAnyDay` each own a visually-hidden `role="status"` / `aria-live="polite"` /

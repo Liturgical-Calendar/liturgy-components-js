@@ -22,7 +22,7 @@
  * than none, because it looks like protection.
  */
 import { describe, it, expect } from '@jest/globals';
-import { sanitizeHtml } from '../SanitizeHtml.js';
+import { sanitizeHtml, escapeHtml } from '../SanitizeHtml.js';
 
 /**
  * @param {string} html - Markup to sanitize.
@@ -306,5 +306,70 @@ describe('malformed and hostile input', () => {
         expect(html('<b><img src=x onerror="alert(1)"><i>ok</i></b>')).toBe(
             '<b><i>ok</i></b>',
         );
+    });
+});
+
+/**
+ * `escapeHtml()` is the counterpart for the opposite situation: a field that is
+ * plain text and must not become markup, where the surrounding code assembles a
+ * STRING rather than nodes. `CalendarSelect` is its one caller, because its
+ * `nationsInnerHtml`/`diocesesInnerHtml` are public getters returning markup, so
+ * rebuilding it around nodes would break its API rather than fix a bug.
+ *
+ * Tested directly rather than only through that component: one of its three
+ * call sites — the `<optgroup>` label — cannot be reached with a hostile value
+ * at all, because `Intl.DisplayNames.of()` rejects a malformed region code
+ * first. The escape is defence in depth there, and defence in depth still needs
+ * to work.
+ */
+describe('escapeHtml()', () => {
+    it('escapes the five characters that change meaning in markup', () => {
+        expect(escapeHtml('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#39;');
+    });
+
+    it('escapes the ampersand once, not twice', () => {
+        // Chaining `.replace()` calls with `&` handled last yields
+        // `&amp;lt;` — the classic double-escape. One pass cannot.
+        expect(escapeHtml('<')).toBe('&lt;');
+        expect(escapeHtml('&lt;')).toBe('&amp;lt;');
+    });
+
+    it('neutralizes an attribute breakout', () => {
+        const value = 'x" onmouseover="alert(1)';
+        const parsed = new DOMParser().parseFromString(
+            `<select><option value="${escapeHtml(value)}">t</option></select>`,
+            'text/html',
+        );
+        const option = parsed.querySelector('option');
+        expect(option.hasAttribute('onmouseover')).toBe(false);
+        expect(option.getAttribute('value')).toBe(value);
+    });
+
+    it('neutralizes an element injection in text position', () => {
+        const parsed = new DOMParser().parseFromString(
+            `<div>${escapeHtml('<img src=x onerror="alert(1)">')}</div>`,
+            'text/html',
+        );
+        expect(parsed.querySelector('img')).toBeNull();
+        expect(parsed.querySelector('div').textContent).toBe(
+            '<img src=x onerror="alert(1)">',
+        );
+    });
+
+    it('round-trips ordinary text through the parser unchanged', () => {
+        // Escaping must not turn `Diocèse d'Abidjan` into entity soup once the
+        // browser parses it back.
+        for (const value of ["Diocèse d'Abidjan", 'Côte d’Ivoire', 'A & B']) {
+            const parsed = new DOMParser().parseFromString(
+                `<div>${escapeHtml(value)}</div>`,
+                'text/html',
+            );
+            expect(parsed.querySelector('div').textContent).toBe(value);
+        }
+    });
+
+    it('coerces a non-string rather than throwing', () => {
+        expect(escapeHtml(42)).toBe('42');
+        expect(escapeHtml(null)).toBe('null');
     });
 });

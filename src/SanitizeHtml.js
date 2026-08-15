@@ -62,6 +62,62 @@
  * @license Apache-2.0
  */
 
+/**
+ * The five characters that change meaning inside HTML markup.
+ *
+ * `&` MUST be replaced first, or the ampersands introduced by the later
+ * replacements are themselves re-escaped and `<` renders as `&amp;lt;`. Doing
+ * it in one pass over a character class removes the ordering hazard entirely,
+ * which is why this is a lookup rather than a chain of `.replace()` calls.
+ *
+ * `'` is included even though a double-quoted attribute does not need it,
+ * because nothing at the call sites guarantees which quote style is in use and
+ * the cost is nil.
+ *
+ * @type {Record<string, string>}
+ */
+const HTML_ESCAPES = Object.freeze({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+});
+
+/**
+ * Escapes a value for interpolation into an HTML string.
+ *
+ * The counterpart to {@link sanitizeHtml}, for the opposite situation.
+ * `sanitizeHtml()` is for a field whose markup is WANTED and must be filtered;
+ * this is for a field that is plain text and must not become markup at all,
+ * where the surrounding code assembles a string rather than nodes.
+ *
+ * **Building nodes is better wherever it is available**, and is what
+ * `WebCalendar`'s event-details cell now does. This exists for
+ * `CalendarSelect`, whose `nationsInnerHtml` and `diocesesInnerHtml` are public
+ * getters returning markup: rebuilding it around nodes would be a breaking
+ * change to its API rather than a security fix. Escaping at the interpolation
+ * site closes the hole without touching the shape.
+ *
+ * Escaping is correct only for TEXT content and QUOTED attribute values, which
+ * is all either call site needs. It is NOT sufficient for an unquoted
+ * attribute, a `javascript:`-capable attribute such as `href`, or anything
+ * inside a `<script>` or `<style>` element — none of which occur here, and none
+ * of which should be introduced on the strength of this helper.
+ *
+ * @param {string} value - The untrusted value. Non-strings are coerced.
+ * @returns {string} The value, safe to interpolate as text or into a quoted
+ *          attribute.
+ * @example
+ * `<option value="${escapeHtml( id )}">${escapeHtml( name )}</option>`
+ */
+export function escapeHtml(value) {
+    return String(value).replace(
+        /[&<>"']/g,
+        (character) => HTML_ESCAPES[character],
+    );
+}
+
 /** `Node.ELEMENT_NODE`, spelled out so this module needs no DOM global. */
 const ELEMENT_NODE = 1;
 
