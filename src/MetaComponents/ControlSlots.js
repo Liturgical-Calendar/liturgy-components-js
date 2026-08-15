@@ -81,16 +81,27 @@ const CANONICAL_KEYS = Object.freeze([
  *
  * Exactly one constraint here is real: `PATH_BUILDER` must run before
  * `ALL_CALENDARS`, so `ApiOptions`' `#pathBuilderEnabled` is set before the
- * pass that would otherwise mount the year input a second time.
+ * pass that would otherwise append the year input a second time.
  * `ApiExplorer.appendTo()` already hard-codes that same precedence for its own
  * three fixed slots.
  *
- * Fixing the order is also what makes {@link claimedInputs}' exemption
- * order-independent: under caller order, `{ allCalendars, pathBuilder }` and
- * `{ pathBuilder, allCalendars }` would differ in which container ended up with
- * the year input — which is rule two's silent failure relocated rather than
- * removed. Pass order is otherwise unobservable, because no two passes may
- * share an input and each targets its own container.
+ * **Be precise about what that buys, because it is easy to overclaim.** The
+ * final DOM would be the same under caller order too: `ApiOptions.appendTo()`
+ * MOVES its inputs, so a later `PATH_BUILDER` pass simply takes the year input
+ * away from an earlier `ALL_CALENDARS` one. What the fixed order buys is two
+ * narrower things:
+ *
+ * - it removes that wasted append-and-move, and with it the transient state
+ *   where the year input sits in a container it is about to leave;
+ * - it makes {@link claimedInputs}' exemption literally true rather than true
+ *   only in its outcome — the `ALL_CALENDARS` pass really does not append the
+ *   year input, instead of appending it and being overruled.
+ *
+ * Pass order becomes directly OBSERVABLE only when a caller names one container
+ * for two filters, which is legal: the inputs then appear in this order rather
+ * than in whichever order the keys happened to be written.
+ * `ControlsSlotByFilter.test.js` proves it that way, since the year-input
+ * placement alone cannot.
  *
  * @type {Readonly<Array<string>>}
  */

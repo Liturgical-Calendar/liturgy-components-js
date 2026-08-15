@@ -78,8 +78,8 @@ prepared under that number was skipped, and everything it was to have delivered 
   the component owns, and it rested on three rules the docs listed and nothing enforced — the second pass
   had to run after `appendTo()`, the filters could not overlap, and `ApiOptionsFilter.NONE` could not
   participate. All three now belong to the component. It performs the passes itself, so there is no
-  ordering for a caller to get wrong; it runs `pathBuilder` before `allCalendars` whichever order the keys
-  were written in, so the same bag mounts identically either way. Overlap is computed from the inputs each
+  ordering for a caller to get wrong; it applies a fixed pass order whichever order the keys were written
+  in, so naming one container for two filters lays them out the same way every time. Overlap is computed from the inputs each
   filter actually renders rather than from the key names, so `{ localeOnly, allCalendars }` throws naming
   both keys and `localeInput`, while `{ pathBuilder, allCalendars }` — which share only the year input
   `ApiOptions` already mounts once — is accepted. `none` as a key throws, and so does a filter-keyed bag on

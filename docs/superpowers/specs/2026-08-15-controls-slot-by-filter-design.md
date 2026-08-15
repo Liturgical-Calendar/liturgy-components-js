@@ -126,12 +126,16 @@ regardless of the order the caller wrote the keys in. Only one constraint is rea
 before `allCalendars`, so `#pathBuilderEnabled` is set before the pass that would otherwise duplicate
 `yearInput`. `ApiExplorer` already hard-codes that same precedence.
 
-Fixing the order is what makes D4's exemption order-independent: with caller order, `{ allCalendars,
-pathBuilder }` and `{ pathBuilder, allCalendars }` would differ in which container ends up with the year
-input — precisely rule 2's silent failure, relocated rather than removed.
+**Corrected during verification — the first draft of this decision overclaimed.** The final DOM would be
+the same under caller order too, because `ApiOptions.appendTo()` MOVES its inputs: a later `pathBuilder`
+pass simply takes the year input off an earlier `allCalendars` one. What the fixed order actually buys is
+narrower — it removes that wasted append-and-move, and it makes D4's exemption literally true (the
+`allCalendars` pass really does not append the year input) rather than true only in its outcome.
 
-Pass order is otherwise unobservable, because no two passes may share a container's inputs (D4) and each
-pass targets its own element.
+Pass order becomes directly observable only when a caller names ONE container for two filters, which is
+legal. That is what the ordering test asserts, since the year input's final placement alone cannot
+distinguish caller order from canonical order — a point only found by disabling the canonical order and
+watching the original test still pass.
 
 ### D6 — The rite and calendar selects mount into the FIRST key the caller named
 

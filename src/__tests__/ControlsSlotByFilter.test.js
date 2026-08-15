@@ -107,16 +107,39 @@ describe('rule 1: the component performs the passes, in its own order', () => {
             { allCalendars: '#row2', pathBuilder: '#row1' },
         ],
     ])(
-        'runs pathBuilder before allCalendars whichever order the caller wrote (%s)',
+        'lands the year input in the pathBuilder container whichever order the caller wrote (%s)',
         (_name, bag) => {
             const controls = new CalendarControls({ locale: 'en' });
             controls.appendTo({ controls: bag });
-            // The year input belongs to the pathBuilder pass either way: the
-            // component chose the order, so the caller's did not decide it.
             expect(namesIn('#row1')).toContain('year');
             expect(namesIn('#row2')).not.toContain('year');
         },
     );
+
+    it('appends in the canonical pass order, not the order the keys were written', () => {
+        // THIS is what proves the ordering is the component's. The test above
+        // does not: `ApiOptions.appendTo()` MOVES its inputs, so a later
+        // pathBuilder pass would take the year input away from an earlier
+        // allCalendars one and the final placement would match either way.
+        // Pass order only becomes observable when two filters share one
+        // container — which is legal — and here `allCalendars` is appended
+        // first despite `generalRoman` being named first.
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo({
+            controls: { generalRoman: '#row1', allCalendars: '#row1' },
+        });
+        expect(namesIn('#row1')).toEqual([
+            'locale',
+            'year_type',
+            'return_type',
+            'year',
+            'epiphany',
+            'ascension',
+            'corpus_christi',
+            'eternal_high_priest',
+            'holydays_of_obligation',
+        ]);
+    });
 });
 
 describe('rule 2: overlapping filters are rejected', () => {

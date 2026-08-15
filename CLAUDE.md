@@ -569,11 +569,16 @@ replaces the two-pass `filter().appendTo()` idiom 2.5.0 documented (#63). Four p
   and `InputVisibility.js`.
 - **Ordering is the component's, and canonical rather than the caller's.** `PATH_BUILDER` runs before
   `ALL_CALENDARS` so `ApiOptions`' `#pathBuilderEnabled` is set before the pass that would otherwise
-  mount the year input twice — the precedence `ApiExplorer.appendTo()` already hard-codes. That is also
-  what makes the one overlap exemption (`allCalendars` does not claim `yearInput` when `pathBuilder` is
-  present) order-independent; under caller order the two spellings of that bag would put the year input
-  in different containers, which is the silent failure relocated rather than removed. The rite and
-  calendar selects, by contrast, follow the caller's FIRST key — that is layout intent, not ordering.
+  append the year input twice — the precedence `ApiExplorer.appendTo()` already hard-codes. **Do not
+  overclaim what that buys.** The final DOM would match under caller order too, because
+  `ApiOptions.appendTo()` MOVES: a later `PATH_BUILDER` pass just takes the year input off an earlier
+  `ALL_CALENDARS` one. What the fixed order removes is the wasted append-and-move, and it is what makes
+  the overlap exemption (`allCalendars` does not claim `yearInput` when `pathBuilder` is present)
+  literally true rather than true only in its outcome. Pass order becomes directly observable only when
+  a caller names ONE container for two filters, which is legal — and that, not the year input's
+  placement, is what the ordering test asserts, because the placement alone cannot tell the two apart.
+  The rite and calendar selects follow the caller's FIRST key instead: that is layout intent, not
+  ordering.
 - **Key spelling is the camelCase member names, with `basePath`/`allPaths` as aliases.** The enum already
   ships `BASE_PATH`/`ALL_PATHS` as alias members of exactly those two, their runtime values ARE those
   strings (so a computed `{ [ApiOptionsFilter.GENERAL_ROMAN]: t }` key must work), and `ApiExplorer`'s

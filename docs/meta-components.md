@@ -1331,9 +1331,10 @@ layout above and every hand-written version of it produce.
 **Three rules the component now enforces**, each of which used to be the caller's to remember and each
 of which failed silently or confusingly when forgotten:
 
-- **Ordering is the component's.** It runs the `pathBuilder` pass before the `allCalendars` one,
-  whichever order you wrote them in, so the year input lands in the path-builder container rather than
-  in whichever pass happened to go last.
+- **Ordering is the component's.** It runs the `pathBuilder` pass before the `allCalendars` one, and
+  more generally applies a fixed pass order, whichever order you wrote the keys in — so naming one
+  container for two filters lays them out the same way every time, and the year input reaches the
+  path-builder container without first being appended somewhere it is about to leave.
 - **The filters must not overlap.** `{ localeOnly, allCalendars }` throws, naming both keys and
   `localeInput`, rather than moving that input to whichever container mounted last. Overlap is computed
   from the inputs each filter actually renders, not from the key names — so
