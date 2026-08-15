@@ -834,6 +834,38 @@ wiring.
 A page that only renders a form, with no `ApiClient`, needs no second wire — use
 `CalendarSelect.linkToRiteSelect()` directly, which works for any filter.
 
+**A rite change SETS the five settings inputs, not only disables four of them, and the two halves of
+that rule are not the same rule.** `#applyTemporalInputState()` disables; `#applyRiteToTemporalInputs()`
+(called from `applyRite()` immediately before it) applies the rite's own `settings` block, which the API
+publishes under `ambrosian_calendars[0]`. Before #70 nothing ever set them, so selecting Italy and then
+switching to Ambrosian left a greyed-out select reading `SUNDAY` for a feast the Missal fixes to
+Thursday — and, worse, left `ApiClient.#params` carrying that `SUNDAY` into the `/calendar/ambrosian`
+request body, since the client learns those five parameters only from `change` listeners on the inputs.
+Four points a change here must not undo:
+
+- **The values come from `/calendars`, never from `RiteProperties`.** Putting them in `src/Enums.js`
+  would ship without an API change and `minYear` is already calendar data sitting there, but it copies
+  liturgical law into the client where it drifts from the API in silence.
+- **A rite that publishes no settings changes no VALUE.** The Roman rite has no `roman_calendars` key at
+  all, so `ApiBase.riteCalendars( 'roman' )` returns `[]` and this is a no-op on every Roman page.
+  "Absent" is not "empty", and blanking here would break every one of them.
+- **Holy days of obligation follow the LOCALE input's rule, not the four values' rule.** They are an
+  option list the rite defines rather than a value drawn from a fixed list, so the list is replaced when
+  the rite publishes one and restored to `HolydaysOfObligationInput.BASE_OPTIONS` when it does not.
+  Leaving it alone for the Roman rite is what would carry `Circoncisione`, `StAmbrose` and
+  `DedicationDuomo` out of an Ambrosian form and into a General Roman Calendar one. That replacement
+  needs `setOptions( list, false )`: the merging default is right for a **nation** (every national list
+  the API serves names all ten base keys) and wrong for a **rite**, whose list omits four base entries
+  and adds three of its own — merging would assert `StJoseph` is an Ambrosian holy day of obligation.
+- **The `change` dispatches are conditional**, on the same rule as the year clamp and the locale rebuild
+  beside them, and a published value no `<option>` carries is skipped rather than assigned — assigning
+  an unmatched value to a `<select>` leaves `selectedIndex === -1` and blanks it, so API drift has to
+  degrade to "unchanged", never to "empty".
+
+`src/__fixtures__/metadata.js`'s `ambrosian_calendars[0].settings` has been wrong in **both** directions
+— invented before the API served it (`dab21b5` removed it), then missing after the API shipped it. Keep
+it byte-identical to the live `/calendars` response, and re-check it whenever the API's metadata moves.
+
 ### Multi-base Wiring
 
 Each `ApiClient` is bound to an `ApiBase` — one object per API base URL, owning that base's calendar index and
