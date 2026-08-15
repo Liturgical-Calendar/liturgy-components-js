@@ -90,8 +90,9 @@ prepared under that number was skipped, and everything it was to have delivered 
   before anything is appended, so a typo in the last one leaves the document untouched. The rite and
   calendar selects mount into the first key named. **A bare `controls` target is unchanged**, the slot
   NAMES are unchanged, and the two-pass idiom stays supported and unwarned — it is `ApiOptions` public API,
-  `ApiExplorer` uses it internally, and it is still the only way to reach a container the component does
-  not own. `ApiExplorer` and `SubscriptionBuilder` are deliberately untouched: the first already has
+  `ApiExplorer` uses it internally, `examples/PathBuilder/` and `examples/RiteSelectPathBuilder/` drive
+  a raw `ApiOptions` with it, and it is still the only way to reach a container the component does not
+  own. `ApiExplorer` and `SubscriptionBuilder` are deliberately untouched: the first already has
   dedicated ordered slots and no `controls` slot to widen, the second mounts its children itself.
 - **A visually-hidden live region on `WebCalendar` and `LiturgyOfAnyDay`**, closing #65. Both replace all of
   their content when a `<select>` changes — a whole table, a whole event list — while focus stays on the

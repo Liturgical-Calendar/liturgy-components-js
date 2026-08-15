@@ -584,8 +584,9 @@ replaces the two-pass `filter().appendTo()` idiom 2.5.0 documented (#63). Four p
   select with `insertAfter()` rather than into a container — giving it a `controls` slot would be a new
   slot name and a second way to say one thing. `SubscriptionBuilder` mounts the three children itself
   rather than through `CalendarControls.appendTo()`. The two-pass idiom stays supported and unwarned: it
-  is `ApiOptions` public API, both examples use it, `ApiExplorer` uses it internally, and it is still the
-  only way to reach a container the component does not own.
+  is `ApiOptions` public API, `ApiExplorer` uses it internally, `examples/PathBuilder/` and
+  `examples/RiteSelectPathBuilder/` drive a raw `ApiOptions` with it, and it is still the only way to
+  reach a container the component does not own.
 
 **Reject for programmer error, resolve for runtime failure — except where there is no form left to
 resolve with.** `mountInto()` **rejects** on invalid options — an unparseable locale, an unknown filter, a

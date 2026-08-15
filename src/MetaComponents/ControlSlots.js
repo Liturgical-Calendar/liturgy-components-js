@@ -15,8 +15,9 @@
  * containers by filter moves all three into the component.
  *
  * The idiom itself is NOT deprecated and does not warn: it is `ApiOptions`
- * public API, both migrated examples use it, `ApiExplorer` uses it internally,
- * and it is still the only way to reach a container the component does not own.
+ * public API, `ApiExplorer` uses it internally, `examples/PathBuilder/` and
+ * `examples/RiteSelectPathBuilder/` drive a raw `ApiOptions` with it, and it is
+ * still the only way to reach a container the component does not own.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
