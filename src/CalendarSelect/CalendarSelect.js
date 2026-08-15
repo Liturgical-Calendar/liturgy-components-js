@@ -1,5 +1,6 @@
 import ApiBase, { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
 import { message } from '../MessageLookup.js';
+import { escapeHtml } from '../SanitizeHtml.js';
 import Input from '../ApiOptions/Input/Input.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { CalendarSelectFilter, Rite, RiteProperties } from '../Enums.js';
@@ -364,7 +365,13 @@ export default class CalendarSelect {
      * @private
      */
     #addNationOption(nationalCalendar, selected = false) {
-        const option = `<option data-calendartype="national" value="${nationalCalendar.calendar_id}"${selected ? ' selected' : ''}>${this.#countryNames.of(nationalCalendar.calendar_id)}</option>`;
+        // `calendar_id` comes from the API's `/calendars` index and lands inside
+        // a quoted attribute, where an unescaped `"` ends the attribute and
+        // everything after it is parsed as further attributes on this same tag
+        // — an `onmouseover` or a `selected` the parser accepts without
+        // complaint. That is why this survives the "in select" insertion mode
+        // which discards most injected ELEMENTS.
+        const option = `<option data-calendartype="national" value="${escapeHtml(nationalCalendar.calendar_id)}"${selected ? ' selected' : ''}>${escapeHtml(this.#countryNames.of(nationalCalendar.calendar_id))}</option>`;
         this.#nationOptions.push(option);
     }
 
@@ -378,7 +385,9 @@ export default class CalendarSelect {
      * @private
      */
     #addDioceseOption(item) {
-        const option = `<option data-calendartype="diocesan" value="${item.calendar_id}">${item.diocese}</option>`;
+        // `diocese` is free text in the source data — the least constrained of
+        // the values interpolated here.
+        const option = `<option data-calendartype="diocesan" value="${escapeHtml(item.calendar_id)}">${escapeHtml(item.diocese)}</option>`;
         if (RiteProperties[this.#rite].hasNationalTier) {
             this.#dioceseOptions[item.nation].push(option);
         } else {
@@ -482,7 +491,13 @@ export default class CalendarSelect {
         );
         this.#nationalCalendarsWithDioceses.forEach((nationalCalendar) => {
             this.#addNationOption(nationalCalendar);
-            let optGroup = `<optgroup label="${this.#countryNames.of(nationalCalendar.calendar_id)}">${this.#dioceseOptions[nationalCalendar.calendar_id].join('')}</optgroup>`;
+            // Defence in depth: a hostile value cannot actually reach this
+            // label, because `Intl.DisplayNames.of()` throws for a malformed
+            // region code and returns a localized display name otherwise. That
+            // safety belongs to a platform API's argument validation rather
+            // than to this component, so it is not relied on. The joined
+            // options are already-escaped markup this class built.
+            let optGroup = `<optgroup label="${escapeHtml(this.#countryNames.of(nationalCalendar.calendar_id))}">${this.#dioceseOptions[nationalCalendar.calendar_id].join('')}</optgroup>`;
             this.#dioceseOptionsGrouped.push(optGroup);
         });
         return this;

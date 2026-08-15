@@ -8,6 +8,76 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Behaviour changes
 
+- **The API's `messages` array now renders its markup, sanitized, instead of as literal text.** The
+  messages the API emits genuinely carry markup — anchors to Vatican decrees, `<i>`/`<b>` emphasis,
+  highlighted `<span>`s — and `CalendarControls`' messages slot built its cells with `textContent`, so a
+  reader saw `See the <a href="https://www.vatican.va/…">decree</a>.` verbatim, tags and all. It now goes
+  through a new internal `src/SanitizeHtml.js`, so anchors are real links and emphasis renders.
+
+  **This is a visible rendering change for any page mounting the `messages` slot**, and it is on by
+  default: showing raw tags was broken output rather than a behaviour anything could depend on.
+
+  It is an allowlist of eight elements (`a`, `b`, `br`, `em`, `i`, `p`, `span`, `strong`) and one
+  attribute set (`href`, `target`, `rel`, on `<a>` only). Everything else is unwrapped — the element goes,
+  the prose stays — except `script`/`style`/`title`/`textarea`/`noscript`, which are dropped whole because
+  their text is not prose. `href` is restricted to `http:`/`https:`, validated by parsing with `new URL()`
+  rather than by prefix-matching, so `JaVaScRiPt:`, `java\tscript:` and leading whitespace are all
+  rejected. `target="_blank"` gets `rel="noopener noreferrer"` written unconditionally rather than merged.
+
+  `style` is stripped even though the API emits it on twelve highlighted spans: the library takes no
+  position on CSS, so an API response must not inject declarations into a consumer's page. The `<span>`
+  survives, so no text is lost.
+
+  The sanitizer is **constructive rather than destructive** — it never adopts a parsed node, but rebuilds
+  fresh elements in the caller's document and copies across only approved attributes — so anything it does
+  not understand cannot survive. That is what removes `on*` handlers, `id`, `class` and `ping` without
+  enumerating them. It returns a `DocumentFragment` rather than a string, so there is no second parse and
+  nothing to hand to `innerHTML`.
+
+  No new dependency and no build step: it is roughly forty lines, parsing through a `<template>`, whose
+  `content` has no browsing context — so `<script>` is non-executable AND no `<img>`/`<iframe>`
+  subresource is fetched at parse time. (`DOMParser` is NOT equivalent here: MDN is explicit that its
+  document can download those resources, so a hostile `<img src>` would have reached the network before
+  being discarded. That is a privacy leak rather than an XSS one, and it is the primitive DOMPurify
+  parses into for the same reason.) `Element.setHTML()`
+  would be the right long-term answer but Safari has not implemented it in any version on macOS or iOS,
+  and every iOS browser is WebKit-backed — see CLAUDE.md for the full reasoning, including why
+  feature-detection with a fallback was also rejected.
+
+- **`WebCalendar`'s event-details cell is built as nodes rather than from an HTML string.** It
+  interpolated four API-supplied fields — `name`, `liturgical_year`, `color_lcl` and `common_lcl` — into a
+  string and passed it to `Range.createContextualFragment()`, which is an injection sink and is not even
+  resource-inert, so an `<img onerror>` in any of them fired as soon as the fragment was appended. A value
+  could equally close the `<i>` early and restructure everything after it without injecting an element at
+  all.
+
+  All four are plain text in the source data, so they are now written with `textContent` rather than
+  routed through the sanitizer above: `sanitizeHtml()` would have closed the same hole while declaring
+  these fields rich text and inviting markup into them later. **Output is unchanged for well-behaved
+  data**, which nothing covered before and `WebCalendarEventDetails.test.js` now pins.
+
+  API-side, the `url` fields these messages interpolate are marked `format: uri` in the calendar schemas,
+  which is weaker than it looks — `javascript:alert(1)` is a valid RFC 3986 URI — so a scheme allowlist
+  has been requested in Liturgical-Calendar/LiturgicalCalendarAPI#789. The client no longer depends on
+  that landing.
+
+- **`CalendarSelect` escapes the `/calendars` metadata it interpolates into its `<option>` markup.** A
+  national or diocesan `calendar_id` landed unescaped inside `value="…"`, where a `"` ends the attribute
+  and everything after it is parsed as further attributes on a tag the parser already accepts — so
+  `x" onmouseover="…` attached an event handler, and `x" selected="selected` moved the selection. A
+  diocese's free-text `diocese` name landed unescaped as element content. All three are now passed
+  through a new `escapeHtml()`, exported from the same internal module as the sanitizer.
+
+  **Escaped rather than rebuilt as nodes, unlike `WebCalendar` above**, because `nationsInnerHtml` and
+  `diocesesInnerHtml` are public getters that return markup: rebuilding the component around nodes would
+  be a breaking API change rather than a security fix. Rendered output is unchanged for well-behaved
+  metadata, including names carrying apostrophes.
+
+  The `<optgroup label="…">` turned out not to be reachable with a hostile value — the nation code passes
+  through `Intl.DisplayNames.of()`, which throws for a malformed region code and returns a localized
+  display name otherwise — but is escaped anyway, since that safety is a property of a platform API's
+  argument validation rather than of this component.
+
 - **A flat theme class no longer reaches a child that is not a control**, part of #67. `resolveChildTheme()`
   read its flat class key as `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry —
   `DayViewer`'s `liturgy` child, a `LiturgyOfAnyDay` card, and the copy `<button>`

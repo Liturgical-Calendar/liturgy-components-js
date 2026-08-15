@@ -25,6 +25,7 @@ import {
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import { sanitizeHtml } from '../SanitizeHtml.js';
 import { resolveInputVisibility } from './InputVisibility.js';
 import {
     isFilterKeyedControls,
@@ -1137,9 +1138,17 @@ export default class CalendarControls {
     /**
      * Renders the API's `messages` array into the messages slot.
      *
-     * Rows are built with `textContent`, not `innerHTML`. Both downstream
-     * examples interpolate the API's strings into an HTML string, which would
-     * render any markup a message contained.
+     * The message cell goes through {@link module:SanitizeHtml}'s
+     * `sanitizeHtml()`, which returns nodes rather than a string. `innerHTML`
+     * would execute whatever the response contained, and `textContent` — what
+     * this used to do — showed the reader literal `<a href="…">` tags, because
+     * the API's messages genuinely carry markup: anchors to Vatican decrees,
+     * `<i>`/`<b>` emphasis, highlighted `<span>`s. Neither was right; the
+     * allowlist is the third option.
+     *
+     * The INDEX cell keeps `textContent`. It is a number this code generates,
+     * so there is nothing to sanitize and routing it through a parser would
+     * only suggest otherwise.
      *
      * Replaces rather than appends, so a refetch does not accumulate rows.
      *
@@ -1156,7 +1165,7 @@ export default class CalendarControls {
             const indexCell = document.createElement('td');
             indexCell.textContent = String(index);
             const messageCell = document.createElement('td');
-            messageCell.textContent = String(message);
+            messageCell.appendChild(sanitizeHtml(message));
             tr.append(indexCell, messageCell);
             return tr;
         });

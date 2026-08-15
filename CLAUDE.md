@@ -940,6 +940,107 @@ because ten call sites read better naming what they look up. The inputs' **optio
 reading `Messages[locale.language][KEY]` unguarded, go through `message()` too since #69, as do
 `CalendarPathInput`'s label, `CalendarSelect`'s default label and `LiturgyOfTheDay`'s title.
 
+## API-supplied markup
+
+The API's `messages` array carries real markup — anchors to Vatican decrees, `<i>`/`<b>` emphasis,
+highlighted `<span>`s. `src/SanitizeHtml.js`'s `sanitizeHtml()` is the one place it becomes DOM, and
+`CalendarControls.#renderMessages()` is its only caller. Internal, not exported from `src/index.js`, on
+the same reasoning as `LocaleValidation.js` and `MessageLookup.js`.
+
+**"Trust the API" is not available, and that is structural rather than cautious.** The API interpolates
+calendar SOURCE DATA into an href without escaping it — `'<a href="' . $metadata->url . '" …'` in
+`CalendarHandler.php` and the same shape in two model classes. Those fields ARE marked `format: uri` in
+`DiocesanCalendar.json`, `NationalCalendar.json` and `WiderRegionCalendar.json`, which is weaker than it
+looks: JSON Schema treats `format` as an annotation rather than an assertion unless a validator opts in,
+and `javascript:alert(1)` is a valid RFC 3986 URI regardless — scheme plus opaque path — so `format: uri`
+does not exclude the one scheme that matters. Only a scheme allowlist does. Independently,
+`ApiClient.init( url )` accepts ANY base URL and multi-base is a documented feature, so the library cannot
+assume a response came from an origin the consumer trusts. Tracked API-side as Liturgical-Calendar/LiturgicalCalendarAPI#789.
+
+Five properties are load-bearing:
+
+- **The allowlist is CONSTRUCTIVE, not destructive.** It never adopts a parsed node: it walks the parse and
+  BUILDS fresh elements in the caller's document, copying only approved attributes. A destructive
+  sanitizer — parse, then remove what you dislike — lets anything it failed to think of survive, which is
+  what every historical bypass is a variation on. Here nothing survives by default, which is why `on*`,
+  `style`, `id` and `ping` need no enumeration. `ownerDocument` is asserted in the tests to pin this.
+- **The parse goes through a `<template>`, NOT through `DOMParser`, and the difference is subresources.**
+  Both mark `<script>` non-executable, so both are safe against script execution. But MDN is explicit that
+  a `DOMParser` document "can download resources specified in `<iframe>` and `<img>` elements", so an
+  `<img src="https://attacker.test/log?…">` in a response would hit the network at parse time — leaking
+  the visitor's IP and user agent — even though the element is discarded microseconds later and never
+  rendered. A `<template>`'s `content` belongs to the template contents owner document, which has no
+  browsing context, so nothing in it is fetched. This is the primitive DOMPurify parses into.
+  **This was got wrong on the first pass**: the original comment asserted `DOMParser` fetched nothing,
+  which is the kind of confident-and-wrong security note that stops the next reader from checking.
+  **jsdom cannot test it** — it performs no subresource loading at all, so a unit test passes under either
+  implementation. `SanitizeHtml.test.js` therefore pins the PRIMITIVE (spying that
+  `DOMParser.prototype.parseFromString` is never called), which is implementation-coupled on purpose,
+  since no assertion about the output can see this. `Utils.sanitizeInput()` still uses `DOMParser` and is
+  deliberately unchanged: it sanitizes CONSUMER-supplied class names and ids, not API markup.
+- **`href` is validated by PARSING, never by prefix-matching.** `href.startsWith( 'javascript:' )` is
+  defeated three ways, all pinned in the tests: `JaVaScRiPt:`, `java\tscript:` (the HTML parser strips
+  tabs and newlines from attribute values), and leading whitespace. `new URL()` normalizes exactly as the
+  browser does before navigating. Only `http:`/`https:` pass. The ORIGINAL string is written back, so a
+  relative link stays relative.
+- **Unknown elements are UNWRAPPED, not deleted** — the element goes, the prose stays, because a message
+  is information. The exceptions in `DROPPED_ELEMENTS` are the ones whose text is not prose (`script`,
+  `style`, `title`, `textarea`, `noscript`); unwrapping those would print CSS rules or JS source as
+  visible copy, which is harmless but reads exactly like a sanitizer that failed. `<img>`/`<iframe>` need
+  no entry — they are not allowed and have no children, so unwrapping already yields nothing.
+- **It returns a `DocumentFragment`, never a string.** A string return would invite the caller to reach
+  for `innerHTML`, which is the sink the function exists to remove.
+
+**`style` is stripped even though the API emits it** on twelve highlighted spans. The library documents
+that it takes no position on CSS, so an API response must not inject declarations into a consumer's page —
+and CSS is not inert regardless (`background:url()` exfiltrates, `position:fixed` redresses). The `<span>`
+survives, so no text is lost. If that highlight matters, the fix is a class the consumer can style, not an
+inline declaration.
+
+**`Element.setHTML()` was weighed and rejected, though it is the right long-term answer.** As of August
+2026: Chrome/Edge 146+, Firefox 148+, 68% global support, and MDN still labels it "Limited availability —
+not Baseline". **Safari has not implemented it in any version, on macOS or iOS.** Since every iOS browser
+is WebKit-backed, adopting it would exclude every iOS user regardless of the browser they chose — not
+merely users on old versions — so the floor cannot simply be raised to reach it. Feature-detecting with a
+fallback was rejected on a narrower ground: jsdom implements no `setHTML`, so the native branch cannot be
+covered by this suite at all, and shipping an untested path to the majority while testing the minority
+path is backwards. Revisit when Safari ships and it reaches Baseline, at which point the module becomes a
+one-line delegate.
+
+**`WebCalendar`'s event-details cell is built as NODES, and deliberately does NOT use `sanitizeHtml()`.**
+It previously interpolated `litevent.name`, `liturgical_year`, `color_lcl` and `common_lcl` into an HTML
+string for `createContextualFragment()` — a sink that is not even resource-inert. All four are plain text
+in the source data, so `textContent` says what is true; routing them through the sanitizer would have
+closed the same hole while declaring those fields rich text and inviting markup into them later. **The
+rule: sanitize where markup is expected and wanted (`messages`), build nodes where it is not (everything
+else).** `WebCalendarEventDetails.test.js` pins both the unchanged output and the closed hole, including
+the `</i>` breakout, which injects no element and so is easy to forget.
+
+**`CalendarSelect` ESCAPES rather than building nodes, and that asymmetry is deliberate.** It interpolates
+`/calendars` metadata into `<option>` strings assigned to `innerHTML`, and `nationsInnerHtml` /
+`diocesesInnerHtml` are PUBLIC getters returning that markup — so rebuilding it around nodes would be a
+breaking API change rather than a security fix. `escapeHtml()` (also in `SanitizeHtml.js`) is applied at
+the three interpolation sites instead. **The distinction to keep: `sanitizeHtml()` where markup is wanted
+and must be filtered, node-building where it is not, `escapeHtml()` only where a public string API forces
+the string to stay.** Escaping is correct for text and QUOTED attributes only — never for an unquoted
+attribute, a `javascript:`-capable one such as `href`, or anything inside `<script>`/`<style>`.
+
+Two findings there are worth not re-deriving. The `value="…"` breakout was the real vector: an unescaped
+`"` in `calendar_id` ends the attribute and the rest is parsed as further attributes on a tag the parser
+already accepts, which is why it survives the "in select" insertion mode that discards most injected
+ELEMENTS. The `<optgroup label="…">` was NOT reachable: the nation code passes through
+`Intl.DisplayNames.of()`, which throws `RangeError` for a malformed region code and returns a localized
+display name otherwise, so nothing capable of ending the attribute gets through. It is escaped anyway,
+since that safety belongs to a platform API's argument validation rather than to this component.
+`escapeHtml()` is therefore unit-tested directly, not only through the component.
+
+**Known rough edge, not security:** an invalid nation code in metadata surfaces as a bare
+`RangeError: invalid_argument` from inside `Intl`, where the sibling inconsistency (a diocese whose nation
+has no national calendar) gets an explicit message naming the component and the value.
+
+`Input.labelAfter()` and `CalendarSelect.after()` also use `createContextualFragment()`, but on
+CONSUMER-supplied strings — that is their documented purpose and not the same boundary.
+
 ## Live-region announcements
 
 `WebCalendar` and `LiturgyOfAnyDay` each own a visually-hidden `role="status"` / `aria-live="polite"` /

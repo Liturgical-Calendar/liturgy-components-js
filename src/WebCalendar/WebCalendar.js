@@ -1413,11 +1413,32 @@ export default class WebCalendar {
             eventDetailsCell,
             Column.EVENT_DETAILS,
         );
-        const fragmentContents = `${litevent.name}${currentCycle} - <i>${litevent.color_lcl.join(` ${message('OR', this.#baseLocale)} `)}</i><br><i>${litevent.common_lcl}</i>`;
-        const eventDetailsContents = document
-            .createRange()
-            .createContextualFragment(fragmentContents);
-        eventDetailsCell.appendChild(eventDetailsContents);
+        // Built as nodes rather than interpolated into an HTML string and
+        // passed to `createContextualFragment()`, which is what this used to
+        // do. That is an injection sink — and not merely a script-execution
+        // one: it is not resource-inert either, so an `<img onerror>` in any
+        // of the four API-supplied fields below fired the moment the fragment
+        // was appended. All four are plain text in the source data, so the fix
+        // is to say so with `textContent`. Routing them through
+        // `sanitizeHtml()` — which the `messages` array does need — would
+        // close the same hole while declaring these fields rich text and
+        // inviting markup into them later.
+        //
+        // The `</i>` breakout matters as much as the `<img>` one: a value
+        // could close the italics early and restructure everything after it,
+        // without injecting an element at all. Nodes cannot be broken out of.
+        eventDetailsCell.appendChild(
+            document.createTextNode(`${litevent.name}${currentCycle} - `),
+        );
+        const colorsElement = document.createElement('i');
+        colorsElement.textContent = litevent.color_lcl.join(
+            ` ${message('OR', this.#baseLocale)} `,
+        );
+        eventDetailsCell.appendChild(colorsElement);
+        eventDetailsCell.appendChild(document.createElement('br'));
+        const commonsElement = document.createElement('i');
+        commonsElement.textContent = litevent.common_lcl;
+        eventDetailsCell.appendChild(commonsElement);
 
         // Fourth column is Liturgical Grade
         let displayGrade =
