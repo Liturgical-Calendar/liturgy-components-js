@@ -262,6 +262,36 @@ describe('nothing is mounted until every target resolves', () => {
     });
 });
 
+describe('re-mounting', () => {
+    it('moves everything again when called with another bag', () => {
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo({
+            controls: { allCalendars: '#row1', generalRoman: '#row2' },
+        });
+        controls.appendTo({
+            controls: { allCalendars: '#row3', generalRoman: '#row2' },
+        });
+        expect(namesIn('#row1')).toEqual([]);
+        expect(namesIn('#row3')).toContain('locale');
+        expect(namesIn('#row2')).toContain('epiphany');
+    });
+
+    it('leaves the filter at the last pass, so a later BARE append moves only that filter', () => {
+        // Records a consequence rather than endorsing it: `ApiOptions.filter()`
+        // is stateful, so this is exactly what the two-pass idiom has always
+        // left behind. Pinned so a future change to it is deliberate.
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo({
+            controls: { allCalendars: '#row1', generalRoman: '#row2' },
+        });
+        controls.appendTo('#row3');
+        expect(namesIn('#row3')).toContain('epiphany');
+        expect(namesIn('#row3')).not.toContain('locale');
+        expect(namesIn('#row1')).toContain('locale');
+        expect(namesIn('#row2')).toEqual([]);
+    });
+});
+
 describe('dispose empties every container it filled', () => {
     it('clears both rows', () => {
         const controls = new CalendarControls({ locale: 'en' });

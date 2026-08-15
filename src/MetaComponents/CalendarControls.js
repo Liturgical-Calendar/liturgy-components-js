@@ -598,6 +598,16 @@ export default class CalendarControls {
      * a half-mounted form. That is the same rule `CalendarViewer.appendTo()`
      * already applies to its own `calendar` slot.
      *
+     * **This leaves `#apiOptions`' filter set to the LAST pass**, because that
+     * is what `ApiOptions.filter()` means. Re-mounting with another bag is
+     * therefore fine — every pass sets the filter it needs — but a subsequent
+     * BARE `appendTo( target )` moves only the inputs of that last filter, not
+     * the whole form. This is exactly what the two-pass idiom has always left
+     * behind, inherited rather than introduced; resetting the filter here would
+     * be a new rule about an object the caller can also drive directly through
+     * the `apiOptions` getter, so the state is left honest instead.
+     * `ControlsSlotByFilter.test.js` records the consequence.
+     *
      * @param {Object<string, (string|HTMLElement)>} bag - The filter-keyed
      *   `controls` value.
      * @param {string} caller - The `Class.method` prefix to report under.
