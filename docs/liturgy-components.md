@@ -225,7 +225,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     const apiOptions = new ApiOptions('en-US')
         .filter(ApiOptionsFilter.LOCALE_ONLY)
         .linkToCalendarSelect(calendarSelect);
-    apiOptions._localeInput
+    apiOptions.localeInput
         .wrapper('div')
         .wrapperClass('col-md-6')
         .class('form-select')

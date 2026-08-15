@@ -66,12 +66,12 @@ ApiClient.init().then(apiClient => {
     apiOptions.appendTo('#localeContainer');
 
     // Get available locales from the rendered select options
-    const localeOptions = Array.from(apiOptions._localeInput._domElement.options)
+    const localeOptions = Array.from(apiOptions.localeInput._domElement.options)
         .map(opt => opt.value);
 
     // Find best matching locale
     const selectedLocale = Utils.findBestLocale(userLanguages, localeOptions);
-    apiOptions._localeInput._domElement.value = selectedLocale;
+    apiOptions.localeInput._domElement.value = selectedLocale;
 
     // Fetch with the matched locale
     apiClient.fetchCalendar(selectedLocale).catch((error) => {

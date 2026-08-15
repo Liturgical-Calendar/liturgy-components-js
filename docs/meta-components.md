@@ -766,7 +766,7 @@ those are process-wide mutations that leak onto every other component on the pag
 [`apiOptions` key](#themeapioptions--the-whole-apioptions-form) is the scoped replacement that now covers
 the same ground — and it does not absorb any jQuery/Bootstrap-plugin treatment of an individual
 `ApiOptions` input (such as a `multiselect` widget on the holydays-of-obligation input). That stays with
-the consumer, reached through `controls.apiOptions._holydaysOfObligationInput`.
+the consumer, reached through `controls.apiOptions.holydaysOfObligationInput`.
 
 ### Constructor options
 
@@ -829,7 +829,7 @@ Four things to know:
   `CalendarControls`.
 - **`acceptHeader: true` is the default reasserted, not an un-hide.** `AcceptHeaderInput.hide()` is
   irreversible; the option is applied in the constructor, before the input has been rendered anywhere.
-- **`_acceptHeaderInput.hide()` still works** and is unchanged. It remains the only way to hide the input
+- **`acceptHeaderInput.hide()` still works** and is unchanged. It remains the only way to hide the input
   on a bare `ApiOptions`, outside this family.
 
 ### The theme bag
@@ -852,7 +852,7 @@ theme: {
 ```
 
 **`localeInput` reaches one specific `ApiOptions` input, since 2.7.0.** `theme.localeInput` (and the flat
-`select`/`label`/`wrapper` defaults) style `apiOptions._localeInput` through the same helper `DayViewer`
+`select`/`label`/`wrapper` defaults) style `apiOptions.localeInput` through the same helper `DayViewer`
 uses for its own copy of that input — so the two components theme this one child identically rather than
 each carrying its own near-duplicate block. **Its label text is written unconditionally**, even when the
 theme bag is entirely absent, unless a `labelText` names one explicitly. That write once did real work —
@@ -887,7 +887,8 @@ components used to open with. Those are mutations on the `Input` class itself: t
 component on the page, and two embeds wanting different styling cannot coexist behind them. Until this key
 existed the theme bag did not actually cover the form it claimed to, so the leak was mandatory.
 
-**The ten per-input key names** are `ApiOptions`' own accessors with the leading underscore stripped:
+**The ten per-input key names** are `ApiOptions`' own canonical accessors, unchanged — these keys came first,
+and issue #62 took their spellings as the accessor names rather than inventing a second vocabulary:
 
 | Key                         | Role     | Renders under                                                   |
 | --------------------------- | -------- | --------------------------------------------------------------- |
@@ -954,7 +955,7 @@ overrides and letting the bundle carry the form's own.
 **The escape hatch can throw when aimed at an input the bag already themed.** `Input.wrapper()` is
 one-shot (2.6.0), and a bag naming a class also closes `wrapperClass()` for the rest of that instance's
 life. Any `wrapper`/`wrapperClass` the theme resolves for an input is consumed at construction time — so a
-later `controls.apiOptions._yearInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already
+later `controls.apiOptions.yearInput.wrapper( … )` or `.wrapperClass( … )` raises `Wrapper has already
 been set on Input instance, and cannot be set twice.` (or the equivalent message from `wrapperClass()`).
 Before this key existed only the locale input could be closed this way; with the gate open, any input the
 bag wraps can be. `controls.apiOptions` remains the escape hatch for everything the bag does not cover — ids, data
@@ -1466,7 +1467,7 @@ passes after the first mount, keep the filters disjoint, never involve `ApiOptio
 written out there.
 
 **The calendar select has no slot of its own.** It is positioned with
-`calendarSelect.insertAfter( apiOptions._calendarPathInput )`, landing as a DOM sibling immediately after
+`calendarSelect.insertAfter( apiOptions.calendarPathInput )`, landing as a DOM sibling immediately after
 the calendar-path input inside the `pathBuilder` container — matching the page this was extracted from,
 not a container `ApiExplorer` names separately. Because `insertAfter()` needs the calendar-path input
 already in the document to insert next to, **`pathBuilder` is therefore the one slot `appendTo()`
@@ -1711,7 +1712,7 @@ All throw once this builder has been disposed — see [`dispose()`](#dispose-5) 
 | `controls`       | `CalendarControls` | The wired rite select, calendar select and locale input.        |
 | `riteSelect`     | `RiteSelect`       | Shorthand for `controls.riteSelect`.                            |
 | `calendarSelect` | `CalendarSelect`   | Shorthand for `controls.calendarSelect`.                        |
-| `localeInput`    | the locale `Input` | Shorthand for `controls.apiOptions._localeInput`.               |
+| `localeInput`    | the locale `Input` | Shorthand for `controls.apiOptions.localeInput`.                |
 | `url`            | `string`           | The serialized subscription URL, current as of the last change. |
 
 `onChange(callback)` registers a `(url: string) => void` callback fired whenever a rite, calendar or locale

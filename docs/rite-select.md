@@ -151,18 +151,18 @@ Once linked, `ApiOptions` drives the whole rite -> calendar chain on every chang
   per-nation filtering is re-derived after the rebuild, from the (reset) nation selection.
 - The empty option's label switches from the generic `---` to the rite's own name (e.g. "General Roman
   Calendar" or "Ambrosian Calendar").
-- `ApiOptions._epiphanyInput`, `_ascensionInput`, `_corpusChristiInput` and `_eternalHighPriestInput`
+- `ApiOptions.epiphanyInput`, `ascensionInput`, `corpusChristiInput` and `eternalHighPriestInput`
   are enabled or disabled. The rule composes two halves, and **both** must hold for an input to be
   enabled: the rite must not fix the celebration itself, **and** no nation or diocese may be selected.
   So under a rite that fixes them, selecting a diocese and then returning to the rite-level calendar
   leaves them disabled — they are not released by the calendar half alone.
-- Those same four inputs, and `ApiOptions._holydaysOfObligationInput`, are **set** to the rite's own
+- Those same four inputs, and `ApiOptions.holydaysOfObligationInput`, are **set** to the rite's own
   published settings, so the form states what the rite fixes rather than freezing at the values a
   previously selected nation left there. See
   [A rite's own settings](api-options.md#a-rites-own-settings) for the exact rule, which differs between
   the four value inputs and the holydays option list.
-- `ApiOptions._yearInput`'s minimum year is adjusted to the rite's floor.
-- The `/calendar/nation/` route offered by `ApiOptions._calendarPathInput` (the `PATH_BUILDER` filter)
+- `ApiOptions.yearInput`'s minimum year is adjusted to the rite's floor.
+- The `/calendar/nation/` route offered by `ApiOptions.calendarPathInput` (the `PATH_BUILDER` filter)
   is disabled for a rite with no national tier, since no such route exists for it. If that route was
   selected at the time of the rite change, the selection falls back to `/calendar`.
 
