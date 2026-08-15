@@ -1016,6 +1016,21 @@ controls.appendTo({
 more than once — the children are moved, not copied. A slots object naming a key other than `controls`
 or `messages` throws, naming the offending key, rather than silently mounting nothing for it.
 
+**`controls` itself may be an object keyed by `ApiOptions` filter**, which splits the form across one
+container per filter in a single call:
+
+```javascript
+controls.appendTo({
+    controls: { allCalendars: '#calendarOptions', generalRoman: '#generalRomanOptions' },
+    messages: '#LitCalMessages tbody',
+});
+```
+
+This widens what the slot's VALUE may be; the slot NAMES are unchanged, and a bare target keeps meaning
+exactly what it always meant. `CalendarViewer` accepts the same thing for its own `controls` slot. The
+keys, the ordering guarantee and everything that is rejected are documented under
+[Multi-row option layouts](#multi-row-option-layouts).
+
 ### `mountInto()` versus the constructor
 
 Exactly the same split as `CalendarResourcePicker` and `DayViewer`:
@@ -1269,36 +1284,90 @@ reporting rather than a reason to change paths.
 
 ### Multi-row option layouts
 
-`controls` is a single container, and by default every input lands in it. That is **not** a limit on how
-many rows the form can occupy: `ApiOptions` is one object whose `appendTo()` **moves** the inputs its
-current filter selects, so calling `filter().appendTo()` again splits the form across as many containers
-as you name. `viewer.controls.apiOptions` is that same object, so a viewer inherits the ability free.
+`controls` takes either a single container — every input the filter selects lands in it — or an
+**object keyed by `ApiOptions` filter**, which splits the form across one container per filter. The
+component performs the passes itself, in an order it chooses, and validates the whole layout before
+mounting anything.
 
-A two-row Bootstrap form — the path and temporal inputs on one row, the parameters a national or
+A two-row Bootstrap form — the calendar and temporal inputs on one row, the parameters a national or
 diocesan calendar predetermines on another:
 
 ```javascript
-import { CalendarViewer, ApiOptionsFilter } from '@liturgical-calendar/components-js';
+import { CalendarViewer } from '@liturgical-calendar/components-js';
 
 const viewer = new CalendarViewer({
     locale: 'en',
-    filter: ApiOptionsFilter.ALL_CALENDARS,
     inputs: { acceptHeader: false },
     theme: { select: 'form-select', label: 'form-label', wrapper: 'form-group col col-md-2' },
 });
 
-// Row one: rite select, calendar select, and the ALL_CALENDARS inputs.
-viewer.appendTo({ controls: '#calendarOptions', calendar: '#litcalWebcalendar' });
-
-// Row two: the five General Roman parameters, MOVED out of row one's container.
-viewer.controls.apiOptions
-    .filter(ApiOptionsFilter.GENERAL_ROMAN)
-    .appendTo('#generalRomanOptions');
+viewer.appendTo({
+    controls: {
+        allCalendars: '#calendarOptions',
+        generalRoman: '#generalRomanOptions',
+    },
+    calendar: '#litcalWebcalendar',
+    messages: '#LitCalMessages tbody',
+});
 
 viewer.listenTo(apiClient);
 ```
 
-**The flat `wrapper` above reaches `riteSelect`, `calendarSelect` and `locale`, but stops there.** For a
+| Container              | Receives                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `#calendarOptions`     | rite select, calendar select, `locale`, `year_type`, `year`                                |
+| `#generalRomanOptions` | `epiphany`, `ascension`, `corpus_christi`, `eternal_high_priest`, `holydays_of_obligation` |
+
+**The keys** are `generalRoman`, `allCalendars`, `pathBuilder`, `localeOnly` and `yearOnly` — the
+camelCase forms of the `ApiOptionsFilter` member names. `basePath` and `allPaths` are accepted as
+aliases of the first two, matching both the enum's own `BASE_PATH`/`ALL_PATHS` members and
+[`ApiExplorer`](#the-three-filter-layout)'s slot names, so a computed key such as
+`{ [ApiOptionsFilter.GENERAL_ROMAN]: '#generalRomanOptions' }` works too. Any other key throws, naming
+it and listing the valid ones; naming one filter twice under both spellings throws as well.
+
+**The rite and calendar selects mount into the first key you name**, so list the containers in page
+order. They get no slot of their own: they belong with the first row of options, which is what the
+layout above and every hand-written version of it produce.
+
+**Three rules the component now enforces**, each of which used to be the caller's to remember and each
+of which failed silently or confusingly when forgotten:
+
+- **Ordering is the component's.** It runs the `pathBuilder` pass before the `allCalendars` one, and
+  more generally applies a fixed pass order, whichever order you wrote the keys in — so naming one
+  container for two filters lays them out the same way every time, and the year input reaches the
+  path-builder container without first being appended somewhere it is about to leave.
+- **The filters must not overlap.** `{ localeOnly, allCalendars }` throws, naming both keys and
+  `localeInput`, rather than moving that input to whichever container mounted last. Overlap is computed
+  from the inputs each filter actually renders, not from the key names — so
+  `{ pathBuilder, allCalendars }` is accepted, because `ApiOptions` mounts the year input once, under
+  `pathBuilder`.
+- **`ApiOptionsFilter.NONE` cannot participate.** A `none` key throws, and so does a filter-keyed
+  layout on a component constructed with `filter: ApiOptionsFilter.NONE` — that filter renders every
+  input, so there is nothing left to split.
+
+Every container is resolved before anything is appended, so a typo in the last one throws with the
+document untouched rather than leaving a half-mounted form.
+
+#### The two-pass idiom is still supported
+
+`ApiOptions` is one object whose `appendTo()` **moves** the inputs its current filter selects, so
+calling `filter().appendTo()` again still splits the form by hand:
+
+```javascript
+import { ApiOptionsFilter } from '@liturgical-calendar/components-js';
+
+viewer.appendTo({ controls: '#calendarOptions', calendar: '#litcalWebcalendar' });
+viewer.controls.apiOptions
+    .filter(ApiOptionsFilter.GENERAL_ROMAN)
+    .appendTo('#generalRomanOptions');
+```
+
+This is **not deprecated and does not warn**: it is `ApiOptions` public API, `ApiExplorer` uses it
+internally, and it remains the way to reach a container the component does not own. Prefer the
+filter-keyed slot when the containers are all yours — it is the same result with the three rules
+checked for you, and without reaching through the component for an object the component owns.
+
+**The flat `wrapper` reaches `riteSelect`, `calendarSelect` and `locale`, but stops there.** For a
 symmetric row — `year_type` and `year` column-wrapped like the other three, and the five General Roman
 inputs on row two wrapped too — add the `apiOptions` key, which opts the whole form in:
 
@@ -1317,25 +1386,13 @@ keys inside it to diverge from the outer defaults, or a per-input key to diverge
 2.7.0 and that key's arrival this example produced an asymmetric row, and the only remedy was to style
 `year_type` and `year` by hand through `viewer.controls.apiOptions`.
 
-| Container              | Receives                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------ |
-| `#calendarOptions`     | rite select, calendar select, `locale`, `year_type`, `year`                                |
-| `#generalRomanOptions` | `epiphany`, `ascension`, `corpus_christi`, `eternal_high_priest`, `holydays_of_obligation` |
-
-Three rules make this work, and each is load-bearing:
-
-- **The second pass runs after `appendTo()`**, so it moves inputs the viewer has already mounted rather
-  than racing it.
-- **The filters must not overlap.** `ALL_CALENDARS` and `GENERAL_ROMAN` select disjoint sets, so the
-  second pass leaves row one's inputs where they are. Two passes naming the same input would move it to
-  whichever container went last.
-- **`ApiOptionsFilter.NONE` cannot participate** — a filter may be set more than once only while none of
-  the values is `NONE`.
-
-This is the same mechanism [`ApiExplorer`](#the-three-filter-layout) uses for its three-container layout;
-nothing about it is specific to that component. Reach for it rather than for CSS line-break hacks, and
-rather than expecting a slot per row — slots position a component's own parts, while the filter is what
-expresses _which inputs_ belong together.
+**`ApiExplorer` keeps its own three dedicated slots** (`pathBuilder`, `basePath`, `allPaths`) rather
+than a filter-keyed `controls` bag. It has no `controls` slot at all: its calendar select is positioned
+relative to the calendar-path input rather than mounted into a container, so its `pathBuilder` slot
+carries a relationship no filter key can express. The key vocabulary is shared even though the
+mechanism is not — `basePath` and `allPaths` mean the same filters in both places. `SubscriptionBuilder`
+likewise mounts its three children itself rather than through `CalendarControls.appendTo()`, so its own
+`controls` slot stays a single container.
 
 ### `mountInto()` versus the constructor
 
@@ -1461,10 +1518,17 @@ three successive `filter().appendTo()` pairs, exactly as the extracted page does
 
 **This mechanism is general, not an `ApiExplorer` quirk.** Any component holding an `ApiOptions` can
 split its form across as many containers as it names, because `appendTo()` moves the inputs the current
-filter selects rather than copying them. `CalendarViewer` uses the same technique for a two-row layout —
-see [Multi-row option layouts](#multi-row-option-layouts) — and the rules that make it safe (run the later
-passes after the first mount, keep the filters disjoint, never involve `ApiOptionsFilter.NONE`) are
-written out there.
+filter selects rather than copying them.
+
+`CalendarControls` and `CalendarViewer` now express the same thing declaratively, by letting the
+`controls` slot take an object keyed by filter — see
+[Multi-row option layouts](#multi-row-option-layouts) — which is where the three rules that make the
+hand-written form safe (run the later passes after the first mount, keep the filters disjoint, never
+involve `ApiOptionsFilter.NONE`) are written out, and where those two components now enforce them.
+`ApiExplorer` deliberately keeps its three dedicated slots instead: it has no `controls` slot to widen,
+and its `pathBuilder` slot carries the calendar-select relationship described below, which no filter key
+can express. The two share a vocabulary — `basePath` and `allPaths` name the same filters in both — even
+though the mechanism differs.
 
 **The calendar select has no slot of its own.** It is positioned with
 `calendarSelect.insertAfter( apiOptions.calendarPathInput )`, landing as a DOM sibling immediately after

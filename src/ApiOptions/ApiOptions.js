@@ -19,6 +19,7 @@ import {
     RiteProperties,
 } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
+import { inputKeysForFilter } from './FilterInputs.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
@@ -1389,41 +1390,34 @@ export default class ApiOptions {
                 'ApiOptions.appendTo: parameter must be a valid CSS selector or an instance of HTMLElement',
             );
         }
+        // Which inputs this filter renders is looked up in `FilterInputs.js`
+        // rather than branched on here, so the filter-keyed `controls` slot on
+        // the meta-components (#63) reads the SAME mapping when it checks two
+        // of its keys for an input in common. Two copies would drift the first
+        // time a filter gained an input.
+        //
+        // The two skips below stay here because they are runtime state rather
+        // than properties of a filter: `hide()` is irreversible and is read at
+        // append time, and `#pathBuilderEnabled` records that an earlier pass
+        // on this same instance already mounted the year input.
+        const dedupeYearInput =
+            (ApiOptionsFilter.NONE === this.#filter ||
+                ApiOptionsFilter.ALL_CALENDARS === this.#filter) &&
+            true === this.#pathBuilderEnabled;
+        for (const key of inputKeysForFilter(this.#filter)) {
+            if (
+                'acceptHeaderInput' === key &&
+                true === this.#inputs.acceptHeaderInput._hidden
+            ) {
+                continue;
+            }
+            if ('yearInput' === key && dedupeYearInput) {
+                continue;
+            }
+            this.#inputs[key].appendTo(domNode);
+        }
         if (ApiOptionsFilter.PATH_BUILDER === this.#filter) {
-            this.#inputs.calendarPathInput.appendTo(domNode);
-            this.#inputs.yearInput.appendTo(domNode);
             this.#pathBuilderEnabled = true;
-        }
-        if (ApiOptionsFilter.LOCALE_ONLY === this.#filter) {
-            this.#inputs.localeInput.appendTo(domNode);
-        }
-        if (ApiOptionsFilter.YEAR_ONLY === this.#filter) {
-            this.#inputs.yearInput.appendTo(domNode);
-        }
-        if (
-            ApiOptionsFilter.NONE === this.#filter ||
-            ApiOptionsFilter.ALL_CALENDARS === this.#filter
-        ) {
-            this.#inputs.localeInput.appendTo(domNode);
-            this.#inputs.yearTypeInput.appendTo(domNode);
-            if (false === this.#inputs.acceptHeaderInput._hidden) {
-                this.#inputs.acceptHeaderInput.appendTo(domNode);
-            }
-            // If we have implemented a Path builder, it will have already appended the year input,
-            // so we shouldn't append it again
-            if (false === this.#pathBuilderEnabled) {
-                this.#inputs.yearInput.appendTo(domNode);
-            }
-        }
-        if (
-            ApiOptionsFilter.NONE === this.#filter ||
-            ApiOptionsFilter.GENERAL_ROMAN === this.#filter
-        ) {
-            this.#inputs.epiphanyInput.appendTo(domNode);
-            this.#inputs.ascensionInput.appendTo(domNode);
-            this.#inputs.corpusChristiInput.appendTo(domNode);
-            this.#inputs.eternalHighPriestInput.appendTo(domNode);
-            this.#inputs.holydaysOfObligationInput.appendTo(domNode);
         }
         // This should only be the case when no filter has been set explicitly via the filter method,
         // and therefore this.#filter = ApiOptionsFilter.NONE

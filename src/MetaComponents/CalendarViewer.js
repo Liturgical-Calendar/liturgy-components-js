@@ -13,6 +13,7 @@
 
 import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
 import { assertTheme, narrowTheme } from './Theme.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
@@ -242,7 +243,7 @@ export default class CalendarViewer {
      *
      * Callable more than once; the children are moved rather than copied.
      *
-     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {string} [caller='CalendarViewer.appendTo'] - Internal only: the
      *   `Class.method` prefix to report in a thrown message. `mountInto()`
      *   passes its own name so a bad target is reported under the entry point
@@ -446,12 +447,20 @@ export default class CalendarViewer {
      * "cancelled" if it no longer matches anything) by `#requireElement()` and
      * `CalendarControls.appendTo()` themselves.
      *
-     * @param {{controls?: (string|HTMLElement), calendar?: (string|HTMLElement)}} slots - The `mountInto()` slots argument.
+     * @param {{controls?: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar?: (string|HTMLElement)}} slots - The `mountInto()` slots argument.
      * @returns {HTMLElement|null} The first resolved element found, or `null`.
      */
     static #targetElement(slots) {
+        // A filter-keyed `controls` slot has no single element; the first
+        // container the caller named is the one the selects mount into, so it
+        // is the right stand-in — the same choice `CalendarControls`' own
+        // `#targetElement()` makes. Without this the disconnected check would
+        // silently stop applying the moment a caller adopted that form.
+        const controlsValue = isFilterKeyedControls(slots?.controls)
+            ? Object.values(slots.controls)[0]
+            : slots?.controls;
         const controlsCandidate =
-            slots?.controls instanceof HTMLElement ? slots.controls : null;
+            controlsValue instanceof HTMLElement ? controlsValue : null;
         const calendarCandidate =
             slots?.calendar instanceof HTMLElement ? slots.calendar : null;
         return controlsCandidate ?? calendarCandidate;
@@ -530,7 +539,7 @@ export default class CalendarViewer {
      * routes through either path, because a caller holding that promise must be
      * able to handle it, so nothing is ever reported twice.
      *
-     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is `false`,
@@ -554,6 +563,24 @@ export default class CalendarViewer {
         // A typo in `slots` must surface even on a mount the caller already
         // cancelled — validated BEFORE either cancellation check below.
         CalendarViewer.#assertSlots(slots, 'CalendarViewer.mountInto');
+
+        // Validate a filter-keyed `controls` bag BEFORE the cancellation probe
+        // below, not after. `#targetElement()` reads only the FIRST keyed value,
+        // so a bag whose first container is a disconnected `HTMLElement` reached
+        // the `return null` while an unknown, duplicate, overlapping or `none`
+        // key inside it was still unexamined — `mountInto()` answered
+        // "cancelled" to what is a programmer error, which is precisely the
+        // inversion this library's reject-for-programmer-error rule exists to
+        // prevent. Measured before fixing: all three of an unknown key, an
+        // overlapping pair and `none` returned `null` instead of throwing
+        // (CodeRabbit, PR #87).
+        //
+        // The result is discarded: this call is here for its throw. The real
+        // resolution happens in `CalendarControls.appendTo()`, which re-runs it
+        // against the same bag once the targets are known to be live.
+        if (isFilterKeyedControls(slots?.controls)) {
+            resolveControlSlots(slots.controls, 'CalendarViewer.mountInto');
+        }
 
         const element = CalendarViewer.#targetElement(slots);
         if (

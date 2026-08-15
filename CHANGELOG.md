@@ -71,6 +71,30 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Added
 
+- **The `controls` slot of `CalendarControls` and `CalendarViewer` takes an object keyed by `ApiOptions`
+  filter**, closing #63 — `controls: { allCalendars: '#calendarOptions', generalRoman: '#generalRomanOptions' }`
+  mounts one pass per filter in a single call. 2.5.0 documented a two-pass `filter().appendTo()` idiom for
+  the same layout; it worked, but it made the consumer reach through the component for the `ApiOptions`
+  the component owns, and it rested on three rules the docs listed and nothing enforced — the second pass
+  had to run after `appendTo()`, the filters could not overlap, and `ApiOptionsFilter.NONE` could not
+  participate. All three now belong to the component. It performs the passes itself, so there is no
+  ordering for a caller to get wrong; it applies a fixed pass order whichever order the keys were written
+  in, so naming one container for two filters lays them out the same way every time. Overlap is computed from the inputs each
+  filter actually renders rather than from the key names, so `{ localeOnly, allCalendars }` throws naming
+  both keys and `localeInput`, while `{ pathBuilder, allCalendars }` — which share only the year input
+  `ApiOptions` already mounts once — is accepted. `none` as a key throws, and so does a filter-keyed bag on
+  a component constructed with `filter: ApiOptionsFilter.NONE`. Valid keys are `generalRoman`,
+  `allCalendars`, `pathBuilder`, `localeOnly` and `yearOnly`, plus `basePath` and `allPaths` as aliases of
+  the first two, matching the enum's own alias members and `ApiExplorer`'s slot names; any other key throws
+  naming it, and naming one filter under both spellings throws as a duplicate. Every container is resolved
+  before anything is appended, so a typo in the last one leaves the document untouched. The rite and
+  calendar selects mount into the first key named. **A bare `controls` target is unchanged**, the slot
+  NAMES are unchanged, and the two-pass idiom stays supported and unwarned — it is `ApiOptions` public API,
+  `ApiExplorer` uses it internally, `examples/PathBuilder/` and `examples/RiteSelectPathBuilder/` drive
+  a raw `ApiOptions` with it, and it is still the only way to reach a container the component does not
+  own. `ApiExplorer` and `SubscriptionBuilder` are deliberately untouched: the first already has
+  dedicated ordered slots and no `controls` slot to widen, the second mounts its children itself.
+
 - **Canonical, non-underscore accessors for `ApiOptions`' ten form controls**, closing #62. Every accessor on
   the class was underscore-prefixed, the ten a consumer is _expected_ to touch included — the docs call
   `_acceptHeaderInput.hide()` in a worked example, and `CalendarControls` directs consumers to "reach the
@@ -96,7 +120,6 @@ prepared under that number was skipped, and everything it was to have delivered 
   - The docs, `README.md`, `CLAUDE.md` and every app under `examples/` now show the canonical spelling.
     `src/MetaComponents/Theme.js` reaches each input directly instead of rebuilding the underscore name,
     which its own comment had flagged as the change these aliases would allow.
-
 - **A visually-hidden live region on `WebCalendar` and `LiturgyOfAnyDay`**, closing #65. Both replace all of
   their content when a `<select>` changes — a whole table, a whole event list — while focus stays on the
   select, so a screen-reader user got silence, and no way to tell a successful update from a request that did
@@ -244,6 +267,16 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Changed
 
+- **`ApiOptions.appendTo()` iterates a single filter-to-inputs mapping** — the new internal
+  `src/ApiOptions/FilterInputs.js` — instead of the five hard-coded `if` branches that used to be the only
+  statement of which inputs each filter renders. #63's overlap check needs that same knowledge, and a
+  second copy beside `appendTo()` would drift the first time a filter gained an input, so the mapping was
+  extracted rather than duplicated. `src/__tests__/FilterInputs.test.js` guards the table with a
+  hand-written second statement of what each filter is meant to render — reading the mounted DOM back
+  would only agree with itself, now that the append iterates the table — so widening a filter is a
+  deliberate two-place edit. The two decisions that are instance state
+  rather than properties of a filter stay in `appendTo()`: a hidden accept-header input, and the year
+  input a `PATH_BUILDER` pass has already claimed. No behaviour change.
 - **Line endings are now enforced, not merely documented**, closing #84. A new `.gitattributes` carries
   `* text=auto eol=lf`, and the seven files that had CRLF **in the index** — `.storybook/preview-head.html`,
   `DayInput.js`, `MonthInput.js`, `LiturgyOfAnyDay.js`, the two `LiturgyOfAnyDay*.stories.js` and
