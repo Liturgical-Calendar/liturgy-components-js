@@ -334,6 +334,36 @@ Two `Input`-only subtleties, both easy to "simplify" wrongly:
 `setGlobalWrapper()` takes a bare tag name and must never accept an `id`: the globals apply to every `Input`
 on the page, so one id would be stamped onto all of them and emit invalid HTML.
 
+### How `ApiOptions` exposes its inputs, and what an underscore means there
+
+Its ten form controls answer to canonical names — `epiphanyInput`, `ascensionInput`, `corpusChristiInput`,
+`eternalHighPriestInput`, `holydaysOfObligationInput`, `localeInput`, `yearTypeInput`, `yearInput`,
+`acceptHeaderInput`, `calendarPathInput` — **and**, unchanged, to those names with a leading underscore, the
+only spelling that existed up to 2.7.0. Write the canonical form in docs, examples and new code.
+
+- **The ten names are `API_OPTIONS_INPUT_ROLES`' keys, exactly.** That map is `theme.apiOptions`' public
+  vocabulary and predates the accessors, so #62 adopted its spellings rather than minting an eleventh. Giving
+  one input two public names would be worse than the single ugly one it had. `ApiOptionsPublicAccessors.test.js`
+  asserts the two lists are equal, from two independently written literals.
+- **The underscore forms are supported, not deprecated, and MUST NOT warn.** The library reads them itself at
+  some thirty call sites (`ApiClient`, `PathBuilder`, `CalendarControls`, `DayViewer`, `ApiExplorer`,
+  `SubscriptionUrl`, `SubscriptionBuilder`), so a warning would fire on the library's own behaviour before a
+  consumer wrote a single underscore — and warning on the only spelling that ever existed would make every
+  correct page noisy in a minor release. Those internal call sites were deliberately **not** migrated: they
+  are churn against behaviour-tested code, and the aliases are permanent. `Theme.js` is the one exception,
+  because its `apiOptions[ '_' + key ]` concatenation existed only for want of these names.
+- **`_filter`, `_filtersSet`, `_currentEndpoint` and `_base` keep the prefix and have no canonical form**, which
+  is what makes the prefix informative here. No production code outside the class reads the first two; the third is
+  handed out by reference for `PathBuilder` to mutate. `_filter` could not have been aliased in any case:
+  `filter()` is already the chainable setter, and `get filter()` in the same class body would replace it. The
+  name to add, if a consumer ever needs it, is `currentFilter`.
+- **The canonical getter is the implementation and the underscore one delegates**, so the pair cannot drift, and
+  `type-fixtures/dts-consumer.ts` asserts all ten reach `dist/` at their aliases' types — a `.d.ts`-only class of
+  bug `yarn test` cannot see.
+
+`CalendarSelect._filter`/`._base`, `LiturgyOfAnyDay._yearInput` and `Input._domElement`/`._labelElement` have the
+same shape and were left alone: #62 was scoped to `ApiOptions`.
+
 ## ApiClient
 
 The `ApiClient` is the central hub for API communication. It fetches calendar data and emits events that other components listen to.
@@ -487,8 +517,9 @@ calls — it is internal and deliberately **not exported** from `src/index.js`, 
 `LocaleValidation.js` and `OptionsValidation.js`.
 
 **`apiOptions` is the one NESTED key, and the only one, deliberately.** It carries the same four flat role
-keys for a whole `ApiOptions` form plus per-input overrides named for `ApiOptions`' accessors with the
-underscore stripped (`epiphanyInput` … `calendarPathInput`; `yearInput` alone takes the `input` role). It
+keys for a whole `ApiOptions` form plus per-input overrides named for `ApiOptions`' canonical accessors
+(`epiphanyInput` … `calendarPathInput`; `yearInput` alone takes the `input` role) — these ten spellings came
+first, and #62 took them as the accessor names rather than minting an eleventh vocabulary. It
 is what removed the last reason a consumer had to call the process-wide `Input.setGlobal*` setters, which
 the theme bag exists to replace. Four things about it are load-bearing and easy to undo by accident:
 
@@ -1067,11 +1098,11 @@ const apiOptions = new ApiOptions(lang)
 apiOptions.appendTo('#localeContainer');
 
 // 4. Select appropriate locale (exact match > language match > first option)
-const localeOptions = apiOptions._localeInput.options();
+const localeOptions = apiOptions.localeInput.options();
 const exactMatch = localeOptions.find(val => val === lang);
 const languageMatch = localeOptions.find(val => val.split(/[-_]/)[0] === lang);
 let selectedLocale = exactMatch || languageMatch || localeOptions[0] || lang;
-apiOptions._localeInput.value(selectedLocale);
+apiOptions.localeInput.value(selectedLocale);
 
 // 5. Create LiturgyOfAnyDay (configures ApiClient year_type automatically)
 const liturgyOfAnyDay = new LiturgyOfAnyDay({ locale: lang })
@@ -1114,7 +1145,7 @@ listener is swallowed by the DOM anyway. `ApiClient`, `PathBuilder`, `Subscripti
 When setting up LocaleInput, match the user's locale with available options:
 
 ```javascript
-const localeOptions = apiOptions._localeInput.options();
+const localeOptions = apiOptions.localeInput.options();
 // Try exact match first (e.g., "en" matches "en")
 const exactMatch = localeOptions.find(val => val === userLang);
 // Then try language match (e.g., "en" matches "en_US")

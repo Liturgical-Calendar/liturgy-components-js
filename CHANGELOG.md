@@ -94,6 +94,32 @@ prepared under that number was skipped, and everything it was to have delivered 
   a raw `ApiOptions` with it, and it is still the only way to reach a container the component does not
   own. `ApiExplorer` and `SubscriptionBuilder` are deliberately untouched: the first already has
   dedicated ordered slots and no `controls` slot to widen, the second mounts its children itself.
+
+- **Canonical, non-underscore accessors for `ApiOptions`' ten form controls**, closing #62. Every accessor on
+  the class was underscore-prefixed, the ten a consumer is _expected_ to touch included — the docs call
+  `_acceptHeaderInput.hide()` in a worked example, and `CalendarControls` directs consumers to "reach the
+  individual inputs directly through `controls.apiOptions`". A prefix that announces "private, do not touch"
+  on the supported way in invites the wrong conclusion, and did: on `Liturgical-Calendar/examples#49` an
+  automated reviewer recommended replacing five working uses with "the corresponding public accessors
+  available in 2.7.0", which did not exist. Following that advice would have replaced working code with
+  references to nothing. The ten now also answer to `epiphanyInput`, `ascensionInput`, `corpusChristiInput`,
+  `eternalHighPriestInput`, `holydaysOfObligationInput`, `localeInput`, `yearTypeInput`, `yearInput`,
+  `acceptHeaderInput` and `calendarPathInput`. Four points are worth knowing:
+  - **The names are exactly `theme.apiOptions`' per-input keys**, which shipped as public API in 2.7.0 and
+    PR #75 and predate the accessors. Adopting them, rather than minting an eleventh vocabulary, is what
+    keeps each input to a single public spelling.
+  - **The underscore forms are unchanged, supported, and do NOT warn.** They are not deprecated and are not
+    scheduled for removal. A `console.warn` was considered and rejected: the library reads them itself at
+    some thirty internal call sites, so it would have fired on the library's own behaviour before a consumer
+    wrote a single underscore, and warning on the only spelling that has ever existed would make every
+    correct consumer page noisy in a minor release. **Nothing needs migrating.**
+  - **`_filter`, `_filtersSet`, `_currentEndpoint` and `_base` deliberately keep the prefix** and gain no
+    canonical form, which is what now makes the prefix informative: on `ApiOptions` it means
+    package-internal. `_filter` could not have been aliased in any case, since `filter()` is already the
+    chainable setter method.
+  - The docs, `README.md`, `CLAUDE.md` and every app under `examples/` now show the canonical spelling.
+    `src/MetaComponents/Theme.js` reaches each input directly instead of rebuilding the underscore name,
+    which its own comment had flagged as the change these aliases would allow.
 - **A visually-hidden live region on `WebCalendar` and `LiturgyOfAnyDay`**, closing #65. Both replace all of
   their content when a `<select>` changes — a whole table, a whole event list — while focus stays on the
   select, so a screen-reader user got silence, and no way to tell a successful update from a request that did

@@ -43,13 +43,13 @@ const meta = {
         hideAcceptHeaderInput: {
             control: 'boolean',
             description:
-                'Hide the Accept header input. This option is not passed to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.hide()` method to hide the Accept header input.',
+                'Hide the Accept header input. This option is not passed to the ApiOptions constructor, but when set to true we use the ApiOptions instance `acceptHeaderInput.hide()` method to hide the Accept header input.',
             defaultValue: false,
         },
         acceptHeaderAsReturnTypeParam: {
             control: 'boolean',
             description:
-                'When the Accept header input is not hidden, display the Accept header select as a `return type` parameter select. This option is not passed directly to the ApiOptions constructor, but when set to true we use the ApiOptions instance `_acceptHeaderInput.asReturnTypeParam(true)` method to display the Accept header input as a `return type` parameter select.',
+                'When the Accept header input is not hidden, display the Accept header select as a `return type` parameter select. This option is not passed directly to the ApiOptions constructor, but when set to true we use the ApiOptions instance `acceptHeaderInput.asReturnTypeParam(true)` method to display the Accept header input as a `return type` parameter select.',
             defaultValue: false,
         },
     },
@@ -69,16 +69,16 @@ const meta = {
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
             const apiOptions = new ApiOptions(args.locale);
-            apiOptions._yearInput.class('form-control'); // override the global input class for number input
+            apiOptions.yearInput.class('form-control'); // override the global input class for number input
             //apiClient.listenTo(apiOptions);
             if (args.filter) {
                 apiOptions.filter(args.filter);
             }
             if (args.hideAcceptHeaderInput) {
-                apiOptions._acceptHeaderInput.hide();
+                apiOptions.acceptHeaderInput.hide();
             }
             if (args.acceptHeaderAsReturnTypeParam) {
-                apiOptions._acceptHeaderInput.asReturnTypeParam(true);
+                apiOptions.acceptHeaderInput.asReturnTypeParam(true);
             }
             apiOptions.appendTo(container);
         }
@@ -185,12 +185,12 @@ export const WithBootstrapMultiselect = {
             Input.setGlobalWrapperClass('form-group col col-md-3');
 
             const apiOptions = new ApiOptions(args.locale);
-            apiOptions._yearInput.class('form-control'); // override the global input class for number input
+            apiOptions.yearInput.class('form-control'); // override the global input class for number input
             if (args.filter) {
                 apiOptions.filter(args.filter);
             }
             if (args.hideAcceptHeaderInput) {
-                apiOptions._acceptHeaderInput.hide();
+                apiOptions.acceptHeaderInput.hide();
             }
             apiOptions.appendTo(container);
 
@@ -210,8 +210,8 @@ export const WithBootstrapMultiselect = {
                     return;
                 }
                 if (
-                    !apiOptions._holydaysOfObligationInput ||
-                    !apiOptions._holydaysOfObligationInput._domElement
+                    !apiOptions.holydaysOfObligationInput ||
+                    !apiOptions.holydaysOfObligationInput._domElement
                 ) {
                     console.warn(
                         'bootstrap-multiselect: HolydaysOfObligationInput or its DOM element is not available, skipping multiselect initialization',
@@ -220,7 +220,7 @@ export const WithBootstrapMultiselect = {
                 }
 
                 const $select = window.jQuery(
-                    apiOptions._holydaysOfObligationInput._domElement,
+                    apiOptions.holydaysOfObligationInput._domElement,
                 );
                 $select.multiselect({
                     buttonWidth: '100%',

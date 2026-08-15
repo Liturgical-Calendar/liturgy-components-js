@@ -72,8 +72,8 @@ const meta = {
                 .appendTo(container);
 
             const apiOptions = new ApiOptions('en-US');
-            apiOptions._yearInput.class('form-control'); // override the global input class
-            apiOptions._acceptHeaderInput.hide(); // prevent the Accept header form control from being appended to the form
+            apiOptions.yearInput.class('form-control'); // override the global input class
+            apiOptions.acceptHeaderInput.hide(); // prevent the Accept header form control from being appended to the form
             apiOptions
                 .filter(ApiOptionsFilter.ALL_CALENDARS)
                 .linkToCalendarSelect(calendarSelect)

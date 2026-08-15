@@ -40,9 +40,9 @@ ApiClient.init('http://localhost:8000')
             .appendTo('#calendarOptions');
 
         const apiOptions = new ApiOptions('en-US');
-        apiOptions._yearInput.class('form-control');
-        apiOptions._acceptHeaderInput.hide();
-        apiOptions._holydaysOfObligationInput.class('d-none');
+        apiOptions.yearInput.class('form-control');
+        apiOptions.acceptHeaderInput.hide();
+        apiOptions.holydaysOfObligationInput.class('d-none');
         apiOptions
             .linkToCalendarSelect(calendarSelect)
             .linkToRiteSelect(riteSelect);

@@ -81,13 +81,13 @@ function wireHdobVS(apiOptions, calendarSelect, vsContainerId) {
     const hdobVirtualSelect = document.createElement('div');
     hdobVirtualSelect.id = vsContainerId;
     // 2. Insert it right after the original native select
-    apiOptions._holydaysOfObligationInput._domElement.parentNode.insertBefore(
+    apiOptions.holydaysOfObligationInput._domElement.parentNode.insertBefore(
         hdobVirtualSelect,
-        apiOptions._holydaysOfObligationInput._domElement.nextSibling,
+        apiOptions.holydaysOfObligationInput._domElement.nextSibling,
     );
     // 3. Build and initialize the virtual select from the native select
     buildAndInitVirtualSelectFromNativeSelect(
-        apiOptions._holydaysOfObligationInput._domElement,
+        apiOptions.holydaysOfObligationInput._domElement,
         vsContainerId,
     );
     if (calendarSelect.value() === '') {
@@ -100,7 +100,7 @@ function wireHdobVS(apiOptions, calendarSelect, vsContainerId) {
         //console.log('calendar changed to:', ev.target.value);
         hdobVirtualSelect.destroy();
         buildAndInitVirtualSelectFromNativeSelect(
-            apiOptions._holydaysOfObligationInput._domElement,
+            apiOptions.holydaysOfObligationInput._domElement,
             vsContainerId,
         );
         if (ev.target.value === '') {
@@ -131,54 +131,54 @@ ApiClient.init('http://localhost:8000')
         const apiOptionsEsp = new ApiOptions('es-ES');
         const apiOptionsIta = new ApiOptions('it-IT');
         const apiOptionsDeu = new ApiOptions('de-DE');
-        apiOptionsEng._localeInput.defaultValue('en');
-        apiOptionsEsp._localeInput.defaultValue('es');
-        apiOptionsIta._localeInput.defaultValue('it');
-        apiOptionsDeu._localeInput.defaultValue('de');
-        apiOptionsEng._acceptHeaderInput.hide();
-        apiOptionsEsp._acceptHeaderInput.hide();
-        apiOptionsIta._acceptHeaderInput.hide();
-        apiOptionsDeu._acceptHeaderInput.hide();
-        apiOptionsEng._yearInput.class('form-control');
-        apiOptionsEsp._yearInput.class('form-control');
-        apiOptionsIta._yearInput.class('form-control');
-        apiOptionsDeu._yearInput.class('form-control');
+        apiOptionsEng.localeInput.defaultValue('en');
+        apiOptionsEsp.localeInput.defaultValue('es');
+        apiOptionsIta.localeInput.defaultValue('it');
+        apiOptionsDeu.localeInput.defaultValue('de');
+        apiOptionsEng.acceptHeaderInput.hide();
+        apiOptionsEsp.acceptHeaderInput.hide();
+        apiOptionsIta.acceptHeaderInput.hide();
+        apiOptionsDeu.acceptHeaderInput.hide();
+        apiOptionsEng.yearInput.class('form-control');
+        apiOptionsEsp.yearInput.class('form-control');
+        apiOptionsIta.yearInput.class('form-control');
+        apiOptionsDeu.yearInput.class('form-control');
 
-        apiOptionsEng._ascensionInput.wrapperClass('form-group col col-md-2');
-        apiOptionsEng._corpusChristiInput.wrapperClass(
+        apiOptionsEng.ascensionInput.wrapperClass('form-group col col-md-2');
+        apiOptionsEng.corpusChristiInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsEng._eternalHighPriestInput.wrapperClass(
+        apiOptionsEng.eternalHighPriestInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsEng._holydaysOfObligationInput.class('d-none');
+        apiOptionsEng.holydaysOfObligationInput.class('d-none');
 
-        apiOptionsEsp._ascensionInput.wrapperClass('form-group col col-md-2');
-        apiOptionsEsp._corpusChristiInput.wrapperClass(
+        apiOptionsEsp.ascensionInput.wrapperClass('form-group col col-md-2');
+        apiOptionsEsp.corpusChristiInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsEsp._eternalHighPriestInput.wrapperClass(
+        apiOptionsEsp.eternalHighPriestInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsEsp._holydaysOfObligationInput.class('d-none');
+        apiOptionsEsp.holydaysOfObligationInput.class('d-none');
 
-        apiOptionsIta._ascensionInput.wrapperClass('form-group col col-md-2');
-        apiOptionsIta._corpusChristiInput.wrapperClass(
+        apiOptionsIta.ascensionInput.wrapperClass('form-group col col-md-2');
+        apiOptionsIta.corpusChristiInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsIta._eternalHighPriestInput.wrapperClass(
+        apiOptionsIta.eternalHighPriestInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsIta._holydaysOfObligationInput.class('d-none');
+        apiOptionsIta.holydaysOfObligationInput.class('d-none');
 
-        apiOptionsDeu._ascensionInput.wrapperClass('form-group col col-md-2');
-        apiOptionsDeu._corpusChristiInput.wrapperClass(
+        apiOptionsDeu.ascensionInput.wrapperClass('form-group col col-md-2');
+        apiOptionsDeu.corpusChristiInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsDeu._eternalHighPriestInput.wrapperClass(
+        apiOptionsDeu.eternalHighPriestInput.wrapperClass(
             'form-group col col-md-2',
         );
-        apiOptionsDeu._holydaysOfObligationInput.class('d-none');
+        apiOptionsDeu.holydaysOfObligationInput.class('d-none');
 
         apiClient.listenTo(liturgicalCalendarSelectEng);
         apiClient.listenTo(apiOptionsEng);

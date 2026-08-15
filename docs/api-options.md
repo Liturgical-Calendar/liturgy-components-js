@@ -24,49 +24,70 @@ with `locale` and `apiClient` keys, and throws for anything else, naming the typ
 `null` and `undefined` both mean "not supplied", as the argument itself and as the `locale` property alike, and
 take the default of `'en'`. An unparseable locale still throws: "absent" and "invalid" are different things.
 
-The `apiClient` option binds the form to that client's API base, which is where `_localeInput` reads the
+The `apiClient` option binds the form to that client's API base, which is where `localeInput` reads the
 supported locales from. Omitting it binds to the first base initialized, and warns once if more than one is
 registered. See [Using two API bases on one page](api-client.md#api-bases).
 
 ## Form Controls
 
-The `ApiOptions` class creates nine form controls, exposed as properties with a single underscore prefix
-(e.g., `_localeInput`). This naming convention indicates these are **intended for advanced configuration**
-rather than being strictly private. Accessing these properties is the expected pattern for customizing
-individual form controls.
+The `ApiOptions` class creates ten form controls, each exposed as a read-only property. Reaching into them is
+the expected way to customize an individual control — set a default, hide one, restyle one, or read what the
+user chose.
 
-> **Note:** The single underscore prefix is a JavaScript convention indicating "internal but accessible"
-> properties. These are part of the public API for advanced use cases like custom styling, linking to other
-> components, or reading current values.
+Every one of the ten also answers to its name with a leading underscore (`_localeInput`, `_yearInput`, …),
+which is the only spelling releases up to 2.7.0 offered. **Those aliases are supported and are not going
+away**, and they emit no deprecation warning; the non-underscore name is simply the canonical spelling, and
+the one this documentation uses from here on. Nothing needs migrating.
+
+> **Why both.** The underscore prefix conventionally announces "private, do not touch", which is the opposite
+> of what these are. An automated reviewer reading it at face value once recommended replacing five working
+> uses with "the corresponding public accessors" — accessors that did not then exist ([#62]). Adding the
+> canonical names fixed that without breaking a single existing page.
+
+[#62]: https://github.com/Liturgical-Calendar/liturgy-components-js/issues/62
 
 ### Universal Form Controls
 
 These are useful for any calendar (General Roman, National, or Diocesan):
 
-| Property             | Type         | Description                     |
-| -------------------- | ------------ | ------------------------------- |
-| `_yearInput`         | number input | Calendar year                   |
-| `_yearTypeInput`     | select       | Year type (liturgical or civil) |
-| `_localeInput`       | select       | Locale for API response         |
-| `_acceptHeaderInput` | select       | Accept header format            |
+| Property            | Legacy alias         | Type         | Description                     |
+| ------------------- | -------------------- | ------------ | ------------------------------- |
+| `yearInput`         | `_yearInput`         | number input | Calendar year                   |
+| `yearTypeInput`     | `_yearTypeInput`     | select       | Year type (liturgical or civil) |
+| `localeInput`       | `_localeInput`       | select       | Locale for API response         |
+| `acceptHeaderInput` | `_acceptHeaderInput` | select       | Accept header format            |
 
 ### General Roman Calendar Controls
 
 These fine-tune the General Roman Calendar when national/diocesan data is not requested:
 
-| Property                     | Type   | Description                               |
-| ---------------------------- | ------ | ----------------------------------------- |
-| `_epiphanyInput`             | select | When Epiphany is celebrated               |
-| `_ascensionInput`            | select | When Ascension is celebrated              |
-| `_corpusChristiInput`        | select | When Corpus Christi is celebrated         |
-| `_eternalHighPriestInput`    | select | Whether Eternal High Priest is celebrated |
-| `_holydaysOfObligationInput` | select | Holy Days of Obligation settings          |
+| Property                    | Legacy alias                 | Type   | Description                               |
+| --------------------------- | ---------------------------- | ------ | ----------------------------------------- |
+| `epiphanyInput`             | `_epiphanyInput`             | select | When Epiphany is celebrated               |
+| `ascensionInput`            | `_ascensionInput`            | select | When Ascension is celebrated              |
+| `corpusChristiInput`        | `_corpusChristiInput`        | select | When Corpus Christi is celebrated         |
+| `eternalHighPriestInput`    | `_eternalHighPriestInput`    | select | Whether Eternal High Priest is celebrated |
+| `holydaysOfObligationInput` | `_holydaysOfObligationInput` | select | Holy Days of Obligation settings          |
 
 ### Path Builder Control
 
-| Property             | Type   | Description      |
-| -------------------- | ------ | ---------------- |
-| `_calendarPathInput` | select | API request path |
+| Property            | Legacy alias         | Type   | Description      |
+| ------------------- | -------------------- | ------ | ---------------- |
+| `calendarPathInput` | `_calendarPathInput` | select | API request path |
+
+### Accessors that are NOT public
+
+Four accessors keep the underscore and have no canonical form, because they really are package-internal. On
+`ApiOptions`, that is now what the prefix means.
+
+- **`_base`** — the `ApiBase` this form reads its metadata from. `PathBuilder` uses it to check that the form
+  and the `CalendarSelect` beside it are bound to the same API.
+- **`_currentEndpoint`** — returned by reference precisely so `PathBuilder` can mutate it. A mutable internal
+  is not something to hand out.
+- **`_filtersSet`** — the filters applied so far, in order. No production code outside the class reads it.
+- **`_filter`** — the current filter. No production code outside the class reads it either, and it could not have been
+  aliased in any case: `filter()` is already the chainable setter method, so a `get filter()` in the same
+  class body would replace it. If you need to read the current filter, open an issue for `currentFilter`.
 
 ### Input labels
 
@@ -75,16 +96,16 @@ Each control localizes its own `<label>` from the locale the `ApiOptions` was co
 these labels were the raw snake_case API parameter names (`year_type`, `epiphany`, …) in every language,
 which is what a screen reader announced for the control.
 
-| Control                      | `Messages` key           |
-| ---------------------------- | ------------------------ |
-| `_yearInput`                 | `YEAR`                   |
-| `_yearTypeInput`             | `YEAR_TYPE`              |
-| `_localeInput`               | `LANGUAGE`               |
-| `_epiphanyInput`             | `EPIPHANY`               |
-| `_ascensionInput`            | `ASCENSION`              |
-| `_corpusChristiInput`        | `CORPUS_CHRISTI`         |
-| `_eternalHighPriestInput`    | `ETERNAL_HIGH_PRIEST`    |
-| `_holydaysOfObligationInput` | `HOLYDAYS_OF_OBLIGATION` |
+| Control                     | `Messages` key           |
+| --------------------------- | ------------------------ |
+| `yearInput`                 | `YEAR`                   |
+| `yearTypeInput`             | `YEAR_TYPE`              |
+| `localeInput`               | `LANGUAGE`               |
+| `epiphanyInput`             | `EPIPHANY`               |
+| `ascensionInput`            | `ASCENSION`              |
+| `corpusChristiInput`        | `CORPUS_CHRISTI`         |
+| `eternalHighPriestInput`    | `ETERNAL_HIGH_PRIEST`    |
+| `holydaysOfObligationInput` | `HOLYDAYS_OF_OBLIGATION` |
 
 `LiturgyOfAnyDay`'s own date controls follow the same rule, keyed `DAY`, `MONTH` and `YEAR`.
 
@@ -93,8 +114,8 @@ and the reused `DAY`, `YEAR` and `LANGUAGE` alike. Every other locale falls back
 than throwing, through the internal `message( key, locale )` in `src/MessageLookup.js`. `MONTH` is the one
 exception, present in all 84 because `WebCalendar` has long used it as a column header.
 
-The controls' **option** text follows the same rule since #69. `_epiphanyInput`, `_yearTypeInput`,
-`_eternalHighPriestInput` and `_calendarPathInput` used to read their option and route labels through an
+The controls' **option** text follows the same rule since #69. `epiphanyInput`, `yearTypeInput`,
+`eternalHighPriestInput` and `calendarPathInput` used to read their option and route labels through an
 unguarded `Messages[locale.language][KEY]`, which threw for any language with no block at all — and, because
 `ApiOptions` builds every input in its constructor, took the whole page with it wherever an `ApiOptions` is
 built. That is five of the six composed components: `CalendarControls` and `DayViewer` build one directly,
@@ -103,13 +124,13 @@ and `CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` inherit it through
 references `ApiOptions` nowhere. There is no warning on the fallback: a block that lacks a key is the documented
 normal case here, not an anomaly.
 
-`_acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it
+`acceptHeaderInput` is **not** localized — it still renders `return_type` or `Accept Header` — because it
 takes no locale and its label flips at runtime in `asReturnTypeParam()`.
 
 To override a label, assign to the control's `_labelElement` after construction:
 
 ```javascript
-apiOptions._yearTypeInput._labelElement.textContent = 'Tipo de año';
+apiOptions.yearTypeInput._labelElement.textContent = 'Tipo de año';
 ```
 
 A meta-component theme's `localeInput.labelText` and `LiturgyOfAnyDay`'s
@@ -169,7 +190,7 @@ apiOptions.appendTo('#calendarOptions');
 Configure individual form controls using chainable methods:
 
 ```javascript
-apiOptions._yearInput
+apiOptions.yearInput
     .class('form-control')        // Override global class
     .id('year-input')
     .name('year')
@@ -182,7 +203,7 @@ apiOptions._yearInput
     .defaultValue(2025);
 
 // Hide a control
-apiOptions._acceptHeaderInput.hide();
+apiOptions.acceptHeaderInput.hide();
 ```
 
 ### Available Control Methods
@@ -201,7 +222,7 @@ apiOptions._acceptHeaderInput.hide();
 | `defaultValue(value)`     | Set initial/default value                                          |
 | `value(val?)`             | Get or set current value; with argument sets value, returns `this` |
 | `options()`               | Returns array of option values (for select elements only)          |
-| `hide()`                  | Hide the control — `_acceptHeaderInput` only, and not reversible   |
+| `hide()`                  | Hide the control — `acceptHeaderInput` only, and not reversible    |
 
 **`hide()` is read at append time**, by `ApiOptions.appendTo()`, so it must be called before the append.
 On a bare `ApiOptions` that is simply the order to write it in. Inside `CalendarControls`, `CalendarViewer`
@@ -215,7 +236,7 @@ an option instead — `inputs: { acceptHeader: false }`; see
 take, validated by the same shared helper, so one call does what previously took two:
 
 ```javascript
-apiOptions._yearInput.wrapper({
+apiOptions.yearInput.wrapper({
     as: 'div', // 'div' (default) or 'td'
     class: 'form-group col col-md-3',
     id: 'year-wrapper', // not available before 2.6.0, and not available on the globals
@@ -293,11 +314,11 @@ rite -> calendar chain on every rite change:
 
 - The linked `CalendarSelect`(s) are rebuilt for the selected rite, and the calendar selection is reset
 - A linked nation select is hidden for rites with no national tier (e.g. Ambrosian)
-- `_epiphanyInput`, `_ascensionInput`, `_corpusChristiInput` and `_eternalHighPriestInput` are disabled
+- `epiphanyInput`, `ascensionInput`, `corpusChristiInput` and `eternalHighPriestInput` are disabled
   for rites that fix their own temporal cycle
-- those same four inputs, and `_holydaysOfObligationInput`, are **set** to the rite's own published
+- those same four inputs, and `holydaysOfObligationInput`, are **set** to the rite's own published
   settings — see below
-- `_yearInput`'s minimum year is adjusted to the rite's floor
+- `yearInput`'s minimum year is adjusted to the rite's floor
 
 When a `RiteSelect` is linked, the resulting request path also spells out the rite explicitly, even for
 the Roman rite (`/calendar/roman/...` instead of `/calendar/...`) — both forms request the same thing.
@@ -313,10 +334,10 @@ library.
 
 Two rules differ between the value inputs and the list input, deliberately:
 
-| Input                                        | Rite publishes settings      | Rite publishes none                 |
-| -------------------------------------------- | ---------------------------- | ----------------------------------- |
-| `_epiphanyInput` … `_eternalHighPriestInput` | set to the published value   | left exactly as they are            |
-| `_holydaysOfObligationInput`                 | options replaced by the list | options restored to the input's own |
+| Input                                      | Rite publishes settings      | Rite publishes none                 |
+| ------------------------------------------ | ---------------------------- | ----------------------------------- |
+| `epiphanyInput` … `eternalHighPriestInput` | set to the published value   | left exactly as they are            |
+| `holydaysOfObligationInput`                | options replaced by the list | options restored to the input's own |
 
 The four are values drawn from a fixed list of options, so an unpublished rite has nothing to say about
 them and leaving them untouched is the only non-destructive choice — the **Roman** rite is that case, on
@@ -348,10 +369,10 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     const apiOptions = new ApiOptions('en-US');
 
     // Override for number input
-    apiOptions._yearInput.class('form-control');
+    apiOptions.yearInput.class('form-control');
 
     // Hide Accept header (usually only need JSON)
-    apiOptions._acceptHeaderInput.hide();
+    apiOptions.acceptHeaderInput.hide();
 
     apiOptions.appendTo('#calendarOptions');
 }).catch((error) => {

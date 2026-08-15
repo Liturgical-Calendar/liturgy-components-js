@@ -37,7 +37,7 @@ ApiClient.init('http://localhost:8000')
             .linkToCalendarSelect(calendarSelect);
 
         // Style the locale input before appending
-        apiOptions._localeInput
+        apiOptions.localeInput
             .wrapper('div')
             .wrapperClass('col-md-6')
             .class('form-select')
@@ -46,12 +46,12 @@ ApiClient.init('http://localhost:8000')
         apiOptions.appendTo('#calendarOptions');
 
         // Find best matching locale based on user's browser language preferences
-        const localeOptions = apiOptions._localeInput.options();
+        const localeOptions = apiOptions.localeInput.options();
         const selectedLocale = Utils.findBestLocale(
             userLanguages,
             localeOptions,
         );
-        apiOptions._localeInput.value(selectedLocale);
+        apiOptions.localeInput.value(selectedLocale);
 
         // Create LiturgyOfAnyDay component
         const liturgyOfAnyDay = new LiturgyOfAnyDay(selectedLocale);

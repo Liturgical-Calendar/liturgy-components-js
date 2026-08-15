@@ -22,10 +22,10 @@ ApiClient.init('http://localhost:8000')
         riteSelect.appendTo('#riteSelectWrapper');
 
         const apiOptions = new ApiOptions('en-US');
-        apiOptions._localeInput.defaultValue('la');
-        apiOptions._acceptHeaderInput.hide();
-        apiOptions._yearInput.class('form-control');
-        apiOptions._holydaysOfObligationInput.class('d-none');
+        apiOptions.localeInput.defaultValue('la');
+        apiOptions.acceptHeaderInput.hide();
+        apiOptions.yearInput.class('form-control');
+        apiOptions.holydaysOfObligationInput.class('d-none');
         apiOptions
             .filter(ApiOptionsFilter.PATH_BUILDER)
             .appendTo('#pathBuilder');
@@ -44,7 +44,7 @@ ApiClient.init('http://localhost:8000')
             })
             .id('calendarSelect')
             .class('form-control select-input')
-            .insertAfter(apiOptions._calendarPathInput);
+            .insertAfter(apiOptions.calendarPathInput);
 
         apiOptions
             .filter(ApiOptionsFilter.ALL_PATHS)
