@@ -26,6 +26,7 @@ import {
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
     assertTheme,
@@ -94,8 +95,14 @@ export default class CalendarControls {
     /** @type {import('../ApiClient/ApiBase.js').default} */
     #base;
 
-    /** @type {HTMLElement|null} */
-    #mount = null;
+    /**
+     * Every container the controls were mounted into — one for a single
+     * target, one per pass for a filter-keyed `controls` slot (#63).
+     * `dispose()` empties all of them.
+     *
+     * @type {HTMLElement[]}
+     */
+    #mounts = [];
 
     /** @type {HTMLElement|null} */
     #messagesMount = null;
@@ -460,13 +467,23 @@ export default class CalendarControls {
      * `controls` is required in the slots form; `messages` is optional, and its
      * absence means the API's `messages` array is never rendered.
      *
+     * **`controls` itself may be a single target — every input the filter
+     * selects in one container — or an object keyed by `ApiOptions` filter**
+     * (`generalRoman`, `allCalendars`, `pathBuilder`, `localeOnly`,
+     * `yearOnly`, plus `basePath`/`allPaths` as aliases of the first two),
+     * which splits the form across one container per filter. The rite and
+     * calendar selects mount into the FIRST key named; the passes themselves
+     * run in a canonical order this class chooses. See `ControlSlots.js` and
+     * `#appendByFilter()` for what is rejected and why. This widens what the
+     * slot's VALUE may be; the slot NAMES are unchanged.
+     *
      * `linkToRiteSelect()` does NOT require the select to be in the document —
      * it only calls `addEventListener` and reads `.value`, both fine detached —
      * so the ordering is for form layout, nothing else.
      *
      * Callable more than once; the children are moved rather than copied.
      *
-     * @param {string|HTMLElement|{controls: (string|HTMLElement), messages?: (string|HTMLElement)}} target - Where to mount.
+     * @param {string|HTMLElement|{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), messages?: (string|HTMLElement)}} target - Where to mount.
      * @param {string} [caller='CalendarControls.appendTo'] - Internal only: the
      *   full `Class.method` prefix to report in a thrown message.
      *   `mountInto()` passes `'CalendarControls.mountInto'` here, and a
@@ -511,15 +528,27 @@ export default class CalendarControls {
             );
         }
 
-        const element = CalendarControls.#requireElement(
-            slots.controls,
-            'controls',
-            caller,
-        );
-        this.#mount = element;
-        this.#riteSelect.appendTo(element);
-        this.#calendarSelect.appendTo(element);
-        this.#apiOptions.appendTo(element);
+        // `controls` may be a single target — every input the filter selects in
+        // one container, the behaviour this class shipped with, unchanged — or
+        // an object keyed by `ApiOptions` filter, which splits the form across
+        // as many containers as it names (#63). Doing that by hand needed a
+        // two-pass `filter().appendTo()` idiom that reached through this class
+        // for the `ApiOptions` it owns, and rested on three rules nothing
+        // enforced; all three are checked in `ControlSlots.js` and below,
+        // before a single element is resolved.
+        if (isFilterKeyedControls(slots.controls)) {
+            this.#appendByFilter(slots.controls, caller);
+        } else {
+            const element = CalendarControls.#requireElement(
+                slots.controls,
+                'controls',
+                caller,
+            );
+            this.#mounts = [element];
+            this.#riteSelect.appendTo(element);
+            this.#calendarSelect.appendTo(element);
+            this.#apiOptions.appendTo(element);
+        }
 
         // After the locale input is mounted, matching `DayViewer.appendTo()`'s
         // own ordering for the same cascade (C3): computed here rather than in
@@ -552,6 +581,70 @@ export default class CalendarControls {
         }
         if (null !== this.#messagesMount) {
             this.#registerMessagesRenderer();
+        }
+    }
+
+    /**
+     * Mounts the three children across the containers a filter-keyed `controls`
+     * slot names.
+     *
+     * **Ordering is this class' responsibility, not the caller's** — the first
+     * of the three rules the two-pass idiom left unenforced. `ControlSlots.js`
+     * returns the passes in a canonical order, so the same bag written with its
+     * keys in either order mounts identically.
+     *
+     * **Every target is resolved BEFORE anything is appended**, so a typo in
+     * the last container throws with the document untouched rather than leaving
+     * a half-mounted form. That is the same rule `CalendarViewer.appendTo()`
+     * already applies to its own `calendar` slot.
+     *
+     * @param {Object<string, (string|HTMLElement)>} bag - The filter-keyed
+     *   `controls` value.
+     * @param {string} caller - The `Class.method` prefix to report under.
+     * @returns {void}
+     * @throws {Error} If this instance was constructed with
+     *   `ApiOptionsFilter.NONE`, or the bag violates any of `ControlSlots.js`'
+     *   rules, or one of its targets matches nothing.
+     */
+    #appendByFilter(bag, caller) {
+        // Checked HERE rather than left to `ApiOptions.filter()`, which refuses
+        // to move off an explicitly-set `NONE` with a message naming neither
+        // this class nor the option the caller actually passed. `NONE` renders
+        // every input, so there is nothing to split in the first place — the
+        // same reason `ControlSlots.js` rejects `none` as a KEY.
+        if (ApiOptionsFilter.NONE === this.#apiOptions._filter) {
+            throw new Error(
+                `${caller}: a filter-keyed controls slot cannot be used with filter: ApiOptionsFilter.NONE, which renders every input. Construct with a narrower filter, or name a single controls target.`,
+            );
+        }
+        const { passes, selectsTarget } = resolveControlSlots(bag, caller);
+        const resolved = passes.map((pass) => ({
+            filter: pass.filter,
+            element: CalendarControls.#requireElement(
+                pass.target,
+                `controls.${pass.key}`,
+                caller,
+            ),
+        }));
+        // Resolved separately rather than looked up among `resolved`: the
+        // selects follow the caller's FIRST key, while the passes run in the
+        // canonical order, so the two lists are not indexed alike.
+        const selectsElement = CalendarControls.#requireElement(
+            selectsTarget,
+            'controls',
+            caller,
+        );
+
+        this.#mounts = [
+            selectsElement,
+            ...resolved
+                .map(({ element }) => element)
+                .filter((element) => element !== selectsElement),
+        ];
+        this.#riteSelect.appendTo(selectsElement);
+        this.#calendarSelect.appendTo(selectsElement);
+        for (const { filter, element } of resolved) {
+            this.#apiOptions.filter(filter).appendTo(element);
         }
     }
 
@@ -890,9 +983,11 @@ export default class CalendarControls {
         this.#subscriptions = [];
         this.#fetchedCallbacks = [];
         this.#errorCallbacks = [];
-        this.#mount?.replaceChildren();
+        for (const mount of this.#mounts) {
+            mount.replaceChildren();
+        }
         this.#messagesMount?.replaceChildren();
-        this.#mount = null;
+        this.#mounts = [];
         this.#messagesMount = null;
         this.#apiClient = null;
         this.#disposed = true;
@@ -914,13 +1009,21 @@ export default class CalendarControls {
      * answer, and answering it is what lets `mountInto()` resolve to `null`
      * instead of mounting into a detached, invisible node.
      *
-     * @param {string|HTMLElement|{controls?: (string|HTMLElement)}} target - The `mountInto()` target argument.
+     * @param {string|HTMLElement|{controls?: (string|HTMLElement|Object<string, (string|HTMLElement)>)}} target - The `mountInto()` target argument.
      * @returns {HTMLElement|null} The resolved element, or `null` if none could be determined this way.
      */
     static #targetElement(target) {
         const single =
             typeof target === 'string' || target instanceof HTMLElement;
-        const candidate = single ? target : target?.controls;
+        let candidate = single ? target : target?.controls;
+        // A filter-keyed `controls` slot has no single element to check. The
+        // first container the caller named is the one the selects mount into,
+        // so it is the right stand-in for "did this leave the document?" — and
+        // without this the check would silently stop applying the moment a
+        // caller adopted the filter-keyed form.
+        if (isFilterKeyedControls(candidate)) {
+            candidate = Object.values(candidate)[0];
+        }
         return candidate instanceof HTMLElement ? candidate : null;
     }
 
@@ -963,7 +1066,7 @@ export default class CalendarControls {
      * method's own doc comment for why the two cases are opposite rather than
      * inconsistent.
      *
-     * @param {string|HTMLElement|{controls: (string|HTMLElement), messages?: (string|HTMLElement)}} target - Where to mount.
+     * @param {string|HTMLElement|{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), messages?: (string|HTMLElement)}} target - Where to mount.
      * @param {Object} [options] - As the constructor, plus those below.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is

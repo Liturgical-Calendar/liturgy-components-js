@@ -13,6 +13,7 @@
 
 import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
+import { isFilterKeyedControls } from './ControlSlots.js';
 import { assertTheme, narrowTheme } from './Theme.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
@@ -242,7 +243,7 @@ export default class CalendarViewer {
      *
      * Callable more than once; the children are moved rather than copied.
      *
-     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {string} [caller='CalendarViewer.appendTo'] - Internal only: the
      *   `Class.method` prefix to report in a thrown message. `mountInto()`
      *   passes its own name so a bad target is reported under the entry point
@@ -446,12 +447,20 @@ export default class CalendarViewer {
      * "cancelled" if it no longer matches anything) by `#requireElement()` and
      * `CalendarControls.appendTo()` themselves.
      *
-     * @param {{controls?: (string|HTMLElement), calendar?: (string|HTMLElement)}} slots - The `mountInto()` slots argument.
+     * @param {{controls?: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar?: (string|HTMLElement)}} slots - The `mountInto()` slots argument.
      * @returns {HTMLElement|null} The first resolved element found, or `null`.
      */
     static #targetElement(slots) {
+        // A filter-keyed `controls` slot has no single element; the first
+        // container the caller named is the one the selects mount into, so it
+        // is the right stand-in — the same choice `CalendarControls`' own
+        // `#targetElement()` makes. Without this the disconnected check would
+        // silently stop applying the moment a caller adopted that form.
+        const controlsValue = isFilterKeyedControls(slots?.controls)
+            ? Object.values(slots.controls)[0]
+            : slots?.controls;
         const controlsCandidate =
-            slots?.controls instanceof HTMLElement ? slots.controls : null;
+            controlsValue instanceof HTMLElement ? controlsValue : null;
         const calendarCandidate =
             slots?.calendar instanceof HTMLElement ? slots.calendar : null;
         return controlsCandidate ?? calendarCandidate;
@@ -530,7 +539,7 @@ export default class CalendarViewer {
      * routes through either path, because a caller holding that promise must be
      * able to handle it, so nothing is ever reported twice.
      *
-     * @param {{controls: (string|HTMLElement), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
+     * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is `false`,
