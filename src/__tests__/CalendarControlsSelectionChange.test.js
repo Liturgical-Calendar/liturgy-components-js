@@ -130,3 +130,157 @@ describe('CalendarControls.selection', () => {
         expect(() => controls.selection).toThrow(/disposed/);
     });
 });
+
+describe('CalendarControls.onSelectionChange', () => {
+    it('is chainable', async () => {
+        const controls = await build();
+        expect(controls.onSelectionChange(() => {})).toBe(controls);
+    });
+
+    it('rejects a non-function callback, naming the component', async () => {
+        const controls = await build();
+        expect(() => controls.onSelectionChange('nope')).toThrow(
+            /CalendarControls\.onSelectionChange/,
+        );
+    });
+
+    it('does not fire on subscribe', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+        await flush();
+        expect(seen).toEqual([]);
+    });
+
+    it('fires exactly once for one calendar change', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0].calendarType).toBe('national');
+        expect(seen[0].calendarId).toBe('IT');
+        expect(seen[0].predeterminedInputs).toHaveLength(5);
+    });
+
+    it('fires exactly once for one rite change, which moves several inputs', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.riteSelect._domElement, 'ambrosian');
+        await flush();
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0].predeterminedInputs).toEqual([
+            'epiphanyInput',
+            'ascensionInput',
+            'corpusChristiInput',
+            'eternalHighPriestInput',
+        ]);
+    });
+
+    it('does not fire for a locale change, which moves nothing it reports', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.apiOptions.localeInput._domElement, 'it');
+        await flush();
+
+        expect(seen).toEqual([]);
+    });
+
+    it('fires once per action across three separate actions', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+        userSelects(controls.calendarSelect._domElement, '');
+        await flush();
+        userSelects(controls.riteSelect._domElement, 'ambrosian');
+        await flush();
+
+        // Asserted as a SEQUENCE, not a count: a length of three would also be
+        // satisfied by one action notifying nothing and another notifying twice,
+        // which is exactly the failure this file exists to catch.
+        expect(
+            seen.map(({ calendarType, calendarId, predeterminedInputs }) => [
+                calendarType,
+                calendarId,
+                predeterminedInputs.length,
+            ]),
+        ).toEqual([
+            ['national', 'IT', 5],
+            ['general', null, 0],
+            ['general', null, 4],
+        ]);
+    });
+
+    it('does not fire when a change leaves the selection unaltered', async () => {
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        // A raw dispatch with no value change: nothing to restyle.
+        controls.calendarSelect._domElement.dispatchEvent(new Event('change'));
+        await flush();
+
+        expect(seen).toEqual([]);
+    });
+
+    it('notifies every registered callback', async () => {
+        const controls = await build();
+        const first = [];
+        const second = [];
+        controls
+            .onSelectionChange((payload) => first.push(payload))
+            .onSelectionChange((payload) => second.push(payload));
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+
+        expect(first).toHaveLength(1);
+        expect(second).toHaveLength(1);
+    });
+
+    it('stops notifying after dispose()', async () => {
+        const controls = await build();
+        const select = controls.calendarSelect._domElement;
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        controls.dispose();
+        userSelects(select, 'IT');
+        await flush();
+
+        expect(seen).toEqual([]);
+    });
+
+    it('removes its change listeners on dispose, not only its callbacks', async () => {
+        // Asserted separately from the test above, which clearing the callback
+        // list alone would satisfy: the listeners are this class' own named
+        // closures — unlike the ones `ApiClient.listenTo()` attaches — so they
+        // can be, and are, removed.
+        const controls = await build();
+        const removed = jest.spyOn(
+            controls.calendarSelect._domElement,
+            'removeEventListener',
+        );
+
+        controls.dispose();
+
+        expect(removed).toHaveBeenCalledWith('change', expect.any(Function));
+    });
+
+    it('throws on onSelectionChange() once disposed', async () => {
+        const controls = await build();
+        controls.dispose();
+        expect(() => controls.onSelectionChange(() => {})).toThrow(/disposed/);
+    });
+});

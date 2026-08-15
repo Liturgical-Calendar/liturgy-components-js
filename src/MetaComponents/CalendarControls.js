@@ -146,6 +146,25 @@ export default class CalendarControls {
     /** @type {Array<{event: string, listener: function}>} */
     #subscriptions = [];
 
+    /** @type {Array<function(Object): void>} */
+    #selectionCallbacks = [];
+
+    /** @type {Array<{element: HTMLElement, listener: function}>} */
+    #selectionListeners = [];
+
+    /** @type {?Promise<void>} */
+    #pendingSelectionNotify = null;
+
+    /**
+     * The last payload handed to the `onSelectionChange()` callbacks, flattened
+     * to one string — seeded in the constructor, so the first notification
+     * compares against the state these controls started in rather than against
+     * nothing.
+     *
+     * @type {string}
+     */
+    #lastSelectionKey = '';
+
     /**
      * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
@@ -296,6 +315,19 @@ export default class CalendarControls {
         // whether or not this filter renders it — keeps that fallback correct
         // too, not only the very first render.
         this.#apiOptions._localeInput.defaultValue(this.#language);
+
+        // Attached to the only two inputs that can move the selection payload.
+        // A locale, year or year-type change moves nothing in it, so listening
+        // to the whole `ApiOptions` would produce only notifications the dedupe
+        // below has to drop. Attached HERE rather than on first subscription so
+        // that `#lastSelectionKey` is seeded from the state these controls were
+        // constructed in, which is what makes the dedupe independent of when a
+        // caller happens to subscribe.
+        this.#lastSelectionKey = CalendarControls.#selectionKey(
+            this.#readSelection(),
+        );
+        this.#listenForSelection(this.#riteSelect._domElement);
+        this.#listenForSelection(this.#calendarSelect._domElement);
     }
 
     /** @returns {RiteSelect} The wired rite select. */
@@ -392,6 +424,125 @@ export default class CalendarControls {
             calendarId: '' === value ? null : value,
             predeterminedInputs: this.#apiOptions._predeterminedInputs,
         };
+    }
+
+    /**
+     * Attaches the `change` listener that schedules a selection notification,
+     * recording it so `dispose()` can remove it.
+     *
+     * Unlike the listeners `ApiClient.listenTo()` attaches — anonymous closures
+     * created inside that class, which `dispose()` documents it cannot reach —
+     * these are this class' own and are stored, so they ARE released.
+     *
+     * @param {HTMLElement} element - The select to listen to.
+     * @returns {void}
+     */
+    #listenForSelection(element) {
+        const listener = () => this.#scheduleSelectionNotify();
+        element.addEventListener('change', listener);
+        this.#selectionListeners.push({ element, listener });
+    }
+
+    /**
+     * A selection payload flattened to one string, for the change comparison.
+     *
+     * @param {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} selection - The payload.
+     * @returns {string} A key equal for equal payloads.
+     */
+    static #selectionKey({ calendarType, calendarId, predeterminedInputs }) {
+        return `${calendarType}|${calendarId ?? ''}|${predeterminedInputs.join(',')}`;
+    }
+
+    /**
+     * Collapses the notifications one user action provokes into one, on a
+     * microtask.
+     *
+     * One action moves several inputs: a rite change makes `ApiOptions` rewrite
+     * the calendar list, the locale options and the year floor, each dispatching
+     * its own synchronous `change`, and the calendar select's own listener fires
+     * in that same burst. Notifying synchronously would hand a subscriber an
+     * intermediate payload naming the calendar the user had just left — and
+     * would hand it out before `ApiOptions`' own `change` listener had
+     * necessarily run, so `predeterminedInputs` could still describe the
+     * previous selection. Every dispatch in that burst is synchronous, so a
+     * microtask flush reads settled state and nothing beyond the current turn is
+     * swallowed.
+     *
+     * The same shape as `SubscriptionUrl.#scheduleNotify()` and
+     * `ApiClient.#scheduleRefetch()`, for the structurally identical problem.
+     *
+     * @returns {void}
+     */
+    #scheduleSelectionNotify() {
+        if (null !== this.#pendingSelectionNotify) {
+            return;
+        }
+        this.#pendingSelectionNotify = Promise.resolve().then(() => {
+            this.#pendingSelectionNotify = null;
+            // A `change` dispatched in the same turn as `dispose()` would
+            // otherwise reach callbacks the caller has already released.
+            if (true === this.#disposed) {
+                return;
+            }
+            const selection = this.#readSelection();
+            const key = CalendarControls.#selectionKey(selection);
+            // The documented contract is that this fires when the selection
+            // CHANGES. A `change` event that altered nothing it reports — a raw
+            // dispatch, reselecting the option already selected — notifies
+            // nobody, since there is nothing for a consumer to restyle.
+            // Compared against the LAST NOTIFIED key, not a set of every key
+            // ever seen, so changing away and back notifies both times.
+            if (key === this.#lastSelectionKey) {
+                return;
+            }
+            this.#lastSelectionKey = key;
+            for (const callback of this.#selectionCallbacks) {
+                callback(selection);
+            }
+        });
+    }
+
+    /**
+     * Registers a callback fired whenever the selection changes.
+     *
+     * Receives the same payload as [`selection`](#selection): what kind of
+     * calendar is selected, its id, and which `ApiOptions` inputs that selection
+     * predetermines. This is what replaces a raw `change` listener on the
+     * calendar select plus a `value === ''` test (#68) — a test that is also
+     * wrong under the Ambrosian rite, where the Missal predetermines four inputs
+     * with no calendar selected at all.
+     *
+     * **Fired once per user action, on a microtask, and only when the payload
+     * changed.** One action moves several inputs; see
+     * `#scheduleSelectionNotify()`.
+     *
+     * **It does NOT fire on subscribe.** The initial state is available
+     * synchronously and race-free from `selection`, so painting it is one extra
+     * line, and a callback invoked inside the registration call would run
+     * consumer code before the registering statement had returned. This matches
+     * `onCalendarFetched()`, `onError()` and `SubscriptionBuilder.onChange()`,
+     * none of which replay:
+     *
+     * ```javascript
+     * const paint = ( { predeterminedInputs } ) => { … };
+     * paint( controls.selection );
+     * controls.onSelectionChange( paint );
+     * ```
+     *
+     * @param {function(Object): void} callback - Receives the new selection.
+     * @returns {CalendarControls} This instance, for chaining.
+     * @throws {Error} If these controls have been disposed, or `callback` is not
+     *   a function.
+     */
+    onSelectionChange(callback) {
+        this.#assertUsable();
+        if (typeof callback !== 'function') {
+            throw new Error(
+                `CalendarControls.onSelectionChange: callback must be a function, but found type: ${typeof callback}`,
+            );
+        }
+        this.#selectionCallbacks.push(callback);
+        return this;
     }
 
     /**
@@ -1087,6 +1238,12 @@ export default class CalendarControls {
                 this.#apiClient._eventBus.off(event, listener);
             }
         }
+        for (const { element, listener } of this.#selectionListeners) {
+            element.removeEventListener('change', listener);
+        }
+        this.#selectionListeners = [];
+        this.#selectionCallbacks = [];
+        this.#pendingSelectionNotify = null;
         this.#subscriptions = [];
         this.#fetchedCallbacks = [];
         this.#errorCallbacks = [];
