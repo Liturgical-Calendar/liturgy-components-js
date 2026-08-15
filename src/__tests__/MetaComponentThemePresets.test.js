@@ -78,13 +78,21 @@ describe('theme presets in Theme.js', () => {
     });
 
     it('opens the apiOptions gate, so the preset reaches all ten inputs', () => {
-        expect(resolveApiOptionsInputTheme('bootstrap5', 'yearInput')).toEqual({
-            class: 'form-control',
-            labelClass: 'form-label',
-        });
-        expect(
-            resolveApiOptionsInputTheme('bootstrap5', 'epiphanyInput'),
-        ).toEqual({ class: 'form-select', labelClass: 'form-label' });
+        // Driven from API_OPTIONS_INPUT_KEYS rather than spot-checking two, so
+        // the name is literally true and an input added later is covered without
+        // anyone remembering to extend this (CodeRabbit, PR #89).
+        expect(API_OPTIONS_INPUT_KEYS).toHaveLength(10);
+        for (const inputKey of API_OPTIONS_INPUT_KEYS) {
+            // `yearInput` is the one `input`-role member; the other nine are selects.
+            const expectedClass =
+                'yearInput' === inputKey ? 'form-control' : 'form-select';
+            expect(resolveApiOptionsInputTheme('bootstrap5', inputKey)).toEqual(
+                {
+                    class: expectedClass,
+                    labelClass: 'form-label',
+                },
+            );
+        }
     });
 
     it('keeps a caller-written apiOptions bundle rather than replacing it', () => {

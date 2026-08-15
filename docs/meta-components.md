@@ -25,9 +25,11 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
     filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
     placeholderText: 'Select calendar ID...',
     errorText: 'Could not load calendars — try reloading the page',
-    // `preset` supplies `form-select`; everything below is what this page adds on
-    // top of it, per key. Without the preset the two class strings would have to
-    // spell out the framework's own vocabulary as well as this page's.
+    // `preset` supplies `form-select` as the FLAT default. A key written below
+    // REPLACES it rather than adding to it — class tokens are not merged — which
+    // is why each override here repeats `form-select` itself. What the preset
+    // saves is the keys this page does NOT override, above all the whole
+    // `ApiOptions` form.
     theme: {
         preset: 'bootstrap5',
         select: 'form-select form-select-sm perm-object-id',
@@ -479,9 +481,11 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
     placeholderText: 'Select calendar ID...',
     errorText: 'Could not load calendars — try reloading the page',
     signal: scopeChange.signal,
-    // `preset` supplies `form-select`; everything below is what this page adds on
-    // top of it, per key. Without the preset the two class strings would have to
-    // spell out the framework's own vocabulary as well as this page's.
+    // `preset` supplies `form-select` as the FLAT default. A key written below
+    // REPLACES it rather than adding to it — class tokens are not merged — which
+    // is why each override here repeats `form-select` itself. What the preset
+    // saves is the keys this page does NOT override, above all the whole
+    // `ApiOptions` form.
     theme: {
         preset: 'bootstrap5',
         select: 'form-select form-select-sm perm-object-id',

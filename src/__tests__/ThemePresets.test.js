@@ -6,6 +6,7 @@
  * suite would notice a member added to one and not the other.
  */
 
+import { describe, it, expect } from '@jest/globals';
 import {
     ThemePreset,
     THEME_PRESET_NAMES,
