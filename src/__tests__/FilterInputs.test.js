@@ -33,11 +33,19 @@ const KEY_BY_NAME = Object.freeze({
     calendar_path: 'calendarPathInput',
 });
 
-/** The input keys a container holds, in document order. */
+/**
+ * The input keys a container holds, in document order.
+ *
+ * An input whose name is not in {@link KEY_BY_NAME} is reported rather than
+ * dropped, so an eleventh input appended outside the loop fails the comparison
+ * instead of being invisible to it.
+ */
 const mountedKeys = (container) =>
-    [...container.querySelectorAll('select, input')]
-        .map((element) => KEY_BY_NAME[element.getAttribute('name')])
-        .filter((key) => undefined !== key);
+    [...container.querySelectorAll('select, input')].map(
+        (element) =>
+            KEY_BY_NAME[element.getAttribute('name')] ??
+            `UNMAPPED:${element.getAttribute('name')}`,
+    );
 
 /**
  * What each filter is INTENDED to render, written out independently of

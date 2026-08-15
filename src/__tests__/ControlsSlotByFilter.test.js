@@ -53,6 +53,18 @@ describe('a bare controls target is unchanged', () => {
             /the controls target must be a non-empty CSS selector or an HTMLElement/,
         );
     });
+
+    it('points a bad controls target at the filter-keyed form', () => {
+        // An array is the natural first guess at "split this across rows", and
+        // is rejected as a target rather than read as a bag — so it is exactly
+        // the error that should mention the form the caller was reaching for.
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() =>
+            controls.appendTo({ controls: ['#row1', '#row2'] }),
+        ).toThrow(
+            /or an object keyed by ApiOptions filter \(generalRoman, allCalendars, pathBuilder, localeOnly, yearOnly\)/,
+        );
+    });
 });
 
 describe('rule 1: the component performs the passes, in its own order', () => {
@@ -201,6 +213,18 @@ describe('rule 3: NONE cannot participate', () => {
         );
     });
 
+    it('rejects a computed NONE key with the NONE message, not the unknown-key one', () => {
+        // `ApiOptionsFilter.NONE` IS `null`, so the computed form a caller
+        // reaches for by symmetry with the supported
+        // `{ [ApiOptionsFilter.GENERAL_ROMAN]: t }` produces the key 'null'.
+        const controls = new CalendarControls({ locale: 'en' });
+        expect(() =>
+            controls.appendTo({
+                controls: { [ApiOptionsFilter.NONE]: '#row1' },
+            }),
+        ).toThrow(/ApiOptionsFilter\.NONE renders every input/);
+    });
+
     it('rejects a filter-keyed bag on a component built with filter NONE', () => {
         const controls = new CalendarControls({
             locale: 'en',
@@ -324,6 +348,61 @@ describe('dispose empties every container it filled', () => {
         controls.dispose();
         expect(namesIn('#row1')).toEqual([]);
         expect(namesIn('#row2')).toEqual([]);
+    });
+
+    it('clears a container a later re-mount stopped naming', () => {
+        // A re-mount naming FEWER filters leaves the dropped filters' inputs
+        // exactly where they were — nothing in the new bag moves them — so a
+        // `#mounts` list that only tracked the latest call would leave them in
+        // the document after `dispose()`.
+        const controls = new CalendarControls({ locale: 'en' });
+        controls.appendTo({
+            controls: { pathBuilder: '#row1', allCalendars: '#row2' },
+        });
+        expect(namesIn('#row1')).toContain('calendar_path');
+        controls.appendTo({
+            controls: { allCalendars: '#row3', generalRoman: '#row2' },
+        });
+        expect(namesIn('#row1')).toContain('calendar_path');
+        controls.dispose();
+        expect(namesIn('#row1')).toEqual([]);
+        expect(namesIn('#row2')).toEqual([]);
+        expect(namesIn('#row3')).toEqual([]);
+    });
+});
+
+describe('CalendarControls.mountInto with a filter-keyed controls slot', () => {
+    it('does not treat a filter-keyed bag as a cancelled mount', async () => {
+        const controls = await CalendarControls.mountInto(
+            {
+                controls: {
+                    allCalendars: document.getElementById('row1'),
+                    generalRoman: document.getElementById('row2'),
+                },
+            },
+            { locale: 'en', initialFetch: false },
+        );
+        expect(controls).not.toBeNull();
+        expect(namesIn('#row2')).toContain('epiphany');
+        controls.dispose();
+    });
+
+    it('resolves to null when the first named container has left the document', async () => {
+        const detached = document.createElement('div');
+        const controls = await CalendarControls.mountInto(
+            { controls: { allCalendars: detached, generalRoman: '#row2' } },
+            { locale: 'en', initialFetch: false },
+        );
+        expect(controls).toBeNull();
+    });
+
+    it('rejects an empty bag rather than mounting nothing', async () => {
+        await expect(
+            CalendarControls.mountInto(
+                { controls: {} },
+                { locale: 'en', initialFetch: false },
+            ),
+        ).rejects.toThrow(/must name at least one filter/);
     });
 });
 

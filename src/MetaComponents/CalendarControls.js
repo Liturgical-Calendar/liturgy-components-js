@@ -26,7 +26,11 @@ import {
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { resolveInputVisibility } from './InputVisibility.js';
-import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
+import {
+    isFilterKeyedControls,
+    resolveControlSlots,
+    CONTROLS_TARGET_HINT,
+} from './ControlSlots.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
     assertTheme,
@@ -96,9 +100,9 @@ export default class CalendarControls {
     #base;
 
     /**
-     * Every container the controls were mounted into — one for a single
-     * target, one per pass for a filter-keyed `controls` slot (#63).
-     * `dispose()` empties all of them.
+     * Every container this instance has EVER mounted into — one for a single
+     * target, one per pass for a filter-keyed `controls` slot (#63), unioned
+     * across calls by `#rememberMounts()`. `dispose()` empties all of them.
      *
      * @type {HTMLElement[]}
      */
@@ -440,13 +444,13 @@ export default class CalendarControls {
      * @returns {HTMLElement} The resolved element.
      * @throws {Error} If the target is neither, or matches nothing.
      */
-    static #requireElement(target, slot, caller) {
+    static #requireElement(target, slot, caller, hint = '') {
         if (target instanceof HTMLElement) {
             return target;
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement${hint}.`,
             );
         }
         const element = document.querySelector(target);
@@ -543,8 +547,9 @@ export default class CalendarControls {
                 slots.controls,
                 'controls',
                 caller,
+                CONTROLS_TARGET_HINT,
             );
-            this.#mounts = [element];
+            this.#rememberMounts([element]);
             this.#riteSelect.appendTo(element);
             this.#calendarSelect.appendTo(element);
             this.#apiOptions.appendTo(element);
@@ -585,6 +590,28 @@ export default class CalendarControls {
     }
 
     /**
+     * Records containers this instance has mounted into, for `dispose()`.
+     *
+     * **Accumulates across calls, and deduplicates.** Deduplicating because
+     * nothing stops a caller naming one container for two filters — legal, and
+     * simply the single-target layout for those two passes. Accumulating
+     * because a re-mount that names FEWER filters than the previous one leaves
+     * the dropped filters' inputs exactly where they were: nothing in the new
+     * bag moves them. Replacing the list would then hand `dispose()` a set of
+     * containers that no longer covers everything this instance put in the
+     * document, and those inputs would survive it. Re-clearing a container the
+     * caller has stopped naming is the same call `appendTo()` already makes for
+     * a `messages` mount it stops rendering into, for the same reason; the
+     * containers emptied by moves are already empty, so it is a no-op there.
+     *
+     * @param {HTMLElement[]} elements - Containers just mounted into.
+     * @returns {void}
+     */
+    #rememberMounts(elements) {
+        this.#mounts = [...new Set([...this.#mounts, ...elements])];
+    }
+
+    /**
      * Mounts the three children across the containers a filter-keyed `controls`
      * slot names.
      *
@@ -607,6 +634,15 @@ export default class CalendarControls {
      * be a new rule about an object the caller can also drive directly through
      * the `apiOptions` getter, so the state is left honest instead.
      * `ControlsSlotByFilter.test.js` records the consequence.
+     *
+     * **A `pathBuilder` pass also claims the year input PERMANENTLY on that
+     * `ApiOptions`**, since `#pathBuilderEnabled` never resets. Re-mount with a
+     * bag that omits `pathBuilder` and the overlap check will let
+     * `allCalendars` claim the year input, while `ApiOptions.appendTo()` still
+     * skips it — so it stays where the earlier pass put it. `#rememberMounts()`
+     * is what keeps `dispose()` covering that container regardless; resetting
+     * the flag would be a change to `ApiOptions`' own state machine, which this
+     * slot-handling change deliberately stays out of.
      *
      * @param {Object<string, (string|HTMLElement)>} bag - The filter-keyed
      *   `controls` value.
@@ -645,17 +681,10 @@ export default class CalendarControls {
             caller,
         );
 
-        // A `Set`, because nothing stops a caller naming one container for two
-        // filters — which is legal and simply reproduces the single-target
-        // layout for those two passes. `dispose()` is idempotent per element,
-        // so a duplicate would be harmless rather than wrong; deduplicating
-        // keeps `#mounts` an honest list of the containers in play.
-        this.#mounts = [
-            ...new Set([
-                selectsElement,
-                ...resolved.map(({ element }) => element),
-            ]),
-        ];
+        this.#rememberMounts([
+            selectsElement,
+            ...resolved.map(({ element }) => element),
+        ]);
         this.#riteSelect.appendTo(selectsElement);
         this.#calendarSelect.appendTo(selectsElement);
         for (const { filter, element } of resolved) {

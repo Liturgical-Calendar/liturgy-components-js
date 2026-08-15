@@ -119,9 +119,10 @@ const PASS_ORDER = Object.freeze([
  *
  * A single target is a string or an `HTMLElement`, so anything else that
  * survives `assertPlainOptions()` is a bag. Callers ask this BEFORE validating,
- * so a value that is neither — a number, an array, a `Date` — still reaches
- * their own "must be a selector, an element, or a filter-keyed object" message
- * rather than being reported as a bad bag.
+ * so a value that is neither — a number, an array, a `Date`, any class
+ * instance — still reaches their own bad-target message rather than being
+ * reported as a malformed bag. {@link CONTROLS_TARGET_HINT} is what makes that
+ * message mention the filter-keyed form.
  *
  * @param {unknown} value - The `controls` slot value.
  * @returns {boolean} `true` when the value should be read as a filter-keyed bag.
@@ -195,7 +196,14 @@ function resolveControlSlots(value, caller) {
     // state for their own bags.
     const keyByFilter = new Map();
     for (const key of keys) {
-        if ('none' === key) {
+        // `'null'` as well as `'none'`, because `ApiOptionsFilter.NONE` IS
+        // `null`: a caller who reaches for `{ [ ApiOptionsFilter.NONE ]: t }` by
+        // symmetry with the computed form the aliases above deliberately
+        // support gets the key `'null'`. Without this it would still throw, but
+        // as an unrecognised key rather than with the reason NONE cannot take
+        // part — the less useful of the two messages, for the more thoughtful
+        // of the two mistakes.
+        if ('none' === key || 'null' === key) {
             throw new Error(
                 `${caller}: the controls slot object cannot name 'none'. ApiOptionsFilter.NONE renders every input, so it cannot be one of several passes, and ApiOptions.filter() refuses to mix it with any other filter.`,
             );
@@ -246,4 +254,20 @@ function resolveControlSlots(value, caller) {
     return { passes, selectsTarget: value[keys[0]] };
 }
 
-export { isFilterKeyedControls, resolveControlSlots, FILTER_BY_SLOT_KEY };
+/**
+ * Appended to a "bad controls target" message so the filter-keyed form is
+ * discoverable from the error a caller most plausibly hits while looking for
+ * it — `controls: [ '#row1', '#row2' ]` is a natural first guess at "split this
+ * across rows", and an array is rejected by
+ * {@link isFilterKeyedControls} as a target rather than read as a bag.
+ *
+ * @type {string}
+ */
+const CONTROLS_TARGET_HINT = `, or an object keyed by ApiOptions filter (${CANONICAL_KEYS.join(', ')})`;
+
+export {
+    isFilterKeyedControls,
+    resolveControlSlots,
+    FILTER_BY_SLOT_KEY,
+    CONTROLS_TARGET_HINT,
+};

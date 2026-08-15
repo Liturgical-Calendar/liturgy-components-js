@@ -1288,11 +1288,11 @@ reporting rather than a reason to change paths.
 component performs the passes itself, in an order it chooses, and validates the whole layout before
 mounting anything.
 
-A two-row Bootstrap form — the path and temporal inputs on one row, the parameters a national or
+A two-row Bootstrap form — the calendar and temporal inputs on one row, the parameters a national or
 diocesan calendar predetermines on another:
 
 ```javascript
-import { CalendarViewer, ApiOptionsFilter } from '@liturgical-calendar/components-js';
+import { CalendarViewer } from '@liturgical-calendar/components-js';
 
 const viewer = new CalendarViewer({
     locale: 'en',
@@ -1353,6 +1353,8 @@ document untouched rather than leaving a half-mounted form.
 calling `filter().appendTo()` again still splits the form by hand:
 
 ```javascript
+import { ApiOptionsFilter } from '@liturgical-calendar/components-js';
+
 viewer.appendTo({ controls: '#calendarOptions', calendar: '#litcalWebcalendar' });
 viewer.controls.apiOptions
     .filter(ApiOptionsFilter.GENERAL_ROMAN)
