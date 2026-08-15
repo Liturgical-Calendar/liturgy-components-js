@@ -15,7 +15,12 @@
  * @license Apache-2.0
  */
 
-import { ApiOptions, ThemePreset, VERSION } from '../dist/index.js';
+import {
+    ApiOptions,
+    CalendarControls,
+    ThemePreset,
+    VERSION,
+} from '../dist/index.js';
 
 /**
  * `VERSION` must be declared `string`, never the string LITERAL of whatever
@@ -143,3 +148,29 @@ void internalAccessorsStayInternal;
  */
 const bootstrap5Preset: string = ThemePreset.BOOTSTRAP_5;
 void bootstrap5Preset;
+
+/**
+ * The `CalendarControls` selection payload (#68) must reach a consumer as a
+ * usable type, not as `Object`.
+ */
+type ControlsInstance = InstanceType<typeof CalendarControls>;
+
+const paint = ({
+    calendarType,
+    calendarId,
+    predeterminedInputs,
+}: ControlsInstance['selection']): void => {
+    void calendarType;
+    void calendarId;
+    void predeterminedInputs;
+};
+
+const documentedRecipe = (controls: ControlsInstance): void => {
+    paint(controls.selection);
+    controls.onSelectionChange(paint);
+};
+void documentedRecipe;
+
+const narrowedCalendarType: 'general' | 'national' | 'diocesan' =
+    null as unknown as ControlsInstance['selection']['calendarType'];
+void narrowedCalendarType;

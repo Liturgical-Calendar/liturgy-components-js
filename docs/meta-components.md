@@ -1114,7 +1114,7 @@ that, since theming is applied after construction.
 
 ### Public getters
 
-All four throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
+All five throw once these controls have been disposed — see [`dispose()`](#dispose-2) below.
 
 | Member           | Returns          | Description                                                                         |
 | ---------------- | ---------------- | ----------------------------------------------------------------------------------- |
@@ -1122,6 +1122,97 @@ All four throw once these controls have been disposed — see [`dispose()`](#dis
 | `calendarSelect` | `CalendarSelect` | The wired calendar select.                                                          |
 | `apiOptions`     | `ApiOptions`     | The wired `ApiOptions`.                                                             |
 | `selectedLocale` | `string`         | The locale chosen by the cascade below, and currently selected in the locale input. |
+| `selection`      | `Object`         | What is selected, and which `ApiOptions` inputs that selection fixes. See below.    |
+
+### `selection` and `onSelectionChange()`
+
+`selection` reports the current state, and the chainable `onSelectionChange( callback )` publishes it
+whenever it changes:
+
+| Key                   | Type                                    | Meaning                                                                                  |
+| --------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `calendarType`        | `'general' \| 'national' \| 'diocesan'` | What kind of calendar is selected. `'general'` is the rite-level calendar (empty value). |
+| `calendarId`          | `string \| null`                        | The selected `calendar_id`; `null` under `'general'`.                                    |
+| `predeterminedInputs` | `ReadonlyArray<string>`                 | The `ApiOptions` inputs this component's `ApiOptions` currently treats as predetermined. |
+
+The payload is exported to TypeScript as `CalendarSelection`, with `calendarType` a union rather than a bare
+`string`, so the recipe below type-checks under `strict`.
+
+**`predeterminedInputs` is the point of this pair.** It names inputs by their canonical `ApiOptions`
+accessor — `'epiphanyInput'`, `'ascensionInput'`, `'corpusChristiInput'`, `'eternalHighPriestInput'`,
+`'holydaysOfObligationInput'` — so `controls.apiOptions[ name ]` reaches the input it named, and it is
+derived from the same rule `ApiOptions` uses to disable them, not from a second reading of the DOM. That
+matters for a case the usual `calendarSelect.value === ''` test gets wrong: under the **Ambrosian rite**
+the Missal fixes Epiphany, Ascension and Corpus Domini and does not establish the Eternal High Priest, so
+those four are predetermined with **no calendar selected at all**, while holy days of obligation remain
+the user's to choose.
+
+Three things it reports that are easy to misread as bugs:
+
+- **It may name inputs the current `filter` does not render.** All ten `ApiOptions` inputs exist whatever
+  the filter — which is also why theming a hidden one is inert rather than an error — so under the default
+  `ApiOptionsFilter.ALL_CALENDARS`, which mounts none of these five, all five can still be named. Reach
+  them through `controls.apiOptions[ name ]`, which is defined either way.
+- **It is what `ApiOptions` has APPLIED, so controls that were never wired report the empty set.**
+  `mountInto()` permits omitting `apiClient`, and without it `listenTo()` never runs and the `ApiOptions`
+  is never linked to the calendar select — so nothing in that form reacts to a selection, and nothing in
+  it is predetermined either. The empty set describes that form exactly; deriving this key live instead
+  would make it alone react to a select the rest of the form still ignores.
+- **A programmatic `CalendarSelect.value()` dispatches no `change`, so nothing sees it** — not this, and
+  not `ApiClient`, which likewise will not refetch for it. Follow such an assignment with
+  `select._domElement.dispatchEvent( new Event( 'change' ) )` when the rest of the page is meant to react.
+  That is the rule the documented `calendarSelect.value( '' )` recipe already lives under, not a new one.
+
+`calendarType` uses the `data-calendartype` vocabulary extended with `'general'`, which is `ApiClient`'s
+own cache-key category for the rite-level calendar. It is deliberately not the exported `CalendarType`
+enum, whose values are the URL segments `nation`/`diocese`. `calendarId` is `null` rather than `''` under
+`'general'`, so the empty-string test this replaces is not simply rewritten against the payload.
+
+**The callback fires once per user action, on a microtask, and only when the payload changed.** One
+action moves several inputs — a rite change makes `ApiOptions` rewrite the calendar list, the locale
+options and the year floor, each dispatching its own `change` — so notifying synchronously would hand out
+an intermediate payload naming the calendar the user had just left. This is the same coalescing
+`SubscriptionUrl` and `ApiClient` already apply, for the same reason. A `change` that alters nothing the
+payload reports — a raw dispatch, reselecting the option already selected, a locale change — notifies
+nobody, and neither does a callback registered by another callback during a notification — it is a
+subscription like any other, and hears the next action rather than the one in flight. A callback that
+throws aborts the rest of that batch, as it does for every other subscription in this library.
+
+**It does not fire on subscribe**, matching `onCalendarFetched()`, `onError()` and
+`SubscriptionBuilder.onChange()`. The initial state is available synchronously and race-free from
+`selection`, so painting it is one extra line, whereas a callback invoked inside the registration call
+would run consumer code before the registering statement had returned.
+
+Before, in every consumer:
+
+```javascript
+const calendarSelectElement = viewer.controls.calendarSelect._domElement;
+setHolyDaysOfObligationBgColor(holydaysInput, calendarSelectElement.value);
+
+calendarSelectElement.addEventListener('change', (ev) => {
+    $(holydaysInput).multiselect('rebuild');
+    setHolyDaysOfObligationBgColor(holydaysInput, ev.target.value);
+});
+```
+
+After — the jQuery call stays with the consumer, the derived state does not:
+
+```javascript
+const paint = ({ predeterminedInputs }) => {
+    const readOnly = predeterminedInputs.includes('holydaysOfObligationInput');
+    holydaysInput.classList.toggle('predetermined', readOnly);
+};
+
+paint(viewer.controls.selection);
+viewer.controls.onSelectionChange((selection) => {
+    $(holydaysInput).multiselect('rebuild');
+    paint(selection);
+});
+```
+
+`CalendarViewer`, `ApiExplorer` and `SubscriptionBuilder` need no forwarding methods of their own: all
+three expose `.controls`, which is how the example above reaches it. `onSelectionChange()` throws, naming
+itself, if what it is handed is not a function.
 
 ### The locale cascade
 
@@ -1268,7 +1359,9 @@ naming "disposed" once it has run.
 **What `dispose()` releases:** every subscription these controls made on the client's event bus through
 `onCalendarFetched()`/`onError()`/`listenTo()` — including the messages renderer, when a `messages` slot
 was named — all unsubscribed via `EventEmitter.off()`. Both mounts (`controls` and, if named, `messages`)
-are emptied.
+are emptied. The two `change` listeners attached for `onSelectionChange()` are removed as well, and the
+callbacks registered through it are dropped: unlike the ones below, those are this class' own named
+closures, so they can be — and are — released.
 
 **What survives `dispose()`, and why it must — the same gap `DayViewer.dispose()` documents:** the
 `change` listeners `ApiClient.listenTo()` attaches internally to the rite select, calendar select and
