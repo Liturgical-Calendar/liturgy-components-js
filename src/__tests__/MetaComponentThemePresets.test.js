@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 /**
  * Theme presets as `Theme.js` resolves them (issue #67).
  *
@@ -6,7 +7,22 @@
  * every one of the six theme-taking components. The unit checks say what the resolver
  * computes; only the end-to-end block says what a consumer actually sees, and the two
  * have to agree.
+ *
+ * **The split is not belt-and-braces, it is load-bearing**, and the `url` role proves
+ * it: a unit test that calls `resolveChildTheme( theme, 'subscriptionUrl', 'url' )`
+ * passes whether or not `SubscriptionBuilder` actually asks for that role. Reverting
+ * the call site left every unit test green. Only the mounted assertion goes red.
  */
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
+import { CalendarSelectFilter } from '../Enums.js';
+import CalendarResourcePicker from '../MetaComponents/CalendarResourcePicker.js';
+import CalendarControls from '../MetaComponents/CalendarControls.js';
+import CalendarViewer from '../MetaComponents/CalendarViewer.js';
+import ApiExplorer from '../MetaComponents/ApiExplorer.js';
+import DayViewer from '../MetaComponents/DayViewer.js';
+import SubscriptionBuilder from '../SubscriptionBuilder/SubscriptionBuilder.js';
+import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 import {
     assertTheme,
@@ -16,6 +32,15 @@ import {
     THEME_CHILD_KEYS,
 } from '../MetaComponents/Theme.js';
 import { THEME_PRESET_NAMES } from '../MetaComponents/ThemePresets.js';
+
+const API_URL = 'http://localhost:8000';
+
+beforeEach(() => {
+    ApiBase.reset();
+    ApiBase.fromMetadata(API_URL, FULL_METADATA);
+    document.body.innerHTML =
+        '<div id="controls"></div><div id="url"></div><div id="mount"></div>';
+});
 
 describe('theme presets in Theme.js', () => {
     it('resolves a select child from a bare preset name', () => {
@@ -138,5 +163,201 @@ describe('theme presets in Theme.js', () => {
         expect(resolveApiOptionsInputTheme(undefined, 'yearInput')).toEqual({});
         expect(() => assertTheme(null, 'DayViewer')).not.toThrow();
         expect(narrowTheme(undefined, 'CalendarControls')).toBeUndefined();
+    });
+});
+
+// A prerequisite for the preset, not a bonus. `collectFlatDefaults()` used to read
+// `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry inherited
+// `theme.select` — and `theme: 'bootstrap5'` would have put Bootstrap's select styling
+// (border, padding, dropdown-arrow background image) onto a `LiturgyOfAnyDay` card and
+// onto the subscription URL's copy `<button>`. Neither is a `<select>`, and the flat key
+// has always been documented as applying to "every `<select>` child".
+describe('a flat theme class reaches controls only', () => {
+    it('does not reach the liturgy child, which is not a select', () => {
+        expect(
+            resolveChildTheme('bootstrap5', 'liturgy', 'liturgy'),
+        ).not.toHaveProperty('class');
+        expect(
+            resolveChildTheme({ select: 'form-select' }, 'liturgy', 'liturgy'),
+        ).not.toHaveProperty('class');
+    });
+
+    it('still honours a per-child class on the liturgy child', () => {
+        expect(
+            resolveChildTheme(
+                { preset: 'bootstrap5', liturgy: { class: 'card shadow' } },
+                'liturgy',
+                'liturgy',
+            ),
+        ).toEqual({ class: 'card shadow' });
+    });
+
+    it('does not reach the subscription URL control, which is a button', () => {
+        expect(
+            resolveChildTheme('bootstrap5', 'subscriptionUrl', 'url'),
+        ).not.toHaveProperty('class');
+        expect(
+            resolveChildTheme(
+                { select: 'form-select' },
+                'subscriptionUrl',
+                'url',
+            ),
+        ).not.toHaveProperty('class');
+    });
+
+    it('still honours a per-child class on the subscription URL control', () => {
+        expect(
+            resolveChildTheme(
+                { preset: 'bootstrap5', subscriptionUrl: 'url-box' },
+                'subscriptionUrl',
+                'url',
+            ),
+        ).toEqual({ class: 'url-box' });
+    });
+
+    it('still reaches the select- and input-role children', () => {
+        expect(resolveChildTheme('bootstrap5', 'riteSelect', 'select')).toEqual(
+            { class: 'form-select', labelClass: 'form-label' },
+        );
+        expect(
+            resolveChildTheme('bootstrap5', 'dateControls', 'input'),
+        ).toEqual({ class: 'form-control', labelClass: 'form-label' });
+    });
+});
+
+describe('a preset on a mounted component', () => {
+    it('styles a CalendarResourcePicker, which has no ApiOptions', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            theme: 'bootstrap5',
+        });
+        expect(picker.riteSelect._domElement.className).toBe('form-select');
+        expect(picker.calendarSelect._domElement.className).toBe('form-select');
+        picker.dispose();
+    });
+
+    it('styles a CalendarControls, form included', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: 'bootstrap5',
+        });
+        expect(controls.riteSelect._domElement.className).toBe('form-select');
+        expect(controls.calendarSelect._domElement.className).toBe(
+            'form-select',
+        );
+        expect(controls.apiOptions.epiphanyInput._domElement.className).toBe(
+            'form-select',
+        );
+        expect(controls.apiOptions.yearInput._domElement.className).toBe(
+            'form-control',
+        );
+        expect(controls.apiOptions.localeInput._labelElement.className).toBe(
+            'form-label',
+        );
+        controls.dispose();
+    });
+
+    it('styles a CalendarViewer through the controls it forwards to', () => {
+        const viewer = new CalendarViewer({
+            locale: 'en',
+            theme: 'bootstrap5',
+            initialFetch: false,
+        });
+        expect(viewer.controls.calendarSelect._domElement.className).toBe(
+            'form-select',
+        );
+        expect(
+            viewer.controls.apiOptions.yearTypeInput._domElement.className,
+        ).toBe('form-select');
+        viewer.dispose();
+    });
+
+    it('styles an ApiExplorer through the controls it forwards to', () => {
+        const explorer = new ApiExplorer({
+            locale: 'en',
+            theme: 'bootstrap5',
+        });
+        expect(explorer.controls.riteSelect._domElement.className).toBe(
+            'form-select',
+        );
+        expect(
+            explorer.controls.apiOptions.calendarPathInput._domElement
+                .className,
+        ).toBe('form-select');
+        explorer.dispose();
+    });
+
+    it('styles a DayViewer without styling its liturgy card as a select', () => {
+        const viewer = new DayViewer({
+            locale: 'en',
+            theme: 'bootstrap5',
+            initialFetch: false,
+        });
+        expect(viewer.riteSelect._domElement.className).toBe('form-select');
+        expect(viewer.localeInput._domElement.className).toBe('form-select');
+        // The liturgy card is a `<div>`, not a control: a flat class must not reach it.
+        expect(viewer.liturgy._domElement.className).not.toContain(
+            'form-select',
+        );
+        viewer.dispose();
+    });
+
+    // The one assertion that catches `SubscriptionBuilder` asking for the wrong role.
+    it('styles a SubscriptionBuilder without styling its copy button as a select', () => {
+        const builder = new SubscriptionBuilder({
+            locale: 'en',
+            theme: 'bootstrap5',
+        });
+        builder.appendTo({ controls: '#controls', url: '#url' });
+        expect(builder.calendarSelect._domElement.className).toBe(
+            'form-select',
+        );
+        const button = document.querySelector('#url button');
+        expect(button).not.toBeNull();
+        expect(button.className).not.toContain('form-select');
+        builder.dispose();
+    });
+
+    it('applies bootstrap4, which styles selects with form-control and labels not at all', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: 'bootstrap4',
+        });
+        expect(controls.calendarSelect._domElement.className).toBe(
+            'form-control',
+        );
+        expect(controls.apiOptions.epiphanyInput._domElement.className).toBe(
+            'form-control',
+        );
+        expect(controls.apiOptions.localeInput._labelElement.className).toBe(
+            '',
+        );
+        controls.dispose();
+    });
+
+    it('lets a per-child override beat the preset on the mounted markup', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: {
+                preset: 'bootstrap5',
+                calendarSelect: { class: 'form-select form-select-lg' },
+            },
+        });
+        expect(controls.calendarSelect._domElement.className).toBe(
+            'form-select form-select-lg',
+        );
+        expect(controls.riteSelect._domElement.className).toBe('form-select');
+        controls.dispose();
+    });
+
+    it('rejects an unknown preset from a constructor, naming the component', () => {
+        expect(
+            () => new CalendarControls({ locale: 'en', theme: 'bootstrap6' }),
+        ).toThrow(/^CalendarControls: theme preset 'bootstrap6'/);
+        expect(
+            () =>
+                new SubscriptionBuilder({ locale: 'en', theme: 'bootstrap6' }),
+        ).toThrow(/^SubscriptionBuilder: theme preset 'bootstrap6'/);
     });
 });

@@ -38,6 +38,19 @@ import { hasThemePreset, expandThemePreset } from './ThemePresets.js';
  * from `theme.input` — the two are separated because a consumer styling
  * Bootstrap needs `form-select` on one and `form-control` on the other.
  *
+ * **A role absent from this map takes NO flat class**, and that is now the whole
+ * content of the map: {@link collectFlatDefaults} reads it without a fallback.
+ * It used to read `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no
+ * entry — `liturgy`, and the `url` role the subscription control uses — silently
+ * inherited `theme.select`. Neither is a `<select>`: a flat `select` therefore put a
+ * framework's select styling (in Bootstrap's case a border, padding and a
+ * dropdown-arrow background image) onto a `LiturgyOfAnyDay` card and onto a copy
+ * `<button>`, which is not what "applied to every `<select>` child" has ever said in
+ * the documentation. Issue #67 made the contradiction unignorable, since
+ * `theme: 'bootstrap5'` would otherwise be unusable on `DayViewer` and
+ * `SubscriptionBuilder`. A per-child `class` is how those two are styled, and was
+ * always the intended way.
+ *
  * @type {Readonly<Object<string, string>>}
  */
 const CLASS_KEY_BY_ROLE = Object.freeze({
@@ -96,6 +109,11 @@ const OVERRIDE_KEYS_BY_ROLE = Object.freeze({
         'eventCommonClass',
         'eventYearCycleClass',
     ]),
+    // The subscription URL control: a `<button>` wrapping a `<code>`, with no label
+    // and no wrapper of its own, so `class` is the only key `SubscriptionUrl` reads.
+    // Naming the role here is what keeps `collectFlatDefaults()` from handing it a flat
+    // `select` class it would then apply to a button — see `CLASS_KEY_BY_ROLE`.
+    url: Object.freeze(['class']),
 });
 
 /**
@@ -700,14 +718,25 @@ export function resolveChildTheme(theme, childKey, role = 'select') {
  */
 function collectFlatDefaults(bag, role) {
     const resolved = {};
-    const classKey = CLASS_KEY_BY_ROLE[role] ?? 'select';
-    if (typeof bag[classKey] === 'string') {
+    // No `?? 'select'` fallback: a role this map does not name takes no flat class at
+    // all. See `CLASS_KEY_BY_ROLE`'s own comment for what the fallback used to do to
+    // the `liturgy` and `url` roles, neither of which is a `<select>`.
+    const classKey = CLASS_KEY_BY_ROLE[role];
+    if (undefined !== classKey && typeof bag[classKey] === 'string') {
         resolved.class = bag[classKey];
     }
-    if (typeof bag.label === 'string') {
+    // `label` and `wrapper` are gated on the ROLE's own key list rather than on a
+    // second map, because unlike `class` they map onto keys that list already names.
+    // A `liturgy` or `url` child has no label and no wrapper of its own, so a flat
+    // `theme.label` resolved for one was a key the caller's own component would then
+    // ignore — the same accepted-and-dropped shape issue #43 was filed about, and the
+    // reason `collectOverride()` has been role-keyed since.
+    const roleKeys =
+        OVERRIDE_KEYS_BY_ROLE[role] ?? OVERRIDE_KEYS_BY_ROLE.select;
+    if (roleKeys.includes('labelClass') && typeof bag.label === 'string') {
         resolved.labelClass = bag.label;
     }
-    if (typeof bag.wrapper === 'string') {
+    if (roleKeys.includes('wrapperClass') && typeof bag.wrapper === 'string') {
         resolved.wrapperClass = bag.wrapper;
     }
     return resolved;

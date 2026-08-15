@@ -115,7 +115,11 @@ export default class SubscriptionBuilder {
         // `bag.theme`, deliberately, not the narrowed bag handed to the controls
         // above: `subscriptionUrl` is THIS component's own child, and narrowing
         // concerns only what the controls receive.
-        const urlTheme = resolveChildTheme(bag.theme, 'subscriptionUrl');
+        // The `url` role, not the default `select` one: this control is a `<button>`
+        // wrapping a `<code>` and reads only `class`, so inheriting the flat
+        // `theme.select` styled a button as a dropdown — invisible until a preset
+        // (#67) made every adopter hit it at once.
+        const urlTheme = resolveChildTheme(bag.theme, 'subscriptionUrl', 'url');
         this.#url = new SubscriptionUrl(
             this.#controls.apiOptions,
             this.#controls.calendarSelect,
