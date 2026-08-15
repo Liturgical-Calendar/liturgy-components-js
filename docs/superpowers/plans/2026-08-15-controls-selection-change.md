@@ -39,15 +39,15 @@ declaration emit only.
 
 ## File Structure
 
-| File                                               | Responsibility                                                                   |
-| -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `src/ApiOptions/PredeterminedInputs.js`            | **New.** The one copy of "which inputs the rite and calendar predetermine".      |
-| `src/ApiOptions/ApiOptions.js`                     | Applies that rule when disabling; stores and reports the result.                 |
-| `src/MetaComponents/CalendarControls.js`           | `selection` getter, `onSelectionChange()`, the coalescing notifier, `dispose()`. |
-| `src/__tests__/PredeterminedInputs.test.js`        | **New.** The rule, and its agreement with `FilterInputs.js`.                     |
-| `src/__tests__/CalendarControlsSelectionChange.js` | **New** (`.test.js`). Payload, frequency, dedupe, dispose.                       |
-| `docs/meta-components.md`                          | The `CalendarControls` public-API sections.                                      |
-| `CLAUDE.md`, `README.md`, `CHANGELOG.md`           | Contract summary, feature list, `## [Unreleased]` entry.                         |
+| File                                                    | Responsibility                                                                   |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/ApiOptions/PredeterminedInputs.js`                 | **New.** The one copy of "which inputs the rite and calendar predetermine".      |
+| `src/ApiOptions/ApiOptions.js`                          | Applies that rule when disabling; stores and reports the result.                 |
+| `src/MetaComponents/CalendarControls.js`                | `selection` getter, `onSelectionChange()`, the coalescing notifier, `dispose()`. |
+| `src/__tests__/PredeterminedInputs.test.js`             | **New.** The rule, and its agreement with `FilterInputs.js`.                     |
+| `src/__tests__/CalendarControlsSelectionChange.test.js` | **New**. Payload, frequency, dedupe, dispose.                                    |
+| `docs/meta-components.md`                               | The `CalendarControls` public-API sections.                                      |
+| `CLAUDE.md`, `README.md`, `CHANGELOG.md`                | Contract summary, feature list, `## [Unreleased]` entry.                         |
 
 ---
 
@@ -994,7 +994,7 @@ goes RED, then revert:
 - [ ] **Step 6: Run the whole suite**
 
 Run: `yarn test`
-Expected: PASS, 84 suites.
+Expected: PASS, 85 suites.
 
 - [ ] **Step 7: Commit**
 
@@ -1145,7 +1145,7 @@ yarn format:md
 yarn lint:md
 ```
 
-Expected: `yarn test` reports 84 suites and ~1624 tests, all passing (baseline
+Expected: `yarn test` reports 85 suites and 1631 tests, all passing (baseline
 83/1601 plus the new files); `lint:dts` clean; both formatters report nothing to
 change; markdownlint zero errors.
 
