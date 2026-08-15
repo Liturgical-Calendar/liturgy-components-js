@@ -1,0 +1,29 @@
+# Line endings, enforced at checkin.
+#
+# `.editorconfig` states `end_of_line = lf` and `.prettierrc` formats to it, but neither can
+# enforce it: git never reads `.editorconfig`, and prettier only formats files it is pointed
+# at — a scripted rewrite, a `sed -i`, or a contributor with `core.autocrlf=true` bypasses
+# both. Before this file existed, seven tracked files carried CRLF *in the index*, and the
+# LF convention silently broke twice in a single day's work (see issue #84).
+#
+# `text=auto` lets git detect which files are text and normalize those to LF in the object
+# store, leaving each working tree free to check them out however the platform prefers.
+* text=auto eol=lf
+
+# Binary assets: never touched, never diffed as text. Git's own heuristic already classifies
+# the PNGs under docs/images/ correctly, but stating it means a future asset type cannot be
+# guessed wrongly the first time someone commits one.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tgz   binary
