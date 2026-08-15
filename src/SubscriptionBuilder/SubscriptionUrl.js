@@ -18,6 +18,7 @@
  */
 
 import { CalendarType } from '../PathBuilder/CurrentEndpoint.js';
+import LiveAnnouncer from '../LiveAnnouncer.js';
 import { message } from '../MessageLookup.js';
 
 /** The schemes a subscription URL may be rendered under. */
@@ -64,8 +65,8 @@ export default class SubscriptionUrl {
     /** @type {string|null} The URL most recently handed to the callbacks. */
     #lastNotified = null;
 
-    /** @type {HTMLElement} */
-    #liveRegion;
+    /** @type {LiveAnnouncer} The hidden region the copy outcome is announced through. */
+    #announcer;
 
     /** @type {function(boolean, Error=): void|null} */
     #onCopy;
@@ -178,15 +179,12 @@ export default class SubscriptionUrl {
             );
         }
 
-        this.#liveRegion = document.createElement('span');
-        this.#liveRegion.setAttribute('aria-live', 'polite');
         // Announced but not shown: the visible confirmation is the copied class,
-        // which the consumer themes.
-        this.#liveRegion.style.position = 'absolute';
-        this.#liveRegion.style.width = '1px';
-        this.#liveRegion.style.height = '1px';
-        this.#liveRegion.style.overflow = 'hidden';
-        this.#liveRegion.style.clip = 'rect(0 0 0 0)';
+        // which the consumer themes. `LiveAnnouncer` owns the markup and the
+        // hiding technique this component introduced in 2.7.0, now shared with
+        // `WebCalendar` and `LiturgyOfAnyDay` — and corrected there, since the
+        // `clip` written here was in a syntax a strict CSS parser discards.
+        this.#announcer = new LiveAnnouncer();
         // A SIBLING of the button, not a child: a button's accessible name is
         // computed from its whole subtree, so a live region nested inside it
         // would make the control announce as "<url> URL copied to clipboard"
@@ -308,13 +306,13 @@ export default class SubscriptionUrl {
     #reportCopy(ok, error) {
         if (ok) {
             this.#domElement.classList.add(this.#copiedClass);
-            this.#liveRegion.textContent = this.#copiedText;
+            this.#announcer.announce(this.#copiedText);
             if (null !== this.#copiedTimer) {
                 clearTimeout(this.#copiedTimer);
             }
             this.#copiedTimer = setTimeout(() => {
                 this.#domElement.classList.remove(this.#copiedClass);
-                this.#liveRegion.textContent = '';
+                this.#announcer.clear();
                 this.#copiedTimer = null;
             }, COPIED_DURATION);
         }
@@ -358,7 +356,7 @@ export default class SubscriptionUrl {
      * Mounts the control, replacing whatever the target held.
      *
      * The live region is mounted as a SIBLING of the button, not a child of
-     * it — see the constructor's comment by `#liveRegion`'s construction for
+     * it — see the constructor's comment by `#announcer`'s construction for
      * why nesting it inside the button would corrupt the button's accessible
      * name.
      *
@@ -366,7 +364,7 @@ export default class SubscriptionUrl {
      * @returns {void}
      */
     appendTo(target) {
-        target.replaceChildren(this.#domElement, this.#liveRegion);
+        target.replaceChildren(this.#domElement, this.#announcer.element);
     }
 
     /**

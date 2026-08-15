@@ -5,6 +5,8 @@ import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
+import LiveAnnouncer from '../LiveAnnouncer.js';
+import { formatMessage } from '../MessageFormat.js';
 import Utils from '../Utils.js';
 
 export default class LiturgyOfAnyDay {
@@ -37,6 +39,35 @@ export default class LiturgyOfAnyDay {
 
     /** @type {HTMLElement} */
     #domElement = null;
+
+    /**
+     * The hidden live region, or `null` when `announceUpdates( false )` was set.
+     *
+     * @type {LiveAnnouncer|null}
+     */
+    #announcer = new LiveAnnouncer();
+
+    /**
+     * Whether a render carrying data has already happened.
+     *
+     * The FIRST one is deliberately silent: it is the page loading, not a user
+     * action, and a live region firing then talks over whatever the page is
+     * already announcing.
+     *
+     * @type {boolean}
+     */
+    #hasRendered = false;
+
+    /**
+     * Whether this widget has a refetch of its own in flight.
+     *
+     * A year change renders the CACHED payload immediately and only THEN
+     * refetches, so one user action produces two renders. The first describes
+     * the year the user has just left, so it is rendered but not announced.
+     *
+     * @type {boolean}
+     */
+    #refetchPending = false;
 
     /** @type {HTMLElement} */
     #titleElement = null;
@@ -205,6 +236,13 @@ export default class LiturgyOfAnyDay {
             this.#handleDateChange();
         });
         this.#yearInput._domElement.addEventListener('change', () => {
+            // A year change always ends in a refetch, either through
+            // `#handleDateChange()`'s year_type branch or through the explicit
+            // one below. Marking it HERE — before the immediate, stale render —
+            // is what keeps that intermediate render silent.
+            if (this.#apiClient) {
+                this.#refetchPending = true;
+            }
             this.#updateDaysInMonth();
             // handleDateChange returns true if it triggered a refetch (year_type change)
             const refetchTriggered = this.#handleDateChange();
@@ -219,7 +257,7 @@ export default class LiturgyOfAnyDay {
                 // Dropping the promise here would surface as an unhandled rejection. The client
                 // suppresses it when a 'calendarFetchFailed' subscriber exists and logs it when
                 // none does; delegating keeps that rule identical across modules.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient.year(yearToFetch).refetchCalendarData(),
                 );
             }
@@ -227,6 +265,12 @@ export default class LiturgyOfAnyDay {
 
         this.#eventsElementsWrapper = document.createElement('div');
         this.#domElement.appendChild(this.#eventsElementsWrapper);
+
+        // Mounted once, as the last child, and never removed: `#renderEvents()`
+        // only clears `#eventsElementsWrapper`, so the region stays in the DOM
+        // across every re-render — which is what assistive technology needs in
+        // order to announce a change to it at all.
+        this.#announcer.mountInto(this.#domElement);
 
         if (typeof options === 'object' && options !== null) {
             if (Object.hasOwn(options, 'id')) {
@@ -270,6 +314,9 @@ export default class LiturgyOfAnyDay {
             }
             if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
+            }
+            if (Object.hasOwn(options, 'announceUpdates')) {
+                this.announceUpdates(options.announceUpdates);
             }
         }
     }
@@ -335,7 +382,7 @@ export default class LiturgyOfAnyDay {
                 this.#currentYearType = YearType.LITURGICAL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient
                         .yearType(YearType.LITURGICAL)
                         .year(year + 1)
@@ -350,7 +397,7 @@ export default class LiturgyOfAnyDay {
                 this.#currentYearType = YearType.CIVIL;
                 // Dropping the promise here would surface as an unhandled rejection — see the
                 // year input listener above; ApiClient owns the log-or-suppress rule.
-                this.#apiClient._discardRequest(
+                this.#issueRefetch(
                     this.#apiClient
                         .yearType(YearType.CIVIL)
                         .year(year)
@@ -362,6 +409,33 @@ export default class LiturgyOfAnyDay {
 
         this.#renderEvents();
         return false;
+    }
+
+    /**
+     * Hands a refetch to the client, and clears `#refetchPending` when it lands.
+     *
+     * The flag is cleared by the `calendarFetched` handler on the success path,
+     * which a FAILED request never reaches — so without this, one failed request
+     * would silence the widget for the rest of the page's life, including for
+     * the day and month changes that never refetch at all.
+     *
+     * The settle handler is attached to a DERIVED promise rather than to
+     * `request` itself: rejection tracking is per promise object, so
+     * `_discardRequest()` still receives a promise carrying no handler of its
+     * own and applies its log-or-suppress rule exactly as before. The derived
+     * promise handles both outcomes, so it never rejects and produces no
+     * unhandled rejection of its own.
+     *
+     * @param {Promise<import('../typedefs.js').CalendarData>} request - The refetch.
+     * @returns {void}
+     * @private
+     */
+    #issueRefetch(request) {
+        const settled = () => {
+            this.#refetchPending = false;
+        };
+        request.then(settled, settled);
+        this.#apiClient._discardRequest(request);
     }
 
     /**
@@ -386,10 +460,46 @@ export default class LiturgyOfAnyDay {
             noEventsEl.textContent =
                 'No liturgical events found for this date.';
             this.#eventsElementsWrapper.appendChild(noEventsEl);
-            return;
+        } else {
+            this.#updateEventDetails(todaysEvents);
         }
 
-        this.#updateEventDetails(todaysEvents);
+        this.#announce();
+    }
+
+    /**
+     * Announces the date just rendered, as a summary and never the content.
+     *
+     * Silent on the first render, and silent while this widget's own refetch is
+     * in flight — see `#hasRendered` and `#refetchPending`. Reuses the string
+     * already in `#dateElement`, so the announcement and the visible date cannot
+     * drift.
+     *
+     * The announcement names the date but NOT the calendar, so changing only the
+     * calendar or the rite while the date stays put produces identical text, and
+     * a screen reader may not repeat it. Naming the calendar would mean giving
+     * this widget `WebCalendar`'s three-branch caption derivation AND its rite
+     * tracking, neither of which it has; that is recorded as a follow-up rather
+     * than done under #65.
+     *
+     * @returns {void}
+     * @private
+     */
+    #announce() {
+        if (null === this.#announcer || this.#refetchPending) {
+            return;
+        }
+        if (false === this.#hasRendered) {
+            this.#hasRendered = true;
+            return;
+        }
+        this.#announcer.announce(
+            formatMessage(
+                'LITURGY_UPDATED_ANNOUNCEMENT',
+                this.#locale.language,
+                { date: this.#dateElement.textContent },
+            ),
+        );
     }
 
     /**
@@ -957,8 +1067,44 @@ export default class LiturgyOfAnyDay {
                 );
             }
             this.#calendarData = data;
+            // Whatever refetch this widget had in flight has landed, so the
+            // render below is the settled one and may be announced.
+            this.#refetchPending = false;
             this.#renderEvents();
         });
+        return this;
+    }
+
+    /**
+     * Turns the live-region announcement on or off.
+     *
+     * Default `true`. An accessibility fix that is off by default fixes nobody:
+     * the consumers who need it are the least likely to know the option exists.
+     * Turn it off when the surrounding page already owns a live region for this
+     * content, so the update is not announced twice.
+     *
+     * @param {boolean} enabled - Whether to announce each replacement.
+     * @throws {Error} If `enabled` is not a boolean.
+     * @returns {LiturgyOfAnyDay} The current instance for chaining.
+     */
+    announceUpdates(enabled) {
+        if (typeof enabled !== 'boolean') {
+            throw new Error(
+                'LiturgyOfAnyDay.announceUpdates(): invalid type for parameter, must be of type boolean but found type: ' +
+                    typeof enabled,
+            );
+        }
+        if (false === enabled) {
+            this.#announcer?.dispose();
+            this.#announcer = null;
+        } else if (null === this.#announcer) {
+            this.#announcer = new LiveAnnouncer();
+            this.#announcer.mountInto(this.#domElement);
+            // A NEWLY inserted region, so the same silent-first-render rule a
+            // fresh instance gets applies here too: assistive technology needs
+            // the region present before its content changes.
+            this.#hasRendered = false;
+        }
         return this;
     }
 
@@ -1020,6 +1166,15 @@ export default class LiturgyOfAnyDay {
      */
     get _domElement() {
         return this.#domElement;
+    }
+
+    /**
+     * The live region element, or `null` when announcements are turned off.
+     *
+     * @type {HTMLSpanElement|null}
+     */
+    get _liveRegion() {
+        return this.#announcer?.element ?? null;
     }
 
     /**

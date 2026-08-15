@@ -11,7 +11,9 @@ import {
 } from '../Enums.js';
 import ColumnSet from './ColumnSet.js';
 import ApiClient from '../ApiClient/ApiClient.js';
+import LiveAnnouncer from '../LiveAnnouncer.js';
 import Messages from '../Messages.js';
+import { formatPluralMessage } from '../MessageFormat.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
 
 export default class WebCalendar {
@@ -104,6 +106,28 @@ export default class WebCalendar {
      * @private
      */
     #attachedElement = null;
+
+    /**
+     * The hidden live region, or `null` when `announceUpdates( false )` was set.
+     *
+     * @type {LiveAnnouncer|null}
+     * @private
+     */
+    #announcer = new LiveAnnouncer();
+
+    /**
+     * Whether a render has already happened.
+     *
+     * The FIRST render is deliberately silent: it is the page loading, not a
+     * user action, and a live region firing then talks over whatever the page is
+     * already announcing. It is also the render that MOUNTS the region, and a
+     * live region has to be in the DOM before its content changes to be
+     * announced at all — so skipping it is not merely a matter of manners.
+     *
+     * @type {boolean}
+     * @private
+     */
+    #hasRendered = false;
 
     /**
      * The client this calendar is listening to, held so `dispose()` can reach its
@@ -292,6 +316,9 @@ export default class WebCalendar {
      * - dateFormat: DateFormat, the format to use for dates
      * - columnOrder: ColumnOrder, the order of the columns
      * - gradeDisplay: GradeDisplay, the display of grades
+     * - latinInterface: LatinInterface, the Latin weekday-name style
+     * - announceUpdates: boolean, whether to announce each replacement in the
+     *   live region (default true)
      *
      * @param {Object} [options] - An object containing any of the above properties.
      * @throws {Error} If any of the properties in the options object are invalid.
@@ -349,6 +376,42 @@ export default class WebCalendar {
         if (Object.hasOwn(options, 'latinInterface')) {
             this.latinInterface(options.latinInterface);
         }
+        if (Object.hasOwn(options, 'announceUpdates')) {
+            this.announceUpdates(options.announceUpdates);
+        }
+    }
+
+    /**
+     * Turns the live-region announcement on or off.
+     *
+     * Default `true`. An accessibility fix that is off by default fixes nobody:
+     * the consumers who need it are the least likely to know the option exists.
+     * Turn it off when the surrounding page already owns a live region for this
+     * content, so the update is not announced twice.
+     *
+     * @param {boolean} enabled - Whether to announce each replacement.
+     * @throws {Error} If `enabled` is not a boolean.
+     * @returns {WebCalendar} The current instance of the class, for chaining.
+     */
+    announceUpdates(enabled) {
+        if (typeof enabled !== 'boolean') {
+            throw new Error(
+                'Invalid type for announceUpdates on WebCalendar instance, must be of type boolean but found type: ' +
+                    typeof enabled,
+            );
+        }
+        if (false === enabled) {
+            this.#announcer?.dispose();
+            this.#announcer = null;
+        } else if (null === this.#announcer) {
+            this.#announcer = new LiveAnnouncer();
+            // A NEW region, which the next render will insert — and a region
+            // written in the same task it is inserted in is not reliably
+            // announced. So the same silent-first-render rule a fresh instance
+            // gets applies here too.
+            this.#hasRendered = false;
+        }
+        return this;
     }
 
     /**
@@ -1446,6 +1509,78 @@ export default class WebCalendar {
     }
 
     /**
+     * The calendar's own name and year, as the `<caption>` states it.
+     *
+     * Extracted from `buildTable()` so the live-region announcement can reuse
+     * the exact string the caption carries rather than deriving the calendar's
+     * name a second time — which would mean a second set of translations, free
+     * to drift from these. Called even when `removeCaption( true )` suppresses
+     * the element, because the announcement is not the caption.
+     *
+     * @returns {string} The caption text.
+     * @private
+     */
+    #captionText() {
+        if (Object.hasOwn(this.#calendarData.settings, 'diocesan_calendar')) {
+            const replacements = {
+                diocese: this.#calendarData.metadata.diocese_name,
+                year: this.#calendarData.settings.year,
+            };
+            // Guarded like the rite branch below. Before `#announce()` existed
+            // this ran only when a caption was rendered; it now runs under
+            // `removeCaption( true )` too, and a throw here would escape the
+            // synchronous `calendarFetched` emit. No locale the API serves lacks
+            // a block, so this is defence for a surface that widened, not a
+            // reachable bug.
+            return (
+                Messages[this.#baseLocale]?.['DIOCESAN_CALENDAR_CAPTION'] ??
+                Messages['en']['DIOCESAN_CALENDAR_CAPTION']
+            ).replace(/{(.*?)}/g, (match, p1) => {
+                return replacements[p1];
+            });
+        }
+        if (Object.hasOwn(this.#calendarData.settings, 'national_calendar')) {
+            const nation = new Intl.DisplayNames([this.#locale], {
+                type: 'region',
+            }).of(this.#calendarData.settings.national_calendar);
+            const replacements = {
+                nation: nation,
+                year: this.#calendarData.settings.year,
+            };
+            return (
+                Messages[this.#baseLocale]?.['NATIONAL_CALENDAR_CAPTION'] ??
+                Messages['en']['NATIONAL_CALENDAR_CAPTION']
+            ).replace(/{(.*?)}/g, (match, p1) => {
+                return replacements[p1];
+            });
+        }
+        // The rite-level calendar. Which rite it is cannot be read from the
+        // payload — it has neither a national nor a diocesan setting, and the
+        // response carries no rite field — so it comes from `#rite`, set by
+        // `listenTo()` or `rite()`.
+        //
+        // The caption key is derived from the rite's own `emptyOptionLabelKey`,
+        // so `GENERAL_ROMAN_CALENDAR` gives `GENERAL_ROMAN_CALENDAR_CAPTION` and
+        // `AMBROSIAN_CALENDAR` gives `AMBROSIAN_CALENDAR_CAPTION`. Adding a rite
+        // then needs only the matching message, no branch here.
+        const captionKey = `${RiteProperties[this.#rite].emptyOptionLabelKey}_CAPTION`;
+        const replacements = {
+            year: this.#calendarData.settings.year,
+        };
+        // Rite-specific captions exist only for the twelve maintained locales,
+        // following the same policy as the other rite messages, so fall back to
+        // English before falling back to the General Roman caption.
+        const captionTemplate =
+            Messages[this.#baseLocale]?.[captionKey] ??
+            Messages['en'][captionKey] ??
+            Messages[this.#baseLocale]?.['GENERAL_ROMAN_CALENDAR_CAPTION'] ??
+            Messages['en']['GENERAL_ROMAN_CALENDAR_CAPTION'];
+        return captionTemplate.replace(/{(.*?)}/g, (match, p1) => {
+            return replacements[p1];
+        });
+    }
+
+    /**
      * @description Builds the HTML table from the JSON data for the Liturgical Calendar.
      * @async
      * @returns {WebCalendar} The current instance of the WebCalendar class
@@ -1472,66 +1607,7 @@ export default class WebCalendar {
 
         if (false === this.#removeCaption) {
             const caption = document.createElement('caption');
-            let captionText;
-            if (
-                Object.hasOwn(this.#calendarData.settings, 'diocesan_calendar')
-            ) {
-                const replacements = {
-                    diocese: this.#calendarData.metadata.diocese_name,
-                    year: this.#calendarData.settings.year,
-                };
-                captionText = Messages[this.#baseLocale][
-                    'DIOCESAN_CALENDAR_CAPTION'
-                ].replace(/{(.*?)}/g, (match, p1) => {
-                    return replacements[p1];
-                });
-            } else if (
-                Object.hasOwn(this.#calendarData.settings, 'national_calendar')
-            ) {
-                const nation = new Intl.DisplayNames([this.#locale], {
-                    type: 'region',
-                }).of(this.#calendarData.settings.national_calendar);
-                const replacements = {
-                    nation: nation,
-                    year: this.#calendarData.settings.year,
-                };
-                captionText = Messages[this.#baseLocale][
-                    'NATIONAL_CALENDAR_CAPTION'
-                ].replace(/{(.*?)}/g, (match, p1) => {
-                    return replacements[p1];
-                });
-            } else {
-                // The rite-level calendar. Which rite it is cannot be read from
-                // the payload — it has neither a national nor a diocesan
-                // setting, and the response carries no rite field — so it comes
-                // from `#rite`, set by `listenTo()` or `rite()`.
-                //
-                // The caption key is derived from the rite's own
-                // `emptyOptionLabelKey`, so `GENERAL_ROMAN_CALENDAR` gives
-                // `GENERAL_ROMAN_CALENDAR_CAPTION` and `AMBROSIAN_CALENDAR`
-                // gives `AMBROSIAN_CALENDAR_CAPTION`. Adding a rite then needs
-                // only the matching message, no branch here.
-                const captionKey = `${RiteProperties[this.#rite].emptyOptionLabelKey}_CAPTION`;
-                const replacements = {
-                    year: this.#calendarData.settings.year,
-                };
-                // Rite-specific captions exist only for `en` and `it`, following
-                // the same policy as the other rite messages, so fall back to
-                // English before falling back to the General Roman caption.
-                const captionTemplate =
-                    Messages[this.#baseLocale]?.[captionKey] ??
-                    Messages['en'][captionKey] ??
-                    Messages[this.#baseLocale][
-                        'GENERAL_ROMAN_CALENDAR_CAPTION'
-                    ];
-                captionText = captionTemplate.replace(
-                    /{(.*?)}/g,
-                    (match, p1) => {
-                        return replacements[p1];
-                    },
-                );
-            }
-            caption.appendChild(document.createTextNode(captionText));
+            caption.appendChild(document.createTextNode(this.#captionText()));
             this.#domElement.appendChild(caption);
         }
 
@@ -1838,7 +1914,8 @@ export default class WebCalendar {
 
             this.buildTable();
             if (this.#attachedElement && this.#domElement) {
-                this.#attachedElement.replaceChildren(this.#domElement);
+                this.#swapIn();
+                this.#announce();
             } else {
                 if (null === this.#attachedElement) {
                     console.error('WebCalendar: No element to attach to.');
@@ -1871,7 +1948,79 @@ export default class WebCalendar {
      */
     dispose() {
         this.#unsubscribe();
+        this.#announcer?.dispose();
         this.#attachedElement = null;
+        // Forgetting the mount detaches the live region with it, so the next
+        // render RE-INSERTS the region — and a region written in the same task
+        // it is inserted in is not reliably announced. A remounted calendar
+        // therefore has to be silent on its first render, exactly as a fresh
+        // one is.
+        this.#hasRendered = false;
+    }
+
+    /**
+     * Puts the freshly built table into the mount, leaving the live region be.
+     *
+     * `replaceChildren()` would remove the region along with the old table, and
+     * a live region that is removed and re-inserted is not reliably announced —
+     * assistive technology needs it present BEFORE its content changes. So every
+     * child EXCEPT the region goes, the region is mounted if it is not there
+     * yet, and the table is inserted before it. With announcements off this is
+     * exactly the `replaceChildren( table )` it replaces, including clearing
+     * whatever placeholder content the consumer left in the target.
+     *
+     * @returns {void}
+     * @private
+     */
+    #swapIn() {
+        const region = this.#announcer?.element ?? null;
+        for (const child of Array.from(this.#attachedElement.childNodes)) {
+            if (child !== region) {
+                child.remove();
+            }
+        }
+        if (null !== this.#announcer) {
+            this.#announcer.mountInto(this.#attachedElement);
+        }
+        // A null reference node appends, which is what is wanted when there is
+        // no region; otherwise the region stays last.
+        this.#attachedElement.insertBefore(this.#domElement, region);
+    }
+
+    /**
+     * Announces the calendar just rendered, as a summary and never the content.
+     *
+     * A live region carrying the table itself would be catastrophic, so this
+     * says only which calendar is now shown and how large it is.
+     *
+     * Silent on the first render — see `#hasRendered`. Reads `#calendarData`
+     * rather than the DOM, so it is unaffected both by `removeCaption()` and by
+     * the asynchronous tail of `buildTable()`, which fills the tbody after this
+     * has run.
+     *
+     * @returns {void}
+     * @private
+     */
+    #announce() {
+        if (null === this.#announcer) {
+            return;
+        }
+        if (false === this.#hasRendered) {
+            this.#hasRendered = true;
+            return;
+        }
+        const count = this.#calendarData.litcal.length;
+        this.#announcer.announce(
+            formatPluralMessage(
+                'CALENDAR_UPDATED_ANNOUNCEMENT',
+                this.#baseLocale,
+                count,
+                {
+                    calendar: this.#captionText(),
+                    count: new Intl.NumberFormat(this.#locale).format(count),
+                },
+            ),
+        );
     }
 
     /**
@@ -1908,6 +2057,19 @@ export default class WebCalendar {
      */
     get _locale() {
         return this.#locale;
+    }
+
+    /**
+     * The live region element, or `null` when announcements are turned off.
+     *
+     * Non-null does NOT mean mounted: the element exists from construction and
+     * is inserted by the first `#swapIn()`, so before any render this returns an
+     * element the mount does not yet contain.
+     *
+     * @type {HTMLSpanElement|null}
+     */
+    get _liveRegion() {
+        return this.#announcer?.element ?? null;
     }
 
     /**

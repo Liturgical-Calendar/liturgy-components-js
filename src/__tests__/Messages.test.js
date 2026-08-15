@@ -140,3 +140,37 @@ describe('ApiOptions input label keys', () => {
         expect(Messages['en'].LANGUAGE).toBe('Language');
     });
 });
+
+describe('live-region announcement keys', () => {
+    const ANNOUNCEMENT_KEYS = [
+        'CALENDAR_UPDATED_ANNOUNCEMENT_ONE',
+        'CALENDAR_UPDATED_ANNOUNCEMENT_OTHER',
+        'LITURGY_UPDATED_ANNOUNCEMENT',
+    ];
+
+    it.each(ANNOUNCEMENT_KEYS)(
+        'gives %s the same coverage as SELECT_A_RITE',
+        (key) => {
+            const withRite = Object.keys(Messages).filter(
+                (lang) => undefined !== Messages[lang].SELECT_A_RITE,
+            );
+            const withKey = Object.keys(Messages).filter(
+                (lang) => undefined !== Messages[lang][key],
+            );
+            expect(withKey.sort()).toEqual(withRite.sort());
+        },
+    );
+
+    it.each(ANNOUNCEMENT_KEYS)('names its placeholders in %s', (key) => {
+        const placeholders = key.startsWith('CALENDAR_')
+            ? ['{calendar}', '{count}']
+            : ['{date}'];
+        Object.keys(Messages)
+            .filter((lang) => undefined !== Messages[lang][key])
+            .forEach((lang) => {
+                placeholders.forEach((placeholder) => {
+                    expect(Messages[lang][key]).toContain(placeholder);
+                });
+            });
+    });
+});

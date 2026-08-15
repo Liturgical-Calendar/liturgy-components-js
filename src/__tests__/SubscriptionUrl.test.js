@@ -419,6 +419,19 @@ describe('SubscriptionUrl copy control', () => {
         expect(live.textContent).toBe('URL copied to clipboard');
     });
 
+    it('marks the copy region as an atomic status region', () => {
+        // Added when the hidden-region markup moved into the shared
+        // LiveAnnouncer, alongside WebCalendar's and LiturgyOfAnyDay's.
+        const { url } = build();
+        url.appendTo(document.getElementById('mount'));
+        const live = document.querySelector('[aria-live="polite"]');
+        expect(live.getAttribute('role')).toBe('status');
+        expect(live.getAttribute('aria-atomic')).toBe('true');
+        // `rect(0 0 0 0)` is not CSS2 rect() syntax and a strict parser drops
+        // the declaration outright, leaving the region merely 1x1.
+        expect(live.style.clip).not.toBe('');
+    });
+
     it('mounts the live region as a sibling of the button, not a descendant', () => {
         // A button's accessible name is computed from its whole subtree, so a
         // live region nested inside it would make the control announce as
