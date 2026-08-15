@@ -15,6 +15,7 @@
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
+import Input from '../ApiOptions/Input/Input.js';
 import { CalendarSelectFilter } from '../Enums.js';
 import CalendarResourcePicker from '../MetaComponents/CalendarResourcePicker.js';
 import CalendarControls from '../MetaComponents/CalendarControls.js';
@@ -38,6 +39,7 @@ const API_URL = 'http://localhost:8000';
 beforeEach(() => {
     ApiBase.reset();
     ApiBase.fromMetadata(API_URL, FULL_METADATA);
+    Input.reset();
     document.body.innerHTML =
         '<div id="controls"></div><div id="url"></div><div id="mount"></div>';
 });
@@ -348,6 +350,34 @@ describe('a preset on a mounted component', () => {
             'form-select form-select-lg',
         );
         expect(controls.riteSelect._domElement.className).toBe('form-select');
+        controls.dispose();
+    });
+
+    // The escape-hatch consequence of opening the gate, and the half of it a preset
+    // deliberately avoids. Documented in `docs/meta-components.md`; pinned here because
+    // a page mid-migration off `Input.setGlobal*` still calls `wrapperClass()` per input,
+    // and a preset that closed it would break exactly the migration it exists to enable.
+    it('closes class() and labelClass() on the ten inputs, but leaves wrapperClass() open', () => {
+        Input.setGlobalWrapper('div');
+        const controls = new CalendarControls({
+            locale: 'en',
+            theme: 'bootstrap5',
+        });
+        const year = controls.apiOptions.yearInput;
+        // Re-asserting the same string is allowed; a different one is the caller
+        // contradicting the theme they wrote, and is reported.
+        expect(() => year.class('form-control')).not.toThrow();
+        expect(() => year.class('form-control-sm')).toThrow(
+            /Class has already been set/,
+        );
+        expect(() => year.labelClass('form-label-x')).toThrow(
+            /Label class has already been set/,
+        );
+        // No wrapper came from the preset, so this is still the caller's to set.
+        expect(() =>
+            year.wrapperClass('form-group col col-md-2'),
+        ).not.toThrow();
+        expect(year._wrapperElement.className).toBe('form-group col col-md-2');
         controls.dispose();
     });
 

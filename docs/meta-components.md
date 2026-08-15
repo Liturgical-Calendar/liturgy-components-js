@@ -267,6 +267,13 @@ a preset never supplies a `wrapper`; see below.
 form labels carry none (`.col-form-label` is a different thing, for horizontal forms). Emitting it anyway
 would be inventing CSS. Write your own if you want one: `{ preset: 'bootstrap4', label: 'd-block mb-1' }`.
 
+**Opening the gate closes `class()` and `labelClass()` on the ten inputs**, as any bag that reaches them
+does — both refuse a _different_ value once set, though re-asserting the same string is allowed. So after
+`preset: 'bootstrap5'`, `controls.apiOptions.yearInput.class('form-control')` is fine and
+`.class('form-control-sm')` throws; theme it through `apiOptions: { yearInput: { class: … } }` instead.
+`wrapper()`/`wrapperClass()` are **not** closed, because a preset supplies no wrapper — which is exactly
+what keeps the `setGlobalWrapper()`-plus-per-input-`wrapperClass()` pairing working on a page mid-migration.
+
 **What a preset deliberately does not do:**
 
 - **It does not detect anything.** Which framework a page loaded is a fact this library cannot see. Your
