@@ -420,6 +420,28 @@ prepared under that number was skipped, and everything it was to have delivered 
   `change`; it simply leaves an empty selection, and the next `change` event to arrive is then handled
   as the rite-level calendar rather than crashing.
 
+- **The published tarball is now defined by an allowlist**, closing #38. `package.json` gains a `files`
+  array and `.npmignore` is deleted. The denylist it replaces shipped whatever nobody thought to exclude:
+  #37 patched two strays out of the published 2.0.0 without closing the class, and by the time this was
+  acted on four more root entries had joined them — `.claude/settings.local.json`, `.serena/project.yml`,
+  `.gitattributes` and `type-fixtures/dts-consumer.ts`, every one a file added after the denylist was last
+  audited. **No consumer-visible file changes**: the tarball goes from 236 entries to 232, losing exactly
+  those four and nothing else. `dist/` (171 files) and `src/` (57, one per `.d.ts.map`, which is what gives
+  a consumer "Go to Definition" into the real source) are unchanged, as are `README.md`, `LICENSE` and
+  `CHANGELOG.md`.
+
+  Two details were verified against npm 11.18.0 rather than assumed, since both are one edit away from
+  silently reversing: `dist/` is gitignored and reaches the tarball only because `files` outranks
+  `.gitignore`, and `CHANGELOG.md` is not on npm's always-included list — only `package.json`, `README.md`
+  and `LICENSE` are — so it ships only because it is named explicitly. `.npmignore` was deleted outright
+  rather than kept for the `src/` carve-outs, which `files` expresses as negated entries.
+
+  `src/__tests__/PackageManifest.test.js` pins the result by asking `npm pack --dry-run --json` what it
+  would actually ship. It asserts the top-level entry set exactly, the presence of the compiled entry
+  points, that `src/*.js` and `dist/*.d.ts.map` counts match, and that no test tree leaked — deliberately
+  not the full 232-path manifest, which would need regenerating for every new source file. It runs under
+  `yarn test`, so CI covers it with no extra workflow step.
+
 ### Fixed
 
 - **`LiturgyOfAnyDay` no longer goes permanently silent after a failed year refetch.** The
@@ -520,6 +542,27 @@ prepared under that number was skipped, and everything it was to have delivered 
 - `CalendarPathInput`'s `?? 'Select route'` fallback sat outside the throwing index and so could never have
   run; it is replaced by the catalogue's own English string. Constructing the input with no `locale` — which
   its own argument check deliberately permits — now yields the English label instead of a `TypeError`.
+
+- **`WebCalendar` and `LiturgyOfAnyDay` no longer throw for a locale the catalogue has no block for**,
+  closing #83 and finishing what #69 started. Those two files were the only ones #69 left unguarded,
+  because issue #65 was already editing them; #65 shipped without touching the reads, so the two routes it
+  was meant to close stayed open. `new DayViewer( { locale: 'ceb' } )` threw at construction, and a
+  `CalendarViewer` constructed and then threw inside `buildTable()` — in both cases a bare
+  `TypeError: Cannot read properties of undefined` naming neither the component, the locale, nor the fact
+  that it was the message catalogue rather than the API that lacked the language. Both take `locale` as a
+  top-level constructor option, commonly wired straight from `document.documentElement.lang`. All seven
+  remaining reads now go through `message()` and fall back to English.
+
+  `LiturgyOfAnyDay`'s read **looked** defended and was not: `Messages[ lang ][ 'LITURGY_OF_THE_DAY' ] ||
+'Liturgy of the Day'` guards the value the second index yields, while the throw happens at the first
+  index, before the `||` can apply. That shape is now pinned in the source scan's self-test alongside
+  `Messages?.[lang][KEY]`, which fails the same way for the same reason.
+
+- **The source scan that enforces this has no exemption mechanism any more.**
+  `src/__tests__/MessageLookup.test.js`'s `ALLOWED_UNGUARDED` array was described in its own comment as a
+  temporary ceiling; once #65 shipped without lifting it, it had silently become a permanent exemption for
+  two files. It was deleted rather than emptied — an empty allow-list is an invitation to add the next file
+  to it.
 
 ### Known gaps
 

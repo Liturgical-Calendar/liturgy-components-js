@@ -902,14 +902,26 @@ apply for itself — the shape that produced issue #69, where six sites had reme
 forgotten it, so `new ApiOptions( 'ceb' )` threw a bare `TypeError` naming neither the component, the locale,
 nor the catalogue. Since every meta-component builds an `ApiOptions`, all six inherited that.
 
-**#69 closed the `ApiOptions` route, not the whole symptom**, because two files were left to the issue already
-editing them. `LiturgyOfAnyDay.js` still reads the catalogue unguarded in its constructor, so
-`new DayViewer( { locale: 'ceb' } )` still throws; `WebCalendar.js` does the same inside `buildTable()`, so a
-`CalendarViewer` now constructs under such a locale but still throws when it renders. `src/MetaComponents/`
-carries a correct inline guard rather than calling `message()` — a consolidation, not a bug.
-`src/__tests__/MessageLookup.test.js` scans `src/` for the unguarded shape and allow-lists exactly those two
-files, so the bug cannot spread. That scan is a tripwire, not a proof: it is written against the shape the bug
-took, and its doc comment lists what it knowingly does not see.
+**#69 closed the `ApiOptions` route and #83 closed the remaining two files.** #69 left
+`WebCalendar.js` and `LiturgyOfAnyDay.js` unguarded because issue #65 was already editing them, and
+`src/__tests__/MessageLookup.test.js`'s scan allow-listed exactly those two — a ceiling its own comment
+said #65 would lift. #65 shipped without touching those reads, at which point the ceiling had become a
+permanent exemption carving two files out of a guard the other call sites obeyed. #83 routed all seven
+remaining reads through `message()` and **deleted the allow-list rather than emptying it**: an empty
+exemption array is an invitation to add the next file to it, so the scan now has no exemption mechanism
+at all. Do not reintroduce one — a file that cannot be guarded yet is a reason to fix it, not to list it.
+
+`LiturgyOfAnyDay`'s read is the one worth remembering, because it **looked** defended:
+`Messages[ lang ][ 'LITURGY_OF_THE_DAY' ] || 'Liturgy of the Day'` guards the VALUE the second index
+yields, while the throw happens at the FIRST index, before the `||` can apply. That shape is now pinned
+in the scan's own self-test beside `Messages?.[lang][KEY]`, which fails the same way for the same reason.
+
+`src/MetaComponents/` still carries a correct inline guard rather than calling `message()` — a
+consolidation, not a bug — as do `WebCalendar.#captionText()`'s three caption reads, whose rite-level
+lookup falls back across TWO keys (`AMBROSIAN_CALENDAR_CAPTION` then `GENERAL_ROMAN_CALENDAR_CAPTION`)
+and so must not throw when English lacks the first, which is exactly what `message()` does. That scan is
+a tripwire, not a proof: it is written against the shape the bug took, and its doc comment lists what it
+knowingly does not see.
 
 **Input labels are localized by the input's own constructor**, through
 `src/ApiOptions/Input/InputLabels.js`'s `defaultLabelText( key, locale )` — internal, and not exported from
@@ -1034,6 +1046,44 @@ There is deliberately no `ApiClient.version`. `ApiClient` and `ApiBase` deal in 
 URLs (`/api/dev`), so a `version` on the client would read as the API's version rather than this package's.
 The bare `VERSION` export carries the package name at its import site, which is the disambiguation a static
 property would lack.
+
+### What ships in the tarball
+
+**`package.json`'s `files` array is an ALLOWLIST, and there is no `.npmignore`.** The denylist it replaced
+(#37, #38) shipped whatever nobody thought to exclude: `tsconfig.dts-check.json` and `debug-storybook.log`
+reached the published 2.0.0, and by the time #38 was acted on four more root entries had joined them —
+`.claude/settings.local.json`, `.serena/project.yml`, `.gitattributes` and `type-fixtures/dts-consumer.ts`.
+Every one was a file added after the denylist was last audited, which is the point: a denylist fails open,
+recurs on its own, and is visible only to someone who thinks to run `npm pack --dry-run`. `.npmignore` was
+deleted outright rather than kept for the `src/` carve-outs, which `files` expresses as negated entries —
+two mechanisms describing one boundary is how the original confusion started.
+
+Four things about the array are load-bearing, and two of them are surprises rather than conventions:
+
+- **`src/` must stay.** `tsconfig.json` sets `declarationMap: true` and every `.d.ts.map` in `dist/` points
+  at `../src/<name>.js`, which is what gives a consumer "Go to Definition" into the real source instead of a
+  `.d.ts` stub. Dropping it degrades every consumer's editor and raises no error anywhere.
+- **`dist/` is GITIGNORED and ships only because `files` outranks `.gitignore`.** Verified against npm
+  11.18.0. Reverse that precedence and the package publishes with no code in it.
+- **`CHANGELOG.md` is NOT on npm's always-included list** — only `package.json`, `README.md` and `LICENSE`
+  are — so it ships only because it is named explicitly. Also verified rather than assumed; #38 flagged it
+  as the entry most likely to be dropped as redundant.
+- **The negated `!src/stories/`, `!src/__tests__/`, `!src/__fixtures__/` entries** are what keep the test
+  tree out. Negation inside `files` is what made deleting `.npmignore` possible.
+
+`src/__tests__/PackageManifest.test.js` pins these by asking `npm pack --dry-run --json` what it would
+actually ship. It deliberately does NOT pin the full 232-path manifest: that would need regenerating for
+every new source file, and a check that is noisy on ordinary work stops being read. It asserts the
+top-level entry set exactly (which is what catches a stray), that the entry points are present, that
+`src/*.js` and `dist/*.d.ts.map` counts match (which states the dependency making `src/` non-optional
+without pinning a number), and that no test tree leaked. It runs under `yarn test`, so CI already covers
+it with no extra workflow step.
+
+**It needs `yarn compile` to have run first**, exactly as `yarn lint:dts` does and for the same reason:
+`dist/` is gitignored, so a fresh clone has none. It fails with that instruction by name rather than
+skipping — a skip would let the guard pass vacuously the day a change dropped the compile step from CI,
+which is precisely when it should object — and rather than compiling for itself, which would make every
+`yarn test` pay for a full `tsc` and make the file something other than a test.
 
 ## Component Wiring Patterns
 
