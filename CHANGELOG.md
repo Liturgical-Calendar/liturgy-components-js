@@ -40,6 +40,23 @@ prepared under that number was skipped, and everything it was to have delivered 
   and every iOS browser is WebKit-backed — see CLAUDE.md for the full reasoning, including why
   feature-detection with a fallback was also rejected.
 
+- **`WebCalendar`'s event-details cell is built as nodes rather than from an HTML string.** It
+  interpolated four API-supplied fields — `name`, `liturgical_year`, `color_lcl` and `common_lcl` — into a
+  string and passed it to `Range.createContextualFragment()`, which is an injection sink and is not even
+  resource-inert, so an `<img onerror>` in any of them fired as soon as the fragment was appended. A value
+  could equally close the `<i>` early and restructure everything after it without injecting an element at
+  all.
+
+  All four are plain text in the source data, so they are now written with `textContent` rather than
+  routed through the sanitizer above: `sanitizeHtml()` would have closed the same hole while declaring
+  these fields rich text and inviting markup into them later. **Output is unchanged for well-behaved
+  data**, which nothing covered before and `WebCalendarEventDetails.test.js` now pins.
+
+  API-side, the `url` fields these messages interpolate are marked `format: uri` in the calendar schemas,
+  which is weaker than it looks — `javascript:alert(1)` is a valid RFC 3986 URI — so a scheme allowlist
+  has been requested in Liturgical-Calendar/LiturgicalCalendarAPI#789. The client no longer depends on
+  that landing.
+
 ### Documentation
 
 - `LiturgyOfTheDay` is deliberately **not** given a live region under #65. It appends to its events wrapper

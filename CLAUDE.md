@@ -997,6 +997,15 @@ covered by this suite at all, and shipping an untested path to the majority whil
 path is backwards. Revisit when Safari ships and it reaches Baseline, at which point the module becomes a
 one-line delegate.
 
+**`WebCalendar`'s event-details cell is built as NODES, and deliberately does NOT use `sanitizeHtml()`.**
+It previously interpolated `litevent.name`, `liturgical_year`, `color_lcl` and `common_lcl` into an HTML
+string for `createContextualFragment()` — a sink that is not even resource-inert. All four are plain text
+in the source data, so `textContent` says what is true; routing them through the sanitizer would have
+closed the same hole while declaring those fields rich text and inviting markup into them later. **The
+rule: sanitize where markup is expected and wanted (`messages`), build nodes where it is not (everything
+else).** `WebCalendarEventDetails.test.js` pins both the unchanged output and the closed hole, including
+the `</i>` breakout, which injects no element and so is easy to forget.
+
 ## Live-region announcements
 
 `WebCalendar` and `LiturgyOfAnyDay` each own a visually-hidden `role="status"` / `aria-live="polite"` /
