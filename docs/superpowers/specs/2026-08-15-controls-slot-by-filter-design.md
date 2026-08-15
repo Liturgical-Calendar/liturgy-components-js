@@ -202,8 +202,14 @@ failure" rule. No new runtime-failure mode is introduced.
 
 ## Testing
 
-New suite `src/__tests__/ControlsSlotByFilter.test.js`, plus a conformance test that the extracted mapping
-still describes what `ApiOptions.appendTo()` actually appends.
+New suite `src/__tests__/ControlsSlotByFilter.test.js`, plus `src/__tests__/FilterInputs.test.js` guarding
+the extracted mapping.
+
+**Corrected during verification.** That second file was first written as a conformance test comparing the
+table against the mounted DOM. Once `ApiOptions.appendTo()` iterates the table, that comparison agrees with
+itself and catches nothing — confirmed by widening the table and watching it still pass. It is now a
+hand-written second statement of the intent, so widening a filter is a deliberate two-place edit, plus
+pins for the two runtime skips that are deliberately not in the table.
 
 Each of the three rules gets its own proof:
 

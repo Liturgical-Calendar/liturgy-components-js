@@ -564,9 +564,14 @@ replaces the two-pass `filter().appendTo()` idiom 2.5.0 documented (#63). Four p
   It used to be five `if` branches inside `appendTo()`; a second copy beside them would drift the first
   time a filter gained an input, and overlap cannot be computed from key names — `localeOnly` and
   `allCalendars` are different names that both mount the locale input.
-  `src/__tests__/FilterInputs.test.js` re-derives the table from a real append, per filter, so the two
-  cannot disagree. Both new modules are internal and not exported from `src/index.js`, like `Theme.js`
-  and `InputVisibility.js`.
+  **`src/__tests__/FilterInputs.test.js` guards it with a hand-written second statement of the intent,
+  not by reading the mounted DOM back.** Since `appendTo()` iterates the table, comparing the two agrees
+  with itself — widen the table and the append widens with it. That comparison was meaningful for exactly
+  one commit, the one that extracted the table before `appendTo()` consumed it. The literal is what makes
+  widening a filter a deliberate two-place edit, which matters twice over now that the same table decides
+  which meta-component layouts are accepted. The file also pins the two runtime skips, which are
+  deliberately NOT in the table. Both new modules are internal and not exported from `src/index.js`, like
+  `Theme.js` and `InputVisibility.js`.
 - **Ordering is the component's, and canonical rather than the caller's.** `PATH_BUILDER` runs before
   `ALL_CALENDARS` so `ApiOptions`' `#pathBuilderEnabled` is set before the pass that would otherwise
   append the year input twice — the precedence `ApiExplorer.appendTo()` already hard-codes. **Do not

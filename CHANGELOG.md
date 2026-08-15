@@ -245,8 +245,10 @@ prepared under that number was skipped, and everything it was to have delivered 
   `src/ApiOptions/FilterInputs.js` — instead of the five hard-coded `if` branches that used to be the only
   statement of which inputs each filter renders. #63's overlap check needs that same knowledge, and a
   second copy beside `appendTo()` would drift the first time a filter gained an input, so the mapping was
-  extracted rather than duplicated. `src/__tests__/FilterInputs.test.js` re-derives the table from a real
-  append, per filter, so the two cannot silently disagree. The two decisions that are instance state
+  extracted rather than duplicated. `src/__tests__/FilterInputs.test.js` guards the table with a
+  hand-written second statement of what each filter is meant to render — reading the mounted DOM back
+  would only agree with itself, now that the append iterates the table — so widening a filter is a
+  deliberate two-place edit. The two decisions that are instance state
   rather than properties of a filter stay in `appendTo()`: a hidden accept-header input, and the year
   input a `PATH_BUILDER` pass has already claimed. No behaviour change.
 - **Line endings are now enforced, not merely documented**, closing #84. A new `.gitattributes` carries
