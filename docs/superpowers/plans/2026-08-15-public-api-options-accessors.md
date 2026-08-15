@@ -275,6 +275,14 @@ git commit -S -m "Assert the canonical accessors reach the emitted declarations 
   `examples/MultipleForms/main.js`, `examples/PathBuilder/main.js`, `examples/RiteSelectChain/main.js`,
   `examples/RiteSelectPathBuilder/main.js`, `examples/RiteSelectWebCalendar/main.js`,
   `examples/WebCalendar/main.js`
+- Modify: `src/stories/0_Components/ApiOptions.stories.js`,
+  `src/stories/0_Components/ApiOptionsBootstrap.stories.js`,
+  `src/stories/1_CombinedComponents/CalendarSelectApiOptions.stories.js`,
+  `src/stories/1_CombinedComponents/CalendarSelectApiOptionsAllowNull.stories.js`,
+  `src/stories/1_CombinedComponents/CalendarSelectApiOptionsWebCalendar.stories.js` — the design names
+  Storybook descriptions as part of the migration, and this list omitted them, so an implementer
+  following the plan alone would have left `_<name>` references in _published_ component documentation
+  (CodeRabbit, PR #86)
 - Leave alone: everything under `docs/superpowers/`
 
 - [ ] **Step 1: Mechanical rename across docs and examples**
@@ -313,7 +321,7 @@ Expected: all exit 0. Then confirm no stale underscore input reads remain outsid
 `docs/superpowers/`:
 
 ```bash
-grep -rn "_epiphanyInput\|_ascensionInput\|_corpusChristiInput\|_eternalHighPriestInput\|_holydaysOfObligationInput\|_localeInput\|_yearTypeInput\|_acceptHeaderInput\|_calendarPathInput" docs examples README.md CLAUDE.md | grep -v docs/superpowers
+grep -rn "_epiphanyInput\|_ascensionInput\|_corpusChristiInput\|_eternalHighPriestInput\|_holydaysOfObligationInput\|_localeInput\|_yearTypeInput\|_yearInput\|_acceptHeaderInput\|_calendarPathInput" docs examples README.md CLAUDE.md | grep -v docs/superpowers
 ```
 
 Expected: only the lines that deliberately name the legacy aliases.

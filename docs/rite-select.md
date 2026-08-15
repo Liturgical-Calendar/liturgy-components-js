@@ -160,7 +160,7 @@ Once linked, `ApiOptions` drives the whole rite -> calendar chain on every chang
   published settings, so the form states what the rite fixes rather than freezing at the values a
   previously selected nation left there. See
   [A rite's own settings](api-options.md#a-rites-own-settings) for the exact rule, which differs between
-  the four value inputs and the holydays option list.
+  the four value inputs and the holy-days option list.
 - `ApiOptions.yearInput`'s minimum year is adjusted to the rite's floor.
 - The `/calendar/nation/` route offered by `ApiOptions.calendarPathInput` (the `PATH_BUILDER` filter)
   is disabled for a rite with no national tier, since no such route exists for it. If that route was

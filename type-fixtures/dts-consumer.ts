@@ -50,11 +50,15 @@ void widenedNotLiteral;
  * tag, which `tsc` emits as the syntactically invalid `readonly get foo(): T;` —
  * is invisible to it, and to `yarn compile`, because `checkJs` is off.
  *
- * Written as an assignment of a `Pick` of the ten canonical names to an object
- * type spelled out in terms of the ten aliases. That fails in either direction:
- * a canonical accessor missing from the emit is a TS2344 on the `Pick`, and one
- * emitted at a different or wider type than its alias is a TS2322 on the
- * assignment. Asserting only that the names exist would let the types drift.
+ * Written as TWO assignments, one per direction, because a single one is only
+ * half a check. Assigning a `Pick` of the ten canonical names to an object type
+ * spelled in aliases catches a canonical accessor missing from the emit (TS2344
+ * on the `Pick`) or emitted WIDER than its alias (TS2322) — but a canonical
+ * narrower than its alias is still assignable, so alias-side drift passes.
+ * Measured, not assumed: widening only `get _epiphanyInput()` in the emitted
+ * declaration left `yarn lint:dts` green (CodeRabbit, PR #86). The mirrored
+ * assignment below closes that half, so the pair is mutually assignable and
+ * "different in either direction" is now literally what fails.
  */
 type ApiOptionsInstance = InstanceType<typeof ApiOptions>;
 
@@ -83,6 +87,32 @@ const canonicalAccessorsMatchTheirAliases: {
     | 'calendarPathInput'
 >;
 void canonicalAccessorsMatchTheirAliases;
+
+const aliasesMatchTheirCanonicalAccessors: {
+    _epiphanyInput: ApiOptionsInstance['epiphanyInput'];
+    _ascensionInput: ApiOptionsInstance['ascensionInput'];
+    _corpusChristiInput: ApiOptionsInstance['corpusChristiInput'];
+    _eternalHighPriestInput: ApiOptionsInstance['eternalHighPriestInput'];
+    _holydaysOfObligationInput: ApiOptionsInstance['holydaysOfObligationInput'];
+    _localeInput: ApiOptionsInstance['localeInput'];
+    _yearTypeInput: ApiOptionsInstance['yearTypeInput'];
+    _yearInput: ApiOptionsInstance['yearInput'];
+    _acceptHeaderInput: ApiOptionsInstance['acceptHeaderInput'];
+    _calendarPathInput: ApiOptionsInstance['calendarPathInput'];
+} = null as unknown as Pick<
+    ApiOptionsInstance,
+    | '_epiphanyInput'
+    | '_ascensionInput'
+    | '_corpusChristiInput'
+    | '_eternalHighPriestInput'
+    | '_holydaysOfObligationInput'
+    | '_localeInput'
+    | '_yearTypeInput'
+    | '_yearInput'
+    | '_acceptHeaderInput'
+    | '_calendarPathInput'
+>;
+void aliasesMatchTheirCanonicalAccessors;
 
 /**
  * The four package-internal accessors must NOT have grown a canonical alias.
