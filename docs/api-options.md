@@ -84,8 +84,8 @@ Four accessors keep the underscore and have no canonical form, because they real
   and the `CalendarSelect` beside it are bound to the same API.
 - **`_currentEndpoint`** — returned by reference precisely so `PathBuilder` can mutate it. A mutable internal
   is not something to hand out.
-- **`_filtersSet`** — the filters applied so far, in order. Nothing outside the class reads it.
-- **`_filter`** — the current filter. Nothing outside the class reads it either, and it could not have been
+- **`_filtersSet`** — the filters applied so far, in order. No production code outside the class reads it.
+- **`_filter`** — the current filter. No production code outside the class reads it either, and it could not have been
   aliased in any case: `filter()` is already the chainable setter method, so a `get filter()` in the same
   class body would replace it. If you need to read the current filter, open an issue for `currentFilter`.
 

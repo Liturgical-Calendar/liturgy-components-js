@@ -120,6 +120,14 @@ tables list the canonical name with the legacy alias in a second column.
 `docs/superpowers/specs/` and `docs/superpowers/plans/` are left alone: they are dated records of what was
 decided at the time, not live documentation.
 
+**`src/stories/` is included too**, added after code review pointed out that this section had not named it.
+Five story files carry twenty-one underscore reads, four of them inside Storybook `description` strings —
+which `yarn build-storybook` publishes as this library's own component documentation. _"When set to true we
+use the `ApiOptions` instance `_acceptHeaderInput.hide()` method"_ is plausibly the most-read sentence
+describing that control, so leaving it would have reproduced the exact harm #62 is about in the one place
+most likely to be copied. `_domElement` reads inside those files are left alone, being out of scope like
+every other `Input` accessor.
+
 ### D8 — Tests
 
 A new `src/__tests__/ApiOptionsPublicAccessors.test.js` asserts:

@@ -83,7 +83,7 @@ const meta = {
         localeInputAfter: {
             control: 'text',
             description:
-                'HTML string to show below the ApiOptions locale input, applicable via the `ApiOptions._localeInput.after("<div>...</div>")` instance method',
+                'HTML string to show below the ApiOptions locale input, applicable via the `ApiOptions.localeInput.after("<div>...</div>")` instance method',
         },
     },
     render: (args, { loaded: { apiClient, apiClientError } }) => {
@@ -103,7 +103,7 @@ const meta = {
 
             const calendarSelect = new CalendarSelect(args.locale);
             const apiOptions = new ApiOptions(args.locale);
-            apiOptions._yearInput.class('form-control'); // override the global input class for number input
+            apiOptions.yearInput.class('form-control'); // override the global input class for number input
             apiOptions.linkToCalendarSelect(calendarSelect);
             //apiClient.listenTo(apiOptions);
             if (args.apiOptionsFilter) {
@@ -127,7 +127,7 @@ const meta = {
                 wrapper.class = args.calendarSelectWrapperClass;
                 calendarSelect.wrapper(wrapper);
             }
-            apiOptions._acceptHeaderInput.hide();
+            apiOptions.acceptHeaderInput.hide();
             calendarSelect.appendTo(container);
             apiOptions.appendTo(container);
         }

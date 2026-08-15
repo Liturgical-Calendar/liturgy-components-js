@@ -109,7 +109,7 @@ const meta = {
 
             const calendarSelect = new CalendarSelect(args.locale);
             const apiOptions = new ApiOptions(args.locale);
-            apiOptions._yearInput.class('form-control'); // override the global input class for number input
+            apiOptions.yearInput.class('form-control'); // override the global input class for number input
             apiOptions.linkToCalendarSelect(calendarSelect);
             //apiClient.listenTo(apiOptions);
             if (args.apiOptionsFilter) {
@@ -136,7 +136,7 @@ const meta = {
                 wrapper.class = args.calendarSelectWrapperClass;
                 calendarSelect.wrapper(wrapper);
             }
-            apiOptions._acceptHeaderInput.hide();
+            apiOptions.acceptHeaderInput.hide();
             calendarSelect.appendTo(container);
             apiOptions.appendTo(container);
         }

@@ -353,7 +353,7 @@ only spelling that existed up to 2.7.0. Write the canonical form in docs, exampl
   are churn against behaviour-tested code, and the aliases are permanent. `Theme.js` is the one exception,
   because its `apiOptions[ '_' + key ]` concatenation existed only for want of these names.
 - **`_filter`, `_filtersSet`, `_currentEndpoint` and `_base` keep the prefix and have no canonical form**, which
-  is what makes the prefix informative here. Nothing outside the class reads the first two at all; the third is
+  is what makes the prefix informative here. No production code outside the class reads the first two; the third is
   handed out by reference for `PathBuilder` to mutate. `_filter` could not have been aliased in any case:
   `filter()` is already the chainable setter, and `get filter()` in the same class body would replace it. The
   name to add, if a consumer ever needs it, is `currentFilter`.

@@ -14,7 +14,10 @@
  */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
-import ApiOptions from '../ApiOptions/ApiOptions.js';
+// Imported through the package entry point on purpose: the canonical accessors
+// have to be reachable on the EXPORTED class, which is the only surface a
+// consumer ever holds.
+import { ApiOptions } from '../index.js';
 import { API_OPTIONS_INPUT_KEYS } from '../MetaComponents/Theme.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
@@ -62,12 +65,18 @@ describe('ApiOptions canonical accessors', () => {
         );
     });
 
-    it('covers every input the form builds', () => {
-        const apiOptions = new ApiOptions('en');
-        for (const name of CANONICAL_ACCESSORS) {
-            expect(apiOptions[name]).not.toBeUndefined();
-            expect(apiOptions[name]).not.toBeNull();
-        }
+    it.each(CANONICAL_ACCESSORS)('%s is read-only', (name) => {
+        // The docs call these read-only properties. A getter with no setter is
+        // what makes that true: in a module (strict mode) an assignment throws
+        // rather than shadowing the accessor with an own data property, which
+        // would silently desynchronize the pair.
+        const descriptor = Object.getOwnPropertyDescriptor(
+            ApiOptions.prototype,
+            name,
+        );
+        expect(descriptor).toBeDefined();
+        expect(typeof descriptor.get).toBe('function');
+        expect(descriptor.set).toBeUndefined();
     });
 
     it('warns on neither spelling', () => {
