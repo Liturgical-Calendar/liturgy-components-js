@@ -30,6 +30,10 @@ import {
     Rite,
     RiteProperties,
 } from './Enums.js';
+// The preset NAMES are public; the class table they key is not, and stays internal in
+// `ThemePresets.js` alongside them so the two cannot drift. See that file's own doc
+// comment for why the strings must remain free to change in a patch release.
+import { ThemePreset } from './MetaComponents/ThemePresets.js';
 
 export {
     ApiClient,
@@ -61,5 +65,6 @@ export {
     YearType,
     Rite,
     RiteProperties,
+    ThemePreset,
     VERSION,
 };
