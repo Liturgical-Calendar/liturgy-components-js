@@ -51,9 +51,9 @@ ApiClient.init('http://localhost:8000')
         dioceseSelect.appendTo('#calendarSelects');
 
         const apiOptions = new ApiOptions('en-US');
-        apiOptions._yearInput.class('form-control');
-        apiOptions._acceptHeaderInput.hide();
-        apiOptions._holydaysOfObligationInput.class('d-none');
+        apiOptions.yearInput.class('form-control');
+        apiOptions.acceptHeaderInput.hide();
+        apiOptions.holydaysOfObligationInput.class('d-none');
 
         // The whole chain hangs off this one call: the rite select drives the
         // calendar selects, which in turn drive the option inputs.

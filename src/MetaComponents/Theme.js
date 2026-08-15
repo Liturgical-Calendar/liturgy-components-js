@@ -113,11 +113,13 @@ export const API_OPTIONS_KEY = 'apiOptions';
  * The ten `ApiOptions` inputs a theme may name, and the ROLE each one takes its
  * `class` from — nine `<select>`s and one `input[type="number"]`.
  *
- * The names are `ApiOptions`' own public accessors with the leading underscore
- * stripped, which is also exactly how `localeInput` was named when it became a
- * top-level key in 2.7.0, and exactly the keys of `ApiOptions`' private
- * `#inputs` bag. That is what makes `apiOptions[ '_' + key ]` in
- * {@link applyApiOptionsTheme} a lookup rather than a translation table.
+ * The names are `ApiOptions`' own canonical public accessors — which is also
+ * exactly how `localeInput` was named when it became a top-level key in 2.7.0,
+ * and exactly the keys of `ApiOptions`' private `#inputs` bag. That is what makes
+ * `apiOptions[ key ]` in {@link applyApiOptionsTheme} a lookup rather than a
+ * translation table. This map came first: issue #62 gave the accessors their
+ * non-underscore names, and took these ten spellings as the vocabulary rather
+ * than minting an eleventh.
  *
  * The shorter spellings the issue that asked for this suggested (`epiphany`,
  * `holydaysOfObligation`) were declined: they would have made the already-shipped
@@ -794,7 +796,7 @@ export function resolveWrapperBag(childTheme) {
  * exported because it, not that loop, is the single definition of this one
  * input's unconditional-label rule.
  *
- * @param {Object} localeInput - The `ApiOptions._localeInput` to theme.
+ * @param {Object} localeInput - The `ApiOptions.localeInput` to theme.
  * @param {{class?: string, labelClass?: string, labelText?: string, wrapper?: string, wrapperClass?: string}} childTheme -
  *   The resolved theme, from `resolveChildTheme( theme, 'localeInput' )`.
  * @param {string} defaultLabelText - The localized label to use when the
@@ -877,10 +879,12 @@ function applyInputTheme(input, childTheme) {
  * never appends is inert rather than an error, and a caller need not know which
  * filter renders which input to write a bag that works for all of them.
  *
- * The `'_' + inputKey` lookup is a lookup, not a translation table, because
- * {@link API_OPTIONS_INPUT_ROLES}' keys ARE `ApiOptions`' accessor names minus the
- * underscore. Should those accessors ever gain non-underscore aliases, that map is
- * the single place this has to change.
+ * `apiOptions[ inputKey ]` is a direct lookup, not a translation table, because
+ * {@link API_OPTIONS_INPUT_ROLES}' keys ARE `ApiOptions`' canonical accessor names.
+ * They used to be those names minus a leading underscore, which this line had to
+ * add back; issue #62 gave the accessors their canonical spellings and the
+ * concatenation went away. Should the two ever diverge again, that map is the
+ * single place this has to change.
  *
  * @param {Object} apiOptions - The `ApiOptions` whose inputs to theme.
  * @param {Object|null|undefined} theme - The meta-component's whole theme bag,
@@ -897,7 +901,7 @@ export function applyApiOptionsTheme(
 ) {
     for (const inputKey of API_OPTIONS_INPUT_KEYS) {
         const childTheme = resolveApiOptionsInputTheme(theme, inputKey);
-        const input = apiOptions[`_${inputKey}`];
+        const input = apiOptions[inputKey];
         if ('localeInput' === inputKey) {
             applyLocaleInputTheme(input, childTheme, defaultLocaleLabelText);
             continue;

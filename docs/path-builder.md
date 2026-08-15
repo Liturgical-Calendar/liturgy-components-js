@@ -69,7 +69,7 @@ ApiClient.init('http://localhost:8000').then((apiClient) => {
     const apiOptions = new ApiOptions('en-US')
         .filter(ApiOptionsFilter.PATH_BUILDER)
         .linkToCalendarSelect(calendarSelect);
-    apiOptions._yearInput.class('form-control');
+    apiOptions.yearInput.class('form-control');
     apiOptions.appendTo('#controls');
 
     // Path builder
