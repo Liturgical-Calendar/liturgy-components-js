@@ -71,6 +71,31 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Added
 
+- **`CalendarControls` now publishes what is selected**, closing #68. `controls.selection` reports
+  `{ calendarType, calendarId, predeterminedInputs }`, and the chainable
+  `controls.onSelectionChange( callback )` hands the same payload to a subscriber once per user action,
+  on a microtask, whenever it changes. It replaces the raw `change` listener plus `value === ''` test
+  every consumer was writing to decide whether an `ApiOptions` input is effectively read-only — a test
+  that is also **wrong under the Ambrosian rite**, where the Missal fixes Epiphany, Ascension and Corpus
+  Domini and does not establish the Eternal High Priest, so four inputs are predetermined with no
+  calendar selected at all. `predeterminedInputs` names inputs by their canonical `ApiOptions` accessor,
+  so `controls.apiOptions[ name ]` reaches the input it named, and it is derived from the very rule
+  `ApiOptions` uses to disable them: that rule moved into `src/ApiOptions/PredeterminedInputs.js`
+  (internal, not exported from `src/index.js`), which `#applyTemporalInputState()` now applies and a new
+  internal `ApiOptions._predeterminedInputs` reports, so the disabling half and the reporting half cannot
+  drift. `calendarType` extends the `data-calendartype` vocabulary with `'general'` for the rite-level
+  calendar — `ApiClient`'s own cache-key category for it, not the `CalendarType` enum, whose values are
+  URL segments — and `calendarId` is `null` rather than `''` there. The callback does **not** fire on
+  subscribe: `selection` is a synchronous, race-free read, so the initial paint is one extra line, and
+  this matches `onCalendarFetched()`, `onError()` and `SubscriptionBuilder.onChange()`. A `change` that
+  alters nothing the payload reports notifies nobody. `dispose()` removes both `change` listeners it
+  attaches and drops the callbacks — they are this class' own named closures, unlike the anonymous ones
+  `ApiClient.listenTo()` attaches, whose documented gap is unchanged. `CalendarViewer`, `ApiExplorer` and
+  `SubscriptionBuilder` reach it through their existing `.controls` getter and gain no forwarding method;
+  `SubscriptionBuilder.onChange()` is deliberately not refactored onto it, publishing as it does a
+  serialized URL built from a `CurrentEndpoint` that tracks the year, locale, return type and path as
+  well as the calendar.
+
 - **The `controls` slot of `CalendarControls` and `CalendarViewer` takes an object keyed by `ApiOptions`
   filter**, closing #63 — `controls: { allCalendars: '#calendarOptions', generalRoman: '#generalRomanOptions' }`
   mounts one pass per filter in a single call. 2.5.0 documented a two-pass `filter().appendTo()` idiom for

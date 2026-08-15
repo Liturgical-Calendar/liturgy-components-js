@@ -81,7 +81,9 @@ mount call, and expose the wired children publicly for anything a theme bag does
 - **`CalendarControls`** — a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` bundled into one mount
   and wired to an `ApiClient`, with no renderer of its own. `CalendarViewer` and `ApiExplorer` are both
   built on it; a fourth, unbundled consumer renders with FullCalendar instead of `WebCalendar`, which is
-  why the renderer was kept out of this class rather than folded in.
+  why the renderer was kept out of this class rather than folded in. `selection` and the chainable
+  `onSelectionChange( callback )` publish what is selected and which `ApiOptions` inputs that selection
+  predetermines, so a consumer styling a read-only input no longer hand-wires a `change` listener.
 - **`CalendarViewer`** — `CalendarControls` paired with a `WebCalendar`, the whole calendar-table example
   page in one mount call.
 - **`ApiExplorer`** — `CalendarControls` paired with a `PathBuilder`, with fetching turned off, for a page
