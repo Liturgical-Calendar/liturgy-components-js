@@ -30,12 +30,30 @@
  */
 
 import { assertPlainOptions, describeType } from '../OptionsValidation.js';
+import {
+    hasThemePreset,
+    namesThemePreset,
+    expandThemePreset,
+} from './ThemePresets.js';
 
 /**
  * The flat theme key that supplies a child's `class`, by the child's role.
  * A `select` child takes its class from `theme.select`, a text or number input
  * from `theme.input` — the two are separated because a consumer styling
  * Bootstrap needs `form-select` on one and `form-control` on the other.
+ *
+ * **A role absent from this map takes NO flat class**, and that is now the whole
+ * content of the map: {@link collectFlatDefaults} reads it without a fallback.
+ * It used to read `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no
+ * entry — `liturgy`, and the `url` role the subscription control uses — silently
+ * inherited `theme.select`. Neither is a `<select>`: a flat `select` therefore put a
+ * framework's select styling (in Bootstrap's case a border, padding and a
+ * dropdown-arrow background image) onto a `LiturgyOfAnyDay` card and onto a copy
+ * `<button>`, which is not what "applied to every `<select>` child" has ever said in
+ * the documentation. Issue #67 made the contradiction unignorable, since
+ * `theme: 'bootstrap5'` would otherwise be unusable on `DayViewer` and
+ * `SubscriptionBuilder`. A per-child `class` is how those two are styled, and was
+ * always the intended way.
  *
  * @type {Readonly<Object<string, string>>}
  */
@@ -95,6 +113,11 @@ const OVERRIDE_KEYS_BY_ROLE = Object.freeze({
         'eventCommonClass',
         'eventYearCycleClass',
     ]),
+    // The subscription URL control: a `<button>` wrapping a `<code>`, with no label
+    // and no wrapper of its own, so `class` is the only key `SubscriptionUrl` reads.
+    // Naming the role here is what keeps `collectFlatDefaults()` from handing it a flat
+    // `select` class it would then apply to a button — see `CLASS_KEY_BY_ROLE`.
+    url: Object.freeze(['class']),
 });
 
 /**
@@ -305,6 +328,68 @@ const ALL_OVERRIDE_KEYS = Object.freeze([
 ]);
 
 /**
+ * Expands a theme bag's preset, if it names one, before anything else reads it (#67).
+ *
+ * Applied at every entry point in this module that receives a RAW bag — the two
+ * component-aware guards and the two resolvers — rather than at the six components'
+ * call sites. Two things follow, and both are the point:
+ *
+ * 1. **No meta-component changes.** A component keeps its `theme` local exactly as the
+ *    caller wrote it, string or bag, and every `Theme.js` call it makes expands for
+ *    itself.
+ * 2. **An unknown preset throws on every path**, not only on whichever happens to run
+ *    first. `assertTheme()` does in fact run before the resolvers in all six
+ *    constructors today — but relying on that is the ordering assumption that has
+ *    silently disabled a check in this codebase before, and it would cost nothing to
+ *    reintroduce by moving one line.
+ *
+ * **The `apiOptions` injection is what OPENS the opt-in gate for a preset, and it is
+ * deliberate.** That gate exists so that no bag written before this key existed
+ * restyles a form on upgrade; `preset` is a key no such bag contains, so nothing that
+ * renders today can change. Against that stands issue #67's own purpose: a preset that
+ * stopped short of the form would leave the ten inputs to the process-wide
+ * `Input.setGlobal*` setters, which the theme bag exists to replace, and the issue says
+ * as much. `{}` is all that is injected — the existing four-tier resolver then carries
+ * the preset's own flat keys down as tier 4, which is exactly what `apiOptions: {}` has
+ * always meant ("yes, style these too, with the defaults I already wrote"). A bundle the
+ * caller wrote is kept untouched.
+ *
+ * This is only safe because a preset supplies no `wrapper` class. The gate's other
+ * justification is that a flat wrapper consumes `Input.wrapper()`'s one-shot allowance
+ * on ten inputs and closes `wrapperClass()` on them; `ThemePresets.js` never emits one,
+ * and its doc comment records that as a rule rather than an omission. A caller who
+ * writes a flat `wrapper` alongside a preset still gets that behaviour — that is the
+ * existing rule, applied to a bag that has now opened the gate.
+ *
+ * Whether to inject is read from {@link THEME_CHILD_KEYS} via {@link childKeysFor},
+ * never from a second list, so a component that gains or loses an `ApiOptions` needs no
+ * change here.
+ *
+ * @param {unknown} theme - The caller's theme bag, possibly a preset name.
+ * @param {string|null} componentName - The component, when the caller knows it.
+ * @param {boolean} withApiOptions - Whether to open the `apiOptions` gate.
+ * @returns {unknown} The expanded bag, or `theme` untouched when it names no preset.
+ * @throws {Error} If the bag names a preset that does not exist.
+ */
+function expandTheme(theme, componentName, withApiOptions) {
+    if (false === hasThemePreset(theme)) {
+        return theme;
+    }
+    const expanded = expandThemePreset(theme, componentName);
+    // `namesThemePreset()`, not `hasThemePreset()`: a bag carrying `preset: undefined`
+    // still reaches the expansion so the dead key is stripped, but it asked for no
+    // preset and must not open the gate. See that function's own comment.
+    if (
+        withApiOptions &&
+        namesThemePreset(theme) &&
+        false === Object.hasOwn(expanded, API_OPTIONS_KEY)
+    ) {
+        expanded[API_OPTIONS_KEY] = {};
+    }
+    return expanded;
+}
+
+/**
  * Validates a theme bag's shape, throwing with the component's name and the type
  * actually found.
  *
@@ -336,6 +421,15 @@ export function assertTheme(theme, componentName) {
     // reintroduce it. An unregistered name throws rather than falling back to
     // the old permissive behaviour, which would silently restore the bug.
     const childKeys = childKeysFor(componentName);
+    // Before the nullish shortcut and before every shape check: a preset expands to
+    // the bag this guard then validates, so the library's own expansion goes through
+    // exactly the same `THEME_CHILD_KEYS` check a caller's key does, rather than being
+    // trusted (#67).
+    theme = expandTheme(
+        theme,
+        componentName,
+        childKeys.includes(API_OPTIONS_KEY),
+    );
     if (null === theme || undefined === theme) {
         return;
     }
@@ -478,6 +572,13 @@ export function narrowTheme(theme, componentName) {
     // Resolved BEFORE the nullish shortcut, so a mistyped target is caught on
     // every call rather than only on the calls that happen to carry a theme.
     const childKeys = childKeysFor(componentName);
+    // Expanded here too, so the bag handed down to `CalendarControls` is already plain
+    // and its own `assertTheme()` pass never sees a `preset` key (#67).
+    theme = expandTheme(
+        theme,
+        componentName,
+        childKeys.includes(API_OPTIONS_KEY),
+    );
     if (null === theme || undefined === theme) {
         return theme;
     }
@@ -602,6 +703,9 @@ function assertApiOptionsTheme(bundle, componentName) {
  * @returns {{class?: string, labelClass?: string, labelText?: string, wrapperClass?: string, wrapper?: string}} The resolved styling.
  */
 export function resolveChildTheme(theme, childKey, role = 'select') {
+    // `false`: this function never reads `apiOptions`, so opening that gate here would
+    // be inert. `resolveApiOptionsInputTheme()` is the one that needs it (#67).
+    theme = expandTheme(theme, null, false);
     if (null === theme || undefined === theme) {
         return {};
     }
@@ -625,14 +729,33 @@ export function resolveChildTheme(theme, childKey, role = 'select') {
  */
 function collectFlatDefaults(bag, role) {
     const resolved = {};
-    const classKey = CLASS_KEY_BY_ROLE[role] ?? 'select';
-    if (typeof bag[classKey] === 'string') {
+    // No `?? 'select'` fallback: a role this map does not name takes no flat class at
+    // all. See `CLASS_KEY_BY_ROLE`'s own comment for what the fallback used to do to
+    // the `liturgy` and `url` roles, neither of which is a `<select>`.
+    const classKey = CLASS_KEY_BY_ROLE[role];
+    if (undefined !== classKey && typeof bag[classKey] === 'string') {
         resolved.class = bag[classKey];
     }
-    if (typeof bag.label === 'string') {
+    // `label` and `wrapper` are gated on the ROLE's own key list rather than on a
+    // second map, because unlike `class` they map onto keys that list already names.
+    // A `liturgy` or `url` child has no label and no wrapper of its own, so a flat
+    // `theme.label` resolved for one was a key the caller's own component would then
+    // ignore — the same accepted-and-dropped shape issue #43 was filed about, and the
+    // reason `collectOverride()` has been role-keyed since.
+    //
+    // No `?? OVERRIDE_KEYS_BY_ROLE.select` fallback either, and the two lookups in this
+    // function have to agree on that. `collectOverride()` keeps its fallback because it
+    // is layering a value the CALLER wrote and a select-shaped guess is better than
+    // dropping it; here there is no caller intent to preserve, only this module's own
+    // defaults, so an unregistered role takes none of the three flat keys rather than
+    // one of them and not the other. Split the two and the next role added inherits
+    // half the old behaviour and half the new, which is precisely how a rule ends up
+    // honoured for some children and not others.
+    const roleKeys = OVERRIDE_KEYS_BY_ROLE[role] ?? [];
+    if (roleKeys.includes('labelClass') && typeof bag.label === 'string') {
         resolved.labelClass = bag.label;
     }
-    if (typeof bag.wrapper === 'string') {
+    if (roleKeys.includes('wrapperClass') && typeof bag.wrapper === 'string') {
         resolved.wrapperClass = bag.wrapper;
     }
     return resolved;
@@ -706,6 +829,10 @@ function collectOverride(resolved, override, role) {
  * @returns {{class?: string, labelClass?: string, labelText?: string, wrapperClass?: string, wrapper?: string}} The resolved styling.
  */
 export function resolveApiOptionsInputTheme(theme, inputKey) {
+    // `true`: only `applyApiOptionsTheme()` reaches here, and only from a component
+    // that has an `ApiOptions` for the bundle to describe — so a preset opens the gate
+    // (#67). See `expandTheme()` for why that is deliberate and why it is safe.
+    theme = expandTheme(theme, null, true);
     if (null === theme || undefined === theme) {
         return {};
     }

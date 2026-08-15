@@ -118,11 +118,21 @@ describe('assertTheme', () => {
     });
 
     it('rejects a non-object theme, naming the component and the type', () => {
-        expect(() => assertTheme('form-select', 'DayViewer')).toThrow(
-            /DayViewer.*theme.*string/,
-        );
         expect(() => assertTheme(['a'], 'DayViewer')).toThrow(
             /DayViewer.*theme.*array/,
+        );
+        expect(() => assertTheme(42, 'DayViewer')).toThrow(
+            /DayViewer.*theme.*number/,
+        );
+    });
+
+    // A bare string used to be rejected as "not an object"; since issue #67 it is a
+    // PRESET NAME, so a string that names no preset is rejected as that instead. Both
+    // throw under the component's name — what changed is which mistake is reported,
+    // and this pins the new one so the string form cannot quietly become permissive.
+    it('reads a bare string as a preset name, not as a class', () => {
+        expect(() => assertTheme('form-select', 'DayViewer')).toThrow(
+            "DayViewer: theme preset 'form-select' is not recognised. Valid presets are: bootstrap4, bootstrap5.",
         );
     });
 

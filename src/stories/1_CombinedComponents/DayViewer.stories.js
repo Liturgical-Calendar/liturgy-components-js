@@ -15,6 +15,16 @@ import { render } from './DayViewer.render.js';
  * variants differ ONLY by the `theme` argument, which is the claim the theme bag
  * exists to make: nothing framework-specific is baked into the component.
  *
+ * The Bootstrap bag names `preset: 'bootstrap5'` (#67) rather than spelling out
+ * `form-select`/`form-control`/`form-label`, which is the same class set said once
+ * instead of three times — and it still styles the whole `ApiOptions` form, which
+ * the hand-written bag did not reach without the `Input.setGlobal*` setters.
+ *
+ * A key written beside the preset REPLACES the preset's value for that key; class
+ * tokens are not merged. So an override still spells out the framework class it
+ * wants to keep — `select: 'form-select form-select-sm'`, not `'form-select-sm'`.
+ * The preset earns its place on the keys a page does NOT override.
+ *
  * `render` is async and awaits `DayViewer.mountInto()` before returning the mount —
  * see `DayViewer.render.js` for why no `apiClient` is passed (the story shows the
  * form, not a live fetch) and why the render logic lives in its own, CSS-free
@@ -31,9 +41,7 @@ export default meta;
 export const Bootstrap = {
     args: {
         theme: {
-            select: 'form-select',
-            label: 'form-label',
-            input: 'form-control',
+            preset: 'bootstrap5',
             wrapper: 'mb-3',
             riteSelect: { class: 'form-select mb-2' },
         },

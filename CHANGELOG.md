@@ -8,6 +8,28 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Behaviour changes
 
+- **A flat theme class no longer reaches a child that is not a control**, part of #67. `resolveChildTheme()`
+  read its flat class key as `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry —
+  `DayViewer`'s `liturgy` child, a `LiturgyOfAnyDay` card, and the copy `<button>`
+  `SubscriptionBuilder` renders — silently inherited `theme.select`. A bag writing
+  `select: 'form-select'` therefore put a border, padding and a dropdown-arrow background image onto a
+  card and onto a button, neither of which is a `<select>` and neither of which the documentation has
+  ever claimed the flat key applies to. The flat `label` and `wrapper` are gated the same way, on the
+  role's own key list, since neither child has a label or a wrapper of its own.
+
+  **A consumer writing a flat `select`, `label` or `wrapper` on a `DayViewer` or a `SubscriptionBuilder`
+  will see those two children lose that class.** Style them with their per-child key instead —
+  `liturgy: { class: … }`, `subscriptionUrl: { class: … }` — which is how they were always meant to be
+  styled, and which is unchanged. This is a prerequisite for the preset above rather than a tidy-up:
+  `theme: 'bootstrap5'` would otherwise be unusable on both components.
+
+- **A bare string `theme` is now read as a preset name.** It was previously rejected outright by
+  `assertPlainOptions()` as "not an object", so nothing that worked stops working — but the message a
+  consumer sees for `theme: 'form-select'` changes from a type complaint to
+  `theme preset 'form-select' is not recognised. Valid presets are: bootstrap4, bootstrap5.` The
+  per-child string form (`theme.riteSelect: 'form-select'`, meaning `{ class }`) is one level down and is
+  untouched.
+
 - **A meta-component theme key naming a child that component does not have now throws**, closing #78.
   `assertTheme()` validated a theme bag without knowing which children the receiving component actually
   had, so any key outside the four flat role keys was read as a per-child override, accepted, and then
@@ -70,6 +92,54 @@ prepared under that number was skipped, and everything it was to have delivered 
   `defaultLabelText` from another catalogue is still honoured.
 
 ### Added
+
+- **A meta-component theme bag can name a framework `preset`**, closing #67. `theme: 'bootstrap5'` and
+  `theme: { preset: 'bootstrap5', riteSelect: { wrapperClass: 'col col-md-2' } }` are the same call; the
+  two valid names are exported as `ThemePreset.BOOTSTRAP_4` and `ThemePreset.BOOTSTRAP_5`, and anything
+  else throws naming it and listing them. Every consuming page was rewriting the same mapping from HTML
+  role to Bootstrap class in its theme bag, its `Input.setGlobal*` calls and its per-input overrides, and
+  one example carried a runtime version probe to choose between two spellings of it. None of that is the
+  consumer's decision, and it is where pages drift apart.
+
+  | Preset       | `select`       | `input`        | `label`      |
+  | ------------ | -------------- | -------------- | ------------ |
+  | `bootstrap5` | `form-select`  | `form-control` | `form-label` |
+  | `bootstrap4` | `form-control` | `form-control` | _(none)_     |
+
+  Your own keys still win, per key, in exactly the way the bag already resolves — a preset is one more
+  tier below the flat keys, so `{ preset: 'bootstrap5', select: 'form-select-lg' }` uses yours, and a
+  per-child override beats both. **A preset opens the `theme.apiOptions` gate**, so its classes reach all
+  ten `ApiOptions` inputs: a preset that stopped at the rite and calendar selects would leave the form to
+  the process-wide setters the theme bag exists to replace, which is exactly what the issue said. Nothing
+  that renders today changes, because no bag written before this release names a preset.
+
+  **A preset covers controls and never layout.** It supplies no wrapper class, no grid span and no
+  spacing utility; it ships no class the named framework does not itself define; it does not detect which
+  framework a page loaded (that probe stays with the page — it just chooses a preset name now). Of the
+  two Bootstrap differences the issue names, `.form-select` versus `.form-control` is a class Bootstrap 5
+  introduced and is covered, while `col col-md-N` versus `col-md-N` is a choice about sub-`md` column
+  behaviour with no renaming behind it and is not. `bootstrap4` emits no `label` because `.form-label` is
+  a Bootstrap 5 class and Bootstrap 4 form labels carry none; emitting one anyway would be inventing CSS.
+  This is a deliberate, bounded exception to the library's "ships nothing framework-specific and takes no
+  position on CSS" rule, and the bound is the framework's own control vocabulary.
+
+  **Before adopting one, know what opening the gate closes.** `Input.class()` and `Input.labelClass()`
+  each refuse a _different_ value once set — re-asserting the same string is fine — so after
+  `preset: 'bootstrap5'` a later `controls.apiOptions.yearInput.class( 'form-control-sm' )` throws. That
+  is the existing rule for any bag that reaches those inputs, but a preset is now the easiest way to
+  reach them; theme through `apiOptions: { yearInput: { class: … } }` instead.
+  `wrapper()`/`wrapperClass()` stay open, because a preset supplies none — which is what keeps the
+  `setGlobalWrapper()`-plus-per-input-`wrapperClass()` pairing working on a page part-way through
+  migrating off the globals.
+
+  `preset: undefined` (or `null`) means no preset, per the same "nullish means not supplied" rule this
+  library applies to a locale, and does not open the gate; an empty string still throws, because supplied
+  and invalid is not the same as absent. The library's own three Storybook stories now name a preset
+  instead of spelling the class set out, which is also what gives the feature an integration check through
+  the `mountInto()` render path.
+
+  The preset NAMES are public API; the class table behind them is not, and stays internal in
+  `src/MetaComponents/ThemePresets.js` so the strings remain free to be corrected in a patch release.
 
 - **`CalendarControls` now publishes what is selected**, closing #68. `controls.selection` reports
   `{ calendarType, calendarId, predeterminedInputs }`, and the chainable

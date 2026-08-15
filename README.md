@@ -93,8 +93,37 @@ All five take a synchronous constructor plus a static async `mountInto()`, and a
 HTML roles (`select`, `input`, `label`, `wrapper`) rather than framework class names — the library ships
 no framework-specific CSS. A nested `apiOptions` key extends the same vocabulary to every one of an
 `ApiOptions`' ten inputs, so styling a bundled form needs none of the process-wide `Input.setGlobal*`
-mutations. See [the meta-components documentation][meta-components] for the full contract, including the
-theme bag's resolution rules and the reject/resolve behaviour of `mountInto()`.
+mutations.
+
+A **preset** names the standard class set for a framework rather than making every page write it out, and
+remains overridable per key:
+
+```javascript
+theme: 'bootstrap5';
+theme: { preset: 'bootstrap5', riteSelect: { wrapperClass: 'col col-md-2' } }
+```
+
+`ThemePreset.BOOTSTRAP_4` and `ThemePreset.BOOTSTRAP_5` are the two names; anything else throws, listing
+them. What each supplies differs, because the frameworks differ:
+
+| preset       | `select`       | `input`        | `label`      |
+| ------------ | -------------- | -------------- | ------------ |
+| `bootstrap5` | `form-select`  | `form-control` | `form-label` |
+| `bootstrap4` | `form-control` | `form-control` | — none       |
+
+`bootstrap4` supplies no `label` because Bootstrap 4 has no `.form-label`; emitting one would invent a
+class the framework does not define.
+
+A preset covers controls and never layout — no wrapper class, no grid span, and no class the framework
+does not itself define — and it does not detect which framework a page loaded. It does style the whole
+`ApiOptions` form.
+
+**A key written beside a preset replaces that preset's value; class tokens are not merged.** So
+`{ preset: 'bootstrap5', select: 'form-select-sm' }` yields `form-select-sm` alone, losing `form-select`.
+Repeat what you want to keep: `select: 'form-select form-select-sm'`.
+
+See [the meta-components documentation][meta-components] for the full contract, including the theme bag's
+resolution rules, the presets, and the reject/resolve behaviour of `mountInto()`.
 
 ## Using two API bases on one page
 

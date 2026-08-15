@@ -36,10 +36,13 @@ describe('CalendarViewer.render (Storybook)', () => {
         );
     });
 
+    // The bag is kept in step with `CalendarViewer.stories.js` by hand, because that
+    // file imports `bootstrap.min.css` at module scope and cannot be imported here
+    // (see above). Since #67 it names a preset rather than spelling the class set out.
     it('the Bootstrap and Unstyled args differ only by theme, and both render', async () => {
         const bootstrapMount = await render({
             theme: {
-                select: 'form-select',
+                preset: 'bootstrap5',
                 label: 'form-label d-block mb-1',
                 riteSelect: { class: 'form-select mb-2' },
             },
@@ -50,6 +53,19 @@ describe('CalendarViewer.render (Storybook)', () => {
         const unstyledSelect = unstyledMount.querySelector('select');
         expect(bootstrapSelect.className).toContain('form-select');
         expect(unstyledSelect.className).toBe('');
+
+        // EVERY select, not just the first: the preset opens the `apiOptions` gate,
+        // so the whole `ApiOptions` form is styled too. The hand-written bag this
+        // replaced reached only the rite and calendar selects, and left the form to
+        // the process-wide `Input.setGlobal*` setters.
+        const bootstrapSelects = [...bootstrapMount.querySelectorAll('select')];
+        expect(bootstrapSelects.length).toBeGreaterThan(2);
+        for (const select of bootstrapSelects) {
+            expect(select.className).toContain('form-select');
+        }
+        for (const select of unstyledMount.querySelectorAll('select')) {
+            expect(select.className).toBe('');
+        }
     });
 
     it('leaves the mount detached from the document once rendering settles', async () => {

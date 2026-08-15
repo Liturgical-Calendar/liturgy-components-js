@@ -15,7 +15,12 @@
  * @license Apache-2.0
  */
 
-import { ApiOptions, VERSION } from '../dist/index.js';
+import {
+    ApiOptions,
+    CalendarControls,
+    ThemePreset,
+    VERSION,
+} from '../dist/index.js';
 
 /**
  * `VERSION` must be declared `string`, never the string LITERAL of whatever
@@ -135,11 +140,19 @@ const internalAccessorsStayInternal: [false, false, false] = [
 void internalAccessorsStayInternal;
 
 /**
+ * #67: the preset names must reach `dist/` as a usable VALUE, not only as a type.
+ *
+ * `ThemePreset` is the only export that originates in `src/MetaComponents/`, every
+ * other member of which is deliberately unexported, so it is the one most likely to be
+ * dropped from `src/index.js` by someone tidying that boundary.
+ */
+const bootstrap5Preset: string = ThemePreset.BOOTSTRAP_5;
+void bootstrap5Preset;
+
+/**
  * The `CalendarControls` selection payload (#68) must reach a consumer as a
  * usable type, not as `Object`.
  */
-import { CalendarControls } from '../dist/index.js';
-
 type ControlsInstance = InstanceType<typeof CalendarControls>;
 
 const paint = ({

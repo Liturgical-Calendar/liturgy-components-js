@@ -67,7 +67,8 @@ liturgy-components-js/
 │   │   ├── CalendarControls.js      # Rite, calendar and ApiOptions, wired, no renderer
 │   │   ├── CalendarViewer.js        # CalendarControls + WebCalendar
 │   │   ├── ApiExplorer.js           # CalendarControls + PathBuilder, never fetches
-│   │   └── Theme.js                 # Internal theme-bag resolver, not exported
+│   │   ├── Theme.js                 # Internal theme-bag resolver, not exported
+│   │   └── ThemePresets.js          # Framework preset table; only its names are exported
 │   ├── SubscriptionBuilder/
 │   │   ├── SubscriptionBuilder.js  # CalendarControls + a subscription URL, never fetches
 │   │   └── SubscriptionUrl.js       # Private renderer, not exported
@@ -541,6 +542,54 @@ the theme bag exists to replace. Four things about it are load-bearing and easy 
 - **Every one of the ten inputs is themed regardless of `filter`.** They all exist; `filter` decides only
   which are appended. Theming one the filter hides must stay inert rather than throwing.
 
+**A `preset` names the role-to-class mapping instead of writing it out, and it is a bounded exception to
+"takes no position on CSS" (#67).** `theme: 'bootstrap5'` and `theme: { preset: 'bootstrap5', … }` are the
+same call; `bootstrap4`/`bootstrap5` are the two names, exported as `ThemePreset` from `src/index.js`
+while the class table in `src/MetaComponents/ThemePresets.js` stays internal — the names are public API,
+the strings must stay free to change in a patch release, and both live in one file so they cannot drift.
+Six points are load-bearing:
+
+- **Expansion lives in `Theme.js`, at all four entry points that take a raw bag** (`assertTheme()`,
+  `narrowTheme()`, `resolveChildTheme()`, `resolveApiOptionsInputTheme()`), never at the six components'
+  call sites. That is what keeps every meta-component file unchanged — each holds its `theme` local
+  exactly as the caller wrote it — and it is what makes an unknown preset throw on **every** path rather
+  than on whichever runs first. `assertTheme()` does precede the resolvers in all six constructors today;
+  relying on that is the ordering assumption that has silently disabled a check here before, and it costs
+  one moved line to break.
+- **`assertTheme()` expands BEFORE validating**, so what a preset emits goes through the same
+  `THEME_CHILD_KEYS` check a caller's key does. A preset emitting a key some component does not accept
+  fails loudly rather than being dropped. `MetaComponentThemePresets.test.js` asserts this for every
+  (preset, component) pair, and it is mutation-verified.
+- **A preset opens the `theme.apiOptions` gate, deliberately.** It injects `apiOptions: {}` and nothing
+  more; the existing four tiers then carry its flat keys down as tier 4. The gate exists so no bag written
+  before that key restyles a form on upgrade, and `preset` is a key no such bag contains — while #67's own
+  stated purpose is that a preset stopping short of the form would leave the ten inputs to the
+  `Input.setGlobal*` setters. Whether to inject is read from `THEME_CHILD_KEYS`, never a second list, so
+  `CalendarResourcePicker` gets no such key.
+- **A preset supplies no `wrapper`, and that is what makes the point above safe.** The gate's other
+  justification is that a flat wrapper consumes `Input.wrapper()`'s one-shot allowance on ten inputs. It
+  is also why only ONE of the two Bootstrap differences #67 names is covered: `.form-select` is a class
+  BS5 introduced, `col col-md-N` versus `col-md-N` is a sub-breakpoint layout choice with no renaming
+  behind it. Do not "complete" the preset by adding a wrapper class.
+- **`bootstrap4` emits no `label`.** `.form-label` is a BS5 class; BS4 form labels carry none. Adding one
+  for symmetry would be inventing CSS.
+- **A bare string `theme` is a preset name**, which is purely additive — a string was previously rejected
+  by `assertPlainOptions()`. It cannot collide with the per-child string form (`{ class }`), which is one
+  level down.
+- **`preset: undefined` means no preset**, per the library-wide nullish rule, and does not open the gate —
+  hence `namesThemePreset()` beside `hasThemePreset()`. The two differ on that one input and both are
+  needed: the bag must still reach the expansion so the dead key is stripped before `assertTheme()`'s
+  unknown-key check, while the gate must stay shut. An empty string still throws; supplied-and-invalid is
+  not absent.
+
+**A flat class reaches CONTROLS only, since #67.** `collectFlatDefaults()` read
+`CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry — `liturgy`, and the `url` role
+`SubscriptionBuilder` now passes — inherited `theme.select` and got a `<select>`'s styling on a
+`LiturgyOfAnyDay` card and on a copy `<button>`. The fallback is gone; `label`/`wrapper` are gated on the
+role's own key list for the same reason. This was a prerequisite, not a tidy-up: the preset is unusable on
+those two components otherwise. It IS a behaviour change for a bag writing a flat `select` on either, and
+the per-child `class` is how both are styled.
+
 **Theme keys are validated PER COMPONENT, and the forwarding boundary owns its own attribution (#78).**
 `THEME_CHILD_KEYS` in `Theme.js` maps each of the six theme-taking components to the child keys it
 actually resolves, and `assertTheme()` looks its allowed set up by the `componentName` it is already
@@ -821,6 +870,8 @@ Type-safe enumerations for component configuration:
 - `CalendarSelectFilter` - NATIONAL_CALENDARS, DIOCESAN_CALENDARS, NONE
 - `ApiOptionsFilter` - GENERAL_ROMAN, ALL_CALENDARS, PATH_BUILDER, LOCALE_ONLY, YEAR_ONLY, NONE
 - `YearType` - LITURGICAL, CIVIL
+- `ThemePreset` - BOOTSTRAP_4, BOOTSTRAP_5 (defined in `src/MetaComponents/ThemePresets.js`, not
+  `Enums.js`, so its names and its internal class table cannot drift)
 
 ## Internationalization
 
