@@ -20,6 +20,10 @@ import {
 } from '../Enums.js';
 import { CurrentEndpoint } from '../PathBuilder/CurrentEndpoint.js';
 import { inputKeysForFilter } from './FilterInputs.js';
+import {
+    predeterminedInputKeys,
+    PREDETERMINABLE_INPUTS,
+} from './PredeterminedInputs.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
 import Utils from '../Utils.js';
@@ -171,6 +175,18 @@ export default class ApiOptions {
      * @type {boolean}
      */
     #riteFixesTemporalOptions = false;
+
+    /**
+     * What `#applyTemporalInputState()` last determined the rite and the calendar
+     * selection fix, reported by `_predeterminedInputs`.
+     *
+     * Empty until that method has run, which is honest rather than merely
+     * convenient: on an `ApiOptions` never linked to a calendar select nothing
+     * has been applied to the form either, so an empty set describes it exactly.
+     *
+     * @type {Readonly<string[]>}
+     */
+    #predeterminedInputs = Object.freeze([]);
 
     /**
      * This instance's endpoint state — path segments plus query parameters.
@@ -360,17 +376,24 @@ export default class ApiOptions {
      * Holy days of obligation are not fixed by any rite, so they follow the
      * calendar-selection half alone.
      *
+     * The rule itself lives in `PredeterminedInputs.js`, which this method
+     * APPLIES and `_predeterminedInputs` REPORTS, so what is disabled here and
+     * what `CalendarControls.selection` publishes cannot drift (#68). Every one
+     * of the five is still assigned on every call — `disabled( false )` for the
+     * ones the rule does not name — which is what re-enables them when a
+     * selection is cleared.
+     *
      * @param {boolean} calendarSelected - Whether a nation or diocese is currently selected.
      * @private
      */
     #applyTemporalInputState(calendarSelected) {
-        const fixedTemporalDisabled =
-            calendarSelected || this.#riteFixesTemporalOptions;
-        this.#inputs.epiphanyInput.disabled(fixedTemporalDisabled);
-        this.#inputs.ascensionInput.disabled(fixedTemporalDisabled);
-        this.#inputs.corpusChristiInput.disabled(fixedTemporalDisabled);
-        this.#inputs.eternalHighPriestInput.disabled(fixedTemporalDisabled);
-        this.#inputs.holydaysOfObligationInput.disabled(calendarSelected);
+        this.#predeterminedInputs = predeterminedInputKeys({
+            calendarSelected,
+            riteFixesTemporalOptions: this.#riteFixesTemporalOptions,
+        });
+        for (const key of PREDETERMINABLE_INPUTS) {
+            this.#inputs[key].disabled(this.#predeterminedInputs.includes(key));
+        }
     }
 
     /**
@@ -1659,6 +1682,30 @@ export default class ApiOptions {
      */
     get _filter() {
         return this.#filter;
+    }
+
+    /**
+     * The inputs whose values the current rite and calendar selection fix — the
+     * very set `#applyTemporalInputState()` disabled, never a second derivation
+     * of it.
+     *
+     * `_`-prefixed by this codebase's convention for internal-but-reachable
+     * members (`_filter`, `_currentEndpoint`, `_domElement`): the public route to
+     * this state is `CalendarControls.selection` and
+     * `CalendarControls.onSelectionChange()`. Promoting it to a public
+     * `predeterminedInputs` later would be backward compatible.
+     *
+     * Reading `_domElement.disabled` back off the inputs is NOT an alternative:
+     * `HolydaysOfObligationInput.disabled()` overrides the base method and sets a
+     * `readonly` expando plus per-`<option>` flags instead of the element's own
+     * `disabled` property, so the one input issue #68 is actually about would
+     * need a special case of its own — a second hand-rolled copy of the rule by
+     * another name.
+     *
+     * @returns {Readonly<string[]>} The predetermined input keys, in canonical order.
+     */
+    get _predeterminedInputs() {
+        return this.#predeterminedInputs;
     }
 
     /**

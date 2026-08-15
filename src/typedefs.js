@@ -235,4 +235,29 @@
  * @prop {string[]} [ambrosian_calendars_keys] - The calendar IDs of every Ambrosian calendar. Absent on the v5 API; its absence is how rite support is feature-detected.
  */
 
+/**
+ * What a `CalendarControls` currently has selected, and which `ApiOptions`
+ * inputs that selection fixes — the payload of `CalendarControls.selection` and
+ * of the callbacks registered with `onSelectionChange()`.
+ *
+ * A named typedef rather than an inline object type in each JSDoc block, because
+ * both places must agree AND both must reach the emitted declarations as a
+ * usable type. Typed inline, `@param {function(Object): void}` emitted
+ * `onSelectionChange( callback: ( arg0: Object ) => void )`, and `Object` "is
+ * assignable to very few other types": the two-line recipe this library's own
+ * documentation prescribes — `paint( controls.selection );
+ * controls.onSelectionChange( paint );` — failed with TS2345 for every
+ * TypeScript consumer, while `yarn compile` and `yarn test` stayed green.
+ * `type-fixtures/dts-consumer.ts` now compiles that exact recipe, so it cannot
+ * regress unnoticed.
+ *
+ * `calendarType` is a union rather than `string` for the same reason: inline it
+ * widened, and a consumer could not assign it to their own narrowed type.
+ *
+ * @typedef {Object} CalendarSelection
+ * @prop {'general'|'national'|'diocesan'} calendarType - What kind of calendar is selected. `general` is the rite-level calendar, i.e. the select's empty value.
+ * @prop {?string} calendarId - The selected `calendar_id`, or `null` under `general`.
+ * @prop {Readonly<string[]>} predeterminedInputs - The `ApiOptions` inputs whose values the current rite and calendar fix, named by their canonical accessor, in canonical order.
+ */
+
 export default {};

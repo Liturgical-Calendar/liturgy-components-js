@@ -696,6 +696,53 @@ fetches — the same asymmetry, on the same grounds, as their reject/resolve beh
 `CalendarViewer` it is the very promise `mountInto()` already awaits, so it has settled by the time a caller
 of that factory can read it; do not remove it there on that account.
 
+**`onSelectionChange()` publishes state consumers were deriving by hand, and `predeterminedInputs` is the
+part that carries domain knowledge.** `CalendarControls.selection` reports
+`{ calendarType, calendarId, predeterminedInputs }`, and `onSelectionChange( callback )` — chainable, and
+released by `dispose()` — fires once per user action, on a microtask, and only when that payload changed.
+Four points are load-bearing:
+
+- **The rule has ONE copy**, `src/ApiOptions/PredeterminedInputs.js`, which
+  `ApiOptions.#applyTemporalInputState()` APPLIES and `ApiOptions._predeterminedInputs` REPORTS — the same
+  one-source-two-readers shape `FilterInputs.js` has for the filter -> inputs mapping. **Do not
+  reconstruct it by reading `_domElement.disabled` back:** `HolydaysOfObligationInput.disabled()`
+  overrides the base method and sets a `readonly` expando plus per-`<option>` flags instead of the
+  element's own `disabled` property, so the one input this feature exists for would need a special case —
+  a second hand-rolled copy under another name. `PredeterminedInputs.test.js` asserts the five candidates
+  equal `inputKeysForFilter( ApiOptionsFilter.GENERAL_ROMAN )`, so the two lists cannot drift apart
+  silently either.
+- **The coalescing is `SubscriptionUrl.#scheduleNotify()`'s, and both guards earn their place.** A rite
+  change dispatches on the rite select, the calendar select and several `ApiOptions` inputs within one
+  synchronous burst; notifying per event would describe the state the user just left, and would read
+  `predeterminedInputs` before `ApiOptions`' own listener had applied it. The dedupe against the last
+  notified payload is what makes a locale or year change cost nothing, not the choice of listeners:
+  measured by mutation in `CalendarControlsSelectionChange.test.js`, adding a locale-input listener leaves
+  every test green.
+- **It deliberately does NOT fire on subscribe**, matching `onCalendarFetched()`, `onError()` and
+  `SubscriptionBuilder.onChange()`. `selection` is a synchronous, race-free read, so the initial paint is
+  `paint( controls.selection ); controls.onSelectionChange( paint );` — the two lines both migrated
+  examples already write. The notify loop is `forEach`, not `for...of`, so a callback registered by
+  another callback does not fire inside that same flush, which would contradict exactly that rule;
+  `SubscriptionUrl` and `EventEmitter.emit()` both notify this way.
+- **The payload is a named typedef, `CalendarSelection` in `src/typedefs.js`, and that is not cosmetic.**
+  Typed inline as `function(Object): void`, the library's OWN documented two-line recipe failed to compile
+  for every TypeScript consumer (TS2345 — `Object` "is assignable to very few other types"), while
+  `yarn compile` and `yarn test` stayed green: the same `.d.ts`-only blind spot as the `@readonly`-on-a-getter
+  and `VERSION`-literal traps. `calendarType` is a union rather than `string` for the same reason.
+  `type-fixtures/dts-consumer.ts` now compiles that exact recipe.
+- **`predeterminedInputs` reports what `ApiOptions` has APPLIED**, which a `change` event is the only thing
+  that updates. So unwired controls (`mountInto()` without `apiClient`) report the empty set, and a
+  programmatic `CalendarSelect.value()` — which dispatches no `change`, and which `ApiClient` equally
+  ignores — is not observed until a `change` is dispatched. Both are documented and pinned; do not "fix"
+  them by deriving the key live from the DOM, which would make this one key react to a select the rest of
+  an unwired form ignores, and could not derive the rite half at all.
+- **`SubscriptionBuilder.onChange()` was weighed and left alone.** It publishes a serialized URL built from
+  a `CurrentEndpoint` that also tracks year, locale, return type, rite and path, so it watches a different
+  set of inputs and carries a different payload; routing it through this would either change that payload
+  or make it a consumer of a mechanism that does not carry what it needs. `CalendarViewer`, `ApiExplorer`
+  and `SubscriptionBuilder` reach the new API through their existing `.controls` getter, so none of them
+  gains a forwarding method.
+
 **The `inputs` bag says which `ApiOptions` inputs render, and exists so `mountInto()` can express what
 only the constructor path could.** `AcceptHeaderInput.hide()` sets a flag `ApiOptions.appendTo()` reads,
 so it was meaningful only between construction and the append — a window `mountInto()` does not open, which
