@@ -25,7 +25,11 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
     filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
     placeholderText: 'Select calendar ID...',
     errorText: 'Could not load calendars — try reloading the page',
+    // `preset` supplies `form-select`; everything below is what this page adds on
+    // top of it, per key. Without the preset the two class strings would have to
+    // spell out the framework's own vocabulary as well as this page's.
     theme: {
+        preset: 'bootstrap5',
         select: 'form-select form-select-sm perm-object-id',
         riteSelect: { class: 'form-select form-select-sm mb-2 perm-object-rite' },
     },
@@ -165,6 +169,15 @@ further class setters and no label or wrapper of its own, so it accepts `class` 
 | `eventCommonClass`    | the "common" text         |
 | `eventYearCycleClass` | the year-cycle text       |
 
+**A flat class reaches CONTROLS only.** `select` and `input` apply to `<select>`- and input-shaped
+children; they do **not** reach `DayViewer`'s `liturgy` child (a `LiturgyOfAnyDay` card) or
+`SubscriptionBuilder`'s `subscriptionUrl` child (a copy `<button>`), and neither does the flat `label` or
+`wrapper`, since neither child has a label or a wrapper of its own. Style those two with their per-child
+`class`. Before 2.8.0 a flat `select` silently reached both, so `select: 'form-select'` put a border,
+padding and a dropdown-arrow background image onto a liturgy card and onto a button — contradicting what
+this page has always said the flat key does. See the CHANGELOG entry, which records it as a behaviour
+change.
+
 Those eight were accepted by the bag but silently discarded before 2.3.0 (issue #43), so a consumer
 theming the event rows or the date header got library defaults with no throw and no warning. They work
 now. **An unrecognised per-child key throws**, naming the key — the same misspelling that produced that
@@ -207,6 +220,96 @@ has: flat role keys plus per-input overrides for a whole `ApiOptions` form, docu
 `ApiOptions`, so naming it in this component's bag **throws** — as does `localeInput`, the one
 `ApiOptions` input that answers to a top-level key elsewhere. Before issue #78 both were accepted and
 then styled nothing.
+
+### Theme presets
+
+Every page built on these components used to rewrite the same mapping from HTML role to Bootstrap class,
+and one example carried a runtime probe to choose between two spellings of it. A **preset** names that
+mapping instead. Two spellings, and they mean the same thing:
+
+```javascript
+theme: 'bootstrap5';
+theme: {
+    preset: 'bootstrap5',
+    riteSelect: { wrapperClass: 'col col-md-2' },
+}
+```
+
+The valid names are the members of the exported `ThemePreset` enum — `ThemePreset.BOOTSTRAP_4` and
+`ThemePreset.BOOTSTRAP_5`, whose values are the strings `'bootstrap4'` and `'bootstrap5'`. An unknown name
+**throws**, naming it and listing the valid ones:
+
+```text
+CalendarViewer: theme preset 'bootstrap6' is not recognised. Valid presets are: bootstrap4, bootstrap5.
+```
+
+Each preset resolves to flat role keys, and to nothing else:
+
+| Preset       | `select`       | `input`        | `label`      |
+| ------------ | -------------- | -------------- | ------------ |
+| `bootstrap5` | `form-select`  | `form-control` | `form-label` |
+| `bootstrap4` | `form-control` | `form-control` | _(none)_     |
+
+**Your own keys win, per key**, in exactly the way the bag already resolves: the preset is one more tier
+below the flat keys. `{ preset: 'bootstrap5', select: 'form-select-lg' }` uses your `select`;
+`{ preset: 'bootstrap5', riteSelect: { class: 'x' } }` gives the rite select `x` and every other select
+`form-select`, with `form-label` still on both labels.
+
+**A preset styles the whole `ApiOptions` form.** It opens the
+[`theme.apiOptions` gate](#themeapioptions--the-whole-apioptions-form) for you, so the preset's classes
+reach all ten inputs. That is deliberate and it is the point: a preset that stopped at the rite and
+calendar selects would leave the form to the process-wide `Input.setGlobal*` setters, which the theme bag
+exists to replace. The gate exists so that a bag written before that key existed cannot be restyled by an
+upgrade — and no such bag names a preset, so nothing that renders today changes. It is safe only because
+a preset never supplies a `wrapper`; see below.
+
+**`bootstrap4` emits no `label` class, on purpose.** `.form-label` is a Bootstrap 5 class — Bootstrap 4
+form labels carry none (`.col-form-label` is a different thing, for horizontal forms). Emitting it anyway
+would be inventing CSS. Write your own if you want one: `{ preset: 'bootstrap4', label: 'd-block mb-1' }`.
+
+**What a preset deliberately does not do:**
+
+- **It does not detect anything.** Which framework a page loaded is a fact this library cannot see. Your
+  probe stays; it just chooses a preset name now instead of a dozen class strings.
+- **It supplies no layout** — no wrapper class, no grid span, no spacing utility. Three reasons, each
+  sufficient. Bootstrap has no single wrapper vocabulary (BS4's `.form-group` became BS5 spacing
+  utilities, and a grid form wraps in `.col-md-*`). The spans are budgeted per row by the page, which no
+  preset can know. And a flat wrapper class would consume `Input.wrapper()`'s one-shot allowance on all
+  ten `ApiOptions` inputs and close their `wrapperClass()`, which is the other half of why that gate
+  exists. You may still write a flat `wrapper` alongside a preset — it then reaches the ten inputs
+  through the now-open gate, with that documented consequence.
+- **It ships no class the named framework does not itself define**, and no stylesheet.
+- **It covers one of the two Bootstrap differences, not both.** `.form-select` is a class Bootstrap 5
+  introduced for selects, where Bootstrap 4 styles them with `.form-control` — a renaming a preset can
+  absorb. `col col-md-N` versus `col-md-N` is a choice about how columns behave below the `md`
+  breakpoint; `.col` and `.col-md-*` exist in both versions and mean the same thing in both, so there is
+  nothing there to absorb.
+- **It is top-level only.** `theme.apiOptions.preset` is not a thing, and is rejected by name.
+
+Migrating the probe the issue was filed about:
+
+```javascript
+// Before — the role-to-class mapping written out per page
+const selectClass = isBS5 ? 'form-select' : 'form-control';
+Input.setGlobalInputClass(selectClass);
+Input.setGlobalLabelClass('form-label d-block mb-1');
+// … plus, in the theme bag:
+theme: {
+    select: selectClass,
+    label: 'form-label d-block mb-1',
+    riteSelect: { wrapperClass: formGroupClass(2) },
+    calendarSelect: { wrapperClass: formGroupClass(4) },
+}
+
+// After — the page still knows which Bootstrap it loaded; it no longer
+// knows what that Bootstrap calls a select, and needs no globals at all.
+theme: {
+    preset: isBS5 ? 'bootstrap5' : 'bootstrap4',
+    label: 'form-label d-block mb-1',
+    riteSelect: { wrapperClass: formGroupClass(2) },
+    calendarSelect: { wrapperClass: formGroupClass(4) },
+}
+```
 
 ### Theme keys are per component
 
@@ -357,7 +460,11 @@ const picker = await CalendarResourcePicker.mountInto('#grantObjectIdMount', {
     placeholderText: 'Select calendar ID...',
     errorText: 'Could not load calendars — try reloading the page',
     signal: scopeChange.signal,
+    // `preset` supplies `form-select`; everything below is what this page adds on
+    // top of it, per key. Without the preset the two class strings would have to
+    // spell out the framework's own vocabulary as well as this page's.
     theme: {
+        preset: 'bootstrap5',
         select: 'form-select form-select-sm perm-object-id',
         riteSelect: { class: 'form-select form-select-sm mb-2 perm-object-rite' },
     },
@@ -690,9 +797,10 @@ const viewer = await DayViewer.mountInto(
     {
         locale: 'en',
         apiClient,
+        // `select` and `label` come from the preset, which also styles the locale
+        // input; only the rite select's extra margin is this page's own.
         theme: {
-            select: 'form-select',
-            label: 'form-label',
+            preset: 'bootstrap5',
             riteSelect: { class: 'form-select mb-2' },
         },
         onError: (error) => {
@@ -919,6 +1027,12 @@ further — so no existing theme bag restyles anything on upgrading. Naming the 
 existing consumer's form in a minor release, and a flat `wrapper` would silently consume
 `Input.wrapper()`'s one-shot allowance on ten inputs (see below), so the consumer's own later
 `wrapperClass()` calls would begin to throw.
+
+**Naming a [preset](#theme-presets) opens the gate too**, and for the same reason it is safe to: `preset`
+is a key no bag written before 2.8.0 contains, so no existing form can be restyled by it, and a preset
+never supplies a `wrapper`, so the one-shot hazard above does not arise. A preset injects `apiOptions: {}`
+and nothing more — the four tiers below then carry the preset's own flat keys down as tier 4. A bundle you
+wrote yourself is kept exactly as you wrote it.
 
 **Resolution is per key, most specific first, over four tiers:**
 
