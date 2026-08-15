@@ -132,6 +132,12 @@ prepared under that number was skipped, and everything it was to have delivered 
   `setGlobalWrapper()`-plus-per-input-`wrapperClass()` pairing working on a page part-way through
   migrating off the globals.
 
+  `preset: undefined` (or `null`) means no preset, per the same "nullish means not supplied" rule this
+  library applies to a locale, and does not open the gate; an empty string still throws, because supplied
+  and invalid is not the same as absent. The library's own three Storybook stories now name a preset
+  instead of spelling the class set out, which is also what gives the feature an integration check through
+  the `mountInto()` render path.
+
   The preset NAMES are public API; the class table behind them is not, and stays internal in
   `src/MetaComponents/ThemePresets.js` so the strings remain free to be corrected in a patch release.
 

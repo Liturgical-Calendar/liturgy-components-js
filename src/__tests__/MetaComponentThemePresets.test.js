@@ -31,6 +31,7 @@ import {
     resolveChildTheme,
     resolveApiOptionsInputTheme,
     THEME_CHILD_KEYS,
+    API_OPTIONS_INPUT_KEYS,
 } from '../MetaComponents/Theme.js';
 import { THEME_PRESET_NAMES } from '../MetaComponents/ThemePresets.js';
 
@@ -160,6 +161,18 @@ describe('theme presets in Theme.js', () => {
         expect(theme).toEqual({ select: 'form-select' });
     });
 
+    // The dead key must not survive into `assertTheme()`'s unknown-key check, or
+    // "nullish means not supplied" would be true of the value and false of the key.
+    it('accepts a nullish preset key end to end, as an ordinary bag', () => {
+        expect(() =>
+            assertTheme({ preset: undefined, select: 'x' }, 'DayViewer'),
+        ).not.toThrow();
+        expect(
+            resolveChildTheme({ preset: undefined, select: 'x' }, 'riteSelect'),
+        ).toEqual({ class: 'x' });
+        expect(narrowTheme({ preset: null }, 'CalendarControls')).toEqual({});
+    });
+
     it('still returns an empty theme for a nullish bag', () => {
         expect(resolveChildTheme(null, 'riteSelect')).toEqual({});
         expect(resolveApiOptionsInputTheme(undefined, 'yearInput')).toEqual({});
@@ -207,6 +220,43 @@ describe('a flat theme class reaches controls only', () => {
         ).not.toHaveProperty('class');
     });
 
+    // The `class` half of this rule is caught incidentally by the exhaustive
+    // `toEqual`s above; the `label`/`wrapper` half needs saying out loud, because no
+    // preset emits a `wrapper` and nothing else in the suite writes a flat one at
+    // either role. Deleting the `roleKeys.includes( 'wrapperClass' )` gate in
+    // `collectFlatDefaults()` left all 1641 tests green before this existed.
+    it('passes no flat key at all to a role that has no label and no wrapper', () => {
+        const bag = { select: 's', input: 'i', label: 'l', wrapper: 'w' };
+        expect(resolveChildTheme(bag, 'liturgy', 'liturgy')).toEqual({});
+        expect(resolveChildTheme(bag, 'subscriptionUrl', 'url')).toEqual({});
+    });
+
+    it('still passes all three flat keys to the roles that do have them', () => {
+        const bag = { select: 's', input: 'i', label: 'l', wrapper: 'w' };
+        expect(resolveChildTheme(bag, 'riteSelect', 'select')).toEqual({
+            class: 's',
+            labelClass: 'l',
+            wrapperClass: 'w',
+        });
+        expect(resolveChildTheme(bag, 'dateControls', 'input')).toEqual({
+            class: 'i',
+            labelClass: 'l',
+            wrapperClass: 'w',
+        });
+    });
+
+    // Both lookups in `collectFlatDefaults()` must agree about a role neither map
+    // names, or the next role added inherits half the old behaviour and half the new.
+    it('passes no flat key to a role registered in neither map', () => {
+        expect(
+            resolveChildTheme(
+                { select: 's', input: 'i', label: 'l', wrapper: 'w' },
+                'riteSelect',
+                'notARegisteredRole',
+            ),
+        ).toEqual({});
+    });
+
     it('still honours a per-child class on the subscription URL control', () => {
         expect(
             resolveChildTheme(
@@ -248,15 +298,17 @@ describe('a preset on a mounted component', () => {
         expect(controls.calendarSelect._domElement.className).toBe(
             'form-select',
         );
-        expect(controls.apiOptions.epiphanyInput._domElement.className).toBe(
-            'form-select',
-        );
-        expect(controls.apiOptions.yearInput._domElement.className).toBe(
-            'form-control',
-        );
-        expect(controls.apiOptions.localeInput._labelElement.className).toBe(
-            'form-label',
-        );
+        // All TEN, not a spot check: `applyApiOptionsTheme()` loops
+        // `API_OPTIONS_INPUT_KEYS`, so a key missing from that list — or an input
+        // whose accessor name stopped matching it — would style nine and skip one
+        // in silence.
+        for (const inputKey of API_OPTIONS_INPUT_KEYS) {
+            const input = controls.apiOptions[inputKey];
+            expect(input._domElement.className).toBe(
+                'yearInput' === inputKey ? 'form-control' : 'form-select',
+            );
+            expect(input._labelElement.className).toBe('form-label');
+        }
         controls.dispose();
     });
 

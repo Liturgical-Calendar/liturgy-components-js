@@ -30,7 +30,11 @@
  */
 
 import { assertPlainOptions, describeType } from '../OptionsValidation.js';
-import { hasThemePreset, expandThemePreset } from './ThemePresets.js';
+import {
+    hasThemePreset,
+    namesThemePreset,
+    expandThemePreset,
+} from './ThemePresets.js';
 
 /**
  * The flat theme key that supplies a child's `class`, by the child's role.
@@ -372,7 +376,14 @@ function expandTheme(theme, componentName, withApiOptions) {
         return theme;
     }
     const expanded = expandThemePreset(theme, componentName);
-    if (withApiOptions && false === Object.hasOwn(expanded, API_OPTIONS_KEY)) {
+    // `namesThemePreset()`, not `hasThemePreset()`: a bag carrying `preset: undefined`
+    // still reaches the expansion so the dead key is stripped, but it asked for no
+    // preset and must not open the gate. See that function's own comment.
+    if (
+        withApiOptions &&
+        namesThemePreset(theme) &&
+        false === Object.hasOwn(expanded, API_OPTIONS_KEY)
+    ) {
         expanded[API_OPTIONS_KEY] = {};
     }
     return expanded;
@@ -731,8 +742,16 @@ function collectFlatDefaults(bag, role) {
     // `theme.label` resolved for one was a key the caller's own component would then
     // ignore — the same accepted-and-dropped shape issue #43 was filed about, and the
     // reason `collectOverride()` has been role-keyed since.
-    const roleKeys =
-        OVERRIDE_KEYS_BY_ROLE[role] ?? OVERRIDE_KEYS_BY_ROLE.select;
+    //
+    // No `?? OVERRIDE_KEYS_BY_ROLE.select` fallback either, and the two lookups in this
+    // function have to agree on that. `collectOverride()` keeps its fallback because it
+    // is layering a value the CALLER wrote and a select-shaped guess is better than
+    // dropping it; here there is no caller intent to preserve, only this module's own
+    // defaults, so an unregistered role takes none of the three flat keys rather than
+    // one of them and not the other. Split the two and the next role added inherits
+    // half the old behaviour and half the new, which is precisely how a rule ends up
+    // honoured for some children and not others.
+    const roleKeys = OVERRIDE_KEYS_BY_ROLE[role] ?? [];
     if (roleKeys.includes('labelClass') && typeof bag.label === 'string') {
         resolved.labelClass = bag.label;
     }

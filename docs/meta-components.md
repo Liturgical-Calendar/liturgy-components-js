@@ -293,6 +293,18 @@ what keeps the `setGlobalWrapper()`-plus-per-input-`wrapperClass()` pairing work
   nothing there to absorb.
 - **It is top-level only.** `theme.apiOptions.preset` is not a thing, and is rejected by name.
 
+**`preset: undefined` (or `null`) means no preset**, not an invalid one — the same "nullish means not
+supplied" rule this library applies to a locale, so `{ preset: config.preset, select: 'x' }` spread from a
+config object with no `preset` behaves as an ordinary bag rather than throwing. It does not open the
+`apiOptions` gate either. An empty string is a different matter and still throws: it was supplied and it
+names nothing.
+
+**One known wart, on `DayViewer` only.** Its three date controls share a single `dateControls` entry at the
+`input` role, so under `bootstrap5` the month `<select>` receives `form-control` rather than `form-select`
+— in Bootstrap 5 that means no dropdown caret. This predates the preset (the shared entry is by design, and
+`theme.dateControls` cannot distinguish the month select from the day and year inputs either); a preset just
+makes it easier to run into. The escape hatch is the `viewer.liturgy` getter, not a theme key.
+
 Migrating the probe the issue was filed about:
 
 ```javascript

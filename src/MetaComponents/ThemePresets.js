@@ -108,6 +108,12 @@ export const THEME_PRESET_NAMES = Object.freeze(Object.keys(PRESET_CLASSES));
  * 'form-select'`, meaning `{ class }`), which lives one level down and is never read
  * here.
  *
+ * A NULLISH `preset` still answers `true` here, and is handled by
+ * {@link expandThemePreset} rather than by this predicate — the bag must still go
+ * through the expansion so the dead `preset` key is stripped before `assertTheme()`
+ * reaches its unknown-key check. This function answers "is there a `preset` key to
+ * deal with", not "is there a preset".
+ *
  * @param {unknown} theme - The candidate theme bag.
  * @returns {boolean} Whether it asks for a preset.
  */
@@ -122,6 +128,32 @@ export function hasThemePreset(theme) {
         return false;
     }
     return Object.hasOwn(theme, 'preset');
+}
+
+/**
+ * Whether a theme bag names a preset that {@link expandThemePreset} will actually
+ * apply — as opposed to merely carrying a `preset` key.
+ *
+ * The two differ on exactly one input, `{ preset: undefined }` (or `null`), and the
+ * distinction is load-bearing rather than pedantic. That bag still has to go through
+ * the expansion, so the dead key is stripped before `assertTheme()` reaches its
+ * unknown-key check — which is what {@link hasThemePreset} answers. But it must NOT
+ * open the `theme.apiOptions` gate, because it asked for no preset: "nullish means not
+ * supplied" has to be true of the gate as well as of the class strings, or a bag
+ * spread from a config object with no `preset` would silently restyle a whole
+ * `ApiOptions` form. `Theme.js`'s `expandTheme()` is the only caller.
+ *
+ * @param {unknown} theme - The candidate theme bag.
+ * @returns {boolean} Whether a preset name was supplied.
+ */
+export function namesThemePreset(theme) {
+    if (false === hasThemePreset(theme)) {
+        return false;
+    }
+    if (typeof theme === 'string') {
+        return true;
+    }
+    return null !== theme.preset && undefined !== theme.preset;
 }
 
 /**
@@ -148,6 +180,23 @@ export function hasThemePreset(theme) {
 export function expandThemePreset(theme, componentName = null) {
     const prefix = null === componentName ? 'Theme' : componentName;
     const name = typeof theme === 'string' ? theme : theme.preset;
+    // **A `preset` present but NULLISH means no preset**, not an invalid one — the
+    // rule the rest of this library already states twice: `CLAUDE.md`'s locale
+    // contract ("`null` and `undefined` both mean 'not supplied'"), and
+    // `resolveChildTheme()`'s explicitly-undefined paragraph, which names the very
+    // shape that produces this one — a bag spread from a config object whose own key
+    // is absent, `{ preset: cfg.preset, … }`. A preset must not be the one key in the
+    // bag that throws for it. The key is still STRIPPED here rather than left for
+    // `assertTheme()` to reject as unrecognised.
+    //
+    // An empty string is a different matter and falls through to the throw below: it
+    // was supplied and it names nothing, exactly as an unparseable locale is not an
+    // absent locale.
+    if (null === name || undefined === name) {
+        const withoutPreset = { ...theme };
+        delete withoutPreset.preset;
+        return withoutPreset;
+    }
     if (typeof name !== 'string') {
         throw new Error(
             `${prefix}: theme.preset must be of type \`string\` but found type: ${describeType(name)}`,

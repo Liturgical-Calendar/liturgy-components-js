@@ -576,6 +576,11 @@ Six points are load-bearing:
 - **A bare string `theme` is a preset name**, which is purely additive — a string was previously rejected
   by `assertPlainOptions()`. It cannot collide with the per-child string form (`{ class }`), which is one
   level down.
+- **`preset: undefined` means no preset**, per the library-wide nullish rule, and does not open the gate —
+  hence `namesThemePreset()` beside `hasThemePreset()`. The two differ on that one input and both are
+  needed: the bag must still reach the expansion so the dead key is stripped before `assertTheme()`'s
+  unknown-key check, while the gate must stay shut. An empty string still throws; supplied-and-invalid is
+  not absent.
 
 **A flat class reaches CONTROLS only, since #67.** `collectFlatDefaults()` read
 `CLASS_KEY_BY_ROLE[ role ] ?? 'select'`, so the two roles with no entry — `liturgy`, and the `url` role

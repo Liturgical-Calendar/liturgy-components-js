@@ -89,6 +89,30 @@ describe('ThemePresets', () => {
         );
     });
 
+    // The library-wide rule, stated for locales in `CLAUDE.md` and for per-child
+    // override keys in `Theme.js`: `null` and `undefined` both mean "not supplied".
+    // `{ preset: cfg.preset }` spread from a config object whose own key is absent is
+    // the exact shape `Theme.js`'s explicitly-undefined paragraph names, so a preset
+    // must not be the one key in the bag that throws for it.
+    it('treats a nullish preset as no preset at all, and strips the dead key', () => {
+        expect(expandThemePreset({ preset: undefined, select: 'x' })).toEqual({
+            select: 'x',
+        });
+        expect(expandThemePreset({ preset: null, select: 'x' })).toEqual({
+            select: 'x',
+        });
+    });
+
+    // "Absent" and "invalid" stay different things: an empty string is a supplied
+    // name that matches no preset, exactly as an unparseable locale is not an absent
+    // locale.
+    it('still rejects an empty string, which is supplied but names nothing', () => {
+        expect(hasThemePreset({ preset: '' })).toBe(true);
+        expect(() => expandThemePreset({ preset: '' }, 'DayViewer')).toThrow(
+            /theme preset '' is not recognised/,
+        );
+    });
+
     it('throws for a non-string preset value, naming the type', () => {
         expect(() => expandThemePreset({ preset: 5 }, 'DayViewer')).toThrow(
             'DayViewer: theme.preset must be of type `string` but found type: number',
