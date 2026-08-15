@@ -34,8 +34,12 @@ prepared under that number was skipped, and everything it was to have delivered 
   enumerating them. It returns a `DocumentFragment` rather than a string, so there is no second parse and
   nothing to hand to `innerHTML`.
 
-  No new dependency and no build step: it is roughly forty lines on `DOMParser`, which is inert (no script
-  execution, and no resource loads either, unlike `innerHTML` on a detached element). `Element.setHTML()`
+  No new dependency and no build step: it is roughly forty lines, parsing through a `<template>`, whose
+  `content` has no browsing context — so `<script>` is non-executable AND no `<img>`/`<iframe>`
+  subresource is fetched at parse time. (`DOMParser` is NOT equivalent here: MDN is explicit that its
+  document can download those resources, so a hostile `<img src>` would have reached the network before
+  being discarded. That is a privacy leak rather than an XSS one, and it is the primitive DOMPurify
+  parses into for the same reason.) `Element.setHTML()`
   would be the right long-term answer but Safari has not implemented it in any version on macOS or iOS,
   and every iOS browser is WebKit-backed — see CLAUDE.md for the full reasoning, including why
   feature-detection with a fallback was also rejected.

