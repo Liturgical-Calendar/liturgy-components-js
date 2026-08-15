@@ -88,7 +88,14 @@ prepared under that number was skipped, and everything it was to have delivered 
   URL segments — and `calendarId` is `null` rather than `''` there. The callback does **not** fire on
   subscribe: `selection` is a synchronous, race-free read, so the initial paint is one extra line, and
   this matches `onCalendarFetched()`, `onError()` and `SubscriptionBuilder.onChange()`. A `change` that
-  alters nothing the payload reports notifies nobody. `dispose()` removes both `change` listeners it
+  alters nothing the payload reports notifies nobody. The payload reaches TypeScript consumers as the
+  `CalendarSelection` typedef, `calendarType` included as a union rather than a bare `string`, so the
+  documented two-line recipe compiles under `strict` — `type-fixtures/dts-consumer.ts` compiles that exact
+  recipe so it cannot regress. `predeterminedInputs` reports what `ApiOptions` has **applied**, which only
+  a `change` event updates: controls mounted without an `apiClient` are never linked and report the empty
+  set, and a programmatic `CalendarSelect.value()` dispatches no `change` and so is not observed until one
+  is — the same rule `ApiClient` already lives under, and both are documented and tested.
+  `dispose()` removes both `change` listeners it
   attaches and drops the callbacks — they are this class' own named closures, unlike the anonymous ones
   `ApiClient.listenTo()` attaches, whose documented gap is unchanged. `CalendarViewer`, `ApiExplorer` and
   `SubscriptionBuilder` reach it through their existing `.controls` getter and gain no forwarding method;

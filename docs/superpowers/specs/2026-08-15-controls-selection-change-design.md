@@ -102,8 +102,19 @@ the relationship in both directions without making one list a positional slice o
 ever gains a sixth input, the test fails and a human decides which list it belongs to.
 
 **What `_predeterminedInputs` reports is what `ApiOptions` has applied**, not an abstract fact about the
-selection. On an `ApiOptions` never linked to a calendar select — the only way to reach this — nothing has
-ever been applied, and it reports the empty set, honestly matching the form. Every meta-component links.
+selection. There are two ways to observe the difference, and the empty/stale set describes the form
+correctly in both:
+
+- an `ApiOptions` never linked to a calendar select — `mountInto()` without `apiClient`, so `listenTo()`
+  never runs — where nothing has ever been applied and nothing in the form reacts to the select either;
+- a programmatic `CalendarSelect.value()`, which dispatches no `change`, so neither this nor `ApiClient`
+  (which would not refetch for it) observes it until a `change` is dispatched.
+
+Deriving the key live from the DOM instead was considered and declined: it would make this one key react
+to a select that the rest of an unwired form still ignores — a less coherent payload rather than a more
+accurate one — and the rite half could not be derived live at all, since `#riteFixesTemporalOptions` is
+itself only ever set by the link. Both cases are documented in `docs/meta-components.md` and pinned by
+tests. (Corrected after review: the first bullet was originally written as the only route.)
 
 ## When the callback fires
 

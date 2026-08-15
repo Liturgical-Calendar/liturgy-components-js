@@ -996,7 +996,10 @@ whenever it changes:
 | --------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `calendarType`        | `'general' \| 'national' \| 'diocesan'` | What kind of calendar is selected. `'general'` is the rite-level calendar (empty value). |
 | `calendarId`          | `string \| null`                        | The selected `calendar_id`; `null` under `'general'`.                                    |
-| `predeterminedInputs` | `ReadonlyArray<string>`                 | The `ApiOptions` inputs whose values the current rite and calendar fix, canonical order. |
+| `predeterminedInputs` | `ReadonlyArray<string>`                 | The `ApiOptions` inputs this component's `ApiOptions` currently treats as predetermined. |
+
+The payload is exported to TypeScript as `CalendarSelection`, with `calendarType` a union rather than a bare
+`string`, so the recipe below type-checks under `strict`.
 
 **`predeterminedInputs` is the point of this pair.** It names inputs by their canonical `ApiOptions`
 accessor — `'epiphanyInput'`, `'ascensionInput'`, `'corpusChristiInput'`, `'eternalHighPriestInput'`,
@@ -1006,6 +1009,22 @@ matters for a case the usual `calendarSelect.value === ''` test gets wrong: unde
 the Missal fixes Epiphany, Ascension and Corpus Domini and does not establish the Eternal High Priest, so
 those four are predetermined with **no calendar selected at all**, while holy days of obligation remain
 the user's to choose.
+
+Three things it reports that are easy to misread as bugs:
+
+- **It may name inputs the current `filter` does not render.** All ten `ApiOptions` inputs exist whatever
+  the filter — which is also why theming a hidden one is inert rather than an error — so under the default
+  `ApiOptionsFilter.ALL_CALENDARS`, which mounts none of these five, all five can still be named. Reach
+  them through `controls.apiOptions[ name ]`, which is defined either way.
+- **It is what `ApiOptions` has APPLIED, so controls that were never wired report the empty set.**
+  `mountInto()` permits omitting `apiClient`, and without it `listenTo()` never runs and the `ApiOptions`
+  is never linked to the calendar select — so nothing in that form reacts to a selection, and nothing in
+  it is predetermined either. The empty set describes that form exactly; deriving this key live instead
+  would make it alone react to a select the rest of the form still ignores.
+- **A programmatic `CalendarSelect.value()` dispatches no `change`, so nothing sees it** — not this, and
+  not `ApiClient`, which likewise will not refetch for it. Follow such an assignment with
+  `select._domElement.dispatchEvent( new Event( 'change' ) )` when the rest of the page is meant to react.
+  That is the rule the documented `calendarSelect.value( '' )` recipe already lives under, not a new one.
 
 `calendarType` uses the `data-calendartype` vocabulary extended with `'general'`, which is `ApiClient`'s
 own cache-key category for the rite-level calendar. It is deliberately not the exported `CalendarType`
@@ -1018,7 +1037,9 @@ options and the year floor, each dispatching its own `change` — so notifying s
 an intermediate payload naming the calendar the user had just left. This is the same coalescing
 `SubscriptionUrl` and `ApiClient` already apply, for the same reason. A `change` that alters nothing the
 payload reports — a raw dispatch, reselecting the option already selected, a locale change — notifies
-nobody.
+nobody, and neither does a callback registered by another callback during a notification — it is a
+subscription like any other, and hears the next action rather than the one in flight. A callback that
+throws aborts the rest of that batch, as it does for every other subscription in this library.
 
 **It does not fire on subscribe**, matching `onCalendarFetched()`, `onError()` and
 `SubscriptionBuilder.onChange()`. The initial state is available synchronously and race-free from

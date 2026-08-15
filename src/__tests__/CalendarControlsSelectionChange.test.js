@@ -283,4 +283,88 @@ describe('CalendarControls.onSelectionChange', () => {
         controls.dispose();
         expect(() => controls.onSelectionChange(() => {})).toThrow(/disposed/);
     });
+
+    it('does not notify when dispose() lands between the change and the flush', async () => {
+        // The listener has already scheduled the microtask when `dispose()`
+        // runs, so the flush executes on a disposed instance. It must do
+        // nothing, and above all must not throw into an unhandled rejection.
+        const controls = await build();
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        controls.dispose();
+        await flush();
+
+        expect(seen).toEqual([]);
+    });
+
+    it('does not fire a callback registered by another callback in the same flush', async () => {
+        // Registering during a notification must behave like any other
+        // subscription: it does not fire on subscribe, so the earliest it can
+        // hear anything is the NEXT action.
+        const controls = await build();
+        const late = [];
+        controls.onSelectionChange(() => {
+            controls.onSelectionChange((payload) => late.push(payload));
+        });
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+
+        expect(late).toEqual([]);
+    });
+});
+
+describe('what predeterminedInputs describes', () => {
+    it('reports the holydays input that ApiOptions has actually made read-only', async () => {
+        // The apply half of the one-source claim, for the input this whole
+        // issue is about. `HolydaysOfObligationInput.disabled()` does not touch
+        // `_domElement.disabled` — it sets a `readonly` expando and disables
+        // each option — so nothing else in the suite would notice if the rule
+        // stopped naming it.
+        const controls = await build();
+        userSelects(controls.calendarSelect._domElement, 'IT');
+
+        const input = controls.apiOptions.holydaysOfObligationInput;
+        expect(controls.selection.predeterminedInputs).toContain(
+            'holydaysOfObligationInput',
+        );
+        expect(input._domElement.readonly).toBe(true);
+        expect(
+            [...input._domElement.options].every((option) => option.disabled),
+        ).toBe(true);
+    });
+
+    it('reports the four temporal inputs that ApiOptions has actually disabled', async () => {
+        const controls = await build();
+        userSelects(controls.riteSelect._domElement, 'ambrosian');
+
+        for (const key of controls.selection.predeterminedInputs) {
+            expect(controls.apiOptions[key]._domElement.disabled).toBe(true);
+        }
+        expect(
+            controls.apiOptions.holydaysOfObligationInput._domElement.readonly,
+        ).toBe(false);
+    });
+
+    it('reports the empty set for controls that were never wired to an ApiClient', async () => {
+        // `mountInto()` permits omitting `apiClient`, which leaves `ApiOptions`
+        // unlinked: nothing in the form reacts to the calendar select, so
+        // nothing is predetermined in it either. Pinned so the documented
+        // caveat cannot quietly stop being true.
+        const controls = await CalendarControls.mountInto('#controls', {
+            locale: 'en',
+        });
+        userSelects(controls.calendarSelect._domElement, 'IT');
+
+        expect(controls.selection).toEqual({
+            calendarType: 'national',
+            calendarId: 'IT',
+            predeterminedInputs: [],
+        });
+        expect(
+            controls.apiOptions.holydaysOfObligationInput._domElement.readonly,
+        ).toBeFalsy();
+    });
 });

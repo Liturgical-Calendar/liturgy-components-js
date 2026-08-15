@@ -721,7 +721,21 @@ Four points are load-bearing:
 - **It deliberately does NOT fire on subscribe**, matching `onCalendarFetched()`, `onError()` and
   `SubscriptionBuilder.onChange()`. `selection` is a synchronous, race-free read, so the initial paint is
   `paint( controls.selection ); controls.onSelectionChange( paint );` — the two lines both migrated
-  examples already write.
+  examples already write. The notify loop is `forEach`, not `for...of`, so a callback registered by
+  another callback does not fire inside that same flush, which would contradict exactly that rule;
+  `SubscriptionUrl` and `EventEmitter.emit()` both notify this way.
+- **The payload is a named typedef, `CalendarSelection` in `src/typedefs.js`, and that is not cosmetic.**
+  Typed inline as `function(Object): void`, the library's OWN documented two-line recipe failed to compile
+  for every TypeScript consumer (TS2345 — `Object` "is assignable to very few other types"), while
+  `yarn compile` and `yarn test` stayed green: the same `.d.ts`-only blind spot as the `@readonly`-on-a-getter
+  and `VERSION`-literal traps. `calendarType` is a union rather than `string` for the same reason.
+  `type-fixtures/dts-consumer.ts` now compiles that exact recipe.
+- **`predeterminedInputs` reports what `ApiOptions` has APPLIED**, which a `change` event is the only thing
+  that updates. So unwired controls (`mountInto()` without `apiClient`) report the empty set, and a
+  programmatic `CalendarSelect.value()` — which dispatches no `change`, and which `ApiClient` equally
+  ignores — is not observed until a `change` is dispatched. Both are documented and pinned; do not "fix"
+  them by deriving the key live from the DOM, which would make this one key react to a select the rest of
+  an unwired form ignores, and could not derive the rite half at all.
 - **`SubscriptionBuilder.onChange()` was weighed and left alone.** It publishes a serialized URL built from
   a `CurrentEndpoint` that also tracks year, locale, return type, rite and path, so it watches a different
   set of inputs and carries a different payload; routing it through this would either change that payload

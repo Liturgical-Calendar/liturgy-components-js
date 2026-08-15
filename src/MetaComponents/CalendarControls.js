@@ -146,7 +146,7 @@ export default class CalendarControls {
     /** @type {Array<{event: string, listener: function}>} */
     #subscriptions = [];
 
-    /** @type {Array<function(Object): void>} */
+    /** @type {Array<function(import('../typedefs.js').CalendarSelection): void>} */
     #selectionCallbacks = [];
 
     /** @type {Array<{element: HTMLElement, listener: function}>} */
@@ -387,7 +387,7 @@ export default class CalendarControls {
      *
      * Throws once these controls have been disposed; see [`dispose()`](#dispose).
      *
-     * @returns {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} The current selection.
+     * @returns {import('../typedefs.js').CalendarSelection} The current selection.
      * @throws {Error} If these controls have been disposed.
      */
     get selection() {
@@ -401,23 +401,44 @@ export default class CalendarControls {
      * Split from the getter so the notifier can read it without going through
      * `#assertUsable()`, and so the two cannot describe the state differently.
      *
-     * The `data-calendartype` attribute is read off the checked option rather
-     * than mapped from the id, which is how `fetch()` and `PathBuilder` already
-     * dispatch. `selectedIndex === -1` — a value no option carries, which
+     * **The three-way dispatch is `fetch()`'s, deliberately identical.** The
+     * empty value is the rite-level calendar, `data-calendartype="diocesan"` is
+     * a diocese, and **anything else non-empty is a nation** — including an
+     * option carrying no such attribute at all, which `fetch()` also sends to
+     * `fetchNationalCalendar()`. Reading a missing attribute as `'general'`
+     * instead would emit a payload contradicting itself, `'general'` beside a
+     * non-null `calendarId`, and would describe a calendar differently from the
+     * request this same class would issue for it.
+     *
+     * `selectedIndex === -1` — a value no option carries, which
      * `CalendarSelect#applyLinkedRite()` produces routinely — reads as the
      * rite-level calendar, exactly as every other reader in this library treats
      * it (#66), because `element.value` is `''` in that state too.
      *
-     * @returns {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} The current selection.
+     * **`predeterminedInputs` is what `ApiOptions` has APPLIED**, not an
+     * abstract property of the selection: it is read from
+     * `_predeterminedInputs`, which only a `change` event updates. Two
+     * consequences, both documented in `docs/meta-components.md`: controls that
+     * were never wired report the empty set, because nothing ever applied
+     * anything to their form; and a programmatic `CalendarSelect.value()`
+     * dispatches no `change`, so — exactly as `ApiClient` would not refetch for
+     * it — this does not see it until a `change` is dispatched. Deriving it live
+     * here instead would make this ONE key react to a select that the rest of an
+     * unwired form still ignores, which is a less coherent payload, not a more
+     * accurate one.
+     *
+     * @returns {import('../typedefs.js').CalendarSelection} The current selection.
      */
     #readSelection() {
         const element = this.#calendarSelect._domElement;
         const value = element.value;
         const selected = element.options[element.selectedIndex];
-        const type = selected?.dataset.calendartype ?? null;
         let calendarType = 'general';
-        if ('' !== value && null !== type) {
-            calendarType = 'diocesan' === type ? 'diocesan' : 'national';
+        if ('' !== value) {
+            calendarType =
+                'diocesan' === selected?.dataset.calendartype
+                    ? 'diocesan'
+                    : 'national';
         }
         return {
             calendarType,
@@ -446,7 +467,7 @@ export default class CalendarControls {
     /**
      * A selection payload flattened to one string, for the change comparison.
      *
-     * @param {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} selection - The payload.
+     * @param {import('../typedefs.js').CalendarSelection} selection - The payload.
      * @returns {string} A key equal for equal payloads.
      */
     static #selectionKey({ calendarType, calendarId, predeterminedInputs }) {
@@ -479,8 +500,14 @@ export default class CalendarControls {
         }
         this.#pendingSelectionNotify = Promise.resolve().then(() => {
             this.#pendingSelectionNotify = null;
-            // A `change` dispatched in the same turn as `dispose()` would
-            // otherwise reach callbacks the caller has already released.
+            // NOT what stops a disposed instance notifying — `dispose()` empties
+            // `#selectionCallbacks` before this ever runs, so the loop below
+            // would already visit nothing. What this prevents is a disposed
+            // instance doing pointless work in a turn it no longer belongs to:
+            // reading its children's DOM and rewriting `#lastSelectionKey`. It
+            // returns rather than throwing through `#assertUsable()`, because
+            // this body runs on a microtask and a throw here would surface as an
+            // unhandled rejection with no caller to catch it.
             if (true === this.#disposed) {
                 return;
             }
@@ -496,9 +523,17 @@ export default class CalendarControls {
                 return;
             }
             this.#lastSelectionKey = key;
-            for (const callback of this.#selectionCallbacks) {
-                callback(selection);
-            }
+            // `forEach`, not `for...of`: it captures the length before it
+            // starts, so a callback that registers ANOTHER callback does not
+            // have that new one fired inside this same flush — which would
+            // contradict "does not fire on subscribe". `SubscriptionUrl` and
+            // `EventEmitter.emit()` both notify this way, for the same reason.
+            //
+            // A callback that THROWS still aborts the rest of the batch, here as
+            // in both of those. That is the library's existing behaviour for
+            // subscriptions rather than a choice made here, and it is documented
+            // rather than silently diverged from.
+            this.#selectionCallbacks.forEach((callback) => callback(selection));
         });
     }
 
@@ -529,7 +564,7 @@ export default class CalendarControls {
      * controls.onSelectionChange( paint );
      * ```
      *
-     * @param {function(Object): void} callback - Receives the new selection.
+     * @param {function(import('../typedefs.js').CalendarSelection): void} callback - Receives the new selection.
      * @returns {CalendarControls} This instance, for chaining.
      * @throws {Error} If these controls have been disposed, or `callback` is not
      *   a function.

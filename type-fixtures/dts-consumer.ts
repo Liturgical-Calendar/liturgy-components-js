@@ -133,3 +133,31 @@ const internalAccessorsStayInternal: [false, false, false] = [
     null as unknown as HasKey<'currentEndpoint'>,
 ];
 void internalAccessorsStayInternal;
+
+/**
+ * The `CalendarControls` selection payload (#68) must reach a consumer as a
+ * usable type, not as `Object`.
+ */
+import { CalendarControls } from '../dist/index.js';
+
+type ControlsInstance = InstanceType<typeof CalendarControls>;
+
+const paint = ({
+    calendarType,
+    calendarId,
+    predeterminedInputs,
+}: ControlsInstance['selection']): void => {
+    void calendarType;
+    void calendarId;
+    void predeterminedInputs;
+};
+
+const documentedRecipe = (controls: ControlsInstance): void => {
+    paint(controls.selection);
+    controls.onSelectionChange(paint);
+};
+void documentedRecipe;
+
+const narrowedCalendarType: 'general' | 'national' | 'diocesan' =
+    null as unknown as ControlsInstance['selection']['calendarType'];
+void narrowedCalendarType;
