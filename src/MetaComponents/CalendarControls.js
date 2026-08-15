@@ -332,6 +332,69 @@ export default class CalendarControls {
     }
 
     /**
+     * What is selected, and which `ApiOptions` inputs that selection fixes.
+     *
+     * The state both migrated examples were deriving by hand from a raw `change`
+     * listener plus a `value === ''` test (#68). Two things that test cannot
+     * express and this can: WHICH inputs are affected, by name, and the case
+     * where the rite predetermines them with no calendar selected at all — the
+     * Ambrosian rite-level calendar, where `value === ''` reports "editable" for
+     * four inputs `ApiOptions` has disabled.
+     *
+     * `calendarType` is the `data-calendartype` vocabulary (`national`,
+     * `diocesan`) extended with `'general'` for the rite-level calendar, which is
+     * `ApiClient`'s own cache-key category for it. It is deliberately NOT the
+     * exported `CalendarType` enum, whose values are the URL segments
+     * `nation`/`diocese` — that describes a path, not a selection. `calendarId`
+     * is `null` rather than `''` there, so the empty-string test this replaces is
+     * not simply rewritten against the payload.
+     *
+     * Read synchronously, so it is also the initial state a consumer paints
+     * before subscribing — see `onSelectionChange()`, which deliberately does not
+     * fire on registration.
+     *
+     * Throws once these controls have been disposed; see [`dispose()`](#dispose).
+     *
+     * @returns {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} The current selection.
+     * @throws {Error} If these controls have been disposed.
+     */
+    get selection() {
+        this.#assertUsable();
+        return this.#readSelection();
+    }
+
+    /**
+     * Builds the selection payload from the calendar select and the `ApiOptions`.
+     *
+     * Split from the getter so the notifier can read it without going through
+     * `#assertUsable()`, and so the two cannot describe the state differently.
+     *
+     * The `data-calendartype` attribute is read off the checked option rather
+     * than mapped from the id, which is how `fetch()` and `PathBuilder` already
+     * dispatch. `selectedIndex === -1` — a value no option carries, which
+     * `CalendarSelect#applyLinkedRite()` produces routinely — reads as the
+     * rite-level calendar, exactly as every other reader in this library treats
+     * it (#66), because `element.value` is `''` in that state too.
+     *
+     * @returns {{calendarType: string, calendarId: ?string, predeterminedInputs: Readonly<string[]>}} The current selection.
+     */
+    #readSelection() {
+        const element = this.#calendarSelect._domElement;
+        const value = element.value;
+        const selected = element.options[element.selectedIndex];
+        const type = selected?.dataset.calendartype ?? null;
+        let calendarType = 'general';
+        if ('' !== value && null !== type) {
+            calendarType = 'diocesan' === type ? 'diocesan' : 'national';
+        }
+        return {
+            calendarType,
+            calendarId: '' === value ? null : value,
+            predeterminedInputs: this.#apiOptions._predeterminedInputs,
+        };
+    }
+
+    /**
      * Chooses the locale to request, from those the selected calendar
      * supports.
      *
