@@ -6,11 +6,14 @@
 # This file gets an editor to the same indentation before the fact, so a contributor's editor
 # doesn't fight the formatter.
 #
-# `end_of_line = lf` matches the repo's dominant convention: of the 91 tracked JavaScript files
-# under src/ and examples/, 86 use LF and 5 use CRLF. LF is the one to standardize new edits on;
-# the existing CRLF files are left alone (prettier's `endOfLine: "auto"` in .prettierrc does the
-# same) rather than being rewritten as a line-ending change bundled into an unrelated
-# formatting pass.
+# `end_of_line = lf` is the repo-wide convention, and since issue #84 it is enforced rather than
+# merely stated: `.gitattributes` carries `* text=auto eol=lf`, so git normalizes on checkin and
+# no editor, script or platform default can reintroduce CRLF. The seven files that carried it
+# were renormalized in one dedicated commit at that time.
+#
+# This file remains the "get it right live" half — git normalizes on the way in, an editor
+# following this gets it right before that — but it is no longer the only line of defence, which
+# is what it used to be and could not sustain.
 
 root = true
 
