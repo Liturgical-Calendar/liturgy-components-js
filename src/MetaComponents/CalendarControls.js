@@ -645,11 +645,16 @@ export default class CalendarControls {
             caller,
         );
 
+        // A `Set`, because nothing stops a caller naming one container for two
+        // filters — which is legal and simply reproduces the single-target
+        // layout for those two passes. `dispose()` is idempotent per element,
+        // so a duplicate would be harmless rather than wrong; deduplicating
+        // keeps `#mounts` an honest list of the containers in play.
         this.#mounts = [
-            selectsElement,
-            ...resolved
-                .map(({ element }) => element)
-                .filter((element) => element !== selectsElement),
+            ...new Set([
+                selectsElement,
+                ...resolved.map(({ element }) => element),
+            ]),
         ];
         this.#riteSelect.appendTo(selectsElement);
         this.#calendarSelect.appendTo(selectsElement);
