@@ -123,6 +123,15 @@ prepared under that number was skipped, and everything it was to have delivered 
   This is a deliberate, bounded exception to the library's "ships nothing framework-specific and takes no
   position on CSS" rule, and the bound is the framework's own control vocabulary.
 
+  **Before adopting one, know what opening the gate closes.** `Input.class()` and `Input.labelClass()`
+  each refuse a _different_ value once set — re-asserting the same string is fine — so after
+  `preset: 'bootstrap5'` a later `controls.apiOptions.yearInput.class( 'form-control-sm' )` throws. That
+  is the existing rule for any bag that reaches those inputs, but a preset is now the easiest way to
+  reach them; theme through `apiOptions: { yearInput: { class: … } }` instead.
+  `wrapper()`/`wrapperClass()` stay open, because a preset supplies none — which is what keeps the
+  `setGlobalWrapper()`-plus-per-input-`wrapperClass()` pairing working on a page part-way through
+  migrating off the globals.
+
   The preset NAMES are public API; the class table behind them is not, and stays internal in
   `src/MetaComponents/ThemePresets.js` so the strings remain free to be corrected in a patch release.
 
