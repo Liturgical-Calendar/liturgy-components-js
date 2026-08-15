@@ -431,6 +431,50 @@ describe('CalendarViewer forwards the bag', () => {
 });
 
 describe('CalendarViewer.mountInto with a filter-keyed controls slot', () => {
+    /**
+     * A programmer error inside the bag must outrank the cancellation probe.
+     *
+     * `CalendarViewer.#targetElement()` reads only the FIRST keyed value, so a
+     * bag whose first container is a disconnected `HTMLElement` used to reach
+     * `mountInto()`'s `return null` with an unknown, overlapping or `none` key
+     * still unexamined — answering "cancelled" to what is a typo. Measured
+     * before the fix: all three returned `null` rather than throwing
+     * (CodeRabbit, PR #87). These pin the ordering, not merely the messages.
+     */
+    const invalidBags = [
+        ['an unknown filter key', { nosuchFilter: null }, /not a recognised/i],
+        [
+            'two filters that share an input',
+            { allCalendars: null, localeOnly: null },
+            /both render/i,
+        ],
+        ['ApiOptionsFilter.NONE', { none: null }, /cannot name 'none'/i],
+    ];
+
+    for (const [label, shape, expected] of invalidBags) {
+        it(`rejects ${label} even when the first container is disconnected`, async () => {
+            const controls = {};
+            let first = true;
+            for (const key of Object.keys(shape)) {
+                // The FIRST value is detached — the one the probe looks at.
+                controls[key] = first
+                    ? document.createElement('div')
+                    : document.createElement('div');
+                if (false === first) {
+                    document.body.appendChild(controls[key]);
+                }
+                first = false;
+            }
+
+            await expect(
+                CalendarViewer.mountInto(
+                    { controls, calendar: '#calendarMount' },
+                    { locale: 'en' },
+                ),
+            ).rejects.toThrow(expected);
+        });
+    }
+
     it('does not treat a filter-keyed bag as a cancelled mount', async () => {
         const viewer = await CalendarViewer.mountInto(
             {

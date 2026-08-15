@@ -13,7 +13,7 @@
 
 import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
-import { isFilterKeyedControls } from './ControlSlots.js';
+import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
 import { assertTheme, narrowTheme } from './Theme.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
@@ -563,6 +563,24 @@ export default class CalendarViewer {
         // A typo in `slots` must surface even on a mount the caller already
         // cancelled — validated BEFORE either cancellation check below.
         CalendarViewer.#assertSlots(slots, 'CalendarViewer.mountInto');
+
+        // Validate a filter-keyed `controls` bag BEFORE the cancellation probe
+        // below, not after. `#targetElement()` reads only the FIRST keyed value,
+        // so a bag whose first container is a disconnected `HTMLElement` reached
+        // the `return null` while an unknown, duplicate, overlapping or `none`
+        // key inside it was still unexamined — `mountInto()` answered
+        // "cancelled" to what is a programmer error, which is precisely the
+        // inversion this library's reject-for-programmer-error rule exists to
+        // prevent. Measured before fixing: all three of an unknown key, an
+        // overlapping pair and `none` returned `null` instead of throwing
+        // (CodeRabbit, PR #87).
+        //
+        // The result is discarded: this call is here for its throw. The real
+        // resolution happens in `CalendarControls.appendTo()`, which re-runs it
+        // against the same bag once the targets are known to be live.
+        if (isFilterKeyedControls(slots?.controls)) {
+            resolveControlSlots(slots.controls, 'CalendarViewer.mountInto');
+        }
 
         const element = CalendarViewer.#targetElement(slots);
         if (
