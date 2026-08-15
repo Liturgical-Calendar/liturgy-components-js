@@ -31,15 +31,19 @@ import Utils from '../Utils.js';
  * - __constructor()__ Initializes the ApiOptions object with default or provided settings:
  *   - __locale__: The locale to use for the API options form.
  *
- * The following properties are initialized on the object instance:
- * - ___epiphanyInput__: The select input with options for when the Epiphany is celebrated.
- * - ___ascensionInput__: The select input with options for when the Ascension is celebrated.
- * - ___corpusChristiInput__: The select input with options for when Corpus Christi is celebrated.
- * - ___eternalHighPriestInput__: The select input with options for whether the Eternal High Priest is celebrated.
- * - ___holydaysOfObligationInput__: The select input with options for which holy days of obligation are observed.
- * - ___yearTypeInput__: The select input with options for the type of year to produce, whether liturgical or civil.
- * - ___localeInput__: The select input with options for the locale to use for the calendar response from the API.
- * - ___acceptHeaderInput__: The select input with options for the Accept header to use for the calendar response from the API.
+ * The following properties are initialized on the object instance. Each is reachable
+ * by the canonical name given here and, unchanged, by that name with a leading
+ * underscore (`_epiphanyInput` …), which is what every release up to 2.7.0 offered:
+ * - __epiphanyInput__: The select input with options for when the Epiphany is celebrated.
+ * - __ascensionInput__: The select input with options for when the Ascension is celebrated.
+ * - __corpusChristiInput__: The select input with options for when Corpus Christi is celebrated.
+ * - __eternalHighPriestInput__: The select input with options for whether the Eternal High Priest is celebrated.
+ * - __holydaysOfObligationInput__: The select input with options for which holy days of obligation are observed.
+ * - __yearTypeInput__: The select input with options for the type of year to produce, whether liturgical or civil.
+ * - __yearInput__: The number input for the year to produce.
+ * - __localeInput__: The select input with options for the locale to use for the calendar response from the API.
+ * - __acceptHeaderInput__: The select input with options for the Accept header to use for the calendar response from the API.
+ * - __calendarPathInput__: The select input with options for the API request path (the `PATH_BUILDER` filter).
  *
  * @example
  * const apiOptions = new ApiOptions();
@@ -1428,99 +1432,226 @@ export default class ApiOptions {
         }
     }
 
+    /*
+     * ---------------------------------------------------------------------
+     * The ten form controls: canonical accessors, and their legacy aliases.
+     * ---------------------------------------------------------------------
+     *
+     * Every accessor on this class used to be underscore-prefixed, the ten
+     * consumer-facing controls included. That prefix conventionally announces
+     * "private, do not touch", which is the opposite of what these are: the
+     * docs have always directed consumers here, and an automated reviewer
+     * reading the prefix at face value once recommended replacing five working
+     * uses with public accessors that did not exist (issue #62).
+     *
+     * So each control now answers to a canonical, non-underscore name — the
+     * same ten spellings `theme.apiOptions` already uses, since one input with
+     * two public names would be worse than the single ugly one — and to its
+     * underscore alias, which is SUPPORTED, not deprecated, and deliberately
+     * does not warn. The library reads the underscore forms itself at some
+     * thirty call sites (`ApiClient`, `PathBuilder`, `CalendarControls`,
+     * `DayViewer`, `ApiExplorer`, `SubscriptionUrl`), so a warning would fire
+     * on the library's own behaviour before a consumer wrote a single
+     * underscore; and warning on the only spelling that has ever existed would
+     * make every correct consumer page noisy in a minor release. The confusion
+     * the issue describes is a READING error, and documentation is what fixes
+     * it.
+     *
+     * What the prefix means from here on: `_filter`, `_filtersSet`,
+     * `_currentEndpoint` and `_base`, below, are package-internal and have no
+     * canonical form. `_filter` could not have had one in any case — `filter()`
+     * is already the chainable setter method, and a same-named getter in this
+     * class body would replace it.
+     */
+
     /**
-     * Gets the Epiphany input element.
+     * The Epiphany input control.
      *
      * @returns {EpiphanyInput} The Epiphany input element.
      */
-    get _epiphanyInput() {
+    get epiphanyInput() {
         return this.#inputs.epiphanyInput;
     }
 
     /**
-     * Gets the Ascension input element.
+     * Legacy alias for {@link ApiOptions#epiphanyInput}. Supported, not deprecated.
+     *
+     * @returns {EpiphanyInput} The Epiphany input element.
+     */
+    get _epiphanyInput() {
+        return this.epiphanyInput;
+    }
+
+    /**
+     * The Ascension input control.
      *
      * @returns {AscensionInput} The Ascension input element.
      */
-    get _ascensionInput() {
+    get ascensionInput() {
         return this.#inputs.ascensionInput;
     }
 
     /**
-     * Gets the Corpus Christi input element.
+     * Legacy alias for {@link ApiOptions#ascensionInput}. Supported, not deprecated.
+     *
+     * @returns {AscensionInput} The Ascension input element.
+     */
+    get _ascensionInput() {
+        return this.ascensionInput;
+    }
+
+    /**
+     * The Corpus Christi input control.
      *
      * @returns {CorpusChristiInput} The Corpus Christi input element.
      */
-    get _corpusChristiInput() {
+    get corpusChristiInput() {
         return this.#inputs.corpusChristiInput;
     }
 
     /**
-     * Gets the Eternal High Priest input element.
+     * Legacy alias for {@link ApiOptions#corpusChristiInput}. Supported, not deprecated.
+     *
+     * @returns {CorpusChristiInput} The Corpus Christi input element.
+     */
+    get _corpusChristiInput() {
+        return this.corpusChristiInput;
+    }
+
+    /**
+     * The Eternal High Priest input control.
      *
      * @returns {EternalHighPriestInput} The Eternal High Priest input element.
      */
-    get _eternalHighPriestInput() {
+    get eternalHighPriestInput() {
         return this.#inputs.eternalHighPriestInput;
     }
 
     /**
-     * Gets the Holydays of Obligation input element.
+     * Legacy alias for {@link ApiOptions#eternalHighPriestInput}. Supported, not deprecated.
+     *
+     * @returns {EternalHighPriestInput} The Eternal High Priest input element.
+     */
+    get _eternalHighPriestInput() {
+        return this.eternalHighPriestInput;
+    }
+
+    /**
+     * The Holydays of Obligation input control.
      *
      * @returns {HolydaysOfObligationInput} The Holydays of Obligation input element.
      */
-    get _holydaysOfObligationInput() {
+    get holydaysOfObligationInput() {
         return this.#inputs.holydaysOfObligationInput;
     }
 
     /**
-     * Gets the locale input element.
+     * Legacy alias for {@link ApiOptions#holydaysOfObligationInput}. Supported, not deprecated.
+     *
+     * @returns {HolydaysOfObligationInput} The Holydays of Obligation input element.
+     */
+    get _holydaysOfObligationInput() {
+        return this.holydaysOfObligationInput;
+    }
+
+    /**
+     * The locale input control.
      *
      * @returns {LocaleInput} The locale input element.
      */
-    get _localeInput() {
+    get localeInput() {
         return this.#inputs.localeInput;
     }
 
     /**
-     * Gets the year type input element.
+     * Legacy alias for {@link ApiOptions#localeInput}. Supported, not deprecated.
+     *
+     * @returns {LocaleInput} The locale input element.
+     */
+    get _localeInput() {
+        return this.localeInput;
+    }
+
+    /**
+     * The year type input control.
      *
      * @returns {YearTypeInput} The year type input element.
      */
-    get _yearTypeInput() {
+    get yearTypeInput() {
         return this.#inputs.yearTypeInput;
     }
 
     /**
-     * Gets the year input element.
+     * Legacy alias for {@link ApiOptions#yearTypeInput}. Supported, not deprecated.
+     *
+     * @returns {YearTypeInput} The year type input element.
+     */
+    get _yearTypeInput() {
+        return this.yearTypeInput;
+    }
+
+    /**
+     * The year input control.
      *
      * @returns {YearInput} The year input element.
      */
-    get _yearInput() {
+    get yearInput() {
         return this.#inputs.yearInput;
     }
 
     /**
-     * Gets the Accept header input element.
+     * Legacy alias for {@link ApiOptions#yearInput}. Supported, not deprecated.
+     *
+     * @returns {YearInput} The year input element.
+     */
+    get _yearInput() {
+        return this.yearInput;
+    }
+
+    /**
+     * The Accept header input control.
      *
      * @returns {AcceptHeaderInput} The Accept header input element.
      */
-    get _acceptHeaderInput() {
+    get acceptHeaderInput() {
         return this.#inputs.acceptHeaderInput;
     }
 
     /**
-     * Gets the calendar path input element.
+     * Legacy alias for {@link ApiOptions#acceptHeaderInput}. Supported, not deprecated.
+     *
+     * @returns {AcceptHeaderInput} The Accept header input element.
+     */
+    get _acceptHeaderInput() {
+        return this.acceptHeaderInput;
+    }
+
+    /**
+     * The calendar path input control.
+     *
+     * @returns {CalendarPathInput} The calendar path input element.
+     */
+    get calendarPathInput() {
+        return this.#inputs.calendarPathInput;
+    }
+
+    /**
+     * Legacy alias for {@link ApiOptions#calendarPathInput}. Supported, not deprecated.
      *
      * @returns {CalendarPathInput} The calendar path input element.
      */
     get _calendarPathInput() {
-        return this.#inputs.calendarPathInput;
+        return this.calendarPathInput;
     }
 
     /**
      * Gets the CURRENT filter of the ApiOptions instance.
      * The filter can be set explicitly multiple times, and the last set filter will be returned.
+     *
+     * Package-internal, and keeps its underscore for two reasons: nothing in this
+     * repository reads it on an `ApiOptions`, and `filter()` is already the
+     * chainable setter method, so `get filter()` here would replace it. If a
+     * consumer ever needs this, `currentFilter` is the name to add.
      *
      * The filter can be either `ApiOptionsFilter.GENERAL_ROMAN`, `ApiOptionsFilter.ALL_CALENDARS`, `ApiOptionsFilter.PATH_BUILDER`, `ApiOptionsFilter.LOCALE_ONLY`, `ApiOptionsFilter.YEAR_ONLY`, or `ApiOptionsFilter.NONE`.
      * - `ApiOptionsFilter.ALL_CALENDARS` will show only the form controls that are useful for all calendars: locale, yearType, year, and conditionally acceptHeader inputs.
@@ -1542,6 +1673,9 @@ export default class ApiOptions {
      * This is a list of filter values that have been set, and may contain multiple
      * entries if filters have been set in succession.
      *
+     * Package-internal, and keeps its underscore: nothing reads it outside this
+     * declaration.
+     *
      * @returns {Array<string>} An array of filter values applied to the ApiOptions instance.
      */
     get _filtersSet() {
@@ -1556,6 +1690,9 @@ export default class ApiOptions {
      * render the displayed path. Returned by reference, not copied, precisely so
      * that both sides share one object — but only ever this instance's, never a
      * module-level one shared with other embeds on the page.
+     *
+     * Package-internal, and keeps its underscore: it is returned by reference so
+     * that `PathBuilder` can mutate it, which is not something to publish.
      *
      * @returns {CurrentEndpoint} This instance's CurrentEndpoint.
      */
