@@ -21,6 +21,14 @@
   "exports": {
     ".": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "src/",
+    "!src/stories/",
+    "!src/__tests__/",
+    "!src/__fixtures__/",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "test": "node --experimental-vm-modules $(yarn bin jest)",
     "compile": "tsc",

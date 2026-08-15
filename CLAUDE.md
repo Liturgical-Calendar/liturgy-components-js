@@ -1047,6 +1047,38 @@ URLs (`/api/dev`), so a `version` on the client would read as the API's version 
 The bare `VERSION` export carries the package name at its import site, which is the disambiguation a static
 property would lack.
 
+### What ships in the tarball
+
+**`package.json`'s `files` array is an ALLOWLIST, and there is no `.npmignore`.** The denylist it replaced
+(#37, #38) shipped whatever nobody thought to exclude: `tsconfig.dts-check.json` and `debug-storybook.log`
+reached the published 2.0.0, and by the time #38 was acted on four more root entries had joined them —
+`.claude/settings.local.json`, `.serena/project.yml`, `.gitattributes` and `type-fixtures/dts-consumer.ts`.
+Every one was a file added after the denylist was last audited, which is the point: a denylist fails open,
+recurs on its own, and is visible only to someone who thinks to run `npm pack --dry-run`. `.npmignore` was
+deleted outright rather than kept for the `src/` carve-outs, which `files` expresses as negated entries —
+two mechanisms describing one boundary is how the original confusion started.
+
+Four things about the array are load-bearing, and two of them are surprises rather than conventions:
+
+- **`src/` must stay.** `tsconfig.json` sets `declarationMap: true` and every `.d.ts.map` in `dist/` points
+  at `../src/<name>.js`, which is what gives a consumer "Go to Definition" into the real source instead of a
+  `.d.ts` stub. Dropping it degrades every consumer's editor and raises no error anywhere.
+- **`dist/` is GITIGNORED and ships only because `files` outranks `.gitignore`.** Verified against npm
+  11.18.0. Reverse that precedence and the package publishes with no code in it.
+- **`CHANGELOG.md` is NOT on npm's always-included list** — only `package.json`, `README.md` and `LICENSE`
+  are — so it ships only because it is named explicitly. Also verified rather than assumed; #38 flagged it
+  as the entry most likely to be dropped as redundant.
+- **The negated `!src/stories/`, `!src/__tests__/`, `!src/__fixtures__/` entries** are what keep the test
+  tree out. Negation inside `files` is what made deleting `.npmignore` possible.
+
+`src/__tests__/PackageManifest.test.js` pins these by asking `npm pack --dry-run --json` what it would
+actually ship. It deliberately does NOT pin the full 232-path manifest: that would need regenerating for
+every new source file, and a check that is noisy on ordinary work stops being read. It asserts the
+top-level entry set exactly (which is what catches a stray), that the entry points are present, that
+`src/*.js` and `dist/*.d.ts.map` counts match (which states the dependency making `src/` non-optional
+without pinning a number), and that no test tree leaked. It runs under `yarn test`, so CI already covers
+it with no extra workflow step.
+
 ## Component Wiring Patterns
 
 ### Basic Wiring

@@ -420,6 +420,28 @@ prepared under that number was skipped, and everything it was to have delivered 
   `change`; it simply leaves an empty selection, and the next `change` event to arrive is then handled
   as the rite-level calendar rather than crashing.
 
+- **The published tarball is now defined by an allowlist**, closing #38. `package.json` gains a `files`
+  array and `.npmignore` is deleted. The denylist it replaces shipped whatever nobody thought to exclude:
+  #37 patched two strays out of the published 2.0.0 without closing the class, and by the time this was
+  acted on four more root entries had joined them — `.claude/settings.local.json`, `.serena/project.yml`,
+  `.gitattributes` and `type-fixtures/dts-consumer.ts`, every one a file added after the denylist was last
+  audited. **No consumer-visible file changes**: the tarball goes from 236 entries to 232, losing exactly
+  those four and nothing else. `dist/` (171 files) and `src/` (57, one per `.d.ts.map`, which is what gives
+  a consumer "Go to Definition" into the real source) are unchanged, as are `README.md`, `LICENSE` and
+  `CHANGELOG.md`.
+
+  Two details were verified against npm 11.18.0 rather than assumed, since both are one edit away from
+  silently reversing: `dist/` is gitignored and reaches the tarball only because `files` outranks
+  `.gitignore`, and `CHANGELOG.md` is not on npm's always-included list — only `package.json`, `README.md`
+  and `LICENSE` are — so it ships only because it is named explicitly. `.npmignore` was deleted outright
+  rather than kept for the `src/` carve-outs, which `files` expresses as negated entries.
+
+  `src/__tests__/PackageManifest.test.js` pins the result by asking `npm pack --dry-run --json` what it
+  would actually ship. It asserts the top-level entry set exactly, the presence of the compiled entry
+  points, that `src/*.js` and `dist/*.d.ts.map` counts match, and that no test tree leaked — deliberately
+  not the full 232-path manifest, which would need regenerating for every new source file. It runs under
+  `yarn test`, so CI covers it with no extra workflow step.
+
 ### Fixed
 
 - **`LiturgyOfAnyDay` no longer goes permanently silent after a failed year refetch.** The
