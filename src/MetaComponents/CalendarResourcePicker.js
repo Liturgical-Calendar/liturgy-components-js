@@ -14,11 +14,17 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import Messages from '../Messages.js';
 import { CalendarSelectFilter } from '../Enums.js';
+import { resolveBase } from '../ApiClient/ApiBase.js';
 import {
     normalizeComponentOptions,
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import {
+    assertScope,
+    resolveScope,
+    deriveVisibility,
+} from './CalendarScope.js';
 import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
 
 /**
@@ -99,6 +105,30 @@ export default class CalendarResourcePicker {
      */
     #riteLinked = false;
 
+    /**
+     * `resolveScope()`'s result, or `null` for no scope — the "restricts
+     * nothing" case that keeps every existing code path untouched. Read by
+     * `#applyScopeVisibility()` on every call, so a rite or calendar change
+     * always re-derives against the SAME resolved scope rather than a stale
+     * copy. See `CalendarControls.js`'s identical field for the full
+     * reasoning; this picker builds its selects directly rather than through
+     * `CalendarControls`, which is why it needs its own copy of the wiring.
+     *
+     * @type {?Object}
+     */
+    #scope = null;
+
+    /**
+     * The `change` listener this picker attached to the calendar select for
+     * scope re-derivation, kept so a re-mount (`appendTo()` is idempotent
+     * and safe to call more than once) can release it before re-attaching —
+     * the same one-listener-per-mount discipline `#riteChangeListener`
+     * already applies to the rite select's placeholder listener.
+     *
+     * @type {function|null}
+     */
+    #calendarScopeListener = null;
+
     /** @type {boolean} */
     #disposed = false;
 
@@ -112,12 +142,23 @@ export default class CalendarResourcePicker {
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.apiClient] - Binds this picker to that client's API base.
      * @param {string} [options.placeholderText] - Text for a disabled placeholder option.
+     * @param {Object} [options.scope] - Restricts which calendars this picker may
+     *   show — `{ nation, diocese, rite, locale, includeDioceses }`, all optional;
+     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
+     *   control visible, exactly as before this option existed.
      * @throws {Error} If the filter is absent or not one of the two accepted values.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarResourcePicker');
-        const { locale, filter, theme, apiClient, placeholderText, required } =
-            options;
+        const {
+            locale,
+            filter,
+            theme,
+            apiClient,
+            placeholderText,
+            required,
+            scope,
+        } = options;
 
         // Validated here, by name, rather than left to whichever child happens to
         // construct first: `CalendarSelect` and `RiteSelect` each reject an invalid
@@ -156,6 +197,19 @@ export default class CalendarResourcePicker {
             return;
         }
 
+        // Validated and resolved BEFORE any child is built, same reasoning as
+        // `CalendarControls`: a bad scope (an unknown key, an unmatched
+        // diocese, a rite that leaves no calendar to resolve) is a programmer
+        // error and must reject before anything half-mounts. Resolved
+        // against a freshly-looked-up base rather than a stored `#base`
+        // field — this picker, unlike `CalendarControls` and `DayViewer`,
+        // never keeps one for anything else. `resolveScope()` returns `null`
+        // for a scope that restricts nothing, and every scope path below is
+        // a no-op on that value.
+        const base = resolveBase(apiClient, 'CalendarResourcePicker');
+        assertScope(scope, 'CalendarResourcePicker', base);
+        this.#scope = resolveScope(scope, base);
+
         if (typeof placeholderText === 'string' && '' !== placeholderText) {
             this.#placeholderText = placeholderText;
         }
@@ -178,7 +232,10 @@ export default class CalendarResourcePicker {
 
         if (wantsRite) {
             const riteTheme = resolveChildTheme(theme, 'riteSelect');
-            this.#riteSelect = new RiteSelect({ locale: resolvedLocale });
+            this.#riteSelect = new RiteSelect({
+                locale: resolvedLocale,
+                ...(null !== this.#scope ? { rites: this.#scope.rites } : {}),
+            });
             if (Object.hasOwn(riteTheme, 'class')) {
                 this.#riteSelect.class(riteTheme.class);
             }
@@ -242,6 +299,21 @@ export default class CalendarResourcePicker {
         const calendarWrapper = resolveWrapperBag(calendarTheme);
         if (null !== calendarWrapper) {
             this.#calendarSelect.wrapper(calendarWrapper);
+        }
+
+        // The scope's initial option list and selection. `_restrictToScope()`
+        // MUST run before `value()`: the select's own default rite
+        // (`Rite.ROMAN`, since no `rite` option is passed above) may not be
+        // the scope's initial rite, so the UNRESTRICTED, Roman-built list may
+        // not even carry the scope's initial calendar id — and `value()`
+        // throws for any id no current option carries. See
+        // `CalendarControls`' identical comment for the full reasoning.
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[this.#scope.initial.rite],
+                this.#scope.initial.rite,
+            );
+            this.#calendarSelect.value(this.#scope.initial.calendarId);
         }
     }
 
@@ -394,6 +466,7 @@ export default class CalendarResourcePicker {
         // mount's worth of listeners live at a time, and keeps `#listeners` — which
         // `dispose()` walks — describing only the active mount.
         this.#releaseRiteWiring();
+        this.#releaseCalendarScopeWiring();
         this.#mount = element;
 
         if (null !== this.#riteSelect) {
@@ -412,7 +485,15 @@ export default class CalendarResourcePicker {
                 this.#calendarSelect.linkToRiteSelect(this.#riteSelect);
                 this.#riteLinked = true;
             }
-            this.#riteChangeListener = () => this.#applyPlaceholder();
+            // Also re-derives scope visibility on a rite change — deliberately
+            // in the SAME listener as the placeholder handling, rather than a
+            // second one, so a rite change lands in one place. See
+            // `#applyScopeVisibility()` and `CalendarScope.js`'s
+            // `deriveVisibility()` doc comment for why.
+            this.#riteChangeListener = () => {
+                this.#applyPlaceholder();
+                this.#applyScopeVisibility();
+            };
             this.#riteSelect._domElement.addEventListener(
                 'change',
                 this.#riteChangeListener,
@@ -423,8 +504,31 @@ export default class CalendarResourcePicker {
                 listener: this.#riteChangeListener,
             });
         }
+
+        // The calendar select's own half of the "rite change and calendar
+        // change both land in one place" pair — see `#applyScopeVisibility()`.
+        // Attached unconditionally, matching `DayViewer`/`CalendarControls`:
+        // a no-op for an unscoped picker, since `#applyScopeVisibility()`
+        // itself is a no-op when `#scope` is `null`.
+        this.#calendarScopeListener = () => this.#applyScopeVisibility();
+        this.#calendarSelect._domElement.addEventListener(
+            'change',
+            this.#calendarScopeListener,
+        );
+        this.#listeners.push({
+            target: this.#calendarSelect._domElement,
+            type: 'change',
+            listener: this.#calendarScopeListener,
+        });
+
         this.#applyPlaceholder();
         this.#applyRequired();
+
+        // Settles the rite select and calendar select's visibility against
+        // the rite and calendar this picker was constructed or just
+        // re-mounted with. A no-op for an unscoped picker; see
+        // `#applyScopeVisibility()`.
+        this.#applyScopeVisibility();
     }
 
     /**
@@ -449,6 +553,75 @@ export default class CalendarResourcePicker {
             (entry) => entry.listener !== this.#riteChangeListener,
         );
         this.#riteChangeListener = null;
+    }
+
+    /**
+     * Removes the scope-visibility listener this picker attached to the
+     * calendar select, for the same reason and in the same shape as
+     * `#releaseRiteWiring()`.
+     *
+     * @returns {void}
+     */
+    #releaseCalendarScopeWiring() {
+        if (null === this.#calendarScopeListener) {
+            return;
+        }
+        this.#calendarSelect._domElement.removeEventListener(
+            'change',
+            this.#calendarScopeListener,
+        );
+        this.#listeners = this.#listeners.filter(
+            (entry) => entry.listener !== this.#calendarScopeListener,
+        );
+        this.#calendarScopeListener = null;
+    }
+
+    /**
+     * Re-derives, for a resolved scope, which OPTIONS the calendar select may
+     * offer for the currently selected rite, and which of the rite select and
+     * calendar select have a choice to offer at all — applying the first via
+     * `CalendarSelect._restrictToScope()` and the second via `_setHidden()`.
+     *
+     * Ignores `deriveVisibility()`'s third field (`localeInput`): this picker
+     * has no locale input at all — it pairs only a rite select and a
+     * calendar select, unlike `DayViewer`, which applies all three fields.
+     *
+     * The current rite is read from `CalendarSelect._rite` rather than from
+     * `#riteSelect._domElement.value`, because a NATIONAL_CALENDARS-filtered
+     * picker has no rite select (`#riteSelect` is `null`) but the calendar
+     * select still tracks a rite of its own — `Rite.ROMAN` by default, kept
+     * current by `linkToRiteSelect()` on a DIOCESAN_CALENDARS-filtered one.
+     * This is what lets this method run unconditionally regardless of
+     * `wantsRite`.
+     *
+     * A no-op in effect when no scope was given: `_restrictToScope()` is
+     * never called, and `deriveVisibility( null, … )` always returns
+     * all-true, whose `_setHidden( false )` on an already-visible control
+     * changes nothing — which is what keeps an unscoped picker behaving
+     * exactly as before this option existed.
+     *
+     * **The restriction runs BEFORE the visibility derivation**, same
+     * reasoning as `CalendarControls.#applyScopeVisibility()`: a rite change
+     * can leave the calendar select's previous value no longer among the new
+     * rite's entries, and `_restrictToScope()` must settle that first.
+     *
+     * @returns {void}
+     */
+    #applyScopeVisibility() {
+        const currentRite = this.#calendarSelect._rite;
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[currentRite] ?? [],
+                currentRite,
+            );
+        }
+        const visibility = deriveVisibility(
+            this.#scope,
+            currentRite,
+            this.#calendarSelect._domElement.value,
+        );
+        this.#riteSelect?._setHidden(false === visibility.riteSelect);
+        this.#calendarSelect._setHidden(false === visibility.calendarSelect);
     }
 
     /**

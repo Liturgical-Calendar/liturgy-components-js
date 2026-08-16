@@ -22,6 +22,11 @@ import {
 import { canonicalizeLocale } from '../LocaleValidation.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
+    assertScope,
+    resolveScope,
+    deriveVisibility,
+} from './CalendarScope.js';
+import {
     assertTheme,
     resolveChildTheme,
     resolveWrapperBag,
@@ -85,6 +90,28 @@ export default class DayViewer {
     #base;
 
     /**
+     * `resolveScope()`'s result, or `null` for no scope — the "restricts
+     * nothing" case that keeps every existing code path untouched. Read by
+     * `#applyScopeVisibility()` on every call, so a rite or calendar change
+     * always re-derives against the SAME resolved scope rather than a stale
+     * copy. See `CalendarControls.js`'s identical field for the full
+     * reasoning; this viewer builds its selects directly rather than through
+     * `CalendarControls`, which is why it needs its own copy of the wiring.
+     *
+     * @type {?Object}
+     */
+    #scope = null;
+
+    /**
+     * The `change` listeners this viewer attached to the rite select and the
+     * calendar select for scope re-derivation, so `dispose()` can remove
+     * them — mirroring `CalendarControls`' `#selectionListeners`.
+     *
+     * @type {Array<{element: HTMLElement, listener: function}>}
+     */
+    #scopeListeners = [];
+
+    /**
      * Every subscription this viewer made on the client's event bus, kept so that
      * `dispose()` can pass the exact same references back to `off()`.
      *
@@ -109,10 +136,14 @@ export default class DayViewer {
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {boolean} [options.showTitle=true] - Whether to show the widget's own heading.
      * @param {Object} [options.apiClient] - Binds this viewer to that client's API base.
+     * @param {Object} [options.scope] - Restricts which calendars this viewer may
+     *   show — `{ nation, diocese, rite, locale, includeDioceses }`, all optional;
+     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
+     *   control visible, exactly as before this option existed.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'DayViewer');
-        const { locale, theme, showTitle, apiClient } = options;
+        const { locale, theme, showTitle, apiClient, scope } = options;
 
         // Validated here, by name, rather than left to whichever child happens to
         // construct first: each child would reject an invalid locale under its OWN
@@ -130,11 +161,23 @@ export default class DayViewer {
         // child happens to construct first.
         this.#base = resolveBase(apiClient, 'DayViewer');
 
+        // Validated and resolved BEFORE any child is built, same reasoning as
+        // `CalendarControls`: a bad scope (an unknown key, an unmatched
+        // diocese, a rite that leaves no calendar to resolve) is a programmer
+        // error and must reject before anything half-mounts. `resolveScope()`
+        // returns `null` for a scope that restricts nothing, and every scope
+        // path below is a no-op on that value.
+        assertScope(scope, 'DayViewer', this.#base);
+        this.#scope = resolveScope(scope, this.#base);
+
         // No `text` on the rite label when `labelText` was not themed: omitting it
         // lets RiteSelect supply its own localized label (with its own English
         // fallback) rather than forcing a hardcoded one.
         const riteTheme = resolveChildTheme(theme, 'riteSelect');
-        this.#riteSelect = new RiteSelect({ locale: this.#locale });
+        this.#riteSelect = new RiteSelect({
+            locale: this.#locale,
+            ...(null !== this.#scope ? { rites: this.#scope.rites } : {}),
+        });
         if (Object.hasOwn(riteTheme, 'class')) {
             this.#riteSelect.class(riteTheme.class);
         }
@@ -181,6 +224,21 @@ export default class DayViewer {
         const calendarWrapper = resolveWrapperBag(calendarTheme);
         if (null !== calendarWrapper) {
             this.#calendarSelect.wrapper(calendarWrapper);
+        }
+
+        // The scope's initial option list and selection. `_restrictToScope()`
+        // MUST run before `value()`: the select's own default rite
+        // (`Rite.ROMAN`, since no `rite` option is passed above) may not be
+        // the scope's initial rite, so the UNRESTRICTED, Roman-built list may
+        // not even carry the scope's initial calendar id — and `value()`
+        // throws for any id no current option carries. See
+        // `CalendarControls`' identical comment for the full reasoning.
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[this.#scope.initial.rite],
+                this.#scope.initial.rite,
+            );
+            this.#calendarSelect.value(this.#scope.initial.calendarId);
         }
 
         this.#apiOptions = new ApiOptions({
@@ -268,6 +326,75 @@ export default class DayViewer {
         if (false === showTitle) {
             this.#liturgy._titleElement.style.display = 'none';
         }
+
+        // Attached unconditionally, matching `CalendarControls`: a no-op for
+        // an unscoped viewer, since `#applyScopeVisibility()` itself is a
+        // no-op when `#scope` is `null`. This single listener, attached to
+        // BOTH the rite select and the calendar select, is deliberately the
+        // one place a rite change and a calendar change both land — see
+        // `CalendarScope.js`'s `deriveVisibility()` doc comment for why
+        // visibility must not be re-derived from only one side of that pair.
+        this.#listenForScopeChange(this.#riteSelect._domElement);
+        this.#listenForScopeChange(this.#calendarSelect._domElement);
+    }
+
+    /**
+     * Re-derives, for a resolved scope, which OPTIONS the calendar select may
+     * offer for the currently selected rite, and which of the rite select,
+     * calendar select and locale input have a choice to offer at all —
+     * applying the first via `CalendarSelect._restrictToScope()` and the rest
+     * via `_setHidden()`. Unlike `CalendarResourcePicker`, this viewer HAS a
+     * locale input — `ApiOptions._localeInput` — so all three fields of
+     * `deriveVisibility()`'s return value are applied here, not just the
+     * first two.
+     *
+     * A no-op in effect when no scope was given: `_restrictToScope()` is
+     * never called, and `deriveVisibility( null, … )` always returns
+     * all-true, whose `_setHidden( false )` on an already-visible control
+     * changes nothing — which is what keeps an unscoped viewer behaving
+     * exactly as before this option existed.
+     *
+     * **The restriction runs BEFORE the visibility derivation**, same
+     * reasoning as `CalendarControls.#applyScopeVisibility()`: a rite change
+     * can leave the calendar select's previous value no longer among the new
+     * rite's entries, and `deriveVisibility()`'s `localeInput` answer depends
+     * on which calendar ends up selected, not which was selected before this
+     * ran.
+     *
+     * @returns {void}
+     */
+    #applyScopeVisibility() {
+        if (null !== this.#scope) {
+            const currentRite = this.#riteSelect._domElement.value;
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[currentRite] ?? [],
+                currentRite,
+            );
+        }
+        const visibility = deriveVisibility(
+            this.#scope,
+            this.#riteSelect._domElement.value,
+            this.#calendarSelect._domElement.value,
+        );
+        this.#riteSelect._setHidden(false === visibility.riteSelect);
+        this.#calendarSelect._setHidden(false === visibility.calendarSelect);
+        this.#apiOptions._localeInput._setHidden(
+            false === visibility.localeInput,
+        );
+    }
+
+    /**
+     * Attaches the `change` listener that re-derives scope visibility,
+     * recording it so `dispose()` can remove it. Mirrors
+     * `CalendarControls#listenForSelection()`.
+     *
+     * @param {HTMLElement} element - The select to listen to.
+     * @returns {void}
+     */
+    #listenForScopeChange(element) {
+        const listener = () => this.#applyScopeVisibility();
+        element.addEventListener('change', listener);
+        this.#scopeListeners.push({ element, listener });
     }
 
     /**
@@ -604,6 +731,12 @@ export default class DayViewer {
         // and are not present until it is built.
         this.#selectedLocale = this.#matchLocale();
         this.#apiOptions._localeInput._domElement.value = this.#selectedLocale;
+
+        // Settles the rite select, calendar select and locale input's
+        // visibility against the rite and calendar this viewer was
+        // constructed or just re-mounted with. A no-op for an unscoped
+        // viewer; see `#applyScopeVisibility()`.
+        this.#applyScopeVisibility();
     }
 
     /**
@@ -705,7 +838,10 @@ export default class DayViewer {
      *   `EventEmitter.off()` was added in this same phase. Without it teardown could
      *   only ever be partial, with these subscriptions still firing against a
      *   detached tree. The mounted DOM is also emptied, and `#errorCallbacks` and
-     *   `#subscriptions` are cleared.
+     *   `#subscriptions` are cleared. So are the `change` listeners this viewer
+     *   attached to the rite select and calendar select for scope re-derivation
+     *   (`#scopeListeners`) — these are this viewer's OWN listeners, unlike the
+     *   ones described next.
      * - **NOT released, and cannot be from here:** two gaps, both pre-existing in
      *   the wired components and neither closable from `DayViewer` itself:
      *   - The `change` listeners `ApiClient.listenTo()` attaches to the calendar
@@ -737,6 +873,10 @@ export default class DayViewer {
                 this.#apiClient._eventBus.off(event, listener);
             }
         }
+        for (const { element, listener } of this.#scopeListeners) {
+            element.removeEventListener('change', listener);
+        }
+        this.#scopeListeners = [];
         this.#subscriptions = [];
         this.#errorCallbacks = [];
         for (const mount of this.#mounts) {
