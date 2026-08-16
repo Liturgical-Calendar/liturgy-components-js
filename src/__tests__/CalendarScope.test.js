@@ -163,3 +163,37 @@ describe('the initial selection', () => {
         expect(resolveScope({ nation: 'CA' }, base).initial.locale).toBeNull();
     });
 });
+
+describe('a scope naming only rite and/or locale, with no nation or diocese', () => {
+    it('resolves "rite: roman" alone to the Roman rite with more than the stand-in calendar', () => {
+        const resolved = resolveScope({ rite: 'roman' }, base);
+        expect(resolved.rites).toEqual([Rite.ROMAN]);
+        expect(resolved.calendarsByRite[Rite.ROMAN].length).toBeGreaterThan(1);
+    });
+
+    it('resolves "rite: [roman, ambrosian]" alone without throwing', () => {
+        expect(() =>
+            resolveScope({ rite: [Rite.ROMAN, Rite.AMBROSIAN] }, base),
+        ).not.toThrow();
+    });
+
+    it('resolves "locale" alone without throwing', () => {
+        expect(() => resolveScope({ locale: 'it' }, base)).not.toThrow();
+    });
+});
+
+describe("the rite-level stand-in's locales", () => {
+    it("report the Ambrosian rite calendar's own locales", () => {
+        const resolved = resolveScope({ rite: Rite.AMBROSIAN }, base);
+        const standIn = resolved.calendarsByRite[Rite.AMBROSIAN][0];
+        expect(standIn.type).toBe('rite');
+        expect(standIn.locales).toEqual(['it', 'la']);
+    });
+
+    it('fall back to the base locales for the Roman rite, which publishes no rite calendars', () => {
+        const resolved = resolveScope({ rite: Rite.ROMAN }, base);
+        const standIn = resolved.calendarsByRite[Rite.ROMAN][0];
+        expect(standIn.type).toBe('rite');
+        expect(standIn.locales).toEqual(base.locales());
+    });
+});

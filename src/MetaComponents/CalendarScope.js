@@ -66,14 +66,41 @@ function nationHasRite(apiBase, nation, rite) {
 }
 
 /**
+ * The rite-level stand-in calendar for a rite: the General Roman Calendar for
+ * the Roman rite, the bare Ambrosian calendar for the Ambrosian rite. Its
+ * locales come from the rite's own `{rite}_calendars` entry when the API
+ * publishes one; the Roman rite publishes none — there is no
+ * `roman_calendars` key, because the General Roman Calendar is served in
+ * every locale the API supports — so it falls back to the base's full
+ * locale list.
+ *
+ * @param {import('../ApiClient/ApiBase.js').default} apiBase - The loaded base.
+ * @param {string} rite - The rite to build the stand-in for.
+ * @returns {{type: 'rite', id: '', locales: string[]}}
+ */
+function riteStandIn(apiBase, rite) {
+    return {
+        type: 'rite',
+        id: '',
+        locales: apiBase.riteCalendars(rite)[0]?.locales ?? apiBase.locales(),
+    };
+}
+
+/**
  * The calendars a scope offers for a single rite.
  *
  * A `diocese` scope offers only that diocese, on its own rite. A `nation`
  * scope offers the nation's national calendar when the rite has a national
- * tier; when it does not (the Ambrosian rite has none), a rite-level
+ * tier; when it does not (the Ambrosian rite has none), the rite-level
  * stand-in takes its place, since there is no national calendar to show. The
  * nation's dioceses of that rite are appended when `includeDioceses` is
  * `true`.
+ *
+ * When neither `nation` nor `diocese` is named — a scope restricting only
+ * `rite` and/or `locale` — the rite itself is not otherwise narrowed, so
+ * every calendar of that rite is offered: the rite-level stand-in, every
+ * national calendar (only where the rite has a national tier), and every
+ * diocesan calendar of that rite.
  *
  * @param {Object} scope - The scope bag.
  * @param {import('../ApiClient/ApiBase.js').default} apiBase - The loaded base.
@@ -92,6 +119,27 @@ function calendarsForRite(scope, apiBase, rite) {
         ];
     }
 
+    if (undefined === scope.nation) {
+        const calendars = [riteStandIn(apiBase, rite)];
+        if (RiteProperties[rite].hasNationalTier) {
+            calendars.push(
+                ...apiBase.nationalCalendars().map((entry) => ({
+                    type: 'national',
+                    id: entry.calendar_id,
+                    locales: entry.locales,
+                })),
+            );
+        }
+        calendars.push(
+            ...apiBase.diocesanCalendars(rite).map((entry) => ({
+                type: 'diocesan',
+                id: entry.calendar_id,
+                locales: entry.locales,
+            })),
+        );
+        return calendars;
+    }
+
     const calendars = [];
     if (RiteProperties[rite].hasNationalTier) {
         const national = apiBase
@@ -103,7 +151,7 @@ function calendarsForRite(scope, apiBase, rite) {
             locales: national.locales,
         });
     } else {
-        calendars.push({ type: 'rite', id: '', locales: apiBase.locales() });
+        calendars.push(riteStandIn(apiBase, rite));
     }
 
     if (true === scope.includeDioceses) {
