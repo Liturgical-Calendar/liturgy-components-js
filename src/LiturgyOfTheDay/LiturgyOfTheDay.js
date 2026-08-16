@@ -253,6 +253,12 @@ export default class LiturgyOfTheDay {
      * @private
      */
     #updateEventDetails(todaysEvents) {
+        // Replace, do not append. This method used to add to whatever was
+        // already there, so a second `calendarFetched` rendered the day twice
+        // and a third three times. It went unnoticed while nothing could
+        // trigger a refetch on this component; `TodayViewer` can, because a
+        // scope may leave a rite or calendar select on screen.
+        this.#eventsElementsWrapper.replaceChildren();
         todaysEvents.forEach((celebration) => {
             const lclzdGrade =
                 celebration.grade < 7 ? celebration.grade_lcl : '';
