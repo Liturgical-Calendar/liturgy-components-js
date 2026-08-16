@@ -233,7 +233,8 @@ const SCOPE_KEYS = Object.freeze([
  *        validate the scope against.
  * @returns {void}
  * @throws {Error} If the scope is not a plain object, names an unrecognised key,
- *         names a `nation` or `diocese` absent from the metadata, names a `rite`
+ *         names a `nation` or `diocese` absent from the metadata, names a `nation`
+ *         and `diocese` that contradict each other, names a `rite`
  *         that contradicts an inferred diocese rite or that has no overlap with
  *         the rites derivable for the scope, names an empty `rite` array, or
  *         names a `locale` the resolved calendar does not support.
@@ -269,6 +270,20 @@ function assertScope(scope, componentName, apiBase) {
     ) {
         throw new Error(
             `${componentName}: scope.nation "${scope.nation}" is not a known national calendar.`,
+        );
+    }
+
+    // Both keys individually valid, but naming different nations: `nation`
+    // silently winning over `diocese` would resolve a scope the caller never
+    // asked for. Ordered after both existence checks above, so an unknown id
+    // is still reported as "unknown", not misreported as a mismatch.
+    if (
+        undefined !== scope.nation &&
+        null !== dioceseEntry &&
+        false === apiBase.isValidDioceseForNation(scope.diocese, scope.nation)
+    ) {
+        throw new Error(
+            `${componentName}: scope.diocese "${scope.diocese}" belongs to nation "${dioceseEntry.nation}", not scope.nation "${scope.nation}".`,
         );
     }
 

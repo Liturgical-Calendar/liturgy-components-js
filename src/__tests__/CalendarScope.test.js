@@ -230,6 +230,32 @@ describe('assertScope()', () => {
         ).toThrow(/nowhere_xx/);
     });
 
+    it('rejects a diocese that does not belong to the given nation, naming both', () => {
+        expect(() =>
+            assertScope(
+                { nation: 'US', diocese: 'romamo_it' },
+                'CalendarViewer',
+                base,
+            ),
+        ).toThrow(/romamo_it.*IT.*US/s);
+    });
+
+    it('accepts a nation and diocese that match', () => {
+        expect(() =>
+            assertScope(
+                { nation: 'IT', diocese: 'romamo_it' },
+                'CalendarViewer',
+                base,
+            ),
+        ).not.toThrow();
+    });
+
+    it('accepts a diocese alone, with no nation to contradict it', () => {
+        expect(() =>
+            assertScope({ diocese: 'romamo_it' }, 'CalendarViewer', base),
+        ).not.toThrow();
+    });
+
     it('rejects a rite that contradicts the diocese, naming both', () => {
         expect(() =>
             assertScope(
