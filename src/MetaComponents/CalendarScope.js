@@ -6,8 +6,10 @@
  * Deliberately NOT exported from `src/index.js`, on the same reasoning as
  * `Theme.js` and `FilterInputs.js`: internal contract between components, not
  * public API. Also exports `assertScope()`, which validates a scope bag
- * before it reaches this resolver. Later tasks add visibility derivation on
- * top of this pure resolver, and the components that consume it.
+ * before it reaches this resolver, and `deriveVisibility()`, which turns a
+ * resolved scope plus the currently selected rite and calendar into which
+ * controls have a choice to offer. Later tasks add the components that
+ * consume these.
  *
  * `resolveScope()` returns `null` when the scope restricts nothing — a
  * nullish scope, `{}`, or a bag naming none of `nation`/`diocese`/`rite`/
@@ -399,6 +401,77 @@ function resolveScope(scope, apiBase) {
             locale: scope.locale ?? null,
         },
     };
+}
+
+/**
+ * The number of locale choices the current calendar offers.
+ *
+ * A pinned `scope.locale` counts as one choice regardless of what the
+ * current calendar itself supports — the input has nothing to offer once
+ * the scope has already decided it. Otherwise this reads the CURRENT
+ * calendar's own `locales` array (matched by rite and calendar id) rather
+ * than re-deriving locales from the base, so it inherits whatever locale
+ * list that calendar entry carries — including the rite-level stand-in's
+ * fallback to the base's full locale list.
+ *
+ * @param {Object} resolved - `resolveScope()`'s non-null result.
+ * @param {string} currentRite - The rite now selected.
+ * @param {string} currentCalendarId - The calendar id now selected; `''` for rite-level.
+ * @returns {number}
+ */
+function localeChoiceCount(resolved, currentRite, currentCalendarId) {
+    if (null !== resolved.initial.locale) {
+        return 1;
+    }
+    const calendars = resolved.calendarsByRite[currentRite] ?? [];
+    const current =
+        calendars.find((calendar) => calendar.id === currentCalendarId) ??
+        calendars[0];
+    return current?.locales.length ?? 0;
+}
+
+/**
+ * Which controls have a choice to offer.
+ *
+ * Two of the three are RUNTIME-dependent rather than mount-time constants:
+ * switching rite changes the calendar set, and switching calendar changes the
+ * locale set. Callers must therefore re-derive on every rite and calendar
+ * change, in the one place both land — `CalendarSelect._setHidden()`'s doc
+ * comment records what happens when visibility is derived on the rite side
+ * alone.
+ *
+ * @param {?Object} resolved - `resolveScope()`'s result, or `null` for no scope.
+ * @param {string} currentRite - The rite now selected.
+ * @param {string} currentCalendarId - The calendar id now selected; `''` for rite-level.
+ * @param {Object<string, boolean>} inputs - Per-control overrides.
+ * @returns {{riteSelect: boolean, calendarSelect: boolean, localeInput: boolean}}
+ */
+export function deriveVisibility(
+    resolved,
+    currentRite,
+    currentCalendarId,
+    inputs = {},
+) {
+    const derived =
+        null === resolved
+            ? { riteSelect: true, calendarSelect: true, localeInput: true }
+            : {
+                  riteSelect: resolved.rites.length > 1,
+                  calendarSelect:
+                      (resolved.calendarsByRite[currentRite] ?? []).length > 1,
+                  localeInput:
+                      localeChoiceCount(
+                          resolved,
+                          currentRite,
+                          currentCalendarId,
+                      ) > 1,
+              };
+    for (const key of ['riteSelect', 'calendarSelect', 'localeInput']) {
+        if (typeof inputs?.[key] === 'boolean') {
+            derived[key] = inputs[key];
+        }
+    }
+    return derived;
 }
 
 export { resolveScope, assertScope };

@@ -5,7 +5,11 @@
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
-import { resolveScope, assertScope } from '../MetaComponents/CalendarScope.js';
+import {
+    resolveScope,
+    assertScope,
+    deriveVisibility,
+} from '../MetaComponents/CalendarScope.js';
 import { Rite } from '../Enums.js';
 
 const API_URL = 'http://localhost:8000';
@@ -296,5 +300,83 @@ describe('assertScope()', () => {
                 base,
             ),
         ).not.toThrow();
+    });
+});
+
+describe('deriveVisibility()', () => {
+    it('hides every control for a single fully-determined calendar', () => {
+        const resolved = resolveScope({ diocese: 'romamo_it' }, base);
+        expect(deriveVisibility(resolved, Rite.ROMAN, 'romamo_it', {})).toEqual(
+            {
+                riteSelect: false,
+                calendarSelect: false,
+                localeInput: false,
+            },
+        );
+    });
+
+    it('shows only the rite select for a national-only two-rite scope', () => {
+        const resolved = resolveScope({ nation: 'IT' }, base);
+        expect(deriveVisibility(resolved, Rite.ROMAN, 'IT', {})).toEqual({
+            riteSelect: true,
+            calendarSelect: false,
+            localeInput: false,
+        });
+    });
+
+    it('shows the calendar select once dioceses widen the scope', () => {
+        const resolved = resolveScope(
+            { nation: 'IT', includeDioceses: true },
+            base,
+        );
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'IT', {}).calendarSelect,
+        ).toBe(true);
+    });
+
+    it('re-derives per rite, not once at mount', () => {
+        // `CH` has an Ambrosian diocese and a national calendar, so the
+        // calendar select is meaningful under Ambrosian and not under Roman.
+        const resolved = resolveScope(
+            { nation: 'CH', includeDioceses: true },
+            base,
+        );
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'CH', {}).calendarSelect,
+        ).toBe(false);
+        expect(
+            deriveVisibility(resolved, Rite.AMBROSIAN, '', {}).calendarSelect,
+        ).toBe(true);
+    });
+
+    it('shows the locale input when the current calendar has several locales', () => {
+        const resolved = resolveScope({ nation: 'CA' }, base);
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'CA', {}).localeInput,
+        ).toBe(true);
+    });
+
+    it('hides the locale input when the scope pins one', () => {
+        const resolved = resolveScope({ nation: 'CA', locale: 'fr-CA' }, base);
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'CA', {}).localeInput,
+        ).toBe(false);
+    });
+
+    it('lets inputs force a control on', () => {
+        const resolved = resolveScope({ diocese: 'romamo_it' }, base);
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'romamo_it', {
+                calendarSelect: true,
+            }).calendarSelect,
+        ).toBe(true);
+    });
+
+    it('lets inputs force a control off', () => {
+        const resolved = resolveScope({ nation: 'IT' }, base);
+        expect(
+            deriveVisibility(resolved, Rite.ROMAN, 'IT', { riteSelect: false })
+                .riteSelect,
+        ).toBe(false);
     });
 });
