@@ -239,3 +239,39 @@ describe('ApiExplorer', () => {
         expect(() => explorer.dispose()).not.toThrow();
     });
 });
+
+describe('ApiExplorer cannot take a scope (F1)', () => {
+    // `CalendarControls`' own scope+PATH_BUILDER guard reads the `filter`
+    // given to ITS constructor, but `ApiExplorer` never passes one —
+    // `appendTo()` applies `PATH_BUILDER` afterwards. Left unguarded here, a
+    // scope would sail past that check entirely and ship scoped
+    // riteSelect/calendarSelect beside an unscoped CalendarPathInput that
+    // still composes any route the metadata allows.
+    it('throws for a scope, naming ApiExplorer, before CalendarControls is even constructed', () => {
+        expect(
+            () =>
+                new ApiExplorer({
+                    locale: 'en',
+                    scope: { diocese: 'romamo_it' },
+                }),
+        ).toThrow(/ApiExplorer.*scope/s);
+    });
+
+    it('throws for mountInto() too, and never mounts anything', async () => {
+        await expect(
+            ApiExplorer.mountInto(
+                {
+                    pathBuilder: '#pathBuilder',
+                    basePath: '#basePath',
+                    allPaths: '#allPaths',
+                },
+                { locale: 'en', scope: { nation: 'IT' } },
+            ),
+        ).rejects.toThrow(/ApiExplorer.*scope/s);
+        expect(document.querySelector('#pathBuilder').children.length).toBe(0);
+    });
+
+    it('still accepts construction with no scope at all', () => {
+        expect(() => new ApiExplorer({ locale: 'en' })).not.toThrow();
+    });
+});

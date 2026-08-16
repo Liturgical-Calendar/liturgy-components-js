@@ -929,6 +929,30 @@ export default class Input {
     }
 
     /**
+     * Hide or show this input, preferring its wrapper when one was set via
+     * `wrapper()` so the label goes with it. Mirrors
+     * `CalendarSelect._setHidden()` and `RiteSelect._setHidden()`.
+     *
+     * **With no wrapper, the label element (if any) is hidden too**, alongside
+     * the input itself — see `CalendarSelect._setHidden()`'s doc comment for
+     * why: a preset supplying no `wrapper` (`bootstrap5`, deliberately) would
+     * otherwise leave a dangling label once the input hides. A no-op in effect
+     * when a wrapper IS present, since hiding it already takes the label with it.
+     *
+     * @param {boolean} hidden
+     */
+    _setHidden(hidden) {
+        if (null !== this.#wrapperElement) {
+            this.#wrapperElement.hidden = hidden;
+            return;
+        }
+        this.#domElement.hidden = hidden;
+        if (null !== this.#labelElement) {
+            this.#labelElement.hidden = hidden;
+        }
+    }
+
+    /**
      * Retrieves the underlying DOM element of the input instance.
      *
      * @returns {HTMLElement} The DOM element associated with the input instance.

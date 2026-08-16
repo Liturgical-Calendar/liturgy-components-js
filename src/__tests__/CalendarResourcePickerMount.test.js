@@ -68,6 +68,69 @@ describe('CalendarResourcePicker.mountInto', () => {
         ).rejects.toThrow(/nope/);
     });
 
+    // F2: an unknown scope key is a typo, the same class of programmer error
+    // as an invalid filter above — not a runtime "API is down" condition —
+    // so it must REJECT rather than resolve with a disabled failure control.
+    it('rejects on an unknown scope key, naming the component, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { natoin: 'IT' },
+            }),
+        ).rejects.toThrow(/CalendarResourcePicker.*natoin/s);
+    });
+
+    // The doc's own worked example: a filter that structurally cannot show a
+    // PINNED rite is likewise a programmer error, previously swallowed by the
+    // try below scope validation was hoisted out of it.
+    it('rejects when scope pins a rite the filter cannot surface, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { rite: 'ambrosian' },
+            }),
+        ).rejects.toThrow(
+            /CalendarResourcePicker.*ambrosian.*NATIONAL_CALENDARS/s,
+        );
+    });
+
+    // F1 (post-PR review): the rite check above only catches a scope that
+    // PINS a rite this filter cannot surface AT ALL. A diocese scope under
+    // NATIONAL_CALENDARS pins the Roman rite, which DOES have a national
+    // tier, so that check passes — but the scope resolves to only a
+    // diocesan entry, which this filter's select cannot show either. That
+    // mismatch used to surface only inside `_restrictToScope()`, deep in the
+    // constructor's `try`, and so was reported as a runtime "API is down"
+    // failure instead of the programmer error it is.
+    it('rejects when a diocese scope resolves to only diocesan entries under a NATIONAL_CALENDARS filter, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { diocese: 'romamo_it' },
+            }),
+        ).rejects.toThrow(
+            /CalendarResourcePicker.*diocesan.*NATIONAL_CALENDARS/s,
+        );
+    });
+
+    // Same class of mismatch, the other direction: a nation scope with no
+    // `includeDioceses` resolves to only a national entry, which a
+    // DIOCESAN_CALENDARS filter cannot show.
+    it('rejects when a nation scope with no includeDioceses resolves to only a national entry under a DIOCESAN_CALENDARS filter, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+                scope: { nation: 'IT' },
+            }),
+        ).rejects.toThrow(
+            /CalendarResourcePicker.*national.*DIOCESAN_CALENDARS/s,
+        );
+    });
+
     it('renders a visible failure control on a runtime failure', async () => {
         // An unloaded base is a runtime failure, not a programmer error: it is what
         // a down API looks like from here.

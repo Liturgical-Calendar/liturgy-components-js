@@ -260,4 +260,34 @@
  * @prop {Readonly<string[]>} predeterminedInputs - The `ApiOptions` inputs whose values the current rite and calendar fix, named by their canonical accessor, in canonical order.
  */
 
+/**
+ * A "calendar scope" bag — a consumer's declaration of which calendars a
+ * widget may show. Accepted by `CalendarControls`, `CalendarViewer`,
+ * `DayViewer`, `CalendarResourcePicker` and `TodayViewer`, on both the
+ * constructor and `mountInto()`, and resolved by
+ * `src/MetaComponents/CalendarScope.js` (internal, not exported).
+ *
+ * A named typedef rather than an inline `@param {Object} [options.scope]` in
+ * each component's JSDoc, for the same reason {@link CalendarSelection} is
+ * one: `tsc` does not reliably synthesise nested `options.x` tags into the
+ * emitted declaration, and an inline `Object` accepts any object literal, so
+ * neither the option's shape nor its presence was actually checked by a
+ * TypeScript consumer — `grep -c "scope" dist/index.d.ts` printed `0` while
+ * `yarn compile` and `yarn lint:dts` both stayed green. Every field is
+ * optional, matching `CalendarScope.js`'s own rule that a nullish scope, or
+ * one naming none of these keys, restricts nothing.
+ *
+ * `rite` is typed as a union rather than `string` alone because it names the
+ * allowed SET of rites, not a single value: a bare string is a set of one,
+ * and an array names several, with the initial rite being the array's first
+ * element — see `resolveScope()` in `CalendarScope.js`.
+ *
+ * @typedef {Object} CalendarScopeOptions
+ * @prop {string|string[]} [rite] - The rite(s) this widget may offer. A bare string is a set of one; the initial rite is the first element of the resolved set.
+ * @prop {string} [nation] - Restricts to a single national calendar (by `calendar_id`), plus its dioceses when `includeDioceses` is `true`.
+ * @prop {string} [diocese] - Restricts to a single diocesan calendar (by `calendar_id`), on its own rite.
+ * @prop {string} [locale] - Pins the locale, removing the locale input's choice.
+ * @prop {boolean} [includeDioceses] - Whether a `nation` scope also offers that nation's dioceses.
+ */
+
 export default {};

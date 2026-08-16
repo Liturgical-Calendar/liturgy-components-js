@@ -13,12 +13,18 @@
 import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import Messages from '../Messages.js';
-import { CalendarSelectFilter } from '../Enums.js';
+import { CalendarSelectFilter, RiteProperties } from '../Enums.js';
+import { resolveBase } from '../ApiClient/ApiBase.js';
 import {
     normalizeComponentOptions,
     describeType,
 } from '../OptionsValidation.js';
 import { canonicalizeLocale } from '../LocaleValidation.js';
+import {
+    assertScope,
+    resolveScope,
+    deriveVisibility,
+} from './CalendarScope.js';
 import { assertTheme, resolveChildTheme, resolveWrapperBag } from './Theme.js';
 
 /**
@@ -99,6 +105,30 @@ export default class CalendarResourcePicker {
      */
     #riteLinked = false;
 
+    /**
+     * `resolveScope()`'s result, or `null` for no scope — the "restricts
+     * nothing" case that keeps every existing code path untouched. Read by
+     * `#applyScopeVisibility()` on every call, so a rite or calendar change
+     * always re-derives against the SAME resolved scope rather than a stale
+     * copy. See `CalendarControls.js`'s identical field for the full
+     * reasoning; this picker builds its selects directly rather than through
+     * `CalendarControls`, which is why it needs its own copy of the wiring.
+     *
+     * @type {?Object}
+     */
+    #scope = null;
+
+    /**
+     * The `change` listener this picker attached to the calendar select for
+     * scope re-derivation, kept so a re-mount (`appendTo()` is idempotent
+     * and safe to call more than once) can release it before re-attaching —
+     * the same one-listener-per-mount discipline `#riteChangeListener`
+     * already applies to the rite select's placeholder listener.
+     *
+     * @type {function|null}
+     */
+    #calendarScopeListener = null;
+
     /** @type {boolean} */
     #disposed = false;
 
@@ -106,18 +136,29 @@ export default class CalendarResourcePicker {
     #listeners = [];
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} options.filter - `CalendarSelectFilter.NATIONAL_CALENDARS` or `.DIOCESAN_CALENDARS`.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.apiClient] - Binds this picker to that client's API base.
      * @param {string} [options.placeholderText] - Text for a disabled placeholder option.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this picker may show; see `CalendarScope.js`. A nullish
+     *   or unrestricting scope leaves every control visible, exactly as before
+     *   this option existed.
      * @throws {Error} If the filter is absent or not one of the two accepted values.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarResourcePicker');
-        const { locale, filter, theme, apiClient, placeholderText, required } =
-            options;
+        const {
+            locale,
+            filter,
+            theme,
+            apiClient,
+            placeholderText,
+            required,
+            scope,
+        } = options;
 
         // Validated here, by name, rather than left to whichever child happens to
         // construct first: `CalendarSelect` and `RiteSelect` each reject an invalid
@@ -156,6 +197,52 @@ export default class CalendarResourcePicker {
             return;
         }
 
+        // Validated and resolved BEFORE any child is built, same reasoning as
+        // `CalendarControls`: a bad scope (an unknown key, an unmatched
+        // diocese, a rite that leaves no calendar to resolve) is a programmer
+        // error and must reject before anything half-mounts. Resolved
+        // against a freshly-looked-up base rather than a stored `#base`
+        // field — this picker, unlike `CalendarControls` and `DayViewer`,
+        // never keeps one for anything else. `resolveScope()` returns `null`
+        // for a scope that restricts nothing, and every scope path below is
+        // a no-op on that value.
+        const base = resolveBase(apiClient, 'CalendarResourcePicker');
+        assertScope(scope, 'CalendarResourcePicker', base);
+        this.#scope = resolveScope(scope, base);
+
+        // A `NATIONAL_CALENDARS`-filtered picker never builds a `RiteSelect`
+        // (see `wantsRite` below) and can only ever show a national calendar
+        // — there is no Ambrosian NATIONAL calendar to switch to
+        // (`RiteProperties.AMBROSIAN.hasNationalTier` is `false`), only its
+        // rite-level stand-in and its dioceses, neither of which this filter
+        // may render. A scope that merely PERMITS the Ambrosian rite
+        // alongside Roman (`{ nation: 'IT' }`, where Italy also has an
+        // Ambrosian diocese) is not a contradiction — the consumer never
+        // demanded it — so that rite is narrowed away here rather than
+        // rejected. A scope that DEMANDS a rite this filter cannot surface at
+        // all IS a contradiction: the consumer asked for exactly the thing
+        // this widget cannot show, and silently substituting the Ambrosian
+        // rite-level calendar for what is supposed to be a
+        // national-calendars-only picker is precisely the silent-narrowing
+        // failure this component exists to avoid — see
+        // `#narrowScopeToNationalTier()`. A rite can be demanded two ways:
+        // `{ rite: 'ambrosian' }` pins it directly, and `{ diocese:
+        // 'milano_it' }` pins it just as effectively, since `resolveScope()`
+        // derives the rite from the diocese alone and never consults
+        // `scope.rite`. Both throw; neither is silently narrowed away.
+        // `resolveScope()` itself is left untouched: it is shared with
+        // `CalendarControls` and `DayViewer`, for whom the Ambrosian rite
+        // genuinely IS reachable.
+        if (
+            null !== this.#scope &&
+            CalendarSelectFilter.NATIONAL_CALENDARS === filter
+        ) {
+            this.#scope = CalendarResourcePicker.#narrowScopeToNationalTier(
+                this.#scope,
+                scope,
+            );
+        }
+
         if (typeof placeholderText === 'string' && '' !== placeholderText) {
             this.#placeholderText = placeholderText;
         }
@@ -178,7 +265,10 @@ export default class CalendarResourcePicker {
 
         if (wantsRite) {
             const riteTheme = resolveChildTheme(theme, 'riteSelect');
-            this.#riteSelect = new RiteSelect({ locale: resolvedLocale });
+            this.#riteSelect = new RiteSelect({
+                locale: resolvedLocale,
+                ...(null !== this.#scope ? { rites: this.#scope.rites } : {}),
+            });
             if (Object.hasOwn(riteTheme, 'class')) {
                 this.#riteSelect.class(riteTheme.class);
             }
@@ -242,6 +332,35 @@ export default class CalendarResourcePicker {
         const calendarWrapper = resolveWrapperBag(calendarTheme);
         if (null !== calendarWrapper) {
             this.#calendarSelect.wrapper(calendarWrapper);
+        }
+
+        // The scope's initial option list and selection. `_restrictToScope()`
+        // MUST run before `value()`: the select's own default rite
+        // (`Rite.ROMAN`, since no `rite` option is passed above) may not be
+        // the scope's initial rite, so the UNRESTRICTED, Roman-built list may
+        // not even carry the scope's initial calendar id — and `value()`
+        // throws for any id no current option carries. See
+        // `CalendarControls`' identical comment for the full reasoning.
+        //
+        // Unlike `CalendarControls`/`DayViewer`/`TodayViewer`, THIS select's
+        // filter is a real `NATIONAL_CALENDARS`/`DIOCESAN_CALENDARS`
+        // (`ACCEPTED_FILTERS` never includes `NONE`), so `_restrictToScope()`'s
+        // own type-vs-filter reconciliation (F4) CAN drop `scope.initial`'s
+        // own entry — e.g. a nation scope's national calendar under
+        // `DIOCESAN_CALENDARS`. Forcing `.value()` to it unconditionally
+        // would then throw; the guard keeps whichever offered id
+        // `_restrictToScope()` already fell back to.
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[this.#scope.initial.rite],
+                this.#scope.initial.rite,
+            );
+            const initialCalendarOffered = [
+                ...this.#calendarSelect._domElement.options,
+            ].some((option) => option.value === this.#scope.initial.calendarId);
+            if (initialCalendarOffered) {
+                this.#calendarSelect.value(this.#scope.initial.calendarId);
+            }
         }
     }
 
@@ -307,6 +426,114 @@ export default class CalendarResourcePicker {
     get failed() {
         this.#assertUsable();
         return this.#failed;
+    }
+
+    /**
+     * Narrows a resolved scope's rites to those a `NATIONAL_CALENDARS`-filtered
+     * picker can actually show — those with `RiteProperties[ rite
+     * ].hasNationalTier`. Ambrosian has none, so a scope that only PERMITS it
+     * (e.g. `{ nation: 'IT' }`, where Italy also has an Ambrosian diocese) is
+     * narrowed away silently: this filter has no rite select and so no way to
+     * ever reach it, and the consumer never demanded it either.
+     *
+     * A scope that DEMANDS a rite this filter cannot surface at all — nothing
+     * survives the narrowing — throws instead: silently substituting the
+     * Ambrosian rite-level calendar for what is supposed to be a
+     * national-calendars-only picker would be exactly the silent-narrowing
+     * failure this component exists to avoid (issue #43). What makes a rite
+     * "demanded" is whether anything survives, not how it was expressed:
+     * `rawScope.rite` pins it directly, but `rawScope.diocese` pins it just as
+     * effectively — `resolveScope()` derives `rites` from the diocese's own
+     * rite and never consults `rawScope.rite` at all, so a diocese-only scope
+     * (e.g. `{ diocese: 'milano_it' }`) reaches this method having never set
+     * `rawScope.rite`. The message names whichever of the two the consumer
+     * actually wrote, rather than misreporting a diocese scope as a `rite` pin.
+     *
+     * `resolveScope()` itself is untouched by this — it is shared with
+     * `CalendarControls` and `DayViewer`, for whom the Ambrosian rite
+     * genuinely IS reachable through their own rite selects.
+     *
+     * @param {Object} resolved - `resolveScope()`'s non-null result.
+     * @param {Object} rawScope - The caller's own scope bag, to attribute the message.
+     * @returns {Object} The same shape, with `rites`/`calendarsByRite`/`initial` narrowed
+     *   to rites this filter can show.
+     * @throws {Error} If narrowing leaves no reachable rite at all.
+     */
+    static #narrowScopeToNationalTier(resolved, rawScope) {
+        const reachable = resolved.rites.filter(
+            (rite) => RiteProperties[rite].hasNationalTier,
+        );
+        if (0 === reachable.length) {
+            throw new Error(
+                CalendarResourcePicker.#nationalTierNarrowingError(
+                    resolved,
+                    rawScope,
+                ),
+            );
+        }
+        const calendarsByRite = {};
+        for (const rite of reachable) {
+            calendarsByRite[rite] = resolved.calendarsByRite[rite];
+        }
+        const initialRite = reachable.includes(resolved.initial.rite)
+            ? resolved.initial.rite
+            : reachable[0];
+        // Never falls back to `resolved.initial`: `resolveScope()` guarantees at
+        // least one entry per rite in `calendarsByRite`, and `initialRite` is
+        // always a member of `reachable`, so `calendarsByRite[ initialRite ][0]`
+        // is always defined.
+        const initialCalendar = calendarsByRite[initialRite][0];
+        return {
+            rites: reachable,
+            calendarsByRite,
+            initial: {
+                rite: initialRite,
+                calendarType: initialCalendar.type,
+                calendarId: initialCalendar.id,
+                locale: resolved.initial.locale,
+            },
+        };
+    }
+
+    /**
+     * Builds the message for `#narrowScopeToNationalTier()`'s throw, naming
+     * whichever of `rite` or `diocese` the consumer actually wrote rather than
+     * reporting a diocese-derived rite as though `scope.rite` had been named —
+     * `resolveScope()` never reads `rawScope.rite` for a diocese scope, so
+     * that field can be `undefined` even though a rite was, in effect, pinned.
+     *
+     * `rawScope.diocese` takes priority when both keys happen to be present,
+     * because a diocese pins its own rite regardless of what `scope.rite`
+     * also says — `assertScope()` has already rejected the two contradicting
+     * each other, so by the time this runs they agree.
+     *
+     * @param {Object} resolved - `resolveScope()`'s non-null result, already narrowed to
+     *   nothing reachable.
+     * @param {Object} rawScope - The caller's own scope bag.
+     * @returns {string} The message, prefixed with the component name.
+     */
+    static #nationalTierNarrowingError(resolved, rawScope) {
+        const reason =
+            'which has no national calendar for a rite with no national tier ' +
+            '(RiteProperties[ rite ].hasNationalTier is false — the Ambrosian rite is the only one today).';
+
+        if (undefined !== rawScope.diocese) {
+            return (
+                `CalendarResourcePicker: scope.diocese "${rawScope.diocese}" resolves to rite "${resolved.rites[0]}", ` +
+                `which cannot be shown under filter: CalendarSelectFilter.NATIONAL_CALENDARS, ${reason} ` +
+                'Use filter: CalendarSelectFilter.DIOCESAN_CALENDARS instead, or choose a diocese whose rite has a national tier.'
+            );
+        }
+
+        const pinned = Array.isArray(rawScope.rite)
+            ? rawScope.rite
+            : undefined !== rawScope.rite
+              ? [rawScope.rite]
+              : resolved.rites;
+        return (
+            `CalendarResourcePicker: scope.rite "${pinned.join(', ')}" cannot be shown under filter: CalendarSelectFilter.NATIONAL_CALENDARS, ${reason} ` +
+            'Use filter: CalendarSelectFilter.DIOCESAN_CALENDARS instead, or unpin scope.rite.'
+        );
     }
 
     /**
@@ -394,6 +621,7 @@ export default class CalendarResourcePicker {
         // mount's worth of listeners live at a time, and keeps `#listeners` — which
         // `dispose()` walks — describing only the active mount.
         this.#releaseRiteWiring();
+        this.#releaseCalendarScopeWiring();
         this.#mount = element;
 
         if (null !== this.#riteSelect) {
@@ -412,7 +640,15 @@ export default class CalendarResourcePicker {
                 this.#calendarSelect.linkToRiteSelect(this.#riteSelect);
                 this.#riteLinked = true;
             }
-            this.#riteChangeListener = () => this.#applyPlaceholder();
+            // Also re-derives scope visibility on a rite change — deliberately
+            // in the SAME listener as the placeholder handling, rather than a
+            // second one, so a rite change lands in one place. See
+            // `#applyScopeVisibility()` and `CalendarScope.js`'s
+            // `deriveVisibility()` doc comment for why.
+            this.#riteChangeListener = () => {
+                this.#applyPlaceholder();
+                this.#applyScopeVisibility();
+            };
             this.#riteSelect._domElement.addEventListener(
                 'change',
                 this.#riteChangeListener,
@@ -423,8 +659,31 @@ export default class CalendarResourcePicker {
                 listener: this.#riteChangeListener,
             });
         }
+
+        // The calendar select's own half of the "rite change and calendar
+        // change both land in one place" pair — see `#applyScopeVisibility()`.
+        // Attached unconditionally, matching `DayViewer`/`CalendarControls`:
+        // a no-op for an unscoped picker, since `#applyScopeVisibility()`
+        // itself is a no-op when `#scope` is `null`.
+        this.#calendarScopeListener = () => this.#applyScopeVisibility();
+        this.#calendarSelect._domElement.addEventListener(
+            'change',
+            this.#calendarScopeListener,
+        );
+        this.#listeners.push({
+            target: this.#calendarSelect._domElement,
+            type: 'change',
+            listener: this.#calendarScopeListener,
+        });
+
         this.#applyPlaceholder();
         this.#applyRequired();
+
+        // Settles the rite select and calendar select's visibility against
+        // the rite and calendar this picker was constructed or just
+        // re-mounted with. A no-op for an unscoped picker; see
+        // `#applyScopeVisibility()`.
+        this.#applyScopeVisibility();
     }
 
     /**
@@ -449,6 +708,75 @@ export default class CalendarResourcePicker {
             (entry) => entry.listener !== this.#riteChangeListener,
         );
         this.#riteChangeListener = null;
+    }
+
+    /**
+     * Removes the scope-visibility listener this picker attached to the
+     * calendar select, for the same reason and in the same shape as
+     * `#releaseRiteWiring()`.
+     *
+     * @returns {void}
+     */
+    #releaseCalendarScopeWiring() {
+        if (null === this.#calendarScopeListener) {
+            return;
+        }
+        this.#calendarSelect._domElement.removeEventListener(
+            'change',
+            this.#calendarScopeListener,
+        );
+        this.#listeners = this.#listeners.filter(
+            (entry) => entry.listener !== this.#calendarScopeListener,
+        );
+        this.#calendarScopeListener = null;
+    }
+
+    /**
+     * Re-derives, for a resolved scope, which OPTIONS the calendar select may
+     * offer for the currently selected rite, and which of the rite select and
+     * calendar select have a choice to offer at all — applying the first via
+     * `CalendarSelect._restrictToScope()` and the second via `_setHidden()`.
+     *
+     * Ignores `deriveVisibility()`'s third field (`localeInput`): this picker
+     * has no locale input at all — it pairs only a rite select and a
+     * calendar select, unlike `DayViewer`, which applies all three fields.
+     *
+     * The current rite is read from `CalendarSelect._rite` rather than from
+     * `#riteSelect._domElement.value`, because a NATIONAL_CALENDARS-filtered
+     * picker has no rite select (`#riteSelect` is `null`) but the calendar
+     * select still tracks a rite of its own — `Rite.ROMAN` by default, kept
+     * current by `linkToRiteSelect()` on a DIOCESAN_CALENDARS-filtered one.
+     * This is what lets this method run unconditionally regardless of
+     * `wantsRite`.
+     *
+     * A no-op in effect when no scope was given: `_restrictToScope()` is
+     * never called, and `deriveVisibility( null, … )` always returns
+     * all-true, whose `_setHidden( false )` on an already-visible control
+     * changes nothing — which is what keeps an unscoped picker behaving
+     * exactly as before this option existed.
+     *
+     * **The restriction runs BEFORE the visibility derivation**, same
+     * reasoning as `CalendarControls.#applyScopeVisibility()`: a rite change
+     * can leave the calendar select's previous value no longer among the new
+     * rite's entries, and `_restrictToScope()` must settle that first.
+     *
+     * @returns {void}
+     */
+    #applyScopeVisibility() {
+        const currentRite = this.#calendarSelect._rite;
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[currentRite] ?? [],
+                currentRite,
+            );
+        }
+        const visibility = deriveVisibility(
+            this.#scope,
+            currentRite,
+            this.#calendarSelect._domElement.value,
+        );
+        this.#riteSelect?._setHidden(false === visibility.riteSelect);
+        this.#calendarSelect._setHidden(false === visibility.calendarSelect);
     }
 
     /**
@@ -659,6 +987,8 @@ export default class CalendarResourcePicker {
      * @param {string|HTMLElement} target - Where to mount.
      * @param {Object} [options] - As the constructor, plus those below.
      * @param {string} [options.errorText] - Text for the failure control.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this picker may show; see `CalendarScope.js`.
      * @param {AbortSignal} [options.signal] - Cancels the mount.
      * @returns {Promise<CalendarResourcePicker|null>} The picker, or `null` if cancelled.
      * @throws {Error} If the options or the target are invalid.
@@ -668,7 +998,8 @@ export default class CalendarResourcePicker {
             options,
             'CalendarResourcePicker',
         );
-        const { errorText, signal, theme, filter, locale } = bag;
+        const { errorText, signal, theme, filter, locale, apiClient, scope } =
+            bag;
 
         // Validated up front, ahead of the try below, so that every throw inside it
         // is a runtime failure by construction. `locale` belongs in this list for
@@ -687,6 +1018,79 @@ export default class CalendarResourcePicker {
         assertTheme(theme, 'CalendarResourcePicker');
         if (locale !== undefined && locale !== null) {
             canonicalizeLocale(locale, 'CalendarResourcePicker');
+        }
+        // `scope` belongs in this list for the same reason: left inside the try,
+        // an unknown scope key, an unmatched diocese/nation, a scope that PINS a
+        // rite this `filter` cannot surface at all (`#narrowScopeToNationalTier()`'s
+        // own throw, below), OR a scope whose resolved entries are the wrong TYPE
+        // for this `filter` (a diocese scope under `NATIONAL_CALENDARS`, or a
+        // nation scope with no `includeDioceses` under `DIOCESAN_CALENDARS`) are
+        // all programmer errors just like a bad `filter` or `theme` — not the API
+        // being down — and surfaced as "could not load calendars" otherwise. Every
+        // one of these is discarded here, like `locale`'s canonical tag above:
+        // this call exists only to let an invalid scope throw before the try, and
+        // the constructor resolves it again for real use.
+        //
+        // Gated on `scope` actually being present: `resolveBase()` itself throws
+        // when the API has not been initialized at all, and an unloaded base is
+        // a RUNTIME failure (see "renders a visible failure control on a runtime
+        // failure" below) that must still resolve with a failed picker, scope or
+        // no scope. Calling it unconditionally here would turn that case into a
+        // rejection for every caller, not only a scoped one.
+        if (undefined !== scope && null !== scope) {
+            const scopeBase = resolveBase(apiClient, 'CalendarResourcePicker');
+            assertScope(scope, 'CalendarResourcePicker', scopeBase);
+            let resolvedScopeForValidation = resolveScope(scope, scopeBase);
+            if (null !== resolvedScopeForValidation) {
+                if (CalendarSelectFilter.NATIONAL_CALENDARS === filter) {
+                    // Narrows by RITE only (Ambrosian has no national tier).
+                    // Its result is kept, unlike before, so the type check
+                    // right below runs against the SAME narrowed scope the
+                    // constructor would actually build from.
+                    resolvedScopeForValidation =
+                        CalendarResourcePicker.#narrowScopeToNationalTier(
+                            resolvedScopeForValidation,
+                            scope,
+                        );
+                }
+
+                // The rite check above catches a scope that DEMANDS a rite
+                // this filter has no select for at all. It does not catch a
+                // rite the filter CAN reach whose offered entries are the
+                // wrong TYPE for it — a diocese scope under
+                // `NATIONAL_CALENDARS`, or a nation scope with no
+                // `includeDioceses` under `DIOCESAN_CALENDARS`: the Roman
+                // rite qualifies either way, so `#narrowScopeToNationalTier()`
+                // has nothing to reject. Left unchecked here, that mismatch
+                // was only caught later by `_restrictToScope()`, deep inside
+                // the constructor's `try` — reporting a programmer error as
+                // though the API were down. `CalendarSelect._typesForFilter()`
+                // reuses `_restrictToScope()`'s own type-to-filter rule rather
+                // than a second, hand-copied one.
+                const initialEntries =
+                    resolvedScopeForValidation.calendarsByRite[
+                        resolvedScopeForValidation.initial.rite
+                    ];
+                const admittedTypes = CalendarSelect._typesForFilter(filter);
+                const admitsAny = initialEntries.some((entry) =>
+                    admittedTypes.includes(entry.type),
+                );
+                if (false === admitsAny) {
+                    const offeredTypes = [
+                        ...new Set(initialEntries.map((entry) => entry.type)),
+                    ];
+                    const filterName =
+                        CalendarSelectFilter.NATIONAL_CALENDARS === filter
+                            ? 'NATIONAL_CALENDARS'
+                            : 'DIOCESAN_CALENDARS';
+                    throw new Error(
+                        `CalendarResourcePicker: scope resolves to only ${offeredTypes.join('/')} calendar(s) ` +
+                            `for rite "${resolvedScopeForValidation.initial.rite}", but filter: CalendarSelectFilter.${filterName} ` +
+                            `admits only ${admittedTypes.join('/')} calendars. Use a scope whose entries this filter can show, ` +
+                            'or construct the picker under a different filter.',
+                    );
+                }
+            }
         }
 
         const element = CalendarResourcePicker.#requireElement(

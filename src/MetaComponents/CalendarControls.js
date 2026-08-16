@@ -28,6 +28,11 @@ import { canonicalizeLocale } from '../LocaleValidation.js';
 import { sanitizeHtml } from '../SanitizeHtml.js';
 import { resolveInputVisibility } from './InputVisibility.js';
 import {
+    assertScope,
+    resolveScope,
+    deriveVisibility,
+} from './CalendarScope.js';
+import {
     isFilterKeyedControls,
     resolveControlSlots,
     CONTROLS_TARGET_HINT,
@@ -101,6 +106,26 @@ export default class CalendarControls {
     #base;
 
     /**
+     * `resolveScope()`'s result, or `null` for no scope — the "restricts
+     * nothing" case that keeps every existing code path untouched. Read by
+     * `#applyScopeVisibility()` on every call, so a rite or calendar change
+     * always re-derives against the SAME resolved scope rather than a stale
+     * copy.
+     *
+     * @type {?Object}
+     */
+    #scope = null;
+
+    /**
+     * The `{ riteSelect, calendarSelect, localeInput }` overrides from
+     * `options.inputs`, kept for `#applyScopeVisibility()` to pass to
+     * `deriveVisibility()` on every re-derivation.
+     *
+     * @type {Object<string, boolean>}
+     */
+    #inputVisibility = {};
+
+    /**
      * Every container this instance has EVER mounted into — one for a single
      * target, one per pass for a filter-keyed `controls` slot (#63), unioned
      * across calls by `#rememberMounts()`. `dispose()` empties all of them.
@@ -167,19 +192,26 @@ export default class CalendarControls {
     #lastSelectionKey = '';
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
-     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
-     *   see `InputVisibility.js`. Only `{ acceptHeader: boolean }` today, and
-     *   only meaningful under a filter that renders that input at all
-     *   (`ALL_CALENDARS`, which is the default, and `NONE`).
+     * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render, and
+     *   which of the three scoped controls to force visible or hidden; see
+     *   `InputVisibility.js`. `{ acceptHeader, riteSelect, calendarSelect,
+     *   localeInput }`, all optional. `acceptHeader` is only meaningful under a
+     *   filter that renders that input at all (`ALL_CALENDARS`, which is the
+     *   default, and `NONE`); the other three override `deriveVisibility()`'s
+     *   own, scope-derived answer for that control.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this widget may show; see `CalendarScope.js`. A nullish
+     *   or unrestricting scope leaves every control visible, exactly as before
+     *   this option existed.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarControls');
-        const { locale, filter, theme, inputs, apiClient } = options;
+        const { locale, filter, theme, inputs, apiClient, scope } = options;
 
         if (locale !== undefined && locale !== null) {
             this.#locale = canonicalizeLocale(locale, 'CalendarControls');
@@ -197,10 +229,27 @@ export default class CalendarControls {
             inputs,
             'CalendarControls',
         );
+        this.#inputVisibility = inputVisibility;
         this.#base = resolveBase(apiClient, 'CalendarControls');
 
+        // Validated and resolved BEFORE any child is built, same reasoning as
+        // `inputVisibility` above: a bad scope (an unknown key, an unmatched
+        // diocese, a rite that leaves no calendar to resolve) is a programmer
+        // error and must reject before anything half-mounts. `resolveScope()`
+        // returns `null` for a scope that restricts nothing, and every scope
+        // path below is a no-op on that value — `RiteSelect` gets no `rites`
+        // override, the calendar select gets no forced initial value, and
+        // `deriveVisibility( null, … )` always returns all-true — which is what
+        // keeps an unscoped instance behaving exactly as before this option
+        // existed.
+        assertScope(scope, 'CalendarControls', this.#base);
+        this.#scope = resolveScope(scope, this.#base);
+
         const riteTheme = resolveChildTheme(theme, 'riteSelect');
-        this.#riteSelect = new RiteSelect({ locale: this.#locale });
+        this.#riteSelect = new RiteSelect({
+            locale: this.#locale,
+            ...(null !== this.#scope ? { rites: this.#scope.rites } : {}),
+        });
         if (Object.hasOwn(riteTheme, 'class')) {
             this.#riteSelect.class(riteTheme.class);
         }
@@ -257,6 +306,43 @@ export default class CalendarControls {
             this.#calendarSelect.wrapper(calendarWrapper);
         }
 
+        // The scope's initial option list and selection. `_restrictToScope()`
+        // MUST run before `value()`: the select's own default rite (`Rite.ROMAN`,
+        // since no `rite` option is passed above) may not be the scope's initial
+        // rite — a diocese scope resolving to an Ambrosian diocese is the case
+        // that makes this observable — so the UNRESTRICTED, Roman-built list may
+        // not even carry the scope's initial calendar id, and `value()` throws
+        // for any id no current option carries.
+        //
+        // `resolved.initial.calendarId` is already `''` for a `'rite'`
+        // calendarType — `riteStandIn()` in `CalendarScope.js` sets `id: ''` —
+        // so this needs no branch on `calendarType`; `CalendarSelect.value('')`
+        // is the documented rite-level spelling `value()`'s own doc comment
+        // describes.
+        //
+        // Guarded on the id actually surviving `_restrictToScope()`'s own
+        // type-vs-filter reconciliation (F4): this select's `CalendarSelect`
+        // is built with no `filter` (`NONE`), so every entry always survives
+        // and `scope.initial.calendarId` is always offered here — this
+        // instance never hits the guard's `false` branch, but the check is
+        // shared with `DayViewer`/`TodayViewer`/`CalendarResourcePicker`,
+        // where a real `NATIONAL_CALENDARS`/`DIOCESAN_CALENDARS` filter CAN
+        // drop the scope's own first entry, and forcing it unconditionally
+        // would throw instead of keeping the sensible fallback
+        // `_restrictToScope()` already chose.
+        if (null !== this.#scope) {
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[this.#scope.initial.rite],
+                this.#scope.initial.rite,
+            );
+            const initialCalendarOffered = [
+                ...this.#calendarSelect._domElement.options,
+            ].some((option) => option.value === this.#scope.initial.calendarId);
+            if (initialCalendarOffered) {
+                this.#calendarSelect.value(this.#scope.initial.calendarId);
+            }
+        }
+
         // `?? ApiOptionsFilter.ALL_CALENDARS` would default `undefined` AND
         // `null` alike, silently converting an explicitly-passed
         // `ApiOptionsFilter.NONE` (itself `null`) into `ALL_CALENDARS` — a
@@ -268,6 +354,25 @@ export default class CalendarControls {
         if (false === ACCEPTED_FILTERS.includes(resolvedFilter)) {
             throw new Error(
                 `CalendarControls: the filter option must be one of ApiOptionsFilter.ALL_CALENDARS, .GENERAL_ROMAN, .PATH_BUILDER, .LOCALE_ONLY, .YEAR_ONLY, or .NONE, but found: ${String(filter)}`,
+            );
+        }
+        // F2: `CalendarPathInput` (rendered under `PATH_BUILDER`) composes ANY
+        // API route — including `/calendar/nation/{anything the metadata
+        // carries}` — entirely outside `deriveVisibility()`'s reach, which is a
+        // full bypass of a scope's contract rather than a cosmetic gap. Making
+        // `CalendarPathInput` scope-aware was considered and rejected: its whole
+        // reason to exist is composing an unrestricted route, which is
+        // definitionally incompatible with restricting which calendars are
+        // reachable. Rejected here, by construction, rather than left to be
+        // silently bypassed.
+        if (
+            null !== this.#scope &&
+            ApiOptionsFilter.PATH_BUILDER === resolvedFilter
+        ) {
+            throw new Error(
+                'CalendarControls: scope cannot be combined with ApiOptionsFilter.PATH_BUILDER. ' +
+                    'CalendarPathInput composes ANY API route, which is incompatible with restricting ' +
+                    'which calendars are reachable. Construct without a scope, or use a different filter.',
             );
         }
         this.#apiOptions = new ApiOptions({
@@ -460,9 +565,73 @@ export default class CalendarControls {
      * @returns {void}
      */
     #listenForSelection(element) {
-        const listener = () => this.#scheduleSelectionNotify();
+        // `#applyScopeVisibility()` is called from HERE, synchronously, rather
+        // than from `#scheduleSelectionNotify()`'s microtask — a scoped
+        // control's `hidden` must already reflect the new selection by the
+        // time this handler returns, not one turn later. This single listener
+        // is attached to BOTH the rite select and the calendar select below,
+        // which is deliberately the one place a rite change and a calendar
+        // change both land: see `CalendarScope.js`'s `deriveVisibility()` doc
+        // comment for what went wrong the last time visibility was re-derived
+        // from only one side of that pair.
+        const listener = () => {
+            this.#scheduleSelectionNotify();
+            this.#applyScopeVisibility();
+        };
         element.addEventListener('change', listener);
         this.#selectionListeners.push({ element, listener });
+    }
+
+    /**
+     * Re-derives, for a resolved scope, which OPTIONS the calendar select may
+     * offer for the currently selected rite, and which of the three scoped
+     * controls have a choice to offer at all — applying the first via
+     * `CalendarSelect._restrictToScope()` and the second via `_setHidden()`.
+     *
+     * A no-op in effect when no scope was given: `_restrictToScope()` is never
+     * called, and `deriveVisibility( null, … )` always returns all-true, whose
+     * `_setHidden( false )` on an already-visible control changes nothing —
+     * which is what keeps an unscoped instance behaving exactly as before this
+     * option existed.
+     *
+     * **The restriction runs BEFORE the visibility derivation**, because a rite
+     * change can leave the calendar select's previous value no longer among
+     * the new rite's entries — `_restrictToScope()` then falls back to the new
+     * list's first entry — and `deriveVisibility()`'s `localeInput` answer
+     * depends on which calendar ends up selected, not which was selected before
+     * this ran.
+     *
+     * Called once after mounting, in `appendTo()`, and again from
+     * `#listenForSelection()`'s listener on every rite or calendar change —
+     * see that method's doc comment for why that one listener is the correct
+     * single place to call this from, rather than duplicating the call in a
+     * rite-only and a calendar-only handler. Calling `_restrictToScope()` from
+     * a CALENDAR change too (not only a rite change) is deliberate and safe:
+     * the entries for an unchanged rite are identical, so `_restrictToScope()`
+     * preserves the just-chosen value rather than reverting it — see that
+     * method's own doc comment.
+     *
+     * @returns {void}
+     */
+    #applyScopeVisibility() {
+        if (null !== this.#scope) {
+            const currentRite = this.#riteSelect._domElement.value;
+            this.#calendarSelect._restrictToScope(
+                this.#scope.calendarsByRite[currentRite] ?? [],
+                currentRite,
+            );
+        }
+        const visibility = deriveVisibility(
+            this.#scope,
+            this.#riteSelect._domElement.value,
+            this.#calendarSelect._domElement.value,
+            this.#inputVisibility,
+        );
+        this.#riteSelect._setHidden(false === visibility.riteSelect);
+        this.#calendarSelect._setHidden(false === visibility.calendarSelect);
+        this.#apiOptions._localeInput._setHidden(
+            false === visibility.localeInput,
+        );
     }
 
     /**
@@ -812,6 +981,11 @@ export default class CalendarControls {
         // it only needs `#apiOptions` to exist, which it already does.
         this.#selectedLocale = this.#matchLocale();
         this.#apiOptions._localeInput._domElement.value = this.#selectedLocale;
+
+        // Settles the three scoped controls' visibility against the rite and
+        // calendar this instance was constructed or just re-mounted with. A
+        // no-op for an unscoped instance; see `#applyScopeVisibility()`.
+        this.#applyScopeVisibility();
 
         // The messages mount is reassigned on EVERY call, not only when the slot
         // is named. Re-mounting to a target that omits `messages` — or names a
@@ -1376,6 +1550,8 @@ export default class CalendarControls {
      *
      * @param {string|HTMLElement|{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), messages?: (string|HTMLElement)}} target - Where to mount.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this widget may show; see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is
      *   `false`, the initial fetch runs.

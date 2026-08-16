@@ -245,6 +245,13 @@ export const THEME_CHILD_KEYS = Object.freeze({
         API_OPTIONS_KEY,
         ...LEGACY_TOP_LEVEL_INPUT_KEYS,
     ]),
+    TodayViewer: Object.freeze([
+        'riteSelect',
+        'calendarSelect',
+        'liturgy',
+        API_OPTIONS_KEY,
+        ...LEGACY_TOP_LEVEL_INPUT_KEYS,
+    ]),
     SubscriptionBuilder: Object.freeze([
         ...CALENDAR_CONTROLS_CHILD_KEYS,
         'subscriptionUrl',

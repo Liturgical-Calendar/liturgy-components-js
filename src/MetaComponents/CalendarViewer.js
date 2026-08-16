@@ -15,6 +15,8 @@ import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
 import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
 import { assertTheme, narrowTheme } from './Theme.js';
+import { assertScope } from './CalendarScope.js';
+import { resolveBase } from '../ApiClient/ApiBase.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
@@ -97,13 +99,16 @@ export default class CalendarViewer {
     #settled = Promise.resolve();
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale,
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale,
      *   forwarded to `CalendarControls` as-is.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
      *   forwarded to `CalendarControls`, e.g. `{ acceptHeader: false }`.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; forwarded to `CalendarControls`,
+     *   see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
      * @param {Object} [options.webCalendar] - `WebCalendar` methods to call, by
      *   name — see {@link WEB_CALENDAR_KEYS}. An unknown key throws, naming it.
@@ -129,6 +134,18 @@ export default class CalendarViewer {
         // the inner guard rejecting the key that child would read — see
         // `narrowTheme()`, and `SubscriptionBuilder`, where that case is real.
         assertTheme(bag.theme, 'CalendarViewer');
+        // The scope, under THIS class' name and before forwarding (F8): left to
+        // `CalendarControls`' own `assertScope()` call, a typo'd
+        // `scope.natoin` would report as `"CalendarControls: scope.natoin …"`
+        // — naming a class the caller never directly touched. Discarded here,
+        // like `resolveInputVisibility()`/`assertTheme()` above: this call
+        // exists only for attribution, and `CalendarControls` resolves the
+        // same bag again for real use.
+        assertScope(
+            bag.scope,
+            'CalendarViewer',
+            resolveBase(bag.apiClient, 'CalendarViewer'),
+        );
         this.#controls = new CalendarControls({
             ...bag,
             theme: narrowTheme(bag.theme, 'CalendarControls'),
@@ -541,6 +558,9 @@ export default class CalendarViewer {
      *
      * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; forwarded to `CalendarControls`,
+     *   see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is `false`,
      *   the initial fetch runs.
