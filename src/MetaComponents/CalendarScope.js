@@ -5,7 +5,8 @@
  *
  * Deliberately NOT exported from `src/index.js`, on the same reasoning as
  * `Theme.js` and `FilterInputs.js`: internal contract between components, not
- * public API. Later tasks add scope validation and visibility derivation on
+ * public API. Also exports `assertScope()`, which validates a scope bag
+ * before it reaches this resolver. Later tasks add visibility derivation on
  * top of this pure resolver, and the components that consume it.
  *
  * `resolveScope()` returns `null` when the scope restricts nothing — a
@@ -18,6 +19,7 @@
  */
 
 import { Rite, RiteProperties } from '../Enums.js';
+import { assertPlainOptions } from '../OptionsValidation.js';
 
 /**
  * Finds a diocesan calendar across every rite, returning it with its rite.
@@ -170,6 +172,158 @@ function calendarsForRite(scope, apiBase, rite) {
 }
 
 /**
+ * Whether a nation is known to the metadata at all — carrying a national
+ * calendar, or at least one diocese under it in any rite. Mirrors
+ * {@link nationHasRite}'s two-tier reasoning, but across every rite rather
+ * than testing one, since a scope's `nation` need not resolve to a rite that
+ * has a national tier to be a legitimate nation.
+ *
+ * @param {import('../ApiClient/ApiBase.js').default} apiBase - The loaded base.
+ * @param {string} nation - The nation's calendar id.
+ * @returns {boolean}
+ */
+function nationExists(apiBase, nation) {
+    if (
+        apiBase
+            .nationalCalendars()
+            .some((entry) => entry.calendar_id === nation)
+    ) {
+        return true;
+    }
+    return Object.values(Rite).some((rite) =>
+        apiBase
+            .diocesanCalendars(rite)
+            .some((entry) => entry.nation === nation),
+    );
+}
+
+/**
+ * The keys a scope bag may carry.
+ */
+const SCOPE_KEYS = Object.freeze([
+    'rite',
+    'nation',
+    'diocese',
+    'locale',
+    'includeDioceses',
+]);
+
+/**
+ * Validates a scope bag before it is handed to {@link resolveScope}, so a
+ * malformed scope fails loudly, naming the rejecting component, rather than
+ * surfacing later as a confusing crash inside `resolveScope()` (an unmatched
+ * diocese id, or a rite that leaves no calendar to resolve, would otherwise
+ * throw a bare `TypeError` from deep inside its calendar-building helpers).
+ *
+ * Returns early, without throwing, for a nullish scope — the "no scope"
+ * case `resolveScope()` itself treats as `null`. It does NOT special-case
+ * `{}` or a scope naming none of `nation`/`diocese`/`rite`/`locale`: those
+ * are syntactically valid scope bags (they simply resolve to "no scope"
+ * downstream), so nothing here needs to reject them.
+ *
+ * A scope naming only `rite` and/or `locale`, with neither `nation` nor
+ * `diocese`, is legitimate — `{ rite: 'roman' }` restricts the rite alone,
+ * leaving every calendar of that rite in scope — and is validated the same
+ * way as any other scope, not rejected for the missing keys.
+ *
+ * @param {unknown} scope - The candidate scope bag, or nullish for "no scope".
+ * @param {string} componentName - The rejecting component's class name, used to
+ *        prefix every message this throws.
+ * @param {import('../ApiClient/ApiBase.js').default} apiBase - The loaded base to
+ *        validate the scope against.
+ * @returns {void}
+ * @throws {Error} If the scope is not a plain object, names an unrecognised key,
+ *         names a `nation` or `diocese` absent from the metadata, names a `rite`
+ *         that contradicts an inferred diocese rite or that has no overlap with
+ *         the rites derivable for the scope, names an empty `rite` array, or
+ *         names a `locale` the resolved calendar does not support.
+ */
+function assertScope(scope, componentName, apiBase) {
+    if (null === scope || undefined === scope) {
+        return;
+    }
+
+    assertPlainOptions(scope, `${componentName}: scope`);
+
+    for (const key of Object.keys(scope)) {
+        if (false === SCOPE_KEYS.includes(key)) {
+            throw new Error(
+                `${componentName}: scope.${key} is not a recognised scope key. Valid keys are: ${SCOPE_KEYS.join(', ')}.`,
+            );
+        }
+    }
+
+    let dioceseEntry = null;
+    if (undefined !== scope.diocese) {
+        dioceseEntry = findDiocese(apiBase, scope.diocese);
+        if (null === dioceseEntry) {
+            throw new Error(
+                `${componentName}: scope.diocese "${scope.diocese}" is not a known diocesan calendar.`,
+            );
+        }
+    }
+
+    if (
+        undefined !== scope.nation &&
+        false === nationExists(apiBase, scope.nation)
+    ) {
+        throw new Error(
+            `${componentName}: scope.nation "${scope.nation}" is not a known national calendar.`,
+        );
+    }
+
+    let availableRites;
+    if (null !== dioceseEntry) {
+        availableRites = [dioceseEntry.rite];
+    } else if (undefined !== scope.nation) {
+        availableRites = Object.values(Rite).filter((rite) =>
+            nationHasRite(apiBase, scope.nation, rite),
+        );
+    } else {
+        availableRites = Object.values(Rite);
+    }
+
+    if (undefined !== scope.rite) {
+        const requestedRites = Array.isArray(scope.rite)
+            ? scope.rite
+            : [scope.rite];
+        if (0 === requestedRites.length) {
+            throw new Error(
+                `${componentName}: scope.rite must not be an empty array.`,
+            );
+        }
+        const overlap = requestedRites.filter((rite) =>
+            availableRites.includes(rite),
+        );
+        if (0 === overlap.length) {
+            if (null !== dioceseEntry) {
+                throw new Error(
+                    `${componentName}: scope.rite "${requestedRites.join(', ')}" contradicts scope.diocese "${scope.diocese}", whose rite is "${dioceseEntry.rite}".`,
+                );
+            }
+            const suffix =
+                undefined !== scope.nation
+                    ? ` for scope.nation "${scope.nation}"`
+                    : '';
+            throw new Error(
+                `${componentName}: scope.rite "${requestedRites.join(', ')}" is not available${suffix}. Available rite(s): ${availableRites.join(', ')}.`,
+            );
+        }
+    }
+
+    if (undefined !== scope.locale) {
+        const resolved = resolveScope(scope, apiBase);
+        const initialCalendar =
+            resolved.calendarsByRite[resolved.initial.rite][0];
+        if (false === initialCalendar.locales.includes(scope.locale)) {
+            throw new Error(
+                `${componentName}: scope.locale "${scope.locale}" is not among the resolved calendar's locales: ${initialCalendar.locales.join(', ')}.`,
+            );
+        }
+    }
+}
+
+/**
  * Resolves a calendar scope against a loaded `ApiBase` into the rites and
  * calendars it admits, plus an initial selection.
  *
@@ -232,4 +386,4 @@ function resolveScope(scope, apiBase) {
     };
 }
 
-export { resolveScope };
+export { resolveScope, assertScope };

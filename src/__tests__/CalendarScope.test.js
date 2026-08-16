@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
-import { resolveScope } from '../MetaComponents/CalendarScope.js';
+import { resolveScope, assertScope } from '../MetaComponents/CalendarScope.js';
 import { Rite } from '../Enums.js';
 
 const API_URL = 'http://localhost:8000';
@@ -195,5 +195,80 @@ describe("the rite-level stand-in's locales", () => {
         const standIn = resolved.calendarsByRite[Rite.ROMAN][0];
         expect(standIn.type).toBe('rite');
         expect(standIn.locales).toEqual(base.locales());
+    });
+});
+
+describe('assertScope()', () => {
+    it('accepts a nullish scope', () => {
+        expect(() =>
+            assertScope(undefined, 'CalendarViewer', base),
+        ).not.toThrow();
+        expect(() => assertScope(null, 'CalendarViewer', base)).not.toThrow();
+    });
+
+    it('rejects a non-object', () => {
+        expect(() => assertScope('IT', 'CalendarViewer', base)).toThrow(
+            /CalendarViewer.*scope/,
+        );
+    });
+
+    it('rejects an unknown key, naming it and the accepted ones', () => {
+        expect(() =>
+            assertScope({ natoin: 'IT' }, 'CalendarViewer', base),
+        ).toThrow(/natoin.*nation/s);
+    });
+
+    it('rejects a nation absent from the metadata', () => {
+        expect(() => assertScope({ nation: 'ZZ' }, 'DayViewer', base)).toThrow(
+            /DayViewer.*ZZ/,
+        );
+    });
+
+    it('rejects a diocese absent from the metadata', () => {
+        expect(() =>
+            assertScope({ diocese: 'nowhere_xx' }, 'DayViewer', base),
+        ).toThrow(/nowhere_xx/);
+    });
+
+    it('rejects a rite that contradicts the diocese, naming both', () => {
+        expect(() =>
+            assertScope(
+                { rite: 'ambrosian', diocese: 'romamo_it' },
+                'CalendarViewer',
+                base,
+            ),
+        ).toThrow(/ambrosian.*romamo_it/s);
+    });
+
+    it('rejects a rite outside the set derived for the nation', () => {
+        expect(() =>
+            assertScope(
+                { nation: 'US', rite: 'ambrosian' },
+                'CalendarViewer',
+                base,
+            ),
+        ).toThrow(/ambrosian.*roman/s);
+    });
+
+    it('rejects an empty rite array', () => {
+        expect(() =>
+            assertScope({ nation: 'IT', rite: [] }, 'CalendarViewer', base),
+        ).toThrow(/empty/);
+    });
+
+    it('rejects a locale the resolved calendar does not support, listing those it does', () => {
+        expect(() =>
+            assertScope({ nation: 'IT', locale: 'de' }, 'CalendarViewer', base),
+        ).toThrow(/de.*it/s);
+    });
+
+    it('accepts a locale the resolved calendar supports', () => {
+        expect(() =>
+            assertScope(
+                { nation: 'CA', locale: 'fr-CA' },
+                'CalendarViewer',
+                base,
+            ),
+        ).not.toThrow();
     });
 });
