@@ -144,3 +144,49 @@ describe('CalendarResourcePicker with a scope', () => {
         expect(picker.calendarSelect._domElement.hidden).toBe(false);
     });
 });
+
+describe('CalendarResourcePicker scope under CalendarSelectFilter.NATIONAL_CALENDARS (F1)', () => {
+    it('offers Roman only, with no rite select and no unreachable Ambrosian branch, for a scope that merely permits it', () => {
+        // Italy also has an Ambrosian diocese (`milano_it`), so `resolveScope()`
+        // itself resolves `rites: ['roman', 'ambrosian']` — but this filter has
+        // no rite select to ever reach the Ambrosian branch, and the scope never
+        // DEMANDED it, so it must be narrowed away rather than rejected or left
+        // silently unreachable.
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            scope: { nation: 'IT' },
+        });
+        picker.appendTo('#mount');
+        expect(picker.riteSelect).toBeNull();
+        expect(
+            [...picker.calendarSelect._domElement.options].map((o) => o.value),
+        ).toEqual(['IT']);
+        expect(picker.calendarSelect._domElement.value).toBe('IT');
+    });
+
+    it('throws naming both the pinned rite and the filter when scope.rite cannot be surfaced under NATIONAL_CALENDARS', () => {
+        expect(
+            () =>
+                new CalendarResourcePicker({
+                    locale: 'en',
+                    filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                    scope: { rite: 'ambrosian' },
+                }),
+        ).toThrow(
+            /CalendarResourcePicker.*scope\.rite.*ambrosian.*NATIONAL_CALENDARS/s,
+        );
+    });
+
+    it('leaves the DIOCESAN_CALENDARS case unchanged: both rites remain reachable for the same nation scope', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            scope: { nation: 'IT' },
+        });
+        picker.appendTo('#mount');
+        expect(
+            [...picker.riteSelect._domElement.options].map((o) => o.value),
+        ).toEqual(['roman', 'ambrosian']);
+    });
+});

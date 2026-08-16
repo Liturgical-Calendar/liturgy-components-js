@@ -9,6 +9,7 @@
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClient from '../ApiClient/ApiClient.js';
 import DayViewer from '../MetaComponents/DayViewer.js';
 
 const API_URL = 'http://localhost:8000';
@@ -23,14 +24,21 @@ const API_URL = 'http://localhost:8000';
  * `CalendarScope.test.js`) rather than the shared `FULL_METADATA` fixture,
  * which CLAUDE.md requires stay byte-identical to the live `/calendars`
  * response — `lugano_ch` must not be invented there.
+ *
+ * Every entry carries an (empty) `settings` object, unlike the copies of this
+ * literal in `CalendarControlsScope.test.js` and
+ * `CalendarResourcePickerScope.test.js`: `ApiOptions.linkToCalendarSelect()`'s
+ * `#applyCalendarToInputs()` reads `nationalCalendar.settings` unconditionally
+ * (`Object.entries()` on it) for the F2 round-trip test below, which is the
+ * first scope test in this task to exercise `listenTo()` at all.
  */
 const METADATA = {
     locales: ['en', 'it', 'fr', 'la'],
     national_calendars: [
-        { calendar_id: 'IT', locales: ['it'] },
-        { calendar_id: 'US', locales: ['en'] },
-        { calendar_id: 'CA', locales: ['fr-CA', 'en-CA'] },
-        { calendar_id: 'CH', locales: ['de', 'fr', 'it'] },
+        { calendar_id: 'IT', locales: ['it'], settings: {} },
+        { calendar_id: 'US', locales: ['en'], settings: {} },
+        { calendar_id: 'CA', locales: ['fr-CA', 'en-CA'], settings: {} },
+        { calendar_id: 'CH', locales: ['de', 'fr', 'it'], settings: {} },
     ],
     diocesan_calendars: [
         {
@@ -39,6 +47,7 @@ const METADATA = {
             diocese: 'Roma',
             locales: ['it'],
             rite: 'roman',
+            settings: {},
         },
         {
             calendar_id: 'milano_it',
@@ -46,6 +55,7 @@ const METADATA = {
             diocese: 'Milano',
             locales: ['it'],
             rite: 'ambrosian',
+            settings: {},
         },
         {
             calendar_id: 'lugano_ch',
@@ -53,6 +63,7 @@ const METADATA = {
             diocese: 'Lugano',
             locales: ['it'],
             rite: 'ambrosian',
+            settings: {},
         },
         {
             calendar_id: 'boston_us',
@@ -60,9 +71,12 @@ const METADATA = {
             diocese: 'Boston',
             locales: ['en'],
             rite: 'roman',
+            settings: {},
         },
     ],
-    ambrosian_calendars: [{ calendar_id: 'AMBROSIAN', locales: ['it', 'la'] }],
+    ambrosian_calendars: [
+        { calendar_id: 'AMBROSIAN', locales: ['it', 'la'], settings: {} },
+    ],
 };
 
 beforeEach(() => {
@@ -153,5 +167,29 @@ describe('DayViewer with a scope', () => {
         });
         pinned.appendTo('#mount2');
         expect(pinned.localeInput._domElement.hidden).toBe(true);
+    });
+
+    it('stays narrowed after listenTo() links the rite select (F2)', async () => {
+        // `ApiOptions.linkToRiteSelect()` rebuilds the calendar select from the
+        // FULL, unscoped base lists and then dispatches a synthetic `change` on
+        // it — see `#handleLinkedRiteSelect()` in `ApiOptions.js`. That
+        // dispatch is what `DayViewer`'s own scope-visibility listener catches
+        // and re-narrows through `_restrictToScope()`. This asserts the round
+        // trip actually lands back on the narrowed set, not the rebuilt full
+        // one: without it, a future change to that synthetic dispatch could
+        // silently unscope every wired viewer with nothing to catch it.
+        const apiClient = await ApiClient.init(API_URL);
+        const viewer = new DayViewer({
+            locale: 'en',
+            scope: { nation: 'IT', includeDioceses: true },
+            apiClient,
+        });
+        viewer.appendTo('#mount');
+
+        viewer.listenTo(apiClient);
+
+        expect(
+            [...viewer.calendarSelect._domElement.options].map((o) => o.value),
+        ).toEqual(['IT', 'romamo_it']);
     });
 });
