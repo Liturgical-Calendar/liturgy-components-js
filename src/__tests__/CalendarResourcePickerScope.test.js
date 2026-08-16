@@ -189,4 +189,50 @@ describe('CalendarResourcePicker scope under CalendarSelectFilter.NATIONAL_CALEN
             [...picker.riteSelect._domElement.options].map((o) => o.value),
         ).toEqual(['roman', 'ambrosian']);
     });
+
+    it('throws naming the diocese and its rite when an Ambrosian diocese scope is pinned under NATIONAL_CALENDARS, rather than the opaque internal error', () => {
+        // `milano_it` is an Ambrosian diocese. `resolveScope()` derives
+        // `rites: ['ambrosian']` from the diocese alone and never sets
+        // `scope.rite` — so the guard must fire on "nothing survives
+        // narrowing", not on "scope.rite was named", or this reaches
+        // `_restrictToScope()` with an undefined entries array and throws
+        // the opaque "entries must be an array, but found type: undefined"
+        // instead.
+        let thrown;
+        try {
+            new CalendarResourcePicker({
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { diocese: 'milano_it' },
+            });
+        } catch (error) {
+            thrown = error;
+        }
+        expect(thrown).toBeInstanceOf(Error);
+        expect(thrown.message).toMatch(
+            /CalendarResourcePicker.*scope\.diocese.*milano_it.*ambrosian.*NATIONAL_CALENDARS/s,
+        );
+        expect(thrown.message).not.toMatch(/entries must be an array/);
+    });
+
+    it('does not throw for a Roman diocese scope under NATIONAL_CALENDARS: Roman survives narrowing', () => {
+        // `romamo_it` is a Roman diocese, so `#narrowScopeToNationalTier()`
+        // finds `reachable` non-empty and construction succeeds. The
+        // rendered option is the diocese entry itself — `_restrictToScope()`
+        // writes exactly the scope's own entries, independent of this
+        // select's `NATIONAL_CALENDARS` filter — this test's purpose is only
+        // to confirm the guard does NOT fire here, unlike the Ambrosian
+        // diocese case above.
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+            scope: { diocese: 'romamo_it' },
+        });
+        picker.appendTo('#mount');
+        expect(picker.riteSelect).toBeNull();
+        expect(
+            [...picker.calendarSelect._domElement.options].map((o) => o.value),
+        ).toEqual(['romamo_it']);
+        expect(picker.calendarSelect._domElement.value).toBe('romamo_it');
+    });
 });

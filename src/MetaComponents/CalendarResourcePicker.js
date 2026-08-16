@@ -219,15 +219,20 @@ export default class CalendarResourcePicker {
         // alongside Roman (`{ nation: 'IT' }`, where Italy also has an
         // Ambrosian diocese) is not a contradiction — the consumer never
         // demanded it — so that rite is narrowed away here rather than
-        // rejected. A scope that PINS a rite this filter cannot surface at
-        // all (`{ rite: 'ambrosian' }`) IS a contradiction: the consumer
-        // asked for exactly the thing this widget cannot show, and silently
-        // substituting the Ambrosian rite-level calendar for what is
-        // supposed to be a national-calendars-only picker is precisely the
-        // silent-narrowing failure this component exists to avoid — see
-        // `#narrowScopeToNationalTier()`. `resolveScope()` itself is left
-        // untouched: it is shared with `CalendarControls` and `DayViewer`,
-        // for whom the Ambrosian rite genuinely IS reachable.
+        // rejected. A scope that DEMANDS a rite this filter cannot surface at
+        // all IS a contradiction: the consumer asked for exactly the thing
+        // this widget cannot show, and silently substituting the Ambrosian
+        // rite-level calendar for what is supposed to be a
+        // national-calendars-only picker is precisely the silent-narrowing
+        // failure this component exists to avoid — see
+        // `#narrowScopeToNationalTier()`. A rite can be demanded two ways:
+        // `{ rite: 'ambrosian' }` pins it directly, and `{ diocese:
+        // 'milano_it' }` pins it just as effectively, since `resolveScope()`
+        // derives the rite from the diocese alone and never consults
+        // `scope.rite`. Both throw; neither is silently narrowed away.
+        // `resolveScope()` itself is left untouched: it is shared with
+        // `CalendarControls` and `DayViewer`, for whom the Ambrosian rite
+        // genuinely IS reachable.
         if (
             null !== this.#scope &&
             CalendarSelectFilter.NATIONAL_CALENDARS === filter
@@ -415,36 +420,41 @@ export default class CalendarResourcePicker {
      * ].hasNationalTier`. Ambrosian has none, so a scope that only PERMITS it
      * (e.g. `{ nation: 'IT' }`, where Italy also has an Ambrosian diocese) is
      * narrowed away silently: this filter has no rite select and so no way to
-     * ever reach it, and the consumer never demanded it either. A scope that
-     * PINS a rite this filter cannot surface at all — `rawScope.rite` named
-     * explicitly, and none of it survives the narrowing — throws instead:
-     * silently substituting the Ambrosian rite-level calendar for what is
-     * supposed to be a national-calendars-only picker would be exactly the
-     * silent-narrowing failure this component exists to avoid (issue #43).
+     * ever reach it, and the consumer never demanded it either.
+     *
+     * A scope that DEMANDS a rite this filter cannot surface at all — nothing
+     * survives the narrowing — throws instead: silently substituting the
+     * Ambrosian rite-level calendar for what is supposed to be a
+     * national-calendars-only picker would be exactly the silent-narrowing
+     * failure this component exists to avoid (issue #43). What makes a rite
+     * "demanded" is whether anything survives, not how it was expressed:
+     * `rawScope.rite` pins it directly, but `rawScope.diocese` pins it just as
+     * effectively — `resolveScope()` derives `rites` from the diocese's own
+     * rite and never consults `rawScope.rite` at all, so a diocese-only scope
+     * (e.g. `{ diocese: 'milano_it' }`) reaches this method having never set
+     * `rawScope.rite`. The message names whichever of the two the consumer
+     * actually wrote, rather than misreporting a diocese scope as a `rite` pin.
      *
      * `resolveScope()` itself is untouched by this — it is shared with
      * `CalendarControls` and `DayViewer`, for whom the Ambrosian rite
      * genuinely IS reachable through their own rite selects.
      *
      * @param {Object} resolved - `resolveScope()`'s non-null result.
-     * @param {Object} rawScope - The caller's own scope bag, to detect a `rite` pin.
+     * @param {Object} rawScope - The caller's own scope bag, to attribute the message.
      * @returns {Object} The same shape, with `rites`/`calendarsByRite`/`initial` narrowed
      *   to rites this filter can show.
-     * @throws {Error} If `rawScope.rite` names only rites with no national tier.
+     * @throws {Error} If narrowing leaves no reachable rite at all.
      */
     static #narrowScopeToNationalTier(resolved, rawScope) {
         const reachable = resolved.rites.filter(
             (rite) => RiteProperties[rite].hasNationalTier,
         );
-        if (undefined !== rawScope.rite && 0 === reachable.length) {
-            const pinned = Array.isArray(rawScope.rite)
-                ? rawScope.rite
-                : [rawScope.rite];
+        if (0 === reachable.length) {
             throw new Error(
-                `CalendarResourcePicker: scope.rite "${pinned.join(', ')}" cannot be shown under filter: CalendarSelectFilter.NATIONAL_CALENDARS, ` +
-                    'which has no national calendar for a rite with no national tier ' +
-                    '(RiteProperties[ rite ].hasNationalTier is false — the Ambrosian rite is the only one today). ' +
-                    'Use filter: CalendarSelectFilter.DIOCESAN_CALENDARS instead, or unpin scope.rite.',
+                CalendarResourcePicker.#nationalTierNarrowingError(
+                    resolved,
+                    rawScope,
+                ),
             );
         }
         const calendarsByRite = {};
@@ -467,6 +477,47 @@ export default class CalendarResourcePicker {
                   }
                 : resolved.initial,
         };
+    }
+
+    /**
+     * Builds the message for `#narrowScopeToNationalTier()`'s throw, naming
+     * whichever of `rite` or `diocese` the consumer actually wrote rather than
+     * reporting a diocese-derived rite as though `scope.rite` had been named —
+     * `resolveScope()` never reads `rawScope.rite` for a diocese scope, so
+     * that field can be `undefined` even though a rite was, in effect, pinned.
+     *
+     * `rawScope.diocese` takes priority when both keys happen to be present,
+     * because a diocese pins its own rite regardless of what `scope.rite`
+     * also says — `assertScope()` has already rejected the two contradicting
+     * each other, so by the time this runs they agree.
+     *
+     * @param {Object} resolved - `resolveScope()`'s non-null result, already narrowed to
+     *   nothing reachable.
+     * @param {Object} rawScope - The caller's own scope bag.
+     * @returns {string} The message, prefixed with the component name.
+     */
+    static #nationalTierNarrowingError(resolved, rawScope) {
+        const reason =
+            'which has no national calendar for a rite with no national tier ' +
+            '(RiteProperties[ rite ].hasNationalTier is false — the Ambrosian rite is the only one today).';
+
+        if (undefined !== rawScope.diocese) {
+            return (
+                `CalendarResourcePicker: scope.diocese "${rawScope.diocese}" resolves to rite "${resolved.rites[0]}", ` +
+                `which cannot be shown under filter: CalendarSelectFilter.NATIONAL_CALENDARS, ${reason} ` +
+                'Use filter: CalendarSelectFilter.DIOCESAN_CALENDARS instead, or choose a diocese whose rite has a national tier.'
+            );
+        }
+
+        const pinned = Array.isArray(rawScope.rite)
+            ? rawScope.rite
+            : undefined !== rawScope.rite
+              ? [rawScope.rite]
+              : resolved.rites;
+        return (
+            `CalendarResourcePicker: scope.rite "${pinned.join(', ')}" cannot be shown under filter: CalendarSelectFilter.NATIONAL_CALENDARS, ${reason} ` +
+            'Use filter: CalendarSelectFilter.DIOCESAN_CALENDARS instead, or unpin scope.rite.'
+        );
     }
 
     /**
