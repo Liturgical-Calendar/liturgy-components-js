@@ -54,7 +54,7 @@ Every key is optional.
 
 ```javascript
 scope: {
-    rite: 'roman',            // pin the rite
+    rite: 'roman',            // allowed rite(s); string or array — see below
     nation: 'IT',             // pin to a national calendar
     diocese: 'romamo_it',     // pin to a diocesan calendar
     locale: 'fr-CA',          // pin the locale
@@ -64,6 +64,29 @@ scope: {
 
 `scope: undefined` and `scope: {}` both mean "no scope" — today's behaviour, every calendar — per the
 library-wide nullish rule.
+
+#### `scope.rite` is a RESTRICTION, and takes a string or an array
+
+`scope.rite` names the **allowed set** of rites, not an initial default. That is why pinning it removes the
+rite select rather than merely preselecting it, and it is the semantics that makes the array form a
+consistent widening rather than a second concept: a string is a singleton set.
+
+**The initial rite is the first element.** One rule, degenerating correctly:
+
+```javascript
+rite: 'roman'                    // allowed {roman},            initial roman
+rite: ['roman', 'ambrosian']     // allowed {roman, ambrosian}, initial roman
+rite: ['ambrosian', 'roman']     // same set,                   initial ambrosian
+```
+
+Had `scope.rite` instead meant "initial value, all rites still reachable", expressing a restriction later
+would have required a second key, and the string form would read wrong beside it.
+
+**This is deliberate future-proofing with limited use today.** With only `roman` and `ambrosian` in `Rite`,
+`['roman', 'ambrosian']` is equivalent to omitting the key, so the _restriction_ aspect is not yet
+expressible; only the **ordering** aspect is observable. It earns its place when further rites are added:
+an Italian Bishops' Conference site would then write `rite: ['roman', 'ambrosian']` and a Melkite or
+Ruthenian rite would never appear.
 
 ### Resolution
 
@@ -79,9 +102,23 @@ Three properties are load-bearing:
 - **Diocesan exclusion by nation falls out for free.** Diocesan metadata entries carry `nation`, so a
   `nation: 'IT'` scope excludes `lugano_ch` under either rite with no special-casing. This is the behaviour
   that was explicitly wanted: Milan is in scope for Italy, Lugano is not.
-- **A rite-level calendar counts as in scope for a nation.** `{nation: 'IT'}` under `rite = ambrosian`
-  offers the Ambrosian calendar plus Italian Ambrosian dioceses, because there is no Ambrosian national
-  tier to offer instead.
+- **Which rites are in scope is DERIVED from the metadata, not assumed to be all of them:**
+
+  > A rite is in scope for a nation iff that nation has a national calendar for it, **or** at least one
+  > diocese of it.
+
+  So `{nation: 'IT'}` yields Roman (national tier) and Ambrosian (Milan), while `{nation: 'US'}` yields
+  Roman alone — the United States has no Ambrosian diocese — and its rite select is therefore hidden rather
+  than offering an Ambrosian option with nothing American behind it.
+
+  `scope.rite` intersects with this derived set. An empty intersection throws at mount, naming both the
+  requested rites and those actually available.
+
+- **A rite-level calendar counts as in scope for a nation, for a rite that is in scope.** `{nation: 'IT'}`
+  under `rite = ambrosian` offers the Ambrosian calendar plus Italian Ambrosian dioceses, because there is
+  no Ambrosian national tier to offer instead. This is a fallback for rites lacking a national tier, **not**
+  a licence for every rite-level calendar to appear in every nation's scope — which is what the earlier
+  draft of this rule would have meant once more rites existed.
 
 ### `includeDioceses` defaults to `false`
 
@@ -100,9 +137,19 @@ and makes a bare nation scope behave the way a consumer writing "default calenda
 | `{nation: 'CA'}`                                       | Canada, locales `fr-CA` / `en-CA` | Ambrosian                      | rite + locale   |
 | `{nation: 'CA', rite: 'roman'}`                        | Canada, two locales               | — (pinned)                     | locale only     |
 | `{nation: 'CA', rite: 'roman', locale: 'fr-CA'}`       | Canada in French                  | — (pinned)                     | none            |
+| `{nation: 'US'}`                                       | United States                     | — (no US Ambrosian diocese)    | none            |
+| `{nation: 'IT', rite: ['ambrosian', 'roman']}`         | Italy                             | Ambrosian (initial)            | rite only       |
 
 The "separate widget per rite / per language" alternatives are simply the pinned rows: pin `rite`, or pin
 `locale`, and the corresponding control disappears.
+
+The `{nation: 'US'}` row is the one the derived-rites rule changes. Under the earlier draft it would have
+shown a two-option rite select whose Ambrosian branch led to the bare Ambrosian calendar — nothing to do
+with the United States.
+
+It also removes an edge case structurally rather than by special-casing: a nation with an Ambrosian diocese
+but no Roman national calendar — the `CH` case `CalendarSelect.test.js` calls "the crash case" — resolves to
+Ambrosian alone, instead of offering a Roman option with nothing behind it.
 
 ## Derived visibility
 
@@ -192,6 +239,21 @@ unregistered component name throws rather than falling back to permissive behavi
 calendar" is a diocesan use case, and pinning the scope makes the generated iCal URL a single fixed
 subscription rather than a builder.
 
+### `RiteSelect` gains an option set
+
+`RiteSelect` currently renders every member of `Rite` unconditionally, from `Object.values(Rite)` in its
+constructor. The derived-rites rule requires it to render a subset, so it gains a constructor option and a
+matching chainable setter naming the rites to offer.
+
+This is **new public surface on a component this feature would otherwise not touch**, and it is the one
+place the design reaches outside the meta-component layer. It is justified because the alternative — a
+meta-component reaching in to remove `<option>` elements after construction — would duplicate the option
+labelling and the localized `message( 'RITE_*' )` lookups that `RiteSelect` owns.
+
+Defaults are unchanged: omitting the option renders every rite, exactly as today, so no existing consumer
+is affected. Ordering follows the given list, which is what makes `scope.rite`'s first-element-is-initial
+rule visible in the select itself.
+
 ### `TodayViewer`
 
 A new meta-component, sibling to `DayViewer`. The names carry exactly the distinction — `DayViewer` renders
@@ -241,7 +303,10 @@ The existing split holds: **reject for programmer error, resolve for runtime fai
 - an unknown key in the bag, naming it and listing the accepted keys;
 - a `nation` or `diocese` absent from the metadata index, naming it;
 - a contradiction between keys, naming both sides;
-- a `locale` the resolved calendar does not support, naming the supported locales.
+- a `locale` the resolved calendar does not support, naming the supported locales;
+- a `rite` — or every member of a `rite` array — outside the set derived for the scope, naming both the
+  requested rites and those actually available. `{nation: 'US', rite: 'ambrosian'}` is the concrete case;
+- an empty `rite` array, which states a restriction to nothing and is always a mistake.
 
 **The locale case is a deliberate decision.** It is a mount-time configuration claim, and silently serving a
 liturgical calendar in the wrong language is worse than failing loudly. The precedent is
@@ -257,7 +322,12 @@ stand-in to substitute for.
 ## Testing
 
 - **`CalendarScope.test.js`** — the resolver as a pure function: every row of the worked-cases table, the
-  Lugano exclusion, key inference, and each contradiction.
+  Lugano exclusion, key inference, and each contradiction. Specifically including the derived-rites rule
+  (`{nation: 'US'}` yields Roman alone; `{nation: 'IT'}` yields both), `scope.rite` in string and array
+  form, first-element-is-initial ordering, and the empty-intersection and empty-array throws.
+- **`RiteSelect` option-set tests** — a restricted list renders only those rites, in the given order, with
+  their localized labels intact; omitting the option still renders every rite, so no existing consumer
+  changes.
 - **Per-component visibility tests, including the dynamic path** — switch rite, assert `calendarSelect`
   appears and vanishes. This is where the documented `_setHidden()` leak happened before, so a static
   mount-time assertion is not sufficient.
@@ -292,6 +362,7 @@ Everything is additive except the `LiturgyOfTheDay` fix, which is a bug fix, so 
   listening to an `ApiClient` and never fetch for themselves. Scope is a meta-component concern.
 - **No new `ApiClient` surface.** The fetch methods already cover every case; this adds no
   `apiClient.calendar()`.
-- **No restriction of the rite list itself.** `RiteSelect` continues to render every rite in `Rite`; scope
-  decides whether the select is _shown_, not which options it carries. Narrowing the options is a larger
-  change and is not needed for any of the three motivating cases.
+- **No narrowing of `CalendarSelect`'s own public filter API.** `CalendarSelectFilter` keeps its present
+  meaning; scope narrows the option set that reaches the select, not the enum.
+- **No new `Rite` members.** Melkite and Ruthenian are the motivating hypothetical for `scope.rite`
+  accepting an array, but adding rites is API-side work and out of scope here.
