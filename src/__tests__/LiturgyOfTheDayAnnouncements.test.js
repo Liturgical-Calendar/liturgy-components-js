@@ -108,4 +108,31 @@ describe('LiturgyOfTheDay live region', () => {
         apiClient._eventBus.emit('calendarFetched', payload());
         expect(document.querySelector('#host [role="status"]')).toBeNull();
     });
+
+    it('is silent on the first render after announcements are turned back on', () => {
+        // Re-enabling mounts a NEW region, so the "silent on the render that
+        // inserts the region" rule applies to it as to a fresh instance.
+        const liturgy = new LiturgyOfTheDay({ locale: 'en' });
+        liturgy.listenTo(apiClient);
+        liturgy.appendTo('#host');
+
+        apiClient._eventBus.emit('calendarFetched', payload());
+        apiClient._eventBus.emit('calendarFetched', payload());
+        expect(
+            document.querySelector('#host [role="status"]').textContent,
+        ).not.toBe('');
+
+        liturgy.announceUpdates(false);
+        liturgy.announceUpdates(true);
+
+        apiClient._eventBus.emit('calendarFetched', payload());
+        expect(
+            document.querySelector('#host [role="status"]').textContent,
+        ).toBe('');
+
+        apiClient._eventBus.emit('calendarFetched', payload());
+        expect(
+            document.querySelector('#host [role="status"]').textContent.length,
+        ).toBeGreaterThan(0);
+    });
 });
