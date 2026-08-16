@@ -1,7 +1,7 @@
 # Calendar scope: declaring which calendars a widget may show
 
 **Date:** 2026-08-16
-**Status:** Approved design, not yet implemented
+**Status:** Implemented
 **Target release:** 2.8.0 (unreleased)
 
 ## Problem
@@ -128,24 +128,28 @@ and makes a bare nation scope behave the way a consumer writing "default calenda
 
 ### Worked cases
 
-| `scope`                                                | `rite = roman` offers             | `rite = ambrosian` offers      | Controls shown  |
-| ------------------------------------------------------ | --------------------------------- | ------------------------------ | --------------- |
-| `{diocese: 'romamo_it'}`                               | Rome only                         | — (pinned by inference)        | none            |
-| `{nation: 'IT'}`                                       | Italy                             | Ambrosian                      | rite only       |
-| `{nation: 'IT', includeDioceses: true}`                | Italy + Italian Roman dioceses    | Ambrosian + Milan (not Lugano) | rite + calendar |
-| `{nation: 'IT', rite: 'roman', includeDioceses: true}` | Italy + Italian Roman dioceses    | — (pinned)                     | calendar only   |
-| `{nation: 'CA'}`                                       | Canada, locales `fr-CA` / `en-CA` | Ambrosian                      | rite + locale   |
-| `{nation: 'CA', rite: 'roman'}`                        | Canada, two locales               | — (pinned)                     | locale only     |
-| `{nation: 'CA', rite: 'roman', locale: 'fr-CA'}`       | Canada in French                  | — (pinned)                     | none            |
-| `{nation: 'US'}`                                       | United States                     | — (no US Ambrosian diocese)    | none            |
-| `{nation: 'IT', rite: ['ambrosian', 'roman']}`         | Italy                             | Ambrosian (initial)            | rite only       |
+| `scope`                                                | `rite = roman` offers             | `rite = ambrosian` offers         | Controls shown  |
+| ------------------------------------------------------ | --------------------------------- | --------------------------------- | --------------- |
+| `{diocese: 'romamo_it'}`                               | Rome only                         | — (pinned by inference)           | none            |
+| `{nation: 'IT'}`                                       | Italy                             | Ambrosian                         | rite only       |
+| `{nation: 'IT', includeDioceses: true}`                | Italy + Italian Roman dioceses    | Ambrosian + Milan (not Lugano)    | rite + calendar |
+| `{nation: 'IT', rite: 'roman', includeDioceses: true}` | Italy + Italian Roman dioceses    | — (pinned)                        | calendar only   |
+| `{nation: 'CA'}`                                       | Canada, locales `fr-CA` / `en-CA` | — (no Canadian Ambrosian diocese) | locale only     |
+| `{nation: 'CA', rite: 'roman'}`                        | Canada, two locales               | — (pinned)                        | locale only     |
+| `{nation: 'CA', rite: 'roman', locale: 'fr-CA'}`       | Canada in French                  | — (pinned)                        | none            |
+| `{nation: 'US'}`                                       | United States                     | — (no US Ambrosian diocese)       | none            |
+| `{nation: 'IT', rite: ['ambrosian', 'roman']}`         | Italy                             | Ambrosian (initial)               | rite only       |
 
 The "separate widget per rite / per language" alternatives are simply the pinned rows: pin `rite`, or pin
 `locale`, and the corresponding control disappears.
 
-The `{nation: 'US'}` row is the one the derived-rites rule changes. Under the earlier draft it would have
-shown a two-option rite select whose Ambrosian branch led to the bare Ambrosian calendar — nothing to do
-with the United States.
+The `{nation: 'US'}` and `{nation: 'CA'}` rows are the ones the derived-rites rule changes. Under the earlier
+draft both would have shown a two-option rite select whose Ambrosian branch led to the bare Ambrosian
+calendar — nothing to do with either country. Neither the United States nor Canada has an Ambrosian diocese,
+so the derived-rites rule (above) excludes Ambrosian from both scopes entirely: no rite select, and for
+Canada, `{nation: 'CA'}` alone already reduces to exactly the same "locale only" outcome as the more explicit
+`{nation: 'CA', rite: 'roman'}` row below it — pinning a rite that was already the only one reachable changes
+nothing.
 
 It also removes an edge case structurally rather than by special-casing: a nation with an Ambrosian diocese
 but no Roman national calendar — the `CH` case `CalendarSelect.test.js` calls "the crash case" — resolves to
@@ -212,19 +216,26 @@ A new internal module — **not exported** from `src/index.js`, on the same reas
 `FilterInputs.js`, `InputVisibility.js` and `PredeterminedInputs.js`.
 
 ```text
-assertScope( scope, componentName )
+assertScope( scope, componentName, apiBase )
     → throws for unknown keys, contradictions, unknown nation/diocese/locale
 
 resolveScope( scope, apiBase )
-    → { rites, calendarsByRite, localesByCalendar, initial }
+    → { rites, calendarsByRite, initial }
 
 deriveVisibility( resolved, currentRite, currentCalendar, inputs )
     → { riteSelect, calendarSelect, localeInput }
 ```
 
-`assertScope()` looks its allowed keys up from the `componentName` it is already given, following the
-`THEME_CHILD_KEYS` discipline established in #78 — so the name and the allowed set cannot disagree, and an
-unregistered component name throws rather than falling back to permissive behaviour.
+`assertScope()` takes the `apiBase` because validating a `nation`/`diocese`/`locale` against the metadata is
+not possible without it — `componentName` alone, as an earlier draft of this section had it, only prefixes
+the thrown message. Each calendar entry in `calendarsByRite` already carries its own `locales` array
+(`{type, id, locales}`), so a separate `localesByCalendar` map was never built; an earlier draft of this
+section proposed one, but it would have duplicated data `calendarsByRite` already holds. `assertScope()`'s
+allowed keys are a single FLAT list, `SCOPE_KEYS` in `CalendarScope.js` — not a per-component registry keyed
+by `componentName` the way `THEME_CHILD_KEYS` (#78) is for the theme bag. An earlier draft of this section
+proposed that discipline for `assertScope()` too; it was not built, because every scope-taking component
+accepts the identical five keys (`rite`, `nation`, `diocese`, `locale`, `includeDioceses`) — there is no
+per-component variation for a registry to express.
 
 ### Consumers
 
@@ -271,11 +282,14 @@ rule visible in the select itself.
 A new meta-component, sibling to `DayViewer`. The names carry exactly the distinction — `DayViewer` renders
 any day and owns date controls; `TodayViewer` renders today and does not.
 
-It follows every existing meta-component convention: synchronous constructor plus static async
-`mountInto()`, `appendTo()` returning `undefined`, `settled`, `onError()` / `onCalendarFetched()`,
-`initialFetch`, an idempotent `dispose()`, and the theme bag. It accepts either a single target or a slots
-object, like `DayViewer`. With a pinned scope the controls vanish, so the single-target form is the common
-case:
+It follows every existing meta-component convention that applies to it: synchronous constructor plus static
+async `mountInto()`, `appendTo()` returning `undefined`, `settled`, `onError()` / `onCalendarFetched()`, an
+idempotent `dispose()`, and the theme bag. Unlike `CalendarControls`/`CalendarViewer`, it has no
+`initialFetch` option — `TodayViewer.mountInto()` destructures only `{apiClient, signal, onError}` from its
+options, the same set `DayViewer.mountInto()` takes, since fetching today's liturgy on mount is the whole
+point of the component and there is no "wire without fetching" case to opt out of. It accepts either a
+single target or a slots object, like `DayViewer`. With a pinned scope the controls vanish, so the
+single-target form is the common case:
 
 ```javascript
 await TodayViewer.mountInto('#today', {

@@ -205,6 +205,19 @@ export default class SubscriptionUrl {
             this.#currentEndpoint.requestPayload.locale = initialLocale;
         }
 
+        // Seeded from the calendar select's CURRENT value, not merely from its
+        // future `change` events — the same reasoning as the locale seeding
+        // immediately above, and the gap that let a SCOPED `SubscriptionBuilder`
+        // (`CalendarControls` sets the calendar select's value to the scope's
+        // own pin at construction, via `.value()`, which dispatches no `change`)
+        // render an initial URL for the General Roman Calendar instead of the
+        // scope's own diocese or nation. `ApiClient`-driven components
+        // (`CalendarControls.fetch()` among them) never had this gap: they read
+        // the calendar select's value directly at fetch time rather than
+        // waiting on a prior `change`; this renderer had no equivalent step
+        // until now.
+        this.#applyCalendarSelection(calendarSelect._domElement);
+
         this.#render();
         // Seeded here, not left `null`: without this, the very first no-op
         // `change` after mounting would compare the unchanged URL against
@@ -212,26 +225,14 @@ export default class SubscriptionUrl {
         // exists to close.
         this.#lastNotified = this.url;
 
-        // The calendar select's option carries `data-calendartype`; the empty
-        // option carries none and means the rite-level calendar. Reading
-        // `selectedOptions[0]` optionally matters: a select can legitimately
-        // have nothing selected — `allowNull(false)` removes the empty option
-        // and a rite change then resets the value to '' with no option to match
-        // — and a throw inside a listener is swallowed by the DOM, which would
-        // leave the endpoint updated and the rendering stale.
+        // See `#applyCalendarSelection()`'s own doc comment for what this reads
+        // off the select and why. A throw inside a listener is swallowed by
+        // the DOM, which would leave the endpoint updated and the rendering
+        // stale — `#applyCalendarSelection()` reads `selectedOptions[0]`
+        // optionally for exactly that reason: a select can legitimately have
+        // nothing selected.
         this.#listen(calendarSelect._domElement, (ev) => {
-            const selected = ev.target.selectedOptions[0];
-            const type = selected?.getAttribute('data-calendartype') ?? null;
-            if ('national' === type) {
-                this.#currentEndpoint.calendarType = CalendarType.NATIONAL;
-                this.#currentEndpoint.calendarId = ev.target.value;
-            } else if ('diocesan' === type) {
-                this.#currentEndpoint.calendarType = CalendarType.DIOCESAN;
-                this.#currentEndpoint.calendarId = ev.target.value;
-            } else {
-                this.#currentEndpoint.calendarType = null;
-                this.#currentEndpoint.calendarId = null;
-            }
+            this.#applyCalendarSelection(ev.target);
         });
 
         // `ApiOptions` already writes the rite onto the endpoint through
@@ -341,6 +342,35 @@ export default class SubscriptionUrl {
     /** @returns {HTMLElement} The rendered control, for tests and mounting. */
     get _domElement() {
         return this.#domElement;
+    }
+
+    /**
+     * Applies a calendar select's CURRENT state to the endpoint — shared by
+     * the constructor's initial seeding call and the `change` listener below,
+     * so the two can never drift apart.
+     *
+     * The select's option carries `data-calendartype`; the empty option
+     * carries none and means the rite-level calendar. Reading
+     * `selectedOptions[0]` optionally matters: a select can legitimately have
+     * nothing selected — `allowNull(false)` removes the empty option and a
+     * rite change then resets the value to '' with no option to match.
+     *
+     * @param {HTMLSelectElement} domElement - The calendar select's element.
+     * @returns {void}
+     */
+    #applyCalendarSelection(domElement) {
+        const selected = domElement.selectedOptions[0];
+        const type = selected?.getAttribute('data-calendartype') ?? null;
+        if ('national' === type) {
+            this.#currentEndpoint.calendarType = CalendarType.NATIONAL;
+            this.#currentEndpoint.calendarId = domElement.value;
+        } else if ('diocesan' === type) {
+            this.#currentEndpoint.calendarType = CalendarType.DIOCESAN;
+            this.#currentEndpoint.calendarId = domElement.value;
+        } else {
+            this.#currentEndpoint.calendarType = null;
+            this.#currentEndpoint.calendarId = null;
+        }
     }
 
     /**

@@ -112,8 +112,10 @@ component with `picker.calendarSelect._domElement.required = true`.
 against `filter` before it is applied: a rite the resolved scope only **permits** but that `filter` cannot
 surface (Ambrosian under `NATIONAL_CALENDARS` — there is no Ambrosian national calendar) is silently dropped
 from the rite select's options, since this filter never had a way to reach it either way. A rite the scope
-**pins** (`scope.rite` named it explicitly) that `filter` cannot surface throws instead, naming both, rather
-than silently substituting a different rite for the one the caller asked for:
+**demands** — whether `scope.rite` pinned it explicitly, or `scope.diocese` pinned it implicitly (a diocese's
+own rite is just as much a demand; `resolveScope()` derives `rites` from it without ever consulting
+`scope.rite`) — that `filter` cannot surface throws instead, naming both, rather than silently substituting a
+different rite for the one the caller asked for:
 
 ```javascript
 // Throws: the filter can show only national calendars, and the pinned rite has none.
@@ -436,10 +438,10 @@ const picker = await CalendarResourcePicker.mountInto('#mount', {
 
 Programmer error and runtime failure are treated differently, on purpose:
 
-| Kind                                                                                | Behaviour                                                                                            |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Invalid options (unparseable locale, unknown filter, a target that matches nothing) | **Rejects.** A typo should not be silently papered over.                                             |
-| Runtime failure (API down, metadata unparseable)                                    | **Resolves** with a picker whose `failed` is `true` and whose failure control is already in the DOM. |
+| Kind                                                                                                    | Behaviour                                                                                            |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Invalid options (unparseable locale, unknown filter, an invalid `scope`, a target that matches nothing) | **Rejects.** A typo should not be silently papered over.                                             |
+| Runtime failure (API down, metadata unparseable)                                                        | **Resolves** with a picker whose `failed` is `true` and whose failure control is already in the DOM. |
 
 `mountInto()` also resolves to `null`, without throwing or rejecting, when the mount was cancelled —
 either because the `signal` passed in was already aborted, or because the target element left the DOM
@@ -1105,8 +1107,8 @@ Six things to know:
 - **`acceptHeaderInput.hide()` still works** and is unchanged. It remains the only way to hide the input
   on a bare `ApiOptions`, outside this family.
 - **`riteSelect`, `calendarSelect` and `localeInput` are a DIFFERENT kind of flag from `acceptHeader`, and
-  exist only on this component and the two others (`CalendarViewer`, `ApiExplorer`) that build a
-  `CalendarControls`.** Where `acceptHeader` sets an irreversible `hide()` flag with a fixed default, these
+  exist only on this component and the three others (`CalendarViewer`, `ApiExplorer`, `SubscriptionBuilder`)
+  that build a `CalendarControls`.** Where `acceptHeader` sets an irreversible `hide()` flag with a fixed default, these
   three **override [`deriveVisibility()`](../CLAUDE.md#calendar-scope)'s own, scope-derived answer for that
   control, in both directions**, and carry no default of their own — a caller who names none of them leaves
   the derivation alone. `DayViewer`, `CalendarResourcePicker` and `TodayViewer` build their own selects
@@ -1992,14 +1994,17 @@ there **by default**, and deliberately: `PathBuilder` turns that select's `chang
 **`ApiExplorer` cannot take a `scope` at all.** `appendTo()` always renders this component's `ApiOptions`
 under `ApiOptionsFilter.PATH_BUILDER` (among the other two filters — see
 [the three-filter layout](#the-three-filter-layout) above), and `scope` combined with `PATH_BUILDER` is
-exactly the combination `CalendarControls`' own constructor rejects — see
-[its Scope section](#scope-3). Passing `scope` to `ApiExplorer.mountInto()`, or to `new ApiExplorer(...)`,
-is therefore forwarded straight into the `CalendarControls` this class builds and always throws:
-`CalendarPathInput` composes any API route the metadata allows, which is unconditionally incompatible with
-restricting which calendars are reachable. Construct without a `scope` when using this component; a page
-that wants both a restricted calendar space and an explorable path needs two separate widgets. (An earlier
-draft of the calendar-scope design claimed `ApiExplorer` inherits `scope` "for free", the way `CalendarViewer`
-and `SubscriptionBuilder` genuinely do; that claim was wrong, and has been corrected in the design spec.)
+exactly the combination `CalendarControls`' own constructor rejects for a directly-constructed
+`CalendarControls` — see [its Scope section](#scope-3). But `ApiExplorer` never passes `filter` to the
+`CalendarControls` it builds; it applies `PATH_BUILDER` afterwards, inside `appendTo()`, so that guard alone
+would never fire. `ApiExplorer`'s **own** constructor therefore checks for `scope` directly, before
+`CalendarControls` is even constructed. Passing `scope` to `ApiExplorer.mountInto()`, or to
+`new ApiExplorer(...)`, always throws: `CalendarPathInput` composes any API route the metadata allows, which
+is unconditionally incompatible with restricting which calendars are reachable. Construct without a `scope`
+when using this component; a page that wants both a restricted calendar space and an explorable path needs
+two separate widgets. (An earlier draft of the calendar-scope design claimed `ApiExplorer` inherits `scope`
+"for free", the way `CalendarViewer` and `SubscriptionBuilder` genuinely do; that claim was wrong, and has
+been corrected in the design spec.)
 
 ### Public getters
 

@@ -131,7 +131,7 @@ export default class DayViewer {
     #deliveredErrors = new WeakSet();
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {boolean} [options.showTitle=true] - Whether to show the widget's own heading.
@@ -232,13 +232,19 @@ export default class DayViewer {
         // the scope's initial rite, so the UNRESTRICTED, Roman-built list may
         // not even carry the scope's initial calendar id — and `value()`
         // throws for any id no current option carries. See
-        // `CalendarControls`' identical comment for the full reasoning.
+        // `CalendarControls`' identical comment for the full reasoning, and
+        // its comment on the `initialCalendarOffered` guard below (F4).
         if (null !== this.#scope) {
             this.#calendarSelect._restrictToScope(
                 this.#scope.calendarsByRite[this.#scope.initial.rite],
                 this.#scope.initial.rite,
             );
-            this.#calendarSelect.value(this.#scope.initial.calendarId);
+            const initialCalendarOffered = [
+                ...this.#calendarSelect._domElement.options,
+            ].some((option) => option.value === this.#scope.initial.calendarId);
+            if (initialCalendarOffered) {
+                this.#calendarSelect.value(this.#scope.initial.calendarId);
+            }
         }
 
         this.#apiOptions = new ApiOptions({

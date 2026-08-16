@@ -15,6 +15,8 @@ import CalendarControls from './CalendarControls.js';
 import { resolveInputVisibility } from './InputVisibility.js';
 import { isFilterKeyedControls, resolveControlSlots } from './ControlSlots.js';
 import { assertTheme, narrowTheme } from './Theme.js';
+import { assertScope } from './CalendarScope.js';
+import { resolveBase } from '../ApiClient/ApiBase.js';
 import WebCalendar from '../WebCalendar/WebCalendar.js';
 import { normalizeSettled, deliverFetchFailure } from './Settled.js';
 import {
@@ -97,7 +99,7 @@ export default class CalendarViewer {
     #settled = Promise.resolve();
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale,
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale,
      *   forwarded to `CalendarControls` as-is.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
@@ -132,6 +134,18 @@ export default class CalendarViewer {
         // the inner guard rejecting the key that child would read — see
         // `narrowTheme()`, and `SubscriptionBuilder`, where that case is real.
         assertTheme(bag.theme, 'CalendarViewer');
+        // The scope, under THIS class' name and before forwarding (F8): left to
+        // `CalendarControls`' own `assertScope()` call, a typo'd
+        // `scope.natoin` would report as `"CalendarControls: scope.natoin …"`
+        // — naming a class the caller never directly touched. Discarded here,
+        // like `resolveInputVisibility()`/`assertTheme()` above: this call
+        // exists only for attribution, and `CalendarControls` resolves the
+        // same bag again for real use.
+        assertScope(
+            bag.scope,
+            'CalendarViewer',
+            resolveBase(bag.apiClient, 'CalendarViewer'),
+        );
         this.#controls = new CalendarControls({
             ...bag,
             theme: narrowTheme(bag.theme, 'CalendarControls'),

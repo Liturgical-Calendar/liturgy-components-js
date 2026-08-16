@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import CalendarResourcePicker from '../MetaComponents/CalendarResourcePicker.js';
+import CalendarControls from '../MetaComponents/CalendarControls.js';
 import { CalendarSelectFilter } from '../Enums.js';
 
 const API_URL = 'http://localhost:8000';
@@ -90,10 +91,14 @@ describe('CalendarResourcePicker with a scope', () => {
     });
 
     it('restricts the rite select to the rites in scope', () => {
+        // `includeDioceses: true` is required here (F4): under
+        // `DIOCESAN_CALENDARS`, `_restrictToScope()` now keeps only diocesan
+        // entries, and a nation scope with no `includeDioceses` offers none —
+        // `US` alone would leave the calendar select nothing to show and throw.
         const picker = new CalendarResourcePicker({
             locale: 'en',
             filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
-            scope: { nation: 'US' },
+            scope: { nation: 'US', includeDioceses: true },
         });
         picker.appendTo('#mount');
         expect(
@@ -120,18 +125,22 @@ describe('CalendarResourcePicker with a scope', () => {
         });
         picker.appendTo('#mount');
 
+        // `DIOCESAN_CALENDARS` (F4) keeps only diocesan entries: `IT` (national)
+        // is filtered out, leaving just the diocese.
         expect(
             [...picker.calendarSelect._domElement.options].map((o) => o.value),
-        ).toEqual(['IT', 'romamo_it']);
+        ).toEqual(['romamo_it']);
 
         picker.riteSelect._domElement.value = 'ambrosian';
         picker.riteSelect._domElement.dispatchEvent(new Event('change'));
 
-        // The rite-level stand-in (value '') plus Milan; Lugano (a Swiss
-        // diocese) must NOT appear.
+        // The rite-level stand-in ('') is also filtered out under
+        // `DIOCESAN_CALENDARS` — it belongs to the national domain, not the
+        // diocesan one (see `CalendarSelect.#TYPES_BY_FILTER`) — leaving only
+        // Milan; Lugano (a Swiss diocese) must NOT appear.
         expect(
             [...picker.calendarSelect._domElement.options].map((o) => o.value),
-        ).toEqual(['', 'milano_it']);
+        ).toEqual(['milano_it']);
     });
 
     it('leaves an unscoped instance exactly as before', () => {
@@ -179,10 +188,14 @@ describe('CalendarResourcePicker scope under CalendarSelectFilter.NATIONAL_CALEN
     });
 
     it('leaves the DIOCESAN_CALENDARS case unchanged: both rites remain reachable for the same nation scope', () => {
+        // `includeDioceses: true` is required here (F4): with no dioceses in
+        // scope, neither rite has a diocesan entry to survive `DIOCESAN_CALENDARS`'
+        // type filtering, and construction would throw before the rite select
+        // could even be inspected.
         const picker = new CalendarResourcePicker({
             locale: 'en',
             filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
-            scope: { nation: 'IT' },
+            scope: { nation: 'IT', includeDioceses: true },
         });
         picker.appendTo('#mount');
         expect(
@@ -215,24 +228,75 @@ describe('CalendarResourcePicker scope under CalendarSelectFilter.NATIONAL_CALEN
         expect(thrown.message).not.toMatch(/entries must be an array/);
     });
 
-    it('does not throw for a Roman diocese scope under NATIONAL_CALENDARS: Roman survives narrowing', () => {
-        // `romamo_it` is a Roman diocese, so `#narrowScopeToNationalTier()`
-        // finds `reachable` non-empty and construction succeeds. The
-        // rendered option is the diocese entry itself — `_restrictToScope()`
-        // writes exactly the scope's own entries, independent of this
-        // select's `NATIONAL_CALENDARS` filter — this test's purpose is only
-        // to confirm the guard does NOT fire here, unlike the Ambrosian
-        // diocese case above.
+    it('throws for a Roman diocese scope under NATIONAL_CALENDARS too: the rite survives narrowing, but the diocesan entry itself does not (F4)', () => {
+        // `romamo_it` is a Roman diocese, so `#narrowScopeToNationalTier()`'s
+        // RITE-level narrowing finds `reachable` non-empty (Roman has a
+        // national tier) and construction proceeds past it. But
+        // `_restrictToScope()`'s own TYPE-level check (F4) then runs: the
+        // scope's only entry for "roman" is the diocesan `romamo_it` itself,
+        // and a `NATIONAL_CALENDARS`-filtered select cannot show a diocesan
+        // entry — so this now throws too, one level deeper than the
+        // Ambrosian diocese case above, and for a different reason (a type
+        // mismatch, not an unreachable rite).
+        expect(
+            () =>
+                new CalendarResourcePicker({
+                    locale: 'en',
+                    filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                    scope: { diocese: 'romamo_it' },
+                }),
+        ).toThrow(
+            /CalendarSelect\._restrictToScope.*diocesan.*roman.*nations/s,
+        );
+    });
+});
+
+describe("CalendarSelect._restrictToScope respects the select's own CalendarSelectFilter for calendar TYPES, for all three filters (F4)", () => {
+    it('NATIONAL_CALENDARS keeps only national (and rite-level) entries, dropping a diocese the scope also offers', () => {
         const picker = new CalendarResourcePicker({
             locale: 'en',
             filter: CalendarSelectFilter.NATIONAL_CALENDARS,
-            scope: { diocese: 'romamo_it' },
+            scope: { nation: 'IT', includeDioceses: true },
         });
         picker.appendTo('#mount');
-        expect(picker.riteSelect).toBeNull();
+        expect(
+            [...picker.calendarSelect._domElement.options].map((o) => o.value),
+        ).toEqual(['IT']);
+    });
+
+    it('DIOCESAN_CALENDARS keeps only diocesan entries, dropping the national calendar the scope also offers', () => {
+        const picker = new CalendarResourcePicker({
+            locale: 'en',
+            filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+            scope: { nation: 'IT', includeDioceses: true },
+        });
+        picker.appendTo('#mount');
         expect(
             [...picker.calendarSelect._domElement.options].map((o) => o.value),
         ).toEqual(['romamo_it']);
-        expect(picker.calendarSelect._domElement.value).toBe('romamo_it');
+    });
+
+    it("CalendarSelectFilter.NONE (CalendarControls' unfiltered select) keeps everything the scope offers — no behaviour change for it", () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'IT', includeDioceses: true },
+        });
+        controls.appendTo('#mount');
+        expect(
+            [...controls.calendarSelect._domElement.options].map(
+                (o) => o.value,
+            ),
+        ).toEqual(['IT', 'romamo_it']);
+    });
+
+    it('DIOCESAN_CALENDARS throws naming the filter when type-filtering would empty the select (a nation scope with no dioceses in scope)', () => {
+        expect(
+            () =>
+                new CalendarResourcePicker({
+                    locale: 'en',
+                    filter: CalendarSelectFilter.DIOCESAN_CALENDARS,
+                    scope: { nation: 'US' },
+                }),
+        ).toThrow(/CalendarSelect\._restrictToScope.*national.*dioceses/s);
     });
 });

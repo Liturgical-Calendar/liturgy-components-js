@@ -85,4 +85,25 @@ describe('RiteSelect._setHidden', () => {
         expect(select._domElement.hidden).toBe(false);
         expect(select._domElement.parentElement.hidden).toBe(true);
     });
+
+    // F3 (final whole-branch review): with NO wrapper configured — the
+    // `bootstrap5` preset deliberately supplies none — hiding the select must
+    // also hide its label, or the label dangles over nothing.
+    it('hides the label too when there is no wrapper', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const select = new RiteSelect('en').label({ text: 'Select a rite' });
+        select.appendTo(container);
+        const label = container.querySelector('label');
+
+        expect(label.hidden).toBe(false);
+        select._setHidden(true);
+
+        expect(select._domElement.hidden).toBe(true);
+        expect(label.hidden).toBe(true);
+
+        select._setHidden(false);
+        expect(select._domElement.hidden).toBe(false);
+        expect(label.hidden).toBe(false);
+    });
 });

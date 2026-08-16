@@ -151,6 +151,23 @@ export default class RiteSelect {
      * The first entry becomes the selected value, which is what makes
      * `scope.rite`'s first-element-is-initial rule visible in the DOM.
      *
+     * **Calling this AFTER `linkToRiteSelect()` silently desynchronises the
+     * link.** `#renderOptions()` rebuilds the `<select>` and resets its value
+     * to `list[0]` directly on the element, without dispatching a `change`
+     * event — so `ApiOptions`/`ApiClient`, which learn of a rite switch only
+     * through that event, keep whatever rite they last saw and never learn
+     * this one happened. The value shown in the DOM and the rite the next
+     * fetch actually requests then disagree, with nothing to notice it by.
+     * Every meta-component in this library only ever calls this at
+     * CONSTRUCTION time, before `linkToRiteSelect()` runs, which is safe: the
+     * one option is the `rites` key on the widening component's own
+     * constructor bag (e.g. `CalendarControls({ scope: {...} })`), consumed
+     * before the rite select is linked to anything. Calling it again later,
+     * on an already-linked select, is unsupported and left undocumented
+     * behaviour rather than fixed here — dispatching `change` unconditionally
+     * would fire on every construction-time call too, which no consumer of
+     * this method currently expects.
+     *
      * @param {string[]} list - The rites to offer.
      * @returns {RiteSelect} This instance, for chaining.
      * @throws {Error} If the list is not a non-empty array of distinct known rites.
@@ -465,11 +482,24 @@ export default class RiteSelect {
      * Hide or show this select, preferring its wrapper when one was set via
      * `wrapper()` so the label goes with it.
      *
+     * **With no wrapper, the label element (if any) is hidden too**, alongside
+     * the select itself — see `CalendarSelect._setHidden()`'s doc comment for
+     * why: a preset supplying no `wrapper` (`bootstrap5`, deliberately) would
+     * otherwise leave "Select a rite" dangling over nothing once the select
+     * hides. A no-op in effect when a wrapper IS present, since hiding it
+     * already takes the label with it.
+     *
      * @param {boolean} hidden
      */
     _setHidden(hidden) {
-        const target = this.#wrapperElement ?? this.#domElement;
-        target.hidden = hidden;
+        if (null !== this.#wrapperElement) {
+            this.#wrapperElement.hidden = hidden;
+            return;
+        }
+        this.#domElement.hidden = hidden;
+        if (null !== this.#labelElement) {
+            this.#labelElement.hidden = hidden;
+        }
     }
 
     /**

@@ -136,7 +136,7 @@ export default class CalendarResourcePicker {
     #listeners = [];
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} options.filter - `CalendarSelectFilter.NATIONAL_CALENDARS` or `.DIOCESAN_CALENDARS`.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
@@ -341,12 +341,26 @@ export default class CalendarResourcePicker {
         // not even carry the scope's initial calendar id — and `value()`
         // throws for any id no current option carries. See
         // `CalendarControls`' identical comment for the full reasoning.
+        //
+        // Unlike `CalendarControls`/`DayViewer`/`TodayViewer`, THIS select's
+        // filter is a real `NATIONAL_CALENDARS`/`DIOCESAN_CALENDARS`
+        // (`ACCEPTED_FILTERS` never includes `NONE`), so `_restrictToScope()`'s
+        // own type-vs-filter reconciliation (F4) CAN drop `scope.initial`'s
+        // own entry — e.g. a nation scope's national calendar under
+        // `DIOCESAN_CALENDARS`. Forcing `.value()` to it unconditionally
+        // would then throw; the guard keeps whichever offered id
+        // `_restrictToScope()` already fell back to.
         if (null !== this.#scope) {
             this.#calendarSelect._restrictToScope(
                 this.#scope.calendarsByRite[this.#scope.initial.rite],
                 this.#scope.initial.rite,
             );
-            this.#calendarSelect.value(this.#scope.initial.calendarId);
+            const initialCalendarOffered = [
+                ...this.#calendarSelect._domElement.options,
+            ].some((option) => option.value === this.#scope.initial.calendarId);
+            if (initialCalendarOffered) {
+                this.#calendarSelect.value(this.#scope.initial.calendarId);
+            }
         }
     }
 
@@ -464,18 +478,20 @@ export default class CalendarResourcePicker {
         const initialRite = reachable.includes(resolved.initial.rite)
             ? resolved.initial.rite
             : reachable[0];
-        const initialCalendar = calendarsByRite[initialRite]?.[0];
+        // Never falls back to `resolved.initial`: `resolveScope()` guarantees at
+        // least one entry per rite in `calendarsByRite`, and `initialRite` is
+        // always a member of `reachable`, so `calendarsByRite[ initialRite ][0]`
+        // is always defined.
+        const initialCalendar = calendarsByRite[initialRite][0];
         return {
             rites: reachable,
             calendarsByRite,
-            initial: initialCalendar
-                ? {
-                      rite: initialRite,
-                      calendarType: initialCalendar.type,
-                      calendarId: initialCalendar.id,
-                      locale: resolved.initial.locale,
-                  }
-                : resolved.initial,
+            initial: {
+                rite: initialRite,
+                calendarType: initialCalendar.type,
+                calendarId: initialCalendar.id,
+                locale: resolved.initial.locale,
+            },
         };
     }
 
@@ -982,7 +998,8 @@ export default class CalendarResourcePicker {
             options,
             'CalendarResourcePicker',
         );
-        const { errorText, signal, theme, filter, locale } = bag;
+        const { errorText, signal, theme, filter, locale, apiClient, scope } =
+            bag;
 
         // Validated up front, ahead of the try below, so that every throw inside it
         // is a runtime failure by construction. `locale` belongs in this list for
@@ -1001,6 +1018,36 @@ export default class CalendarResourcePicker {
         assertTheme(theme, 'CalendarResourcePicker');
         if (locale !== undefined && locale !== null) {
             canonicalizeLocale(locale, 'CalendarResourcePicker');
+        }
+        // `scope` belongs in this list for the same reason: left inside the try,
+        // an unknown scope key, an unmatched diocese/nation, OR a scope that
+        // PINS a rite this `filter` cannot surface (`#narrowScopeToNationalTier()`'s
+        // own throw, below) are all programmer errors just like a bad `filter` or
+        // `theme` — not the API being down — and surfaced as "could not load
+        // calendars" otherwise. Both checks are discarded here, like `locale`'s
+        // canonical tag above: this call exists only to let an invalid scope
+        // throw before the try, and the constructor resolves it again for real
+        // use.
+        //
+        // Gated on `scope` actually being present: `resolveBase()` itself throws
+        // when the API has not been initialized at all, and an unloaded base is
+        // a RUNTIME failure (see "renders a visible failure control on a runtime
+        // failure" below) that must still resolve with a failed picker, scope or
+        // no scope. Calling it unconditionally here would turn that case into a
+        // rejection for every caller, not only a scoped one.
+        if (undefined !== scope && null !== scope) {
+            const scopeBase = resolveBase(apiClient, 'CalendarResourcePicker');
+            assertScope(scope, 'CalendarResourcePicker', scopeBase);
+            const resolvedScopeForValidation = resolveScope(scope, scopeBase);
+            if (
+                null !== resolvedScopeForValidation &&
+                CalendarSelectFilter.NATIONAL_CALENDARS === filter
+            ) {
+                CalendarResourcePicker.#narrowScopeToNationalTier(
+                    resolvedScopeForValidation,
+                    scope,
+                );
+            }
         }
 
         const element = CalendarResourcePicker.#requireElement(

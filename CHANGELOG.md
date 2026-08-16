@@ -11,7 +11,7 @@ prepared under that number was skipped, and everything it was to have delivered 
 - **`LiturgyOfTheDay` replaces its events on a refetch instead of duplicating them, and gained a live
   region.** `#updateEventDetails()` used to append without clearing, so a second `calendarFetched` rendered
   the day's events twice and a third three times — harmless while nothing could trigger a refetch on this
-  component, but the prerequisite for `TodayViewer` above: the moment a scope leaves a rite or calendar
+  component, but the prerequisite for `TodayViewer` below: the moment a scope leaves a rite or calendar
   select on screen, switching it refetches. It now calls `replaceChildren()` before appending. It also
   gained the same visually-hidden `role="status"` live region `WebCalendar` and `LiturgyOfAnyDay` already
   have, through `LiveAnnouncer.js`, with the same `announceUpdates` option (constructor option and chainable

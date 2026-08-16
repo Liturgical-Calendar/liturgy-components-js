@@ -29,9 +29,12 @@
             <p class="text-muted small">
                 <code>scope: { nation: 'IT' }</code> — the Italian national calendar under the Roman rite, or
                 the bare Ambrosian calendar under Ambrosian (Italy has an Ambrosian diocese — Milan — even
-                though Ambrosian has no national tier). The rite select is the only control shown: Italy
-                resolves to exactly one calendar per rite, so the calendar select and locale input have
-                nothing to offer either.
+                though Ambrosian has no national tier). The calendar select stays hidden either way: Italy
+                resolves to exactly one calendar per rite. The locale input does not follow the same rule —
+                it is derived from the CURRENT calendar's own locales, not from the calendar count — so
+                switching the rite select to Ambrosian makes it appear: the bare Ambrosian calendar supports
+                both <code>it</code> and <code>la</code>, while Italy's own national calendar under Roman
+                supports only <code>it</code>.
             </p>
             <div id="italyControls" class="row g-2 mb-3"></div>
             <div id="italyLiturgy"></div>

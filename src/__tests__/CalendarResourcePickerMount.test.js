@@ -68,6 +68,34 @@ describe('CalendarResourcePicker.mountInto', () => {
         ).rejects.toThrow(/nope/);
     });
 
+    // F2: an unknown scope key is a typo, the same class of programmer error
+    // as an invalid filter above — not a runtime "API is down" condition —
+    // so it must REJECT rather than resolve with a disabled failure control.
+    it('rejects on an unknown scope key, naming the component, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { natoin: 'IT' },
+            }),
+        ).rejects.toThrow(/CalendarResourcePicker.*natoin/s);
+    });
+
+    // The doc's own worked example: a filter that structurally cannot show a
+    // PINNED rite is likewise a programmer error, previously swallowed by the
+    // try below scope validation was hoisted out of it.
+    it('rejects when scope pins a rite the filter cannot surface, rather than resolving with a failed picker', async () => {
+        await expect(
+            CalendarResourcePicker.mountInto('#mount', {
+                locale: 'en',
+                filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+                scope: { rite: 'ambrosian' },
+            }),
+        ).rejects.toThrow(
+            /CalendarResourcePicker.*ambrosian.*NATIONAL_CALENDARS/s,
+        );
+    });
+
     it('renders a visible failure control on a runtime failure', async () => {
         // An unloaded base is a runtime failure, not a programmer error: it is what
         // a down API looks like from here.

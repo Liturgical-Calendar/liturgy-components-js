@@ -948,15 +948,20 @@ always throws. `CalendarViewer` and `SubscriptionBuilder` build a `CalendarContr
 inherits scope "for free" the same way; that claim was wrong and has been corrected in the spec file.)
 
 **A scoped `CalendarResourcePicker` narrows its own rites to whatever its `filter` can actually surface, and
-throws only when the scope PINS a rite the filter cannot show.** Under
+throws only when the scope DEMANDS a rite the filter cannot show.** Under
 `CalendarSelectFilter.NATIONAL_CALENDARS` there is no rite select and no national calendar for a rite with
 no national tier, so `CalendarResourcePicker.#narrowScopeToNationalTier()` drops Ambrosian from a resolved
 scope's rites _silently_ when the scope only **permitted** it (`{ nation: 'IT' }` — Italy's Ambrosian diocese
-was never reachable through this filter regardless of scope). It throws instead only when the caller's own
-scope bag **pinned** a rite explicitly (`rawScope.rite` named it) and narrowing leaves nothing reachable —
-silently substituting a different rite for one the caller explicitly asked for would be exactly the
-silent-narrowing failure this component exists to avoid (issue #43). `DayViewer` and `TodayViewer` have no
-such narrowing: both build their own `RiteSelect`, so every rite the scope resolves is genuinely reachable.
+was never reachable through this filter regardless of scope). It throws instead whenever narrowing leaves
+NOTHING reachable — which is not only when `scope.rite` pinned the rite explicitly. A `scope.diocese` demands
+its rite just as effectively: `resolveScope()` derives `rites` from the diocese's own rite and never consults
+`rawScope.rite` at all, so `{ diocese: 'milano_it' }` (an Ambrosian diocese) reaches the guard having never
+set `scope.rite`, yet must throw exactly as `{ rite: 'ambrosian' }` does — silently substituting a different
+rite for one the caller asked for, explicitly or by naming a diocese, would be exactly the silent-narrowing
+failure this component exists to avoid (issue #43). The thrown message names whichever of `scope.rite` or
+`scope.diocese` the caller actually wrote, rather than misreporting a diocese scope as a `rite` pin.
+`DayViewer` and `TodayViewer` have no such narrowing: both build their own `RiteSelect`, so every rite the
+scope resolves is genuinely reachable.
 
 **`TodayViewer`** is a new meta-component, sibling to `DayViewer`, wrapping `LiturgyOfTheDay` — the name
 carries the whole distinction: `DayViewer` renders any day and owns day/month/year date controls;

@@ -21,6 +21,7 @@ import {
     CalendarResourcePicker,
     CalendarViewer,
     DayViewer,
+    SubscriptionBuilder,
     ThemePreset,
     TodayViewer,
     VERSION,
@@ -226,15 +227,85 @@ type DayViewerScope = NonNullable<
 type PickerScope = NonNullable<
     NonNullable<Parameters<typeof CalendarResourcePicker.mountInto>[1]>['scope']
 >;
+type SubscriptionBuilderScope = NonNullable<
+    NonNullable<Parameters<typeof SubscriptionBuilder.mountInto>[1]>['scope']
+>;
 
 const controlsScope: ControlsScope = { rite: 'roman' };
 const viewerScope: ViewerScope = { rite: ['roman', 'ambrosian'] };
 const dayViewerScope: DayViewerScope = { nation: 'US', includeDioceses: true };
 const pickerScope: PickerScope = { diocese: 'romamo_it' };
+const subscriptionBuilderScope: SubscriptionBuilderScope = { nation: 'IT' };
 void controlsScope;
 void viewerScope;
 void dayViewerScope;
 void pickerScope;
+void subscriptionBuilderScope;
+
+/**
+ * F9 (final whole-branch review, Ruling 24): `scope` must reach the
+ * CONSTRUCTOR path too, not only `mountInto()`. CLAUDE.md documents the
+ * constructor as the path every REAL consumer is actually on — "a real
+ * import would make it a value" is why `mountInto()` alone was not enough.
+ * Before this fix every constructor's emitted signature was the bare
+ * `options?: Object | string | Intl.Locale`, because an explicit UNION type
+ * on `[options]` suppresses `tsc`'s usual synthesis of an anonymous object
+ * type from dotted `@param [options.foo]` tags — that synthesis only fires
+ * when the top-level tag is the bare word `Object`, which is what makes
+ * `mountInto()`'s own `options` parameter (never a union — it never accepts
+ * a bare locale) work. Checked with an EXPLICITLY TYPED binding on each: a
+ * bare object literal would compile against the untyped `Object` union
+ * member regardless of its shape and prove nothing, exactly as the
+ * `mountInto()` regression above describes.
+ *
+ * The constructor's parameter is a UNION (`... | string | Intl.Locale`), so
+ * `['scope']` cannot be indexed directly off it — only one member of the
+ * union carries that key. `CtorOptionsBag` picks out that member the same
+ * way a caller narrowing the union would: excluding the two non-bag forms
+ * rather than trying to intersect them away.
+ */
+type CtorOptionsBag<T> = Exclude<NonNullable<T>, string | Intl.Locale>;
+
+type ControlsCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof CalendarControls>[0]>['scope']
+>;
+type ViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof CalendarViewer>[0]>['scope']
+>;
+type DayViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof DayViewer>[0]>['scope']
+>;
+type PickerCtorScope = NonNullable<
+    CtorOptionsBag<
+        ConstructorParameters<typeof CalendarResourcePicker>[0]
+    >['scope']
+>;
+type TodayViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof TodayViewer>[0]>['scope']
+>;
+type SubscriptionBuilderCtorScope = NonNullable<
+    CtorOptionsBag<
+        ConstructorParameters<typeof SubscriptionBuilder>[0]
+    >['scope']
+>;
+
+const controlsCtorScope: ControlsCtorScope = { rite: 'roman' };
+const viewerCtorScope: ViewerCtorScope = { rite: ['roman', 'ambrosian'] };
+const dayViewerCtorScope: DayViewerCtorScope = {
+    nation: 'US',
+    includeDioceses: true,
+};
+const pickerCtorScope: PickerCtorScope = { diocese: 'romamo_it' };
+const todayViewerCtorScope: TodayViewerCtorScope = { rite: 'roman' };
+const subscriptionBuilderCtorScope: SubscriptionBuilderCtorScope = {
+    nation: 'IT',
+};
+void controlsCtorScope;
+void viewerCtorScope;
+void dayViewerCtorScope;
+void pickerCtorScope;
+void todayViewerCtorScope;
+void subscriptionBuilderCtorScope;
 
 /**
  * `scope.rite` must accept both a string and a string array (a set with one

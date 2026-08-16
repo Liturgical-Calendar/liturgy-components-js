@@ -10,9 +10,14 @@ const API_URL = 'https://litcal.johnromanodorazio.com/api/dev';
  * than one choice for any of the three. `{ nation: 'IT' }` restricts the space to
  * Italy without pinning a rite, so the rite select stays visible: Italy has an
  * Ambrosian diocese (Milan) even though Ambrosian has no national tier, so both
- * `roman` and `ambrosian` are genuinely reachable here. Neither the calendar select
- * nor the locale input has anything further to offer, because each rite still
- * resolves to exactly one calendar.
+ * `roman` and `ambrosian` are genuinely reachable here. The calendar select never
+ * appears, because each rite still resolves to exactly one calendar — but the
+ * locale input is NOT similarly fixed: it is derived from the CURRENT calendar's
+ * own `locales`, not from the calendar count, and the two rites' calendars carry
+ * different locale lists. Switching to Ambrosian therefore makes the locale input
+ * appear: the bare Ambrosian calendar (the rite-level stand-in, since Ambrosian has
+ * no national tier) supports both `it` and `la`, while Italy's own national
+ * calendar under Roman supports only `it`.
  *
  * @type {Array<{scope: Object, controls: string, liturgy: string}>}
  */

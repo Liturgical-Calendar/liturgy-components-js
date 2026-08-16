@@ -32,6 +32,21 @@ import Utils from '../Utils.js';
  * @see https://github.com/Liturgical-Calendar/liturgy-components-js
  */
 export default class CalendarSelect {
+    /**
+     * The `_restrictToScope()` calendar-entry types each `CalendarSelectFilter`
+     * admits. The rite-level `'rite'` stand-in rides with `NATIONAL_CALENDARS`
+     * only: it is "no nation chosen, this rite's own base calendar" — the
+     * national domain's own null state — not a diocese, so it has no place
+     * under `DIOCESAN_CALENDARS`.
+     *
+     * @type {Readonly<Object<string, string[]>>}
+     */
+    static #TYPES_BY_FILTER = Object.freeze({
+        [CalendarSelectFilter.NATIONAL_CALENDARS]: ['rite', 'national'],
+        [CalendarSelectFilter.DIOCESAN_CALENDARS]: ['diocesan'],
+        [CalendarSelectFilter.NONE]: ['rite', 'national', 'diocesan'],
+    });
+
     /** @type {ApiBase} The API base this select reads its calendars from. */
     #base = null;
 
@@ -400,12 +415,27 @@ export default class CalendarSelect {
      * (a `nation` scope with a national tier, for instance), there is no
      * meaningful null state to offer in the first place.
      *
+     * **Also reconciles the entries against this select's OWN `CalendarSelectFilter`** —
+     * `NATIONAL_CALENDARS` keeps only `'national'` entries plus the rite-level
+     * `'rite'` stand-in (which doubles as "no nation chosen, this rite's own base
+     * calendar" and so belongs to the national domain), `DIOCESAN_CALENDARS` keeps
+     * only `'diocesan'` entries, and `NONE` keeps everything. This is the same
+     * allowed-versus-demanded distinction `CalendarResourcePicker`'s rite-level
+     * narrowing already applies: a scope may PERMIT a type this select's filter
+     * cannot surface (silently dropped — nothing is lost, since the filter never
+     * had a way to reach it), or it may DEMAND one exclusively (a diocese-only
+     * scope under `NATIONAL_CALENDARS`, or a nation scope with no
+     * `includeDioceses` under `DIOCESAN_CALENDARS`) — in which case type-filtering
+     * leaves nothing to offer, and that throws rather than rendering an empty
+     * select the user could still open.
+     *
      * @param {Array<{type: 'rite'|'national'|'diocesan', id: string, locales: string[]}>} entries -
      *   The scope's offered calendars for one rite.
      * @param {string} rite - The rite `entries` was built for.
      * @returns {void}
-     * @throws {Error} If `entries` is not an array, or one of its entries names
-     *   an unrecognised `type`.
+     * @throws {Error} If `entries` is not an array, one of its entries names
+     *   an unrecognised `type`, or this select's own filter admits none of
+     *   the entries.
      */
     _restrictToScope(entries, rite) {
         if (false === Array.isArray(entries)) {
@@ -414,15 +444,31 @@ export default class CalendarSelect {
                     typeof entries,
             );
         }
+        const typeFiltered = entries.filter((entry) =>
+            CalendarSelect.#TYPES_BY_FILTER[this.#filter].includes(entry.type),
+        );
+        if (0 === typeFiltered.length) {
+            const offeredTypes = [
+                ...new Set(entries.map((entry) => entry.type)),
+            ];
+            throw new Error(
+                `CalendarSelect._restrictToScope: the scope offers only ${offeredTypes.length > 0 ? offeredTypes.join('/') : 'no'} calendar(s) ` +
+                    `for rite "${rite}", but this select's filter is ${this.#filter}, which admits only ` +
+                    `${CalendarSelect.#TYPES_BY_FILTER[this.#filter].join('/')} calendars. Use a scope whose ` +
+                    'entries this filter can show, or construct the select under a different filter.',
+            );
+        }
         const dioceses = this.#base.diocesanCalendars(rite);
         const currentValue = this.#domElement.value;
-        this.#domElement.innerHTML = entries
+        this.#domElement.innerHTML = typeFiltered
             .map((entry) => this.#scopedOptionHtml(entry, rite, dioceses))
             .join('');
-        const stillOffered = entries.some((entry) => entry.id === currentValue);
+        const stillOffered = typeFiltered.some(
+            (entry) => entry.id === currentValue,
+        );
         this.#domElement.value = stillOffered
             ? currentValue
-            : (entries[0]?.id ?? '');
+            : (typeFiltered[0]?.id ?? '');
     }
 
     /**
@@ -789,11 +835,25 @@ export default class CalendarSelect {
      * Hide or show this select, preferring its wrapper when one was set via
      * `wrapper()` so the label goes with it.
      *
+     * **With no wrapper, the label element (if any) is hidden too**, alongside
+     * the select itself. Without this, a preset supplying no `wrapper` — the
+     * `bootstrap5` preset does so deliberately, see `ThemePresets.js` — leaves
+     * "Select a calendar" dangling over nothing once the select hides. When a
+     * wrapper IS present this is a no-op in effect: hiding the wrapper already
+     * takes the label with it, since `label()` inserts the label adjacent to
+     * the select, both inside the same wrapper.
+     *
      * @param {boolean} hidden
      */
     _setHidden(hidden) {
-        const target = this.#wrapperElement ?? this.#domElement;
-        target.hidden = hidden;
+        if (null !== this.#wrapperElement) {
+            this.#wrapperElement.hidden = hidden;
+            return;
+        }
+        this.#domElement.hidden = hidden;
+        if (null !== this.#labelElement) {
+            this.#labelElement.hidden = hidden;
+        }
     }
 
     /**

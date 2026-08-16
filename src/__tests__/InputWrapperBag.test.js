@@ -207,4 +207,24 @@ describe('Input._setHidden', () => {
         expect(instance._domElement.hidden).toBe(false);
         expect(instance._domElement.parentElement.hidden).toBe(true);
     });
+
+    // F3 (final whole-branch review): with no wrapper configured, hiding the
+    // input must also hide its label — `Input`'s constructor always builds
+    // one (`#labelElement`), unlike `CalendarSelect`/`RiteSelect` — or the
+    // label dangles over nothing once the input is gone.
+    it('hides the label too when there is no wrapper', () => {
+        const instance = input();
+        instance.appendTo('#mount');
+        const label = document.querySelector('#mount label');
+
+        expect(label.hidden).toBe(false);
+        instance._setHidden(true);
+
+        expect(instance._domElement.hidden).toBe(true);
+        expect(label.hidden).toBe(true);
+
+        instance._setHidden(false);
+        expect(instance._domElement.hidden).toBe(false);
+        expect(label.hidden).toBe(false);
+    });
 });

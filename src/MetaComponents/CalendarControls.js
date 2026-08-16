@@ -192,7 +192,7 @@ export default class CalendarControls {
     #lastSelectionKey = '';
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {string} [options.filter] - Which `ApiOptions` inputs to show.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
@@ -319,12 +319,28 @@ export default class CalendarControls {
         // so this needs no branch on `calendarType`; `CalendarSelect.value('')`
         // is the documented rite-level spelling `value()`'s own doc comment
         // describes.
+        //
+        // Guarded on the id actually surviving `_restrictToScope()`'s own
+        // type-vs-filter reconciliation (F4): this select's `CalendarSelect`
+        // is built with no `filter` (`NONE`), so every entry always survives
+        // and `scope.initial.calendarId` is always offered here — this
+        // instance never hits the guard's `false` branch, but the check is
+        // shared with `DayViewer`/`TodayViewer`/`CalendarResourcePicker`,
+        // where a real `NATIONAL_CALENDARS`/`DIOCESAN_CALENDARS` filter CAN
+        // drop the scope's own first entry, and forcing it unconditionally
+        // would throw instead of keeping the sensible fallback
+        // `_restrictToScope()` already chose.
         if (null !== this.#scope) {
             this.#calendarSelect._restrictToScope(
                 this.#scope.calendarsByRite[this.#scope.initial.rite],
                 this.#scope.initial.rite,
             );
-            this.#calendarSelect.value(this.#scope.initial.calendarId);
+            const initialCalendarOffered = [
+                ...this.#calendarSelect._domElement.options,
+            ].some((option) => option.value === this.#scope.initial.calendarId);
+            if (initialCalendarOffered) {
+                this.#calendarSelect.value(this.#scope.initial.calendarId);
+            }
         }
 
         // `?? ApiOptionsFilter.ALL_CALENDARS` would default `undefined` AND
