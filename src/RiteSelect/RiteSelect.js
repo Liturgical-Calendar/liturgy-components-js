@@ -32,6 +32,65 @@ export default class RiteSelect {
     #idSet = false;
     #nameSet = false;
 
+    /** @type {string[]} The rites this select offers, in order. */
+    #rites = Object.values(Rite);
+
+    /**
+     * Validates a rite list and returns it.
+     *
+     * @param {unknown} list - The candidate list.
+     * @returns {string[]} The validated list.
+     * @throws {Error} If it is not a non-empty array of distinct known rites.
+     */
+    static #assertRites(list) {
+        if (false === Array.isArray(list)) {
+            throw new Error(
+                `RiteSelect: rites must be an array of rite names, but found type: ${typeof list}`,
+            );
+        }
+        if (0 === list.length) {
+            throw new Error(
+                'RiteSelect: rites must name at least one rite, but the array is empty.',
+            );
+        }
+        const known = Object.values(Rite);
+        for (const rite of list) {
+            if (false === known.includes(rite)) {
+                throw new Error(
+                    `RiteSelect: unknown rite '${rite}'. Valid rites are: ${known.join(', ')}.`,
+                );
+            }
+        }
+        if (new Set(list).size !== list.length) {
+            throw new Error(
+                `RiteSelect: rites contains a duplicate: ${list.join(', ')}.`,
+            );
+        }
+        return [...list];
+    }
+
+    /**
+     * Rebuilds the select's `innerHTML` from `#rites`, and selects the first one.
+     *
+     * Shared by the constructor and `rites()` so both paths render options the
+     * same way.
+     *
+     * @private
+     */
+    #renderOptions() {
+        this.#domElement.innerHTML = this.#rites
+            .map((rite) => {
+                const key = 'RITE_' + rite.toUpperCase();
+                // Not `label`: that name now belongs to the destructured option
+                // below. The shadowing was harmless while nothing outside this
+                // callback used it, and stops being obvious the moment something does.
+                const optionLabel = message(key, this.#locale);
+                return `<option value="${rite}">${optionLabel}</option>`;
+            })
+            .join('');
+        this.#domElement.value = this.#rites[0];
+    }
+
     /**
      * @param {string|Intl.Locale|object} [options='en'] A locale string, an `Intl.Locale`, or an options object.
      *        `null` and `undefined` both mean "no options given" and take the defaults.
@@ -39,10 +98,12 @@ export default class RiteSelect {
      * @param {string} [options.id] The id attribute for the select element.
      * @param {string} [options.class] The class attribute for the select element.
      * @param {string} [options.name] The name attribute for the select element.
+     * @param {string[]} [options.rites] The rites to offer, in order. Omitting it offers every rite.
      * @param {object} [options.label] Label options, forwarded to {@link RiteSelect#label}.
      * @param {?object} [options.wrapper] Wrapper options, forwarded to {@link RiteSelect#wrapper}.
      * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object or nullish.
      * @throws {Error} If the locale is invalid.
+     * @throws {Error} If `rites` is not a non-empty array of distinct known rites.
      * @throws {Error} If `label` or `wrapper` carries an invalid value; the same errors
      *         the corresponding method throws when called directly.
      */
@@ -55,17 +116,11 @@ export default class RiteSelect {
         }
 
         this.#domElement = document.createElement('select');
-        this.#domElement.innerHTML = Object.values(Rite)
-            .map((rite) => {
-                const key = 'RITE_' + rite.toUpperCase();
-                // Not `label`: that name now belongs to the destructured option
-                // below. The shadowing was harmless while nothing outside this
-                // callback used it, and stops being obvious the moment something does.
-                const optionLabel = message(key, this.#locale);
-                return `<option value="${rite}">${optionLabel}</option>`;
-            })
-            .join('');
-        this.#domElement.value = Rite.ROMAN;
+        this.#renderOptions();
+
+        if (Object.hasOwn(options, 'rites')) {
+            this.rites(options.rites);
+        }
 
         if (Object.hasOwn(options, 'class')) {
             this.class(options.class);
@@ -88,6 +143,22 @@ export default class RiteSelect {
         if (wrapper) {
             this.wrapper(wrapper);
         }
+    }
+
+    /**
+     * Restricts the select to the named rites, in the order given.
+     *
+     * The first entry becomes the selected value, which is what makes
+     * `scope.rite`'s first-element-is-initial rule visible in the DOM.
+     *
+     * @param {string[]} list - The rites to offer.
+     * @returns {RiteSelect} This instance, for chaining.
+     * @throws {Error} If the list is not a non-empty array of distinct known rites.
+     */
+    rites(list) {
+        this.#rites = RiteSelect.#assertRites(list);
+        this.#renderOptions();
+        return this;
     }
 
     /**
@@ -388,6 +459,17 @@ export default class RiteSelect {
                 this.#labelElement,
             );
         }
+    }
+
+    /**
+     * Hide or show this select, preferring its wrapper when one was set via
+     * `wrapper()` so the label goes with it.
+     *
+     * @param {boolean} hidden
+     */
+    _setHidden(hidden) {
+        const target = this.#wrapperElement ?? this.#domElement;
+        target.hidden = hidden;
     }
 
     /**
