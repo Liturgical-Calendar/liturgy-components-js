@@ -19,6 +19,7 @@ import {
     ApiOptions,
     CalendarControls,
     ThemePreset,
+    TodayViewer,
     VERSION,
 } from '../dist/index.js';
 
@@ -174,3 +175,31 @@ void documentedRecipe;
 const narrowedCalendarType: 'general' | 'national' | 'diocesan' =
     null as unknown as ControlsInstance['selection']['calendarType'];
 void narrowedCalendarType;
+
+/**
+ * `TodayViewer` (calendar scope, task 9) must reach `dist/` at a usable type,
+ * and its documented `scope` recipe — `mountInto()`, `await settled`,
+ * `dispose()` — must compile for a consumer exactly as written in the docs.
+ * No runtime test can see a `.d.ts`-only regression here, the same class of
+ * bug as the `VERSION` and `@readonly`-getter traps above.
+ */
+async function scopedTodayViewer(): Promise<void> {
+    const viewer = await TodayViewer.mountInto('#today', {
+        locale: 'it',
+        scope: { rite: 'roman', diocese: 'romamo_it' },
+    });
+    await viewer?.settled;
+    viewer?.dispose();
+}
+void scopedTodayViewer;
+
+/**
+ * `scope.rite` must accept both a string and a string array (a set with one
+ * member, and a set with several) — see `CalendarScope.js` and the calendar
+ * scope design doc for why the array form is future-proofing rather than
+ * dead weight today.
+ */
+const scopeWithStringRite: { rite: string } = { rite: 'roman' };
+const scopeWithArrayRite: { rite: string[] } = { rite: ['roman', 'ambrosian'] };
+void scopeWithStringRite;
+void scopeWithArrayRite;

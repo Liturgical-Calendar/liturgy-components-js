@@ -8,6 +8,17 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Behaviour changes
 
+- **`LiturgyOfTheDay` replaces its events on a refetch instead of duplicating them, and gained a live
+  region.** `#updateEventDetails()` used to append without clearing, so a second `calendarFetched` rendered
+  the day's events twice and a third three times — harmless while nothing could trigger a refetch on this
+  component, but the prerequisite for `TodayViewer` above: the moment a scope leaves a rite or calendar
+  select on screen, switching it refetches. It now calls `replaceChildren()` before appending. It also
+  gained the same visually-hidden `role="status"` live region `WebCalendar` and `LiturgyOfAnyDay` already
+  have, through `LiveAnnouncer.js`, with the same `announceUpdates` option (constructor option and chainable
+  setter, default `true`) and the same silent-first-render rule — withheld before only because "updated"
+  would have misdescribed a duplication bug, so removing the cause removed the reason. A stray
+  `console.log` left over from development was also removed.
+
 - **The API's `messages` array now renders its markup, sanitized, instead of as literal text.** The
   messages the API emits genuinely carry markup — anchors to Vatican decrees, `<i>`/`<b>` emphasis,
   highlighted `<span>`s — and `CalendarControls`' messages slot built its cells with `textContent`, so a
@@ -162,6 +173,71 @@ prepared under that number was skipped, and everything it was to have delivered 
   `defaultLabelText` from another catalogue is still honoured.
 
 ### Added
+
+- **A `scope` option lets a consumer declare which calendars a widget may show, and controls now appear
+  only when they have a real choice to offer.** `{ rite, nation, diocese, locale, includeDioceses }`, every
+  key optional; `scope: undefined`/`{}` mean "no scope" and change nothing. This is the composition gap the
+  library had no declarative answer for: the Diocese of Rome wants its own calendar and nothing else on
+  screen, while the Italian Bishops' Conference wants Italy with a rite switch, because Italy has an
+  Ambrosian diocese even though Ambrosian has no national tier.
+
+  `scope` is a **restriction on the calendar space**, not a default value — controls (`RiteSelect`,
+  `CalendarSelect`, the locale input) are **derived** from it rather than separately configured, appearing
+  only when a control has more than one choice for the currently selected rite/calendar. Two of the three
+  rules are runtime-dependent, not mount-time constants: switching rite changes the calendar set, and
+  switching calendar changes the locale set, so every scoped component re-derives on both events from the
+  one place they both land.
+
+  Which rites are in scope for a nation is itself derived, never assumed to be all of them: a rite is in
+  scope iff the nation has a national calendar for it, **or** at least one diocese of it. `{ nation: 'US' }`
+  therefore yields Roman alone and hides the rite select, rather than offering an Ambrosian option that
+  leads only to the bare Ambrosian calendar with nothing American behind it.
+
+  `scope.rite` takes a string or an array — the allowed **set**, whose first element is the initial rite.
+  With only `roman` and `ambrosian` in `Rite` today the restriction aspect of the array form is not yet
+  expressible, only the ordering is; this is deliberate future-proofing for a third rite.
+
+  `CalendarControls`, `CalendarViewer` and `SubscriptionBuilder` accept `scope`; `DayViewer` and
+  `CalendarResourcePicker` gained their own wiring for it; `TodayViewer` (below) ships with it from the
+  start. **`ApiExplorer` cannot take a `scope` at all** — `scope` combined with
+  `ApiOptionsFilter.PATH_BUILDER` throws, because `CalendarPathInput` composes any API route the metadata
+  allows, which is unconditionally incompatible with restricting which calendars are reachable, and
+  `ApiExplorer` always renders that filter. A scoped `CalendarResourcePicker` narrows its rites to whatever
+  its `filter` can surface, throwing only when the scope _pins_ a rite the filter cannot show — silently
+  narrowing away a rite the scope only _permitted_ would defeat the filter, but silently narrowing away one
+  the caller explicitly pinned would be the silent-narrowing failure issue #43 exists to prevent.
+
+  The `inputs` bag gained three keys on `CalendarControls` (and the components built from it) —
+  `riteSelect`, `calendarSelect`, `localeInput` — that override the derived visibility per control, in
+  either direction, without widening the scope itself: pin with `scope`, present with `inputs`. These are a
+  different kind of flag from the pre-existing `acceptHeader`, which is an irreversible `hide()` call;
+  `DayViewer`, `CalendarResourcePicker` and `TodayViewer` have no such override, since they build their
+  selects directly rather than through `CalendarControls`.
+
+  See "Calendar scope" in `CLAUDE.md` and `docs/meta-components.md` for the full model, the worked cases,
+  and per-component coverage.
+
+- **`TodayViewer`**, a new meta-component wrapping `LiturgyOfTheDay` — `DayViewer`'s sibling with no date
+  controls at all. `DayViewer` renders any day and owns the day/month/year inputs to pick it; `TodayViewer`
+  always renders today and has nothing for the caller to pick. It follows every existing meta-component
+  convention (synchronous constructor plus static async `mountInto()`, `appendTo()` returning `undefined`,
+  `settled`, `onError()`/`onCalendarFetched()`, an idempotent `dispose()`, the theme bag, and its own
+  `scope` wiring identical in shape to `DayViewer`'s). It has no `announceUpdates` option of its own — reach
+  the wrapped `LiturgyOfTheDay`'s live-region setting through the `liturgy` getter:
+  `viewer.liturgy.announceUpdates( false )`, matching `DayViewer.liturgy` and `CalendarViewer.webCalendar`.
+
+  ```javascript
+  const viewer = await TodayViewer.mountInto('#today', {
+      locale: 'it',
+      scope: { diocese: 'romamo_it' },
+  });
+  ```
+
+- **`RiteSelect` gained a `rites` option (constructor and chainable setter)** naming a restricted, ordered
+  subset of `Rite` to render, and an internal `_setHidden()` (shared with `Input`) used by the calendar-scope
+  visibility derivation above. Omitting the option renders every rite, exactly as before — no existing
+  consumer is affected — and the first entry in the list becomes the selected value, which is what makes
+  `scope.rite`'s first-element-is-initial rule visible in the DOM.
 
 - **A meta-component theme bag can name a framework `preset`**, closing #67. `theme: 'bootstrap5'` and
   `theme: { preset: 'bootstrap5', riteSelect: { wrapperClass: 'col col-md-2' } }` are the same call; the

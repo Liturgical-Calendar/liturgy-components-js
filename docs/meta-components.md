@@ -105,6 +105,24 @@ form.addEventListener('submit', (event) => {
 This exists so that a form needing a required calendar field no longer has to reach through the
 component with `picker.calendarSelect._domElement.required = true`.
 
+### Scope
+
+`scope` restricts which calendars this picker's `CalendarSelect` may offer — see
+[Calendar scope](../CLAUDE.md#calendar-scope) in the project `CLAUDE.md` for the full model. It is narrowed
+against `filter` before it is applied: a rite the resolved scope only **permits** but that `filter` cannot
+surface (Ambrosian under `NATIONAL_CALENDARS` — there is no Ambrosian national calendar) is silently dropped
+from the rite select's options, since this filter never had a way to reach it either way. A rite the scope
+**pins** (`scope.rite` named it explicitly) that `filter` cannot surface throws instead, naming both, rather
+than silently substituting a different rite for the one the caller asked for:
+
+```javascript
+// Throws: the filter can show only national calendars, and the pinned rite has none.
+await CalendarResourcePicker.mountInto('#picker', {
+    filter: CalendarSelectFilter.NATIONAL_CALENDARS,
+    scope: { rite: 'ambrosian' },
+});
+```
+
 ### The theme bag's role vocabulary
 
 The theme bag is written in HTML roles, never framework names, so a Bootstrap or unstyled consumer is
@@ -568,6 +586,37 @@ both of which work identically on a detached node.
 | `signal`  | `AbortSignal`           | Cancels the mount before it happens; see below.                                                |
 | `onError` | `function(Error): void` | Registered before the initial fetch, so a failure of that very first request still reaches it. |
 
+### Scope
+
+`scope` restricts which calendars this viewer may show — see
+[Calendar scope](../CLAUDE.md#calendar-scope) in the project `CLAUDE.md`. `DayViewer` builds its own
+`RiteSelect` and `CalendarSelect` directly (it does not go through `CalendarControls`), so every rite the
+scope resolves is genuinely reachable and there is no filter-driven narrowing here the way there is on
+`CalendarResourcePicker`. A single `change` listener on both the rite select and the calendar select
+re-derives which of the rite select, calendar select and locale input have more than one choice to offer,
+on every rite or calendar change:
+
+```javascript
+// The Diocese of Rome: one calendar, no controls at all.
+const viewer = await DayViewer.mountInto('#today', {
+    locale: 'it',
+    scope: { diocese: 'romamo_it' },
+});
+
+// The Italian Bishops' Conference: rite select only (Italy has an Ambrosian diocese).
+const viewer = await DayViewer.mountInto('#today', {
+    locale: 'it',
+    scope: { nation: 'IT' },
+});
+```
+
+**`DayViewer` has no `inputs` option and so no per-control visibility override.** `inputs.riteSelect` /
+`calendarSelect` / `localeInput` (see [`CalendarControls`' `inputs` bag](#the-inputs-bag)) exist only on
+`CalendarControls` and the components built from it (`CalendarViewer`, `ApiExplorer`, `SubscriptionBuilder`).
+`DayViewer`, like `CalendarResourcePicker` and `TodayViewer`, builds its rite and calendar selects directly
+rather than through `CalendarControls`, and its `#applyScopeVisibility()` calls `deriveVisibility()` with no
+override argument — the derived answer is always final here.
+
 ### The theme bag
 
 The same HTML-role vocabulary as `CalendarResourcePicker` — see
@@ -833,6 +882,88 @@ const viewer = await DayViewer.mountInto(
 );
 ```
 
+## TodayViewer
+
+`DayViewer`'s sibling with no date controls at all: `DayViewer` renders any day the caller picks and owns
+the day/month/year inputs that let them pick it; `TodayViewer` always renders today and has nothing for the
+caller to pick. It bundles a `RiteSelect`, a `CalendarSelect`, an `ApiOptions` locale input and the
+`LiturgyOfTheDay` widget, wired to one another and to an `ApiClient` — the same rite-needs-two-wires shape
+`DayViewer` exists to get right, reused rather than reimplemented.
+
+```javascript
+import { TodayViewer } from '@liturgical-calendar/components-js';
+
+const viewer = await TodayViewer.mountInto('#todayMount', {
+    locale: 'en',
+    apiClient,
+    theme: { preset: 'bootstrap5' },
+});
+```
+
+Every convention documented for `DayViewer` above — slots, the theme bag's role vocabulary, scope,
+`mountInto()` versus the constructor, reject-versus-resolve, `onError()`/`fetch()`, `settled`, `dispose()` —
+applies here identically; this section covers only what differs.
+
+### Slots
+
+`appendTo()` accepts a single target, or a slots object naming `{ rite, calendar, locale, liturgy }`. An
+omitted slot means that child is not rendered, exactly as `DayViewer`.
+
+### Constructor options
+
+Identical to [`DayViewer`'s](#constructor-options-1) — `locale`, `theme`, `showTitle`, `apiClient`, `scope`
+— and `mountInto()` accepts the same `signal`/`onError` pair.
+
+### The theme bag
+
+The same role vocabulary, with two differences from `DayViewer`'s:
+
+- **No `dateControls` key**, and no `input` flat default for it either — this viewer has no date inputs to
+  style.
+- **The `liturgy` role's class keys are a subset**: `titleClass`, `dateClass`, `eventsWrapperClass`,
+  `eventClass`, `eventGradeClass`, `eventCommonClass`, `eventYearCycleClass`. `dateControlsClass` is still
+  _accepted_ under `theme.liturgy` — the role-level key list is shared with `DayViewer`'s `LiturgyOfAnyDay`
+  child — but `LiturgyOfTheDay` has no setter for it, so naming it is simply never applied, the same as any
+  other unused overlap key on a shared role.
+
+### Scope
+
+Identical model to [`DayViewer`'s](#scope-1) — same derived-rites rule, same runtime re-derivation on rite and
+calendar change, same absence of an `inputs` override (`TodayViewer` builds its own selects directly, the
+same as `DayViewer` and `CalendarResourcePicker`, and calls `deriveVisibility()` with no override argument).
+
+```javascript
+// The Diocese of Rome: one calendar, no controls at all.
+const viewer = await TodayViewer.mountInto('#today', {
+    locale: 'it',
+    scope: { diocese: 'romamo_it' },
+});
+```
+
+### Public members
+
+All getters below, `appendTo()`, `onError()`, `onCalendarFetched()` and `fetch()` throw once this viewer has
+been disposed — see [`dispose()`](#dispose-1) above for the shared contract.
+
+| Member           | Returns            | Description                                                                                                   |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `calendarSelect` | `CalendarSelect`   | The wired calendar select.                                                                                    |
+| `riteSelect`     | `RiteSelect`       | The wired rite select.                                                                                        |
+| `localeInput`    | The locale `Input` | The wired locale input.                                                                                       |
+| `liturgy`        | `LiturgyOfTheDay`  | The wired liturgy widget. **Not** `liturgyOfTheDay` — matches `DayViewer.liturgy`'s naming for the same role. |
+| `selectedLocale` | `string`           | The locale chosen by the cascade, currently selected in the locale input.                                     |
+| `settled`        | `Promise<void>`    | Settles when the latest fetch this viewer issued finished. Never rejects.                                     |
+
+**No `announceUpdates` option on this class itself.** `LiturgyOfTheDay` owns its own live region and its own
+`announceUpdates( boolean )` setter (default `true`); reach it through the `liturgy` getter:
+
+```javascript
+viewer.liturgy.announceUpdates(false); // the surrounding page already has a live region for this content
+```
+
+This mirrors `DayViewer.liturgy` and `CalendarViewer.webCalendar`, both of which expose the renderer rather
+than duplicating its options onto the wrapping class.
+
 ## CalendarControls
 
 Bundles a `RiteSelect`, a `CalendarSelect` and an `ApiOptions` into one mount, wired to one another and
@@ -929,20 +1060,31 @@ which names neither class.
 
 ### The `inputs` bag
 
-`inputs` names which `ApiOptions` inputs the bundled form renders. One key today:
+`inputs` names which `ApiOptions` inputs the bundled form renders, and — since the calendar scope feature —
+which of the three scope-derived controls to force visible or hidden:
 
-| Key            | Type      | Default | Effect                                                                         |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------ |
-| `acceptHeader` | `boolean` | `true`  | `false` omits the Accept-header (`return_type`) select from the rendered form. |
+| Key              | Type      | Default  | Effect                                                                           |
+| ---------------- | --------- | -------- | -------------------------------------------------------------------------------- |
+| `acceptHeader`   | `boolean` | `true`   | `false` omits the Accept-header (`return_type`) select from the rendered form.   |
+| `riteSelect`     | `boolean` | _(none)_ | Overrides `deriveVisibility()`'s derived answer for the rite select, either way. |
+| `calendarSelect` | `boolean` | _(none)_ | Overrides the derived answer for the calendar select, either way.                |
+| `localeInput`    | `boolean` | _(none)_ | Overrides the derived answer for the locale input, either way.                   |
 
 ```javascript
 const viewer = await CalendarViewer.mountInto(
     { controls: '#calendarOptions', calendar: '#litcalWebcalendar' },
     { locale: 'en', apiClient, inputs: { acceptHeader: false } },
 );
+
+// A two-rite scope, but the rite select stays hidden — the rite is still pickable
+// programmatically, just not through this form.
+const viewer2 = await CalendarViewer.mountInto(
+    { controls: '#c', calendar: '#w' },
+    { locale: 'it', apiClient, scope: { nation: 'IT' }, inputs: { riteSelect: false } },
+);
 ```
 
-Four things to know:
+Six things to know:
 
 - **It reaches `CalendarControls`, `CalendarViewer` and `ApiExplorer`**, which is wherever the bundled
   `ApiOptions` can render that input at all — `ApiOptions.appendTo()` renders it only under
@@ -962,6 +1104,37 @@ Four things to know:
   irreversible; the option is applied in the constructor, before the input has been rendered anywhere.
 - **`acceptHeaderInput.hide()` still works** and is unchanged. It remains the only way to hide the input
   on a bare `ApiOptions`, outside this family.
+- **`riteSelect`, `calendarSelect` and `localeInput` are a DIFFERENT kind of flag from `acceptHeader`, and
+  exist only on this component and the two others (`CalendarViewer`, `ApiExplorer`) that build a
+  `CalendarControls`.** Where `acceptHeader` sets an irreversible `hide()` flag with a fixed default, these
+  three **override [`deriveVisibility()`](../CLAUDE.md#calendar-scope)'s own, scope-derived answer for that
+  control, in both directions**, and carry no default of their own — a caller who names none of them leaves
+  the derivation alone. `DayViewer`, `CalendarResourcePicker` and `TodayViewer` build their own selects
+  directly and support **no** per-control override at all; see [Scope](#scope-3) below.
+- **Overriding visibility does not widen the scope.** `inputs: { riteSelect: false }` on a two-rite scope
+  does not remove the second rite from what the scope admits — it only hides the control, leaving the rite
+  at whatever the scope resolved. To actually restrict the rite, pin it with `scope.rite` instead.
+
+### Scope
+
+`scope` restricts which calendars this bundle's `RiteSelect` and `CalendarSelect` may offer, and derives
+which of the rite select, calendar select and locale input are shown — see
+[Calendar scope](../CLAUDE.md#calendar-scope) in the project `CLAUDE.md` for the full model (the shape,
+the derived-rites rule, and why an `includeDioceses: true` nation scope narrows the calendar select's OPTION
+LIST, not merely its value). `inputs.riteSelect`/`calendarSelect`/`localeInput` (above) override the derived
+answer per control.
+
+**`scope` combined with `filter: ApiOptionsFilter.PATH_BUILDER` throws at construction**, naming both.
+`CalendarPathInput` composes any API route the metadata allows, which is unconditionally incompatible with
+restricting which calendars are reachable — there is no way to make the two agree. This is the reason
+`ApiExplorer` cannot take a `scope` at all; see [its own section](#constructor-options-5) below.
+
+```javascript
+const controls = new CalendarControls({
+    locale: 'it',
+    scope: { diocese: 'romamo_it' }, // one calendar, no controls at all
+});
+```
 
 ### The theme bag
 
@@ -1460,8 +1633,13 @@ As `CalendarControls`, plus:
 
 `inputs` is forwarded to `CalendarControls` unchanged; see [the `inputs` bag](#the-inputs-bag).
 
+`scope` is forwarded to `CalendarControls` unchanged too, and `CalendarViewer` inherits its behaviour
+whole — the derived-visibility rule, the narrowed calendar-select option list, and the throw when combined
+with `ApiOptionsFilter.PATH_BUILDER` (which this class never sets, so that combination cannot actually
+arise here in practice). See the `CalendarControls` section's own [Scope](#scope-3) subsection.
+
 `mountInto()` accepts the same additional options as `CalendarControls.mountInto()` — `initialFetch`,
-`signal` and `onError` — applied to the controls half exactly as documented [there](#constructor-options-2).
+`signal` and `onError` — applied to the controls half exactly as documented [there](#constructor-options-3).
 
 ### Public members
 
@@ -1811,6 +1989,18 @@ there **by default**, and deliberately: `PathBuilder` turns that select's `chang
 `return_type`, so hiding it fixes the response format at whatever the select's initial value is. See
 [the `inputs` bag](#the-inputs-bag).
 
+**`ApiExplorer` cannot take a `scope` at all.** `appendTo()` always renders this component's `ApiOptions`
+under `ApiOptionsFilter.PATH_BUILDER` (among the other two filters — see
+[the three-filter layout](#the-three-filter-layout) above), and `scope` combined with `PATH_BUILDER` is
+exactly the combination `CalendarControls`' own constructor rejects — see
+[its Scope section](#scope-3). Passing `scope` to `ApiExplorer.mountInto()`, or to `new ApiExplorer(...)`,
+is therefore forwarded straight into the `CalendarControls` this class builds and always throws:
+`CalendarPathInput` composes any API route the metadata allows, which is unconditionally incompatible with
+restricting which calendars are reachable. Construct without a `scope` when using this component; a page
+that wants both a restricted calendar space and an explorable path needs two separate widgets. (An earlier
+draft of the calendar-scope design claimed `ApiExplorer` inherits `scope` "for free", the way `CalendarViewer`
+and `SubscriptionBuilder` genuinely do; that claim was wrong, and has been corrected in the design spec.)
+
 ### Public getters
 
 Both throw once this explorer has been disposed — see [`dispose()`](#dispose-4) below.
@@ -1996,6 +2186,23 @@ observe or configure a calendar fetch, and this component performs none.
 | `apiClient`                                                    | `ApiClient`             | none      | Binds the controls to that client's API base; never used to fetch.                                                                                                                      |
 | `scheme`                                                       | `'https' \| 'webcal'`   | `'https'` | See [above](#the-scheme-option).                                                                                                                                                        |
 | `copyIcon`, `copyTitle`, `copiedText`, `copiedClass`, `onCopy` | —                       | —         | See [the copy control's options](#the-copy-controls-options).                                                                                                                           |
+
+`scope` (and `inputs`) are likewise forwarded to `CalendarControls` unchanged, and `SubscriptionBuilder`
+inherits the whole scope contract — see the `CalendarControls` section's [Scope](#scope-3) subsection.
+Inheriting it is a deliberate benefit rather than an accident: "subscribe to _our_ calendar" is a diocesan use
+case, and pinning `scope` turns the generated iCal URL into a single fixed subscription rather than a
+builder:
+
+```javascript
+const builder = await SubscriptionBuilder.mountInto(
+    { controls: '#controls', url: '#url' },
+    { locale: 'it', apiClient, scope: { diocese: 'romamo_it' } },
+);
+```
+
+Unlike `ApiExplorer`, nothing here ever sets `ApiOptionsFilter.PATH_BUILDER` — `appendTo()` filters this
+component's `ApiOptions` to `LOCALE_ONLY` — so `scope` never hits the throw that filter causes on
+`CalendarControls`.
 
 ### Public getters
 

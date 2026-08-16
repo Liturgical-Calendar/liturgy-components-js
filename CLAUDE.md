@@ -857,6 +857,127 @@ above: the theme bag, `mountInto()` versus the constructor, reject-for-programme
 
 Full documentation lives in `docs/meta-components.md`'s `SubscriptionBuilder` section.
 
+### Calendar scope
+
+A `scope` option lets a consumer declare which calendars a widget may show — the Diocese of Rome wants its
+own calendar and nothing else on screen; the Italian Bishops' Conference wants Italy, with a rite switch
+because Italy has an Ambrosian diocese. `scope` is a **restriction on the calendar space**, not a default
+value: controls are then **derived** from it, appearing only when they have a real choice to offer, rather
+than separately configured. Full reasoning lives in
+`docs/superpowers/specs/2026-08-16-calendar-scope-design.md`; this section is the summary a change to any
+scoped component must not violate. The resolver, `src/MetaComponents/CalendarScope.js`, is internal and not
+exported from `src/index.js`, on the same reasoning as `Theme.js` and `FilterInputs.js`.
+
+**The shape.** `scope: { rite, nation, diocese, locale, includeDioceses }`, every key optional.
+`scope: undefined` and `scope: {}` both mean "no scope" — every existing code path untouched — per the
+library-wide nullish rule. `includeDioceses` defaults to **`false`**: `{ nation: 'IT' }` alone means the
+Italian national calendar and nothing else, one calendar, no controls. Widening to dioceses is the rarer,
+more deliberate act, so it is the opt-in.
+
+**`scope.rite` is the allowed SET, not an initial value, and takes a string or an array.** A string is a
+singleton set. **The initial rite is the set's first element** — `'roman'` and `['roman']` behave
+identically, and `['ambrosian', 'roman']` starts on Ambrosian. With only `roman` and `ambrosian` in `Rite`
+today, `['roman', 'ambrosian']` equals omitting the key entirely, so the _restriction_ aspect of the array
+form is not yet observable — only the _ordering_ is. This is deliberate future-proofing: it earns its place
+the day a third rite is added, at which point `rite: ['roman', 'ambrosian']` on an Italian site would keep a
+future Melkite or Ruthenian option from ever appearing.
+
+**Which rites are in scope for a nation is DERIVED, never assumed to be all of them:**
+
+> A rite is in scope for a nation iff that nation has a national calendar for it, **or** at least one
+> diocese of it.
+
+`{ nation: 'US' }` therefore yields Roman alone — the United States has no Ambrosian diocese — and hides the
+rite select, rather than offering an Ambrosian option that leads only to the bare Ambrosian calendar with
+nothing American behind it. `{ nation: 'IT' }` yields both, because Italy has an Ambrosian diocese (Milan)
+even though Ambrosian has no national tier (`RiteProperties.ambrosian.hasNationalTier === false`) — a rite
+lacking a national tier falls back to its rite-level stand-in calendar (the bare Ambrosian calendar) rather
+than being excluded, but only where the nation has at least one diocese of it. `scope.rite` then intersects
+with this derived set; an empty intersection throws at construction, naming both the requested rites and
+those actually available.
+
+**Controls are derived, and re-derivation is RUNTIME-dependent, not a mount-time constant:**
+
+```text
+riteSelect      shown iff  the scope yields > 1 rite
+calendarSelect  shown iff  the scope yields > 1 calendar FOR THE CURRENT RITE
+localeInput     shown iff  the CURRENT CALENDAR supports > 1 locale
+```
+
+Switching rite changes the calendar set; switching calendar changes the locale set. This is exactly the
+situation `CalendarSelect._setHidden()`'s doc comment already warns about: deriving visibility from the rite
+side alone leaked before, because `ApiOptions`' path builder can re-filter a select with no rite change to
+re-evaluate it. Every scoped component (`CalendarControls`, `DayViewer`, `CalendarResourcePicker`,
+`TodayViewer`) therefore attaches **one** `change` listener to **both** the rite select and the calendar
+select — the single place a rite change and a calendar change both land — and re-derives all three flags
+from there via `deriveVisibility()`, applying them with `_setHidden()`. `Input` and `RiteSelect` both gained
+`_setHidden()` for this. A hidden control still holds its value and still drives the fetch — that is what
+makes the Rome case work: the calendar select is hidden, and is still what tells `ApiClient` to fetch
+`romamo_it`.
+
+**The calendar select's OPTION LIST is narrowed, not merely its value.** `CalendarSelect._restrictToScope()`
+rebuilds the `<option>`s from the resolved scope's calendars for the current rite, so `{ nation: 'IT',
+includeDioceses: true }` offers Italy plus its Roman dioceses under Roman, and the bare Ambrosian calendar
+plus Milan — but never Lugano — under Ambrosian. `_restrictToScope()` always runs before `value()` is set:
+the select's own unrestricted, Roman-built default option list may not even carry the scope's actual initial
+calendar id, and `value()` throws for any id no current option carries.
+
+**The `inputs` bag gained three keys — `riteSelect`, `calendarSelect`, `localeInput` — alongside the
+pre-existing `acceptHeader`, but only on `CalendarControls` and the components built from it
+(`CalendarViewer`, `ApiExplorer`, `SubscriptionBuilder`).** `DayViewer`, `CalendarResourcePicker` and
+`TodayViewer` build their rite and calendar selects directly rather than through `CalendarControls`, take no
+`inputs` option at all, and call `deriveVisibility()` with no override argument — the derived answer is
+always final on those three. The two `inputs` families that DO exist are NOT the same kind of flag. `acceptHeader` is an
+irreversible `hide()` call: `true` reasserts the default rather than un-hiding. The three new keys instead
+**override `deriveVisibility()`'s own derived answer, in both directions**, and carry no default of their
+own — they are simply absent from the resolved bag until a caller names one, which is what lets the resolver
+tell "not overridden" from "overridden to `true`". `inputs: { riteSelect: false }` on a two-rite scope does
+**not** remove Ambrosian from the space; it only makes it unreachable by the user, leaving the rite at
+whatever the scope resolved. `scope.rite` is the honest way to say "Roman only" — pin with `scope`, present
+with `inputs`.
+
+**`scope` combined with `ApiOptionsFilter.PATH_BUILDER` throws, in `CalendarControls`'s own constructor.**
+`CalendarPathInput` composes _any_ API route the metadata allows, entirely outside `deriveVisibility()`'s
+reach — a full bypass of a scope's contract, not a cosmetic gap. This was considered and rejected as a thing
+to make `CalendarPathInput` scope-aware instead: composing an unrestricted route is that input's entire
+reason to exist. **The practical consequence is that `ApiExplorer` cannot take a `scope` at all** — its
+`appendTo()` always renders `ApiOptions` under `PATH_BUILDER` (among others), so a `scope` passed to
+`ApiExplorer.mountInto()`/its constructor is forwarded straight into the `CalendarControls` it builds and
+always throws. `CalendarViewer` and `SubscriptionBuilder` build a `CalendarControls` too, but never render
+`PATH_BUILDER`, so both inherit `scope` cleanly. (An earlier draft of the design claimed `ApiExplorer`
+inherits scope "for free" the same way; that claim was wrong and has been corrected in the spec file.)
+
+**A scoped `CalendarResourcePicker` narrows its own rites to whatever its `filter` can actually surface, and
+throws only when the scope PINS a rite the filter cannot show.** Under
+`CalendarSelectFilter.NATIONAL_CALENDARS` there is no rite select and no national calendar for a rite with
+no national tier, so `CalendarResourcePicker.#narrowScopeToNationalTier()` drops Ambrosian from a resolved
+scope's rites _silently_ when the scope only **permitted** it (`{ nation: 'IT' }` — Italy's Ambrosian diocese
+was never reachable through this filter regardless of scope). It throws instead only when the caller's own
+scope bag **pinned** a rite explicitly (`rawScope.rite` named it) and narrowing leaves nothing reachable —
+silently substituting a different rite for one the caller explicitly asked for would be exactly the
+silent-narrowing failure this component exists to avoid (issue #43). `DayViewer` and `TodayViewer` have no
+such narrowing: both build their own `RiteSelect`, so every rite the scope resolves is genuinely reachable.
+
+**`TodayViewer`** is a new meta-component, sibling to `DayViewer`, wrapping `LiturgyOfTheDay` — the name
+carries the whole distinction: `DayViewer` renders any day and owns day/month/year date controls;
+`TodayViewer` always renders today and has no date controls at all. It otherwise follows every existing
+meta-component convention (synchronous constructor plus static async `mountInto()`, `appendTo()` returning
+`undefined`, `settled`, `onError()`/`onCalendarFetched()`, an idempotent `dispose()`, the theme bag, and its
+own scope wiring identical in shape to `DayViewer`'s). It has **no `announceUpdates` option of its own** —
+the wrapped `LiturgyOfTheDay` is exposed via a `liturgy` getter, so a consumer writes
+`viewer.liturgy.announceUpdates( false )`, the same pattern `CalendarViewer.webCalendar` and
+`DayViewer.liturgy` already use.
+
+**`LiturgyOfTheDay` prerequisite fix, landed alongside this feature.** It used to _append_ on every
+`calendarFetched`, so a second fetch duplicated the day's events rather than replacing them — harmless while
+nothing could trigger a refetch on this component, but `TodayViewer` can, the moment a scope leaves a rite or
+calendar select on screen. `#updateEventDetails()` now calls `replaceChildren()` before appending. It also
+gained the same visually-hidden `role="status"` live region `WebCalendar` and `LiturgyOfAnyDay` already have,
+through `LiveAnnouncer.js`, with the same `announceUpdates` option (default `true`) and the same
+silent-first-render rule — withheld before only because "updated" would have misdescribed a duplication bug,
+so removing the cause removed the reason. A stray `console.log` left over from development was also removed.
+Both are recorded as **behaviour changes** in the CHANGELOG, not slid in as an invisible fix.
+
 ## Enums
 
 Type-safe enumerations for component configuration:

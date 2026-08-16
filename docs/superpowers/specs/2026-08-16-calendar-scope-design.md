@@ -228,12 +228,24 @@ unregistered component name throws rather than falling back to permissive behavi
 
 ### Consumers
 
-| Component                                              | How it gets `scope`                              |
-| ------------------------------------------------------ | ------------------------------------------------ |
-| `CalendarControls`                                     | implements it                                    |
-| `CalendarViewer`, `ApiExplorer`, `SubscriptionBuilder` | inherited — all three build a `CalendarControls` |
-| `DayViewer`, `CalendarResourcePicker`                  | build their selects directly; each needs wiring  |
-| `TodayViewer` (new)                                    | new component wrapping `LiturgyOfTheDay`         |
+| Component                               | How it gets `scope`                                                         |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `CalendarControls`                      | implements it                                                               |
+| `CalendarViewer`, `SubscriptionBuilder` | inherited — both build a `CalendarControls` and never render `PATH_BUILDER` |
+| `ApiExplorer`                           | **cannot take `scope` at all** — see below                                  |
+| `DayViewer`, `CalendarResourcePicker`   | build their selects directly; each needs wiring                             |
+| `TodayViewer` (new)                     | new component wrapping `LiturgyOfTheDay`                                    |
+
+**Correction (implemented, 2026-08-16):** this table originally listed `ApiExplorer` alongside
+`CalendarViewer` and `SubscriptionBuilder` as inheriting `scope` "for free." That is wrong.
+`ApiExplorer.appendTo()` always renders its `CalendarControls`' `ApiOptions` under
+`ApiOptionsFilter.PATH_BUILDER` (among the other two filters — see the three-filter layout), which is
+exactly the combination `CalendarControls`' own constructor rejects (see "Error handling" below). Since
+`ApiExplorer` builds a `CalendarControls` internally and forwards its own options bag to it unchanged, a
+`scope` passed to `ApiExplorer` reaches that `CalendarControls` and always throws — `ApiExplorer` cannot
+take a `scope` at all, for the same reason `CalendarPathInput` and `scope` cannot coexist on any component.
+`CalendarViewer` and `SubscriptionBuilder` genuinely do inherit `scope` for free, because neither ever sets
+`PATH_BUILDER`.
 
 `SubscriptionBuilder` inheriting scope is a deliberate benefit rather than an accident: "subscribe to _our_
 calendar" is a diocesan use case, and pinning the scope makes the generated iCal URL a single fixed
