@@ -188,3 +188,23 @@ describe('Input.wrapper() — interaction with wrapperClass()', () => {
         expect(instance._wrapperElement.className).toBe('col-md-6');
     });
 });
+
+describe('Input._setHidden', () => {
+    it('hides and shows the bare input, when no wrapper was configured', () => {
+        const instance = input();
+        instance._setHidden(true);
+        expect(instance._domElement.hidden).toBe(true);
+        instance._setHidden(false);
+        expect(instance._domElement.hidden).toBe(false);
+    });
+
+    it('hides the wrapper, not the bare input, when a wrapper was configured', () => {
+        const instance = input().wrapper({ as: 'div' });
+        instance.appendTo('#mount');
+
+        instance._setHidden(true);
+
+        expect(instance._domElement.hidden).toBe(false);
+        expect(instance._domElement.parentElement.hidden).toBe(true);
+    });
+});

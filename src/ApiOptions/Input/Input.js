@@ -929,6 +929,18 @@ export default class Input {
     }
 
     /**
+     * Hide or show this input, preferring its wrapper when one was set via
+     * `wrapper()` so the label goes with it. Mirrors
+     * `CalendarSelect._setHidden()` and `RiteSelect._setHidden()`.
+     *
+     * @param {boolean} hidden
+     */
+    _setHidden(hidden) {
+        const target = this.#wrapperElement ?? this.#domElement;
+        target.hidden = hidden;
+    }
+
+    /**
      * Retrieves the underlying DOM element of the input instance.
      *
      * @returns {HTMLElement} The DOM element associated with the input instance.

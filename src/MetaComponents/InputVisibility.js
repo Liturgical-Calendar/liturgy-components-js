@@ -29,16 +29,29 @@ import { assertPlainOptions, describeType } from '../OptionsValidation.js';
  * The keys an `inputs` bag may name.
  *
  * Only inputs whose visibility a meta-component can actually act on belong here.
- * `acceptHeader` is the whole list today because `ApiOptions` has exactly one
- * input with a visibility flag of its own.
+ * `acceptHeader` has a fixed default (`true`, applied via `AcceptHeaderInput.hide()`
+ * at construction). `riteSelect`, `calendarSelect` and `localeInput` are different:
+ * they are the three controls a calendar `scope` can hide, and their visibility is
+ * otherwise RUNTIME-derived by `CalendarScope.js`'s `deriveVisibility()` — so these
+ * three carry no default here, and are absent from {@link DEFAULTS} deliberately.
+ * A caller who names one is overriding the derived value for that key; a caller who
+ * doesn't leaves the derivation alone.
  *
  * @type {Readonly<string[]>}
  */
-const INPUT_KEYS = Object.freeze(['acceptHeader']);
+const INPUT_KEYS = Object.freeze([
+    'acceptHeader',
+    'riteSelect',
+    'calendarSelect',
+    'localeInput',
+]);
 
 /**
- * Every input renders unless the bag says otherwise, so an absent bag is exactly
- * today's behaviour.
+ * `acceptHeader` renders unless the bag says otherwise, so an absent bag is
+ * exactly today's behaviour. `riteSelect`, `calendarSelect` and `localeInput`
+ * have no entry here — see {@link INPUT_KEYS} — so they are simply absent from
+ * the resolved bag until a caller names one, which is what lets
+ * `deriveVisibility()` tell "not overridden" from "overridden to true".
  *
  * @type {Readonly<Object<string, boolean>>}
  */
@@ -55,7 +68,7 @@ const DEFAULTS = Object.freeze({ acceptHeader: true });
  *
  * @param {unknown} inputs - The candidate `inputs` bag, or `null`/`undefined`.
  * @param {string} componentName - The rejecting component's class name.
- * @returns {{acceptHeader: boolean}} The resolved visibility flags.
+ * @returns {{acceptHeader: boolean, riteSelect?: boolean, calendarSelect?: boolean, localeInput?: boolean}} The resolved visibility flags.
  * @throws {Error} If the bag is not a plain object, names an unknown key, or
  *   carries a non-boolean value.
  */
@@ -67,7 +80,7 @@ export function resolveInputVisibility(inputs, componentName) {
         assertPlainOptions(inputs, `${componentName}: inputs`);
     } catch {
         throw new Error(
-            `${componentName}: inputs must be an object naming { acceptHeader }, but found type: ${describeType(inputs)}`,
+            `${componentName}: inputs must be an object naming { acceptHeader, riteSelect, calendarSelect, localeInput }, but found type: ${describeType(inputs)}`,
         );
     }
     for (const key of Object.keys(inputs)) {
