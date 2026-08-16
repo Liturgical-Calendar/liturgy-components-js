@@ -128,8 +128,10 @@ scope — that is the derived-rites rule above, applied whether or not `includeD
 not one calendar overall. Because Milan is an Ambrosian diocese of Italy, `{nation: 'IT'}` alone still
 resolves Ambrosian into scope and the rite select still appears; each rite simply offers exactly one entry
 (the national calendar for Roman, the rite-level stand-in for Ambrosian) until `includeDioceses` widens
-either one down to its dioceses. A nation with no Ambrosian diocese at all (`{nation: 'US'}`) is the only way
-to lose the rite select entirely — `includeDioceses` cannot do that on its own. Widening to dioceses is the
+either one down to its dioceses. Among NATION scopes, a nation with no Ambrosian diocese at all
+(`{nation: 'US'}`) is what loses the rite select — `includeDioceses` cannot do that on its own. Pinning the
+rite directly (`{rite: 'roman'}`, or any singleton array) also hides it, by restricting the allowed SET
+rather than by what the metadata derives; those are the two distinct routes. Widening to dioceses is the
 rarer and more deliberate act, so it is the opt-in. This keeps the simplest PER-RITE case simplest, without
 pretending a rite the metadata actually derives isn't there.
 
@@ -173,11 +175,19 @@ localeInput     shown iff  the CURRENT CALENDAR supports > 1 locale
 ```
 
 **Two of those are runtime-dependent, not mount-time constants.** Switching rite changes the calendar set;
-switching calendar changes the locale set. `{nation: 'CH', includeDioceses: true}` hides `calendarSelect`
-under Roman — Switzerland's national calendar is the sole entry there — and shows it once the rite switches
-to Ambrosian, where the rite-level stand-in and Lugano are both offered. (A nation with no Ambrosian diocese
-at all cannot reach an Ambrosian branch to compare in the first place — see the derived-rites rule above; the
-rite select itself would already be hidden.)
+switching calendar changes the locale set. The shape that shows it is a nation with a national calendar for
+Roman whose only Ambrosian presence is a diocese: `calendarSelect` is hidden under Roman, where the national
+calendar is the sole entry, and appears once the rite switches to Ambrosian, where the rite-level stand-in
+and that diocese are both offered.
+
+**No nation the live API currently serves has that shape**, so the case is modelled as `CH` (a Swiss
+national calendar plus Lugano) in the LOCAL fixtures of `CalendarScope.test.js` and the component scope
+tests — not in `src/__fixtures__/metadata.js`, which must stay byte-identical to the live `/calendars`
+response and today carries only `IT`, `US` and `VA`. Italy is symmetric under either `includeDioceses`
+setting and so cannot demonstrate the toggle. This is why the rule is pinned by a local fixture rather than
+by production data, and why a reader should not expect to reproduce it against the real API.
+(A nation with no Ambrosian diocese at all cannot reach an Ambrosian branch to compare in the first place —
+see the derived-rites rule above; the rite select itself would already be hidden.)
 
 This is the same situation `CalendarSelect._setHidden()` already handles, and its doc comment records how it
 was got wrong before: deriving visibility on the rite side alone leaked, because `ApiOptions`' path builder
