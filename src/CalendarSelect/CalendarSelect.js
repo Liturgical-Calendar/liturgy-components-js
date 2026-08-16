@@ -289,8 +289,8 @@ export default class CalendarSelect {
      * @returns {string} The `<option>` markup for the rite-level calendar.
      * @private
      */
-    #riteLevelOptionHtml() {
-        const key = RiteProperties[this.#rite].emptyOptionLabelKey;
+    #riteLevelOptionHtml(rite = this.#rite) {
+        const key = RiteProperties[rite].emptyOptionLabelKey;
         return `<option value="">${message(key, this.#locale)}</option>`;
     }
 
@@ -316,6 +316,113 @@ export default class CalendarSelect {
         // hide a select that is showing the Ambrosian calendar perfectly well.
         this._setHidden(false);
         return this;
+    }
+
+    /**
+     * Builds one `<option>` for `_restrictToScope()`.
+     *
+     * @param {{type: 'rite'|'national'|'diocesan', id: string}} entry - One
+     *   scoped calendar entry, as `CalendarScope.js` returns it.
+     * @param {string} rite - The rite `entry` belongs to, for the rite-level
+     *   label and the diocese-name lookup below.
+     * @param {import('../typedefs.js').DiocesanCalendar[]} dioceses - `rite`'s
+     *   own diocesan calendars, for the display name a `'diocesan'` entry needs
+     *   — `entry` itself carries none; see `CalendarScope.js`'s `ScopedCalendar`.
+     * @returns {string} The `<option>` markup.
+     * @throws {Error} If `entry.type` is none of `'rite'`, `'national'` or `'diocesan'`.
+     * @private
+     */
+    #scopedOptionHtml(entry, rite, dioceses) {
+        switch (entry.type) {
+            case 'rite':
+                return this.#riteLevelOptionHtml(rite);
+            case 'national':
+                return `<option data-calendartype="national" value="${escapeHtml(entry.id)}">${escapeHtml(this.#countryNames.of(entry.id))}</option>`;
+            case 'diocesan': {
+                // `entry` carries only `{ type, id, locales }` — the display name
+                // has to be looked up from the base's own diocesan list for this
+                // rite, the same source `#addDioceseOption()` reads `item.diocese`
+                // from. Falls back to the bare id rather than throwing: metadata
+                // inconsistency is `CalendarScope.js`'s problem to reject (it
+                // already validates `scope.diocese` against this same list), not
+                // a reason for a SCOPED select to be less resilient than an
+                // unscoped one.
+                const diocese = dioceses.find(
+                    (item) => item.calendar_id === entry.id,
+                );
+                const label = diocese ? diocese.diocese : entry.id;
+                return `<option data-calendartype="diocesan" value="${escapeHtml(entry.id)}">${escapeHtml(label)}</option>`;
+            }
+            default:
+                throw new Error(
+                    `CalendarSelect._restrictToScope: unknown calendar type '${entry.type}'.`,
+                );
+        }
+    }
+
+    /**
+     * Restricts this select's OPTION LIST to exactly the entries a resolved
+     * calendar `scope` offers for one rite — `resolved.calendarsByRite[
+     * currentRite ]`, from `CalendarScope.js` — rather than the base's full
+     * national/diocesan lists `#buildAllOptions()` builds. Package-internal:
+     * `CalendarControls` calls this, alongside `_setHidden()`, everywhere it
+     * (re-)settles a resolved scope's visibility — once after mounting and
+     * again on every rite or calendar change — because the OFFERED list, not
+     * only whether the select is shown at all, is part of the scope contract:
+     * `{ nation: 'IT', includeDioceses: true }` must not still list every
+     * nation and diocese worldwide underneath a visible select.
+     *
+     * None of the existing option-building methods fit an arbitrary,
+     * caller-supplied MIX of rite-level/national/diocesan entries:
+     * `#buildAllOptions()` and `#reapplyOptionsToDom()` both read the base's
+     * FULL lists, and `#filterDioceseOptionsForNation()` only narrows an
+     * already-built diocese list by nation. `_showRiteLevelCalendarOnly()` is
+     * the nearest precedent — it also bypasses `#reapplyOptionsToDom()` to
+     * write a hand-built list — but it only ever writes ONE option.
+     *
+     * **The currently selected value is preserved across the rebuild when the
+     * new entries still carry it**, and falls back to the first entry's id
+     * otherwise. That distinction is what makes this safe to call from BOTH
+     * triggers: a CALENDAR change leaves `entries` unchanged (same rite), so
+     * rebuilding must not silently revert the user's own selection back to the
+     * first option; a RITE change hands in a different `entries` whose ids the
+     * previous selection almost never belongs to, so falling back is correct
+     * there. `entries[0].id` is `''` for a `'rite'`-type first entry, so no
+     * branch on type is needed for the fallback itself.
+     *
+     * **Ignores `#allowNull` deliberately.** An unscoped select prepends an
+     * empty "General Roman Calendar" option whenever `allowNull` is set,
+     * letting the caller opt out of any selection at all — but for a scoped
+     * select that would be a way to escape the scope through an option the
+     * scope itself never offered. When the scope's own list already contains
+     * a `'rite'`-type entry (`CalendarScope.js`'s rite-level stand-in), THAT
+     * is the equivalent "no nation/diocese chosen" option; when it does not
+     * (a `nation` scope with a national tier, for instance), there is no
+     * meaningful null state to offer in the first place.
+     *
+     * @param {Array<{type: 'rite'|'national'|'diocesan', id: string, locales: string[]}>} entries -
+     *   The scope's offered calendars for one rite.
+     * @param {string} rite - The rite `entries` was built for.
+     * @returns {void}
+     * @throws {Error} If `entries` is not an array, or one of its entries names
+     *   an unrecognised `type`.
+     */
+    _restrictToScope(entries, rite) {
+        if (false === Array.isArray(entries)) {
+            throw new Error(
+                'CalendarSelect._restrictToScope: entries must be an array, but found type: ' +
+                    typeof entries,
+            );
+        }
+        const dioceses = this.#base.diocesanCalendars(rite);
+        const currentValue = this.#domElement.value;
+        this.#domElement.innerHTML = entries
+            .map((entry) => this.#scopedOptionHtml(entry, rite, dioceses))
+            .join('');
+        const stillOffered = entries.some((entry) => entry.id === currentValue);
+        this.#domElement.value = stillOffered
+            ? currentValue
+            : (entries[0]?.id ?? '');
     }
 
     /**

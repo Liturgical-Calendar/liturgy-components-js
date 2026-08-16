@@ -9,6 +9,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import CalendarControls from '../MetaComponents/CalendarControls.js';
+import { ApiOptionsFilter } from '../Enums.js';
 
 const API_URL = 'http://localhost:8000';
 
@@ -134,5 +135,166 @@ describe('CalendarControls with a scope', () => {
         const controls = new CalendarControls({ locale: 'en' });
         controls.appendTo('#mount');
         expect(controls.riteSelect._domElement.hidden).toBe(false);
+        expect(controls.calendarSelect._domElement.hidden).toBe(false);
+        expect(controls.apiOptions.localeInput._domElement.hidden).toBe(false);
+    });
+
+    it("restricts the calendar select's OPTIONS to the scope for the current rite (F1)", () => {
+        // The spec's worked-cases table headline: `{ nation: 'IT', includeDioceses:
+        // true }` must OFFER "Italy + Italian Roman dioceses" under Roman and
+        // "Ambrosian + Milan (not Lugano)" under Ambrosian — not still list every
+        // nation and diocese worldwide underneath a visible select.
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'IT', includeDioceses: true },
+        });
+        controls.appendTo('#mount');
+
+        expect(
+            [...controls.calendarSelect._domElement.options].map(
+                (o) => o.value,
+            ),
+        ).toEqual(['IT', 'romamo_it']);
+
+        controls.riteSelect._domElement.value = 'ambrosian';
+        controls.riteSelect._domElement.dispatchEvent(new Event('change'));
+
+        // The rite-level stand-in (value '') plus Milan; Lugano (a Swiss diocese)
+        // must NOT appear — this is the headline Lugano-exclusion behaviour.
+        expect(
+            [...controls.calendarSelect._domElement.options].map(
+                (o) => o.value,
+            ),
+        ).toEqual(['', 'milano_it']);
+    });
+
+    it('preserves the selected calendar across a same-rite restriction rebuild', () => {
+        // A calendar change re-derives visibility through the same listener that
+        // restricts the option list — `_restrictToScope()` must not revert the
+        // user's own selection back to the list's first entry when the rite (and
+        // so the entries) has not changed.
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'IT', includeDioceses: true },
+        });
+        controls.appendTo('#mount');
+        controls.calendarSelect._domElement.value = 'romamo_it';
+        controls.calendarSelect._domElement.dispatchEvent(new Event('change'));
+        expect(controls.calendarSelect._domElement.value).toBe('romamo_it');
+    });
+});
+
+describe('CalendarControls scope combined with ApiOptionsFilter.PATH_BUILDER (F2)', () => {
+    it('rejects a scope combined with PATH_BUILDER, naming both', () => {
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    scope: { nation: 'IT' },
+                    filter: ApiOptionsFilter.PATH_BUILDER,
+                }),
+        ).toThrow(/CalendarControls.*scope.*PATH_BUILDER/is);
+    });
+
+    it('still accepts a scope under other filters', () => {
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    scope: { nation: 'IT' },
+                    filter: ApiOptionsFilter.GENERAL_ROMAN,
+                }),
+        ).not.toThrow();
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    scope: { nation: 'IT' },
+                    filter: ApiOptionsFilter.LOCALE_ONLY,
+                }),
+        ).not.toThrow();
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    scope: { nation: 'IT' },
+                    filter: ApiOptionsFilter.ALL_CALENDARS,
+                }),
+        ).not.toThrow();
+    });
+});
+
+describe('CalendarControls scope + inputs overrides (F3)', () => {
+    it('inputs.riteSelect forces the rite select visible when the scope would hide it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { diocese: 'romamo_it' },
+            inputs: { riteSelect: true },
+        });
+        controls.appendTo('#mount');
+        expect(controls.riteSelect._domElement.hidden).toBe(false);
+    });
+
+    it('inputs.riteSelect forces the rite select hidden when the scope would show it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'IT' },
+            inputs: { riteSelect: false },
+        });
+        controls.appendTo('#mount');
+        expect(controls.riteSelect._domElement.hidden).toBe(true);
+    });
+
+    it('inputs.calendarSelect forces the calendar select visible when the scope would hide it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { diocese: 'romamo_it' },
+            inputs: { calendarSelect: true },
+        });
+        controls.appendTo('#mount');
+        expect(controls.calendarSelect._domElement.hidden).toBe(false);
+    });
+
+    it('inputs.calendarSelect forces the calendar select hidden when the scope would show it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'CH', includeDioceses: true },
+            inputs: { calendarSelect: false },
+        });
+        controls.appendTo('#mount');
+        controls.riteSelect._domElement.value = 'ambrosian';
+        controls.riteSelect._domElement.dispatchEvent(new Event('change'));
+        expect(controls.calendarSelect._domElement.hidden).toBe(true);
+    });
+
+    it('inputs.localeInput forces the locale input visible when the scope would hide it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { diocese: 'romamo_it' },
+            inputs: { localeInput: true },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions.localeInput._domElement.hidden).toBe(false);
+    });
+
+    it('inputs.localeInput forces the locale input hidden when the scope would show it', () => {
+        const controls = new CalendarControls({
+            locale: 'en',
+            scope: { nation: 'CH' },
+            inputs: { localeInput: false },
+        });
+        controls.appendTo('#mount');
+        expect(controls.apiOptions.localeInput._domElement.hidden).toBe(true);
+    });
+
+    it('rejects a non-boolean value for the new inputs keys, naming the key and type', () => {
+        expect(
+            () =>
+                new CalendarControls({
+                    locale: 'en',
+                    scope: { nation: 'IT' },
+                    inputs: { riteSelect: 'yes' },
+                }),
+        ).toThrow(/CalendarControls.*riteSelect.*boolean/is);
     });
 });
