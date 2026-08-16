@@ -142,10 +142,10 @@ export default class CalendarResourcePicker {
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.apiClient] - Binds this picker to that client's API base.
      * @param {string} [options.placeholderText] - Text for a disabled placeholder option.
-     * @param {Object} [options.scope] - Restricts which calendars this picker may
-     *   show — `{ nation, diocese, rite, locale, includeDioceses }`, all optional;
-     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
-     *   control visible, exactly as before this option existed.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this picker may show; see `CalendarScope.js`. A nullish
+     *   or unrestricting scope leaves every control visible, exactly as before
+     *   this option existed.
      * @throws {Error} If the filter is absent or not one of the two accepted values.
      */
     constructor(options) {
@@ -971,6 +971,8 @@ export default class CalendarResourcePicker {
      * @param {string|HTMLElement} target - Where to mount.
      * @param {Object} [options] - As the constructor, plus those below.
      * @param {string} [options.errorText] - Text for the failure control.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this picker may show; see `CalendarScope.js`.
      * @param {AbortSignal} [options.signal] - Cancels the mount.
      * @returns {Promise<CalendarResourcePicker|null>} The picker, or `null` if cancelled.
      * @throws {Error} If the options or the target are invalid.

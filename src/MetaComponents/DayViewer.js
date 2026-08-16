@@ -136,10 +136,10 @@ export default class DayViewer {
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {boolean} [options.showTitle=true] - Whether to show the widget's own heading.
      * @param {Object} [options.apiClient] - Binds this viewer to that client's API base.
-     * @param {Object} [options.scope] - Restricts which calendars this viewer may
-     *   show — `{ nation, diocese, rite, locale, includeDioceses }`, all optional;
-     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
-     *   control visible, exactly as before this option existed.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; see `CalendarScope.js`. A nullish
+     *   or unrestricting scope leaves every control visible, exactly as before
+     *   this option existed.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'DayViewer');
@@ -901,6 +901,8 @@ export default class DayViewer {
      *
      * @param {string|HTMLElement|Object<string, string|HTMLElement>} target - Slots, or one target.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, the initial fetch runs.
      * @param {AbortSignal} [options.signal] - Cancels the mount.
      * @param {function(Error): void} [options.onError] - Registered before the initial fetch.

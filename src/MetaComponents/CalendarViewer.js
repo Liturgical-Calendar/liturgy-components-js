@@ -104,6 +104,9 @@ export default class CalendarViewer {
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
      * @param {Object} [options.inputs] - Which `ApiOptions` inputs to render;
      *   forwarded to `CalendarControls`, e.g. `{ acceptHeader: false }`.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; forwarded to `CalendarControls`,
+     *   see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
      * @param {Object} [options.webCalendar] - `WebCalendar` methods to call, by
      *   name — see {@link WEB_CALENDAR_KEYS}. An unknown key throws, naming it.
@@ -541,6 +544,9 @@ export default class CalendarViewer {
      *
      * @param {{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), calendar: (string|HTMLElement), messages?: (string|HTMLElement)}} slots - Where to mount each half.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this viewer may show; forwarded to `CalendarControls`,
+     *   see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is `false`,
      *   the initial fetch runs.

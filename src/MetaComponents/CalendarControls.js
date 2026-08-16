@@ -204,10 +204,10 @@ export default class CalendarControls {
      *   default, and `NONE`); the other three override `deriveVisibility()`'s
      *   own, scope-derived answer for that control.
      * @param {Object} [options.apiClient] - Binds to that client's API base.
-     * @param {Object} [options.scope] - Restricts which calendars this widget may
-     *   show — `{ nation, diocese, rite, locale, includeDioceses }`, all optional;
-     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
-     *   control visible, exactly as before this option existed.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this widget may show; see `CalendarScope.js`. A nullish
+     *   or unrestricting scope leaves every control visible, exactly as before
+     *   this option existed.
      */
     constructor(options) {
         options = normalizeComponentOptions(options, 'CalendarControls');
@@ -1534,6 +1534,8 @@ export default class CalendarControls {
      *
      * @param {string|HTMLElement|{controls: (string|HTMLElement|Object<string, (string|HTMLElement)>), messages?: (string|HTMLElement)}} target - Where to mount.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this widget may show; see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, this
      *   instance is wired with `listenTo()` and, unless `initialFetch` is
      *   `false`, the initial fetch runs.

@@ -18,6 +18,9 @@
 import {
     ApiOptions,
     CalendarControls,
+    CalendarResourcePicker,
+    CalendarViewer,
+    DayViewer,
     ThemePreset,
     TodayViewer,
     VERSION,
@@ -194,12 +197,57 @@ async function scopedTodayViewer(): Promise<void> {
 void scopedTodayViewer;
 
 /**
+ * `scope` (task 10) must reach the emitted declarations as the named
+ * `CalendarScopeOptions` type, on every component that accepts it — not the
+ * bare `Object` (or, worse, an ENTIRELY ABSENT key) that let any object
+ * literal through and proved nothing. See `src/typedefs.js`'s doc comment on
+ * `CalendarScopeOptions` for the history: `grep -c "scope" dist/index.d.ts`
+ * printed `0`, and `scopedTodayViewer()` below — unchanged since task 9 —
+ * compiled throughout, because a bare `Object` parameter accepts any object
+ * literal regardless of its shape.
+ *
+ * The regressing check is the indexed access itself, not the assignment: for
+ * `CalendarControls`, `CalendarViewer` and `CalendarResourcePicker`, `scope`
+ * was undocumented on `mountInto()`'s OWN `@param` tags before this fix —
+ * `tsc` synthesises a factory's options type from that factory's own tags
+ * alone, so the "as the constructor, plus those below" prose is not honoured
+ * by the compiler — and `['scope']` on the emitted options type was a
+ * compile error (TS2339), not merely a loosely-typed pass.
+ */
+type ControlsScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarControls.mountInto>[1]>['scope']
+>;
+type ViewerScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarViewer.mountInto>[1]>['scope']
+>;
+type DayViewerScope = NonNullable<
+    NonNullable<Parameters<typeof DayViewer.mountInto>[1]>['scope']
+>;
+type PickerScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarResourcePicker.mountInto>[1]>['scope']
+>;
+
+const controlsScope: ControlsScope = { rite: 'roman' };
+const viewerScope: ViewerScope = { rite: ['roman', 'ambrosian'] };
+const dayViewerScope: DayViewerScope = { nation: 'US', includeDioceses: true };
+const pickerScope: PickerScope = { diocese: 'romamo_it' };
+void controlsScope;
+void viewerScope;
+void dayViewerScope;
+void pickerScope;
+
+/**
  * `scope.rite` must accept both a string and a string array (a set with one
  * member, and a set with several) — see `CalendarScope.js` and the calendar
  * scope design doc for why the array form is future-proofing rather than
- * dead weight today.
+ * dead weight today. Checked against the REAL emitted `rite` field via
+ * `TodayViewerScope`, not a standalone literal untethered from it.
  */
-const scopeWithStringRite: { rite: string } = { rite: 'roman' };
-const scopeWithArrayRite: { rite: string[] } = { rite: ['roman', 'ambrosian'] };
-void scopeWithStringRite;
-void scopeWithArrayRite;
+type TodayViewerScope = NonNullable<
+    NonNullable<Parameters<typeof TodayViewer.mountInto>[1]>['scope']
+>;
+
+const scopeRiteAcceptsString: TodayViewerScope['rite'] = 'roman';
+const scopeRiteAcceptsArray: TodayViewerScope['rite'] = ['roman', 'ambrosian'];
+void scopeRiteAcceptsString;
+void scopeRiteAcceptsArray;
