@@ -60,6 +60,36 @@ const METADATA = {
     ambrosian_calendars: [{ calendar_id: 'AMBROSIAN', locales: ['it', 'la'] }],
 };
 
+/**
+ * F2 (post-PR review): a diocesan entry with no `rite` key (v5 style,
+ * meaning Roman) whose nation carries no national calendar at all. Every
+ * other fixture in this file gives such a nation a matching
+ * `national_calendars` entry; this one deliberately omits it — "CH" has a
+ * diocese but is absent from `national_calendars` — to reproduce the shape
+ * that made `calendarsForRite()` dereference `undefined`.
+ */
+const INCONSISTENT_METADATA = {
+    locales: ['en', 'it'],
+    national_calendars: [{ calendar_id: 'IT', locales: ['it'] }],
+    diocesan_calendars: [
+        {
+            calendar_id: 'romamo_it',
+            nation: 'IT',
+            diocese: 'Roma',
+            locales: ['it'],
+            rite: 'roman',
+        },
+        {
+            calendar_id: 'chur_ch',
+            nation: 'CH',
+            diocese: 'Chur',
+            locales: ['de'],
+            // No `rite` key: v5 style, meaning Roman.
+        },
+    ],
+    ambrosian_calendars: [],
+};
+
 let base;
 
 beforeEach(() => {
@@ -298,6 +328,35 @@ describe('assertScope()', () => {
                 { nation: 'CA', locale: 'fr-CA' },
                 'CalendarViewer',
                 base,
+            ),
+        ).not.toThrow();
+    });
+
+    // F2 (post-PR review): a nation scope reaching a rite whose availability
+    // came ONLY from a diocese (no matching national calendar) is a metadata
+    // defect, and must reject naming the nation and the rite — not surface as
+    // a bare `TypeError` from deep inside `calendarsForRite()` when
+    // `resolveScope()` runs.
+    it('rejects a nation whose metadata declares a diocese but no national calendar for a rite with a national tier', () => {
+        const inconsistentBase = ApiBase.fromMetadata(
+            'http://localhost:8001',
+            INCONSISTENT_METADATA,
+        );
+        expect(() =>
+            assertScope({ nation: 'CH' }, 'CalendarControls', inconsistentBase),
+        ).toThrow(/CalendarControls.*CH.*roman/s);
+    });
+
+    it('does not reject a diocese scope under the same inconsistent nation, since that path never dereferences a national calendar', () => {
+        const inconsistentBase = ApiBase.fromMetadata(
+            'http://localhost:8001',
+            INCONSISTENT_METADATA,
+        );
+        expect(() =>
+            assertScope(
+                { diocese: 'chur_ch' },
+                'CalendarControls',
+                inconsistentBase,
             ),
         ).not.toThrow();
     });

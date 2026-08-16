@@ -47,6 +47,25 @@ export default class CalendarSelect {
         [CalendarSelectFilter.NONE]: ['rite', 'national', 'diocesan'],
     });
 
+    /**
+     * The calendar entry types a `CalendarSelectFilter` admits — the same rule
+     * `_restrictToScope()` applies to an instance's own `#filter`, exposed as a
+     * static, package-internal lookup so a caller can preflight a scope against
+     * a filter BEFORE constructing anything. `CalendarResourcePicker.mountInto()`
+     * uses this to reject a scope whose resolved entries a picker's filter could
+     * never show, ahead of its `try`, rather than letting `_restrictToScope()`
+     * throw deep inside construction where the failure is reported as a runtime
+     * "API is down" condition instead of the programmer error it is. Reusing
+     * `#TYPES_BY_FILTER` here — rather than a second, hand-copied mapping — is
+     * what keeps the two rules from drifting apart.
+     *
+     * @param {string} filter - A `CalendarSelectFilter` value.
+     * @returns {string[]} The admitted types (`'rite'`, `'national'`, `'diocesan'`).
+     */
+    static _typesForFilter(filter) {
+        return CalendarSelect.#TYPES_BY_FILTER[filter];
+    }
+
     /** @type {ApiBase} The API base this select reads its calendars from. */
     #base = null;
 

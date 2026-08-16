@@ -1,5 +1,15 @@
 /** @jest-environment jsdom */
-import { describe, it, expect } from '@jest/globals';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
+import ApiBase from '../ApiClient/ApiBase.js';
+import ApiClient from '../ApiClient/ApiClient.js';
+import ApiOptions from '../ApiOptions/ApiOptions.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import { Rite } from '../Enums.js';
 
@@ -62,6 +72,139 @@ describe('RiteSelect option set', () => {
         expect(
             () => new RiteSelect({ locale: 'en', rites: ['roman', 'roman'] }),
         ).toThrow(/RiteSelect.*duplicate/i);
+    });
+});
+
+// F4 (post-PR review): `rites()` is new public API, not bound to the
+// construction-time-only way the meta-components happen to call it. After a
+// caller has linked this select through `linkToRiteSelect()`, a later
+// `rites()` call must not leave the DOM showing one rite while every linked
+// consumer (`ApiOptions`, `ApiClient`) keeps requesting the previous one.
+describe('RiteSelect.rites() dispatches change conditionally (F4)', () => {
+    it('dispatches change when the selected value actually changes', () => {
+        const select = new RiteSelect({ locale: 'en', rites: [Rite.ROMAN] });
+        const listener = jest.fn();
+        select._domElement.addEventListener('change', listener);
+
+        select.rites([Rite.AMBROSIAN, Rite.ROMAN]);
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(select._domElement.value).toBe(Rite.AMBROSIAN);
+    });
+
+    it('dispatches nothing when the first entry equals the current selection', () => {
+        const select = new RiteSelect({ locale: 'en', rites: [Rite.ROMAN] });
+        const listener = jest.fn();
+        select._domElement.addEventListener('change', listener);
+
+        select.rites([Rite.ROMAN]);
+
+        expect(listener).not.toHaveBeenCalled();
+        expect(select._domElement.value).toBe(Rite.ROMAN);
+    });
+
+    it('dispatches nothing on the construction-time call, since nothing is listening yet', () => {
+        // Every meta-component only ever calls `rites()` at construction time,
+        // through the `rites` constructor option, before anything is linked —
+        // this pins that no listener attached AFTER construction observes a
+        // dispatch that happened during it.
+        const select = new RiteSelect({
+            locale: 'en',
+            rites: [Rite.AMBROSIAN, Rite.ROMAN],
+        });
+        const listener = jest.fn();
+        select._domElement.addEventListener('change', listener);
+
+        expect(listener).not.toHaveBeenCalled();
+    });
+
+    describe('wired regression: a linked ApiOptions/ApiClient chain follows rites()', () => {
+        const API_URL = 'http://localhost:8000';
+        const METADATA = {
+            locales: ['en', 'it', 'la'],
+            national_calendars: [
+                { calendar_id: 'IT', locales: ['it-IT'], settings: {} },
+            ],
+            diocesan_calendars: [
+                {
+                    calendar_id: 'romamo_it',
+                    nation: 'IT',
+                    diocese: 'Diocesi di Roma',
+                    locales: ['it-IT'],
+                    rite: 'roman',
+                },
+                {
+                    calendar_id: 'lugano_ch',
+                    nation: 'CH',
+                    diocese: 'Diocesi di Lugano',
+                    locales: ['it-IT'],
+                    rite: 'ambrosian',
+                },
+            ],
+            ambrosian_calendars: [{ calendar_id: 'ambrosian' }],
+        };
+
+        beforeEach(() => {
+            ApiBase.reset();
+            ApiBase.fromMetadata(API_URL, METADATA);
+            document.body.innerHTML = '<div id="opts"></div>';
+            // `#listenToRiteSelect()`'s change handler schedules a microtask
+            // refetch; mocked here, matching ApiClientRite.test.js, so that
+            // refetch resolves instead of logging an unmocked-fetch error.
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                json: () =>
+                    Promise.resolve({
+                        litcal: [],
+                        settings: {},
+                        metadata: {},
+                        messages: [],
+                    }),
+            });
+        });
+
+        afterEach(() => {
+            delete global.fetch;
+        });
+
+        it('propagates to a linked ApiClient when rites() changes the selection', async () => {
+            const riteSelect = new RiteSelect({
+                locale: 'en',
+                rites: [Rite.ROMAN, Rite.AMBROSIAN],
+            });
+            const apiOptions = new ApiOptions('en');
+            apiOptions.linkToRiteSelect(riteSelect);
+            apiOptions.appendTo('#opts');
+
+            const apiClient = await ApiClient.init(API_URL);
+            apiClient.rite(Rite.ROMAN).listenTo(riteSelect);
+
+            expect(riteSelect._domElement.value).toBe(Rite.ROMAN);
+
+            riteSelect.rites([Rite.AMBROSIAN, Rite.ROMAN]);
+
+            expect(riteSelect._domElement.value).toBe(Rite.AMBROSIAN);
+            // The ApiClient's own change listener runs synchronously off the
+            // dispatched event, ahead of the microtask-deferred refetch.
+            expect(apiClient._currentRite).toBe(Rite.AMBROSIAN);
+            // Flushes the scheduled refetch so it settles within this test.
+            await Promise.resolve();
+        });
+
+        it('does not propagate when rites() leaves the selection unchanged', async () => {
+            const riteSelect = new RiteSelect({
+                locale: 'en',
+                rites: [Rite.ROMAN, Rite.AMBROSIAN],
+            });
+            const apiClient = await ApiClient.init(API_URL);
+            apiClient.rite(Rite.ROMAN).listenTo(riteSelect);
+
+            riteSelect.rites([Rite.ROMAN, Rite.AMBROSIAN]);
+
+            expect(riteSelect._domElement.value).toBe(Rite.ROMAN);
+            expect(apiClient._currentRite).toBe(Rite.ROMAN);
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
     });
 });
 

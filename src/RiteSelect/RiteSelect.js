@@ -151,30 +151,32 @@ export default class RiteSelect {
      * The first entry becomes the selected value, which is what makes
      * `scope.rite`'s first-element-is-initial rule visible in the DOM.
      *
-     * **Calling this AFTER `linkToRiteSelect()` silently desynchronises the
-     * link.** `#renderOptions()` rebuilds the `<select>` and resets its value
-     * to `list[0]` directly on the element, without dispatching a `change`
-     * event — so `ApiOptions`/`ApiClient`, which learn of a rite switch only
-     * through that event, keep whatever rite they last saw and never learn
-     * this one happened. The value shown in the DOM and the rite the next
-     * fetch actually requests then disagree, with nothing to notice it by.
-     * Every meta-component in this library only ever calls this at
-     * CONSTRUCTION time, before `linkToRiteSelect()` runs, which is safe: the
-     * one option is the `rites` key on the widening component's own
-     * constructor bag (e.g. `CalendarControls({ scope: {...} })`), consumed
-     * before the rite select is linked to anything. Calling it again later,
-     * on an already-linked select, is unsupported and left undocumented
-     * behaviour rather than fixed here — dispatching `change` unconditionally
-     * would fire on every construction-time call too, which no consumer of
-     * this method currently expects.
+     * **Dispatches `change` when the selected value actually changes.**
+     * `#renderOptions()` rebuilds the `<select>` and resets its value to
+     * `list[0]`; `ApiOptions`/`ApiClient`, once linked through
+     * `linkToRiteSelect()`, learn of a rite switch only through that event —
+     * so a silent reset here would leave the DOM showing one rite while every
+     * linked consumer kept requesting the previous one, with nothing to
+     * notice it by. This is `rites()`'s own version of the conditional
+     * dispatch the rite-settings inputs already follow: a published value the
+     * select doesn't offer is skipped rather than assigned, and here a
+     * SELECTED value that doesn't change dispatches nothing, so calling this
+     * with a list whose first entry equals the current selection is silent —
+     * every meta-component's own construction-time call (before anything is
+     * linked) is one such case, and stays silent because nothing is listening
+     * yet regardless.
      *
      * @param {string[]} list - The rites to offer.
      * @returns {RiteSelect} This instance, for chaining.
      * @throws {Error} If the list is not a non-empty array of distinct known rites.
      */
     rites(list) {
+        const previousValue = this.#domElement.value;
         this.#rites = RiteSelect.#assertRites(list);
         this.#renderOptions();
+        if (this.#domElement.value !== previousValue) {
+            this.#domElement.dispatchEvent(new Event('change'));
+        }
         return this;
     }
 

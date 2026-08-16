@@ -122,9 +122,16 @@ Three properties are load-bearing:
 
 ### `includeDioceses` defaults to `false`
 
-`{nation: 'IT'}` therefore means "the Italian national calendar", one calendar, no controls. Widening to
-dioceses is the rarer and more deliberate act, so it is the opt-in. This keeps the simplest case simplest
-and makes a bare nation scope behave the way a consumer writing "default calendar" would expect.
+`includeDioceses` controls only which calendar ENTRIES a rite offers; it does not touch which RITES are in
+scope — that is the derived-rites rule above, applied whether or not `includeDioceses` is set. `{nation:
+'IT'}` therefore means "the Italian national calendar" **for the Roman rite** — one calendar entry per rite,
+not one calendar overall. Because Milan is an Ambrosian diocese of Italy, `{nation: 'IT'}` alone still
+resolves Ambrosian into scope and the rite select still appears; each rite simply offers exactly one entry
+(the national calendar for Roman, the rite-level stand-in for Ambrosian) until `includeDioceses` widens
+either one down to its dioceses. A nation with no Ambrosian diocese at all (`{nation: 'US'}`) is the only way
+to lose the rite select entirely — `includeDioceses` cannot do that on its own. Widening to dioceses is the
+rarer and more deliberate act, so it is the opt-in. This keeps the simplest PER-RITE case simplest, without
+pretending a rite the metadata actually derives isn't there.
 
 ### Worked cases
 
@@ -166,8 +173,11 @@ localeInput     shown iff  the CURRENT CALENDAR supports > 1 locale
 ```
 
 **Two of those are runtime-dependent, not mount-time constants.** Switching rite changes the calendar set;
-switching calendar changes the locale set. A scope whose nation has no Ambrosian diocese shows
-`calendarSelect` under Roman and hides it under Ambrosian.
+switching calendar changes the locale set. `{nation: 'CH', includeDioceses: true}` hides `calendarSelect`
+under Roman — Switzerland's national calendar is the sole entry there — and shows it once the rite switches
+to Ambrosian, where the rite-level stand-in and Lugano are both offered. (A nation with no Ambrosian diocese
+at all cannot reach an Ambrosian branch to compare in the first place — see the derived-rites rule above; the
+rite select itself would already be hidden.)
 
 This is the same situation `CalendarSelect._setHidden()` already handles, and its doc comment records how it
 was got wrong before: deriving visibility on the rite side alone leaked, because `ApiOptions`' path builder
@@ -251,12 +261,18 @@ per-component variation for a registry to express.
 `CalendarViewer` and `SubscriptionBuilder` as inheriting `scope` "for free." That is wrong.
 `ApiExplorer.appendTo()` always renders its `CalendarControls`' `ApiOptions` under
 `ApiOptionsFilter.PATH_BUILDER` (among the other two filters — see the three-filter layout), which is
-exactly the combination `CalendarControls`' own constructor rejects (see "Error handling" below). Since
-`ApiExplorer` builds a `CalendarControls` internally and forwards its own options bag to it unchanged, a
-`scope` passed to `ApiExplorer` reaches that `CalendarControls` and always throws — `ApiExplorer` cannot
-take a `scope` at all, for the same reason `CalendarPathInput` and `scope` cannot coexist on any component.
-`CalendarViewer` and `SubscriptionBuilder` genuinely do inherit `scope` for free, because neither ever sets
-`PATH_BUILDER`.
+exactly the combination `CalendarControls`' own constructor rejects (see "Error handling" below) — but that
+guard cannot be what actually protects `ApiExplorer`. It reads the `filter` given to `CalendarControls`' OWN
+constructor, and `ApiExplorer.appendTo()` applies `PATH_BUILDER` to `#controls.apiOptions` only AFTER that
+`CalendarControls` has already been constructed. Forwarding `ApiExplorer`'s own options bag — `scope`
+included — straight into `CalendarControls` unchanged would therefore sail past the guard entirely: it would
+never throw, and would ship a scoped `RiteSelect`/`CalendarSelect` beside an unscoped `CalendarPathInput`
+still composing any route the metadata allows, the exact bypass the guard exists to prevent. `ApiExplorer`
+therefore rejects `scope` in **its own constructor**, ahead of ever building a `CalendarControls` — see
+`src/MetaComponents/ApiExplorer.js`'s constructor. `ApiExplorer` cannot take a `scope` at all, for the same
+reason `CalendarPathInput` and `scope` cannot coexist on any component; it is simply `ApiExplorer` itself,
+not `CalendarControls`, that says so. `CalendarViewer` and `SubscriptionBuilder` genuinely do inherit `scope`
+for free through the `CalendarControls` guard, because neither ever sets `PATH_BUILDER`.
 
 `SubscriptionBuilder` inheriting scope is a deliberate benefit rather than an accident: "subscribe to _our_
 calendar" is a diocesan use case, and pinning the scope makes the generated iCal URL a single fixed

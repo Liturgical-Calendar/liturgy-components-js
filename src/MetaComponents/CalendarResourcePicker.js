@@ -1020,14 +1020,16 @@ export default class CalendarResourcePicker {
             canonicalizeLocale(locale, 'CalendarResourcePicker');
         }
         // `scope` belongs in this list for the same reason: left inside the try,
-        // an unknown scope key, an unmatched diocese/nation, OR a scope that
-        // PINS a rite this `filter` cannot surface (`#narrowScopeToNationalTier()`'s
-        // own throw, below) are all programmer errors just like a bad `filter` or
-        // `theme` — not the API being down — and surfaced as "could not load
-        // calendars" otherwise. Both checks are discarded here, like `locale`'s
-        // canonical tag above: this call exists only to let an invalid scope
-        // throw before the try, and the constructor resolves it again for real
-        // use.
+        // an unknown scope key, an unmatched diocese/nation, a scope that PINS a
+        // rite this `filter` cannot surface at all (`#narrowScopeToNationalTier()`'s
+        // own throw, below), OR a scope whose resolved entries are the wrong TYPE
+        // for this `filter` (a diocese scope under `NATIONAL_CALENDARS`, or a
+        // nation scope with no `includeDioceses` under `DIOCESAN_CALENDARS`) are
+        // all programmer errors just like a bad `filter` or `theme` — not the API
+        // being down — and surfaced as "could not load calendars" otherwise. Every
+        // one of these is discarded here, like `locale`'s canonical tag above:
+        // this call exists only to let an invalid scope throw before the try, and
+        // the constructor resolves it again for real use.
         //
         // Gated on `scope` actually being present: `resolveBase()` itself throws
         // when the API has not been initialized at all, and an unloaded base is
@@ -1038,15 +1040,56 @@ export default class CalendarResourcePicker {
         if (undefined !== scope && null !== scope) {
             const scopeBase = resolveBase(apiClient, 'CalendarResourcePicker');
             assertScope(scope, 'CalendarResourcePicker', scopeBase);
-            const resolvedScopeForValidation = resolveScope(scope, scopeBase);
-            if (
-                null !== resolvedScopeForValidation &&
-                CalendarSelectFilter.NATIONAL_CALENDARS === filter
-            ) {
-                CalendarResourcePicker.#narrowScopeToNationalTier(
-                    resolvedScopeForValidation,
-                    scope,
+            let resolvedScopeForValidation = resolveScope(scope, scopeBase);
+            if (null !== resolvedScopeForValidation) {
+                if (CalendarSelectFilter.NATIONAL_CALENDARS === filter) {
+                    // Narrows by RITE only (Ambrosian has no national tier).
+                    // Its result is kept, unlike before, so the type check
+                    // right below runs against the SAME narrowed scope the
+                    // constructor would actually build from.
+                    resolvedScopeForValidation =
+                        CalendarResourcePicker.#narrowScopeToNationalTier(
+                            resolvedScopeForValidation,
+                            scope,
+                        );
+                }
+
+                // The rite check above catches a scope that DEMANDS a rite
+                // this filter has no select for at all. It does not catch a
+                // rite the filter CAN reach whose offered entries are the
+                // wrong TYPE for it — a diocese scope under
+                // `NATIONAL_CALENDARS`, or a nation scope with no
+                // `includeDioceses` under `DIOCESAN_CALENDARS`: the Roman
+                // rite qualifies either way, so `#narrowScopeToNationalTier()`
+                // has nothing to reject. Left unchecked here, that mismatch
+                // was only caught later by `_restrictToScope()`, deep inside
+                // the constructor's `try` — reporting a programmer error as
+                // though the API were down. `CalendarSelect._typesForFilter()`
+                // reuses `_restrictToScope()`'s own type-to-filter rule rather
+                // than a second, hand-copied one.
+                const initialEntries =
+                    resolvedScopeForValidation.calendarsByRite[
+                        resolvedScopeForValidation.initial.rite
+                    ];
+                const admittedTypes = CalendarSelect._typesForFilter(filter);
+                const admitsAny = initialEntries.some((entry) =>
+                    admittedTypes.includes(entry.type),
                 );
+                if (false === admitsAny) {
+                    const offeredTypes = [
+                        ...new Set(initialEntries.map((entry) => entry.type)),
+                    ];
+                    const filterName =
+                        CalendarSelectFilter.NATIONAL_CALENDARS === filter
+                            ? 'NATIONAL_CALENDARS'
+                            : 'DIOCESAN_CALENDARS';
+                    throw new Error(
+                        `CalendarResourcePicker: scope resolves to only ${offeredTypes.join('/')} calendar(s) ` +
+                            `for rite "${resolvedScopeForValidation.initial.rite}", but filter: CalendarSelectFilter.${filterName} ` +
+                            `admits only ${admittedTypes.join('/')} calendars. Use a scope whose entries this filter can show, ` +
+                            'or construct the picker under a different filter.',
+                    );
+                }
             }
         }
 

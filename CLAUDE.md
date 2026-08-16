@@ -940,12 +940,18 @@ with `inputs`.
 `CalendarPathInput` composes _any_ API route the metadata allows, entirely outside `deriveVisibility()`'s
 reach — a full bypass of a scope's contract, not a cosmetic gap. This was considered and rejected as a thing
 to make `CalendarPathInput` scope-aware instead: composing an unrestricted route is that input's entire
-reason to exist. **The practical consequence is that `ApiExplorer` cannot take a `scope` at all** — its
-`appendTo()` always renders `ApiOptions` under `PATH_BUILDER` (among others), so a `scope` passed to
-`ApiExplorer.mountInto()`/its constructor is forwarded straight into the `CalendarControls` it builds and
-always throws. `CalendarViewer` and `SubscriptionBuilder` build a `CalendarControls` too, but never render
-`PATH_BUILDER`, so both inherit `scope` cleanly. (An earlier draft of the design claimed `ApiExplorer`
-inherits scope "for free" the same way; that claim was wrong and has been corrected in the spec file.)
+reason to exist. **The practical consequence is that `ApiExplorer` cannot take a `scope` at all — but not
+through that `CalendarControls` guard.** `ApiExplorer` rejects `scope` in **its own constructor** instead,
+because `CalendarControls`' scope+`PATH_BUILDER` guard reads the `filter` given to ITS constructor, and
+`ApiExplorer.appendTo()` applies `PATH_BUILDER` to `#controls.apiOptions` only AFTER construction (see the
+three-filter layout doc comment there) — so a `scope` forwarded into the `CalendarControls` `ApiExplorer`
+builds would sail straight past that guard, never throw, and ship a scoped `RiteSelect`/`CalendarSelect`
+beside an unscoped `CalendarPathInput` that still composes any route the metadata allows. `ApiExplorer`'s own
+constructor check is what actually closes that hole; leaving it to `CalendarControls` would not. `CalendarViewer`
+and `SubscriptionBuilder` build a `CalendarControls` too, but never render `PATH_BUILDER`, so both inherit
+`scope` cleanly through the `CalendarControls` guard as documented. (An earlier draft of the design claimed
+`ApiExplorer` inherits scope "for free" the same way; that claim was wrong and has been corrected in the
+spec file.)
 
 **A scoped `CalendarResourcePicker` narrows its own rites to whatever its `filter` can actually surface, and
 throws only when the scope DEMANDS a rite the filter cannot show.** Under

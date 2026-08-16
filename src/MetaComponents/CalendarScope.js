@@ -238,7 +238,9 @@ const SCOPE_KEYS = Object.freeze([
  *         names a `nation` or `diocese` absent from the metadata, names a `nation`
  *         and `diocese` that contradict each other, names a `rite`
  *         that contradicts an inferred diocese rite or that has no overlap with
- *         the rites derivable for the scope, names an empty `rite` array, or
+ *         the rites derivable for the scope, names an empty `rite` array, names
+ *         a `nation` whose metadata declares a diocese for a rite with a national
+ *         tier but no national calendar for that nation (a metadata defect), or
  *         names a `locale` the resolved calendar does not support.
  */
 function assertScope(scope, componentName, apiBase) {
@@ -300,6 +302,7 @@ function assertScope(scope, componentName, apiBase) {
         availableRites = Object.values(Rite);
     }
 
+    let candidateRites = availableRites;
     if (undefined !== scope.rite) {
         const requestedRites = Array.isArray(scope.rite)
             ? scope.rite
@@ -325,6 +328,41 @@ function assertScope(scope, componentName, apiBase) {
             throw new Error(
                 `${componentName}: scope.rite "${requestedRites.join(', ')}" is not available${suffix}. Available rite(s): ${availableRites.join(', ')}.`,
             );
+        }
+        candidateRites = overlap;
+    }
+
+    // Metadata inconsistency: a `nation` scope (not `diocese` — that path
+    // resolves straight to its own diocesan entry and never dereferences a
+    // national calendar) can reach a rite that `nationHasRite()` judged
+    // "available" purely because a diocese of that rite exists under this
+    // nation, with NO matching entry in `national_calendars` — a v5-style
+    // diocesan entry with no `rite` key (meaning Roman) under a nation the
+    // metadata never announced a national calendar for is the shape that
+    // surfaced this. `RiteProperties[ rite ].hasNationalTier` says this rite
+    // is EXPECTED to reach its calendars through a national calendar, so
+    // `calendarsForRite()` looks one up unconditionally and would otherwise
+    // dereference `undefined` — the bare `TypeError` this guards against.
+    // `riteStandIn()` is not the fix: it exists for a rite with no national
+    // tier at all (Ambrosian), and using it here would invent a national
+    // calendar the API never announced for a rite that has one.
+    if (null === dioceseEntry && undefined !== scope.nation) {
+        for (const rite of candidateRites) {
+            if (
+                RiteProperties[rite].hasNationalTier &&
+                false ===
+                    apiBase
+                        .nationalCalendars()
+                        .some((entry) => entry.calendar_id === scope.nation)
+            ) {
+                throw new Error(
+                    `${componentName}: the API's metadata is inconsistent for scope.nation "${scope.nation}": ` +
+                        `it declares at least one diocese under this nation for rite "${rite}" ` +
+                        `(RiteProperties[ "${rite}" ].hasNationalTier is true), but national_calendars carries ` +
+                        `no entry for "${scope.nation}" itself. This is a metadata defect, not a scope this ` +
+                        'library can resolve.',
+                );
+            }
         }
     }
 

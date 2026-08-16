@@ -8,9 +8,13 @@
 
 **Architecture:** A new internal module `src/MetaComponents/CalendarScope.js` resolves a `scope` bag plus the
 `/calendars` metadata into the rites available, the calendars available per rite, and the derived control
-visibility. `CalendarControls`, `DayViewer` and `CalendarResourcePicker` consume it; `CalendarViewer`,
-`ApiExplorer` and `SubscriptionBuilder` inherit it through `CalendarControls`. A new `TodayViewer`
-meta-component wraps `LiturgyOfTheDay`, which first needs a defect fixed.
+visibility. `CalendarControls`, `DayViewer` and `CalendarResourcePicker` consume it; `CalendarViewer` and
+`SubscriptionBuilder` inherit it through `CalendarControls`. `ApiExplorer` cannot: it applies
+`ApiOptionsFilter.PATH_BUILDER` only later, in `appendTo()`, after the `CalendarControls` it builds has
+already been constructed — so `CalendarControls`' own scope+`PATH_BUILDER` guard, which reads the `filter`
+given to its constructor, never sees it. `ApiExplorer` therefore rejects `scope` in its own constructor
+instead (see `docs/meta-components.md`'s `ApiExplorer` Scope section). A new `TodayViewer` meta-component
+wraps `LiturgyOfTheDay`, which first needs a defect fixed.
 
 **Tech Stack:** ES2022 JavaScript modules, JSDoc types compiled by `tsc` with `checkJs` off, Jest 30 with jsdom, prettier (4-space indent, single quotes).
 
@@ -1055,8 +1059,10 @@ git commit -m "Derive control visibility from a resolved scope"
 **Interfaces:**
 
 - Consumes: Tasks 3–6
-- Produces: `new CalendarControls({ scope, ... })` and the same key on `mountInto()`. `CalendarViewer`,
-  `ApiExplorer` and `SubscriptionBuilder` inherit it with no change of their own beyond forwarding.
+- Produces: `new CalendarControls({ scope, ... })` and the same key on `mountInto()`. `CalendarViewer` and
+  `SubscriptionBuilder` inherit it with no change of their own beyond forwarding. `ApiExplorer` does not
+  inherit it this way — its own constructor rejects `scope` directly, since this guard's own `filter` check
+  cannot see the `PATH_BUILDER` filter `ApiExplorer.appendTo()` applies only after construction.
 
 - [ ] **Step 1: Write the failing test**
 

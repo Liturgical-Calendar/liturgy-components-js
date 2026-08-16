@@ -131,6 +131,33 @@ describe('CalendarControls with a scope', () => {
         ).toThrow(/CalendarControls.*natoin/s);
     });
 
+    // F2 (post-PR review): a diocesan entry with no `rite` key (v5 style,
+    // meaning Roman) whose nation has no national calendar used to reach
+    // `calendarsForRite()` and dereference `undefined`, throwing a bare
+    // `TypeError` from a public constructor instead of a named error — the
+    // same class of defect this branch already fixed twice.
+    it('throws a named, component-labelled error rather than a bare TypeError when metadata declares a diocese but no national calendar for a nation', () => {
+        ApiBase.reset();
+        ApiBase.fromMetadata(API_URL, {
+            locales: ['en', 'it'],
+            national_calendars: [{ calendar_id: 'IT', locales: ['it'] }],
+            diocesan_calendars: [
+                {
+                    calendar_id: 'chur_ch',
+                    nation: 'CH',
+                    diocese: 'Chur',
+                    locales: ['de'],
+                    // No `rite` key: v5 style, meaning Roman.
+                },
+            ],
+            ambrosian_calendars: [],
+        });
+        expect(
+            () =>
+                new CalendarControls({ locale: 'en', scope: { nation: 'CH' } }),
+        ).toThrow(/CalendarControls.*CH.*roman/s);
+    });
+
     it('leaves an unscoped instance exactly as before', () => {
         const controls = new CalendarControls({ locale: 'en' });
         controls.appendTo('#mount');
