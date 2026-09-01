@@ -4,7 +4,19 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
-## [Unreleased]
+## 2.8.0
+
+A declarative answer to "show only my calendar": a `scope` option on six components, restricting the
+calendar space rather than setting a default, with the rite, calendar and locale controls derived from it
+instead of separately configured. `TodayViewer` joins as the seventh meta-component.
+
+Three other threads close alongside it. API-supplied markup is now sanitized where markup is wanted and
+built as nodes where it is not, so the `messages` array renders its decree links and emphasis instead of
+their literal tags. The theme bag reaches the whole `ApiOptions` form and accepts a named
+`bootstrap4`/`bootstrap5` preset, removing the class strings every consumer was hand-writing. And the
+public surface gains what consumers had been deriving for themselves — canonical non-underscore
+`ApiOptions` accessors, `CalendarControls.selection`, `VERSION`, a filter-keyed `controls` slot, and
+visually-hidden live regions on the three components that replace their content wholesale.
 
 ### Behaviour changes
 
