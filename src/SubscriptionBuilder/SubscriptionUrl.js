@@ -59,8 +59,12 @@ export default class SubscriptionUrl {
     /** @type {Array<function(string): void>} */
     #changeCallbacks = [];
 
-    /** @type {Promise<void>|null} The coalesced notification this turn scheduled. */
-    #pendingNotify = null;
+    /**
+     * Releases this class's `ApiOptions.onSettled()` registration.
+     *
+     * @type {?function(): void}
+     */
+    #unsubscribeSettled = null;
 
     /** @type {string|null} The URL most recently handed to the callbacks. */
     #lastNotified = null;
@@ -224,6 +228,10 @@ export default class SubscriptionUrl {
         // `null`, find them different, and notify — the exact bug this field
         // exists to close.
         this.#lastNotified = this.url;
+
+        this.#unsubscribeSettled = apiOptions.onSettled(() =>
+            this.#notifyIfChanged(),
+        );
 
         // See `#applyCalendarSelection()`'s own doc comment for what this reads
         // off the select and why. A throw inside a listener is swallowed by
@@ -408,55 +416,38 @@ export default class SubscriptionUrl {
     #listen(element, update) {
         const listener = (ev) => {
             update(ev);
-            // The repaint stays SYNCHRONOUS: both firings of a single user
-            // action share one task, so the browser never paints between them
-            // and the intermediate write is unobservable. Deferring it would
-            // only make the DOM lag the state by a microtask, for no gain.
+            // The repaint stays SYNCHRONOUS: both firings of a single user action share
+            // one task, so the browser never paints between them and the intermediate
+            // write is unobservable. Only the NOTIFICATION is deferred, and that is now
+            // `ApiOptions.onSettled()`'s job rather than this class's.
             this.#render();
-            this.#scheduleNotify();
         };
         element.addEventListener('change', listener);
         this.#subscriptions.push({ element, listener });
     }
 
     /**
-     * Collapses the `onChange` notifications one user action provokes into one,
-     * on a microtask.
+     * Notifies subscribers when the serialized URL has changed.
      *
-     * One selection moves several inputs: `ApiOptions.linkToCalendarSelect()`'s
-     * own listener is registered BEFORE this class's and synchronously dispatches
-     * a synthetic `change` on the locale input, so without this a subscriber is
-     * notified while `calendarType`/`calendarId` are still stale — an
-     * intermediate URL carrying the calendar the user just left. Every dispatch
-     * in that burst is synchronous, so a microtask flush reads settled state.
-     *
-     * The same shape as `ApiClient.#scheduleRefetch()`, added for the
-     * structurally identical problem in issue #50. Only the NOTIFICATION is
-     * coalesced, not the repaint: a callback hands a value to consumer code that
-     * acts on it at once, whereas the DOM write is idempotent and invisible until
-     * the task settles.
+     * Called from `ApiOptions.onSettled()`, which is what guarantees the whole
+     * synthetic cascade has landed before this reads `this.url`. Until issue #55 this
+     * class scheduled its own microtask for exactly that reason; the scheduling now
+     * belongs to the layer that causes the cascade, and only the dedupe — which is
+     * specific to what THIS class derives — remains here.
      *
      * @returns {void}
+     * @private
      */
-    #scheduleNotify() {
-        if (null !== this.#pendingNotify) {
+    #notifyIfChanged() {
+        const next = this.url;
+        // The documented contract is that this fires when the URL CHANGES. Compared
+        // against the LAST NOTIFIED value, not a set of every URL ever seen, so
+        // changing away and back still notifies both times.
+        if (next === this.#lastNotified) {
             return;
         }
-        this.#pendingNotify = Promise.resolve().then(() => {
-            this.#pendingNotify = null;
-            const next = this.url;
-            // The documented contract is that this fires when the URL
-            // CHANGES. A `change` event whose value did not alter the URL —
-            // a raw dispatch, a re-selection of the current option — must
-            // therefore notify nobody. Compared against the LAST NOTIFIED
-            // value (seeded at construction), not against a set of every URL
-            // ever seen, so changing away and back still notifies both times.
-            if (next === this.#lastNotified) {
-                return;
-            }
-            this.#lastNotified = next;
-            this.#changeCallbacks.forEach((callback) => callback(next));
-        });
+        this.#lastNotified = next;
+        this.#changeCallbacks.forEach((callback) => callback(next));
     }
 
     /**
@@ -497,6 +488,7 @@ export default class SubscriptionUrl {
         }
         this.#subscriptions = [];
         this.#changeCallbacks = [];
-        this.#pendingNotify = null;
+        this.#unsubscribeSettled?.();
+        this.#unsubscribeSettled = null;
     }
 }
