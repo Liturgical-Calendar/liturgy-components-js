@@ -153,7 +153,7 @@ describe('ApiOptions.onSettled() and the linked selects', () => {
         expect(seen).toHaveBeenCalledTimes(1);
     });
 
-    it('notifies once for a nation change in a linked nation/diocese pair', async () => {
+    it('notifies once per nation change in a linked nation/diocese pair', async () => {
         const nationSelect = new CalendarSelect('en').filter(
             CalendarSelectFilter.NATIONAL_CALENDARS,
         );
@@ -164,6 +164,11 @@ describe('ApiOptions.onSettled() and the linked selects', () => {
             nationSelect,
             dioceseSelect,
         ]);
+        // Both halves describe ONE calendar, and the diocese select's own first
+        // option is a real diocese — so left as built it wins over the nation on
+        // every pass. Cleared here, without a `change`, purely so the second
+        // action below can reach the branch that dispatches nothing.
+        dioceseSelect._domElement.value = '';
         const seen = jest.fn();
         apiOptions.onSettled(seen);
 
@@ -172,6 +177,21 @@ describe('ApiOptions.onSettled() and the linked selects', () => {
         await Promise.resolve();
 
         expect(seen).toHaveBeenCalledTimes(1);
+
+        // The DIAGNOSTIC half. Selecting a calendar also rebuilds the locale
+        // input and dispatches its `change`, which `#attachSettledListeners()`
+        // hears — so the first assertion alone passes even with the two
+        // nation/diocese listeners deleted, and nothing else in the repo covers
+        // them. Clearing the pair back to empty instead takes
+        // `applySelection()`'s `#applyRiteToLocaleInput` branch, which
+        // dispatches nothing at all, so only those two listeners can produce a
+        // second signal. Mutation-verified by deleting them and watching this
+        // assertion fail.
+        nationSelect._domElement.value = '';
+        nationSelect._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(2);
     });
 });
 
