@@ -49,7 +49,7 @@ jobs:
         with:
           # Matches the Node line used by npm-publish.yml, so a green CI run
           # reflects the environment the package is actually built in.
-          node-version: '22.x'
+          node-version: '24.x'
           # Still supported for yarn in v6+. The v6 breaking change narrowed the
           # `package-manager-cache` automatic detection to npm; an explicit
           # `cache` input is unaffected.
