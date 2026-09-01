@@ -174,3 +174,68 @@ describe('live-region announcement keys', () => {
             });
     });
 });
+
+describe('readings label keys', () => {
+    // en is authoritative; it and la are maintainer-reviewed drafts. Every other
+    // block reaches English through message()'s fallback, deliberately.
+    const TRANSLATED = ['en', 'it', 'la'];
+
+    const READING_KEYS = [
+        'READING_FIRST',
+        'READING_SECOND',
+        'READING_THIRD',
+        'READING_FOURTH',
+        'READING_FIFTH',
+        'READING_SIXTH',
+        'READING_SEVENTH',
+        'RESPONSORIAL_PSALM',
+        'GOSPEL_ACCLAMATION',
+        'GOSPEL',
+        'GOSPEL_AT_PROCESSION',
+        'EPISTLE',
+    ];
+
+    const SCHEMA_KEYS = [
+        'MASS_VIGIL',
+        'MASS_NIGHT',
+        'MASS_DAWN',
+        'MASS_DAY',
+        'MASS_EVENING',
+        'SCHEMA_ONE',
+        'SCHEMA_TWO',
+        'SCHEMA_THREE',
+        'EASTER_SEASON',
+        'OUTSIDE_EASTER_SEASON',
+    ];
+
+    const ALL_KEYS = [...READING_KEYS, ...SCHEMA_KEYS];
+
+    it('adds exactly 22 keys', () => {
+        expect(ALL_KEYS.length).toBe(22);
+        expect(new Set(ALL_KEYS).size).toBe(22);
+    });
+
+    it.each(ALL_KEYS)('defines %s in English, the fallback for all', (key) => {
+        expect(typeof Messages['en'][key]).toBe('string');
+        expect(Messages['en'][key].length).toBeGreaterThan(0);
+    });
+
+    it.each(TRANSLATED)('defines every readings key for %s', (lang) => {
+        ALL_KEYS.forEach((key) => {
+            expect(typeof Messages[lang][key]).toBe('string');
+            expect(Messages[lang][key].length).toBeGreaterThan(0);
+        });
+    });
+
+    it('leaves untranslated locales undefined so callers fall back', () => {
+        expect(Messages['de'].READING_FIRST).toBeUndefined();
+        expect(Messages['fr'].MASS_VIGIL).toBeUndefined();
+    });
+
+    it('does not collide with an existing key', () => {
+        // GOSPEL and EPISTLE are short enough to be plausible collisions.
+        // Their values must be the readings labels, not something reused.
+        expect(Messages['en'].GOSPEL).toBe('Gospel');
+        expect(Messages['en'].EPISTLE).toBe('Epistle');
+    });
+});
