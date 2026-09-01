@@ -44,8 +44,10 @@ describe('ReadingsRenderer is public API', () => {
 
     /**
      * `readingOrder` is the sequence a consumer iterates; `readingLabels` is
-     * what it prints for each key. A key in the order with no label prints
-     * `undefined: `, so the two lists have to agree.
+     * what it prints for each key. A key in the order with no matching entry
+     * in `READING_MESSAGE_KEYS` now throws from `message()` ("No message
+     * catalogue entry for key…") rather than silently printing `undefined: `,
+     * so the two lists have to agree.
      */
     it('has a label for every key in readingOrder', () => {
         const unlabelled = ReadingsRenderer.readingOrder.filter(
@@ -308,14 +310,20 @@ describe('ReadingsRenderer locale', () => {
 
     it('rejects a locale that is neither a string nor an Intl.Locale', () => {
         expect(() => new ReadingsRenderer({ locale: 42 })).toThrow(
-            /ReadingsRenderer/,
+            'ReadingsRenderer: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number',
         );
-        expect(() => new ReadingsRenderer(['it'])).toThrow(/ReadingsRenderer/);
+        // An array is rejected as an invalid OPTIONS bag, not as an invalid
+        // locale — a different path through the same constructor, and the
+        // reason this assertion checks the full message rather than a regex
+        // that both paths would satisfy.
+        expect(() => new ReadingsRenderer(['it'])).toThrow(
+            'ReadingsRenderer: Invalid type for options, must be of type `object` but found type: array',
+        );
     });
 
     it('throws for an unparseable locale rather than silently using English', () => {
         expect(() => new ReadingsRenderer('not a locale!')).toThrow(
-            /ReadingsRenderer/,
+            'ReadingsRenderer: Invalid locale: not a locale!',
         );
     });
 

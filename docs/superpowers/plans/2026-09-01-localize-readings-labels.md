@@ -986,6 +986,14 @@ with:
   and — via `#nestedSchemaKeys` — the key set `hasNestedSchemas()` recognises. A hand-written second
   statement of both maps in `ReadingsRenderer.test.js` pins this; do not "simplify" it into reading
   `Messages.en` back, which would agree with itself.
+
+  > **Superseded (#105 fix wave, commit `c71e377`):** the sentence above overclaims. Render order is
+  > load-bearing only for `MASS_MESSAGE_KEYS` — `renderReadings()` iterates `massLabels`' key order via
+  > `#nestedSchemaKeys`. `READING_MESSAGE_KEYS`' order determines only `readingLabels`' published key
+  > order; the actual per-reading render order is the separate `readingOrder` array, which
+  > `renderSingleReadings()` iterates and never touches `readingLabels`. See the corrected wording in
+  > `CLAUDE.md`'s ReadingsRenderer section and in
+  > `docs/superpowers/specs/2026-09-01-localize-readings-labels-design.md`.
 - **The statics stay ENGLISH whatever locale a renderer holds**, because a static cannot know one. There
   is deliberately no `readingLabel( key, locale )` accessor pair: it was proposed and declined as
   speculative surface, and the likely future answer is a consumer-supplied translation bundle, which

@@ -86,6 +86,14 @@ A locale whose catalogue block does not carry a readings key falls back to that 
 `message()`. Only `en`, `it` and `la` are populated today — every other locale renders English labels,
 which is the documented normal case for a partly translated key.
 
+**The label locale is the renderer's own — the widget's UI locale, fixed at construction — not the locale
+the calendar data was fetched in, and the two can differ.** `DayViewer`, for example, matches the fetch
+locale against what the selected calendar actually supports and can fall back away from the UI locale
+(see `DayViewer.js`'s `#matchLocale()`); when it does, the reading values come back in one locale while
+these labels stay in the locale the widget was built with. This is recorded rather than treated as a bug:
+labels are UI chrome, and the widget's title and date header already stay in the UI locale regardless of
+which locale the fetched content is in.
+
 **The two static maps stay English whatever locale a renderer is given**, because a static cannot know
 one. They remain the vocabulary and the render order; a localized label comes from rendering.
 
@@ -136,7 +144,7 @@ never as markup — the same boundary `sanitizeHtml()` exists for elsewhere in t
 | `readingsLabelClassName`   | `string`                  | `''`    | Class for reading and schema labels |
 | `readingClassName`         | `string`                  | `''`    | Class for each reading row          |
 
-A non-string value is ignored rather than rejected. Each has a chainable setter —
+A non-string class name is ignored rather than rejected. Each has a chainable setter —
 `setReadingsWrapperClassName()`, `setReadingsLabelClassName()`, `setReadingClassName()` — which **does**
 throw a `TypeError` for a non-string.
 

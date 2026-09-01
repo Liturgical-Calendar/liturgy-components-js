@@ -210,7 +210,7 @@ describe('readings label keys', () => {
 
     const ALL_KEYS = [...READING_KEYS, ...SCHEMA_KEYS];
 
-    it('adds exactly 22 keys', () => {
+    it('the key list is 22 distinct keys', () => {
         expect(ALL_KEYS.length).toBe(22);
         expect(new Set(ALL_KEYS).size).toBe(22);
     });

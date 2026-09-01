@@ -5,9 +5,14 @@ import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 
 /**
  * Both widgets validate a locale into `#locale` and then build a
- * `ReadingsRenderer`. The renderer is not reachable from outside, so the wiring
- * is asserted through the DOM it produces: rendering a known readings object
- * and reading the label back.
+ * `ReadingsRenderer`. The wiring is asserted through the DOM the renderer
+ * produces: rendering a known readings object and reading the label back,
+ * rather than inspecting the renderer's own private locale.
+ *
+ * `_readingsRenderer` is a package-internal getter (underscored, not exported
+ * in any documentation — see CLAUDE.md on what the prefix means) added on both
+ * widgets for exactly this: reaching the renderer instance to render through it
+ * directly, without duplicating either widget's own render call.
  */
 const renderReadingsVia = (widget, readings) => {
     const container = document.createElement('div');

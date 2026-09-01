@@ -301,7 +301,8 @@ options bag, `WebCalendar.locale()`, and the `locale` argument of the `ApiClient
   `new CalendarSelect('it-IT')` and `new CalendarSelect(new Intl.Locale('it-IT'))` are the same call. Unicode
   extensions survive, including ones given as `Intl.Locale` constructor options rather than written in the tag.
 - **`null` and `undefined` both mean "not supplied"**, as the argument itself and as the `locale` property
-  alike, and take the component's default (`'en'` for the five constructors, `'en-US'` for `WebCalendar`).
+  alike, and take the component's default (`'en'` for the six constructors — `CalendarSelect`, `RiteSelect`,
+  `ApiOptions`, `LiturgyOfTheDay`, `LiturgyOfAnyDay` and `ReadingsRenderer` — `'en-US'` for `WebCalendar`).
 - **Anything else is rejected**, naming the component and the type it found — an array, a number, or any class
   instance other than `Intl.Locale`. The three accepted forms disambiguate in this order: `Intl.Locale` is a
   locale, any other object is an options bag, a string is a locale.
@@ -1013,7 +1014,9 @@ Type-safe enumerations for component configuration:
 input labels added for #59 (`YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`, `ETERNAL_HIGH_PRIEST`,
 `HOLYDAYS_OF_OBLIGATION`) — are present in exactly twelve of the 84, the same twelve that carry
 `SELECT_A_RITE`. Every other locale reaches English through a fallback, so an unpopulated block degrades to
-English for that key rather than throwing.
+English for that key rather than throwing. A third, narrower tier exists for `ReadingsRenderer`'s reading
+and Mass-schema labels (`READING_MESSAGE_KEYS`/`MASS_MESSAGE_KEYS`, 22 keys): only `en`, `it` and `la` are
+populated — see the `ReadingsRenderer` section below for the full list and rationale.
 
 **`src/MessageLookup.js`'s `message( key, locale )` is the one place that fallback lives.** It is internal and
 not exported from `src/index.js`, on the same reasoning as `LocaleValidation.js`, `OptionsValidation.js` and
