@@ -16,12 +16,12 @@ prepared under that number was skipped, and everything it was to have delivered 
   `ApiClient.#scheduleRefetch()` deliberately stays: `listenTo()` accepts selects with no `ApiOptions`
   mounted, so it coalesces because it multiplexes independent sources, not because it causes a cascade.
 
-  This migration also moves where a throwing subscriber callback surfaces. Previously, a callback passed to
-  `CalendarControls.onSelectionChange()` (or `SubscriptionBuilder.onChange()`) that threw produced an
-  unhandled promise rejection from a private microtask. Now `ApiOptions.#scheduleSettled()` wraps each
-  subscriber in try/catch, so the throw is caught, reported via `console.error`, and the remaining
-  subscribers still run — the `forEach` loop's abort-on-throw semantics are otherwise unchanged, only where
-  the resulting exception surfaces.
+  This migration also changes what a throwing subscriber callback does to the rest of the batch. Previously,
+  a callback passed to `CalendarControls.onSelectionChange()` (or `SubscriptionBuilder.onChange()`) that
+  threw produced an unhandled promise rejection from a private microtask, and aborted the remaining
+  subscribers. Now `ApiOptions.#scheduleSettled()` wraps each subscriber in its own try/catch, so the throw
+  is caught, reported via `console.error`, and the remaining subscribers still run, which the unguarded
+  `forEach` in the coalescers this replaces did not do.
 
   **Additive**: every per-input `change` dispatch fires exactly as before, and `PathBuilder`'s per-input
   listeners are untouched.
