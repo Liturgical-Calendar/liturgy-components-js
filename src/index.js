@@ -8,6 +8,7 @@ import WebCalendar from './WebCalendar/WebCalendar.js';
 import LiturgyOfTheDay from './LiturgyOfTheDay/LiturgyOfTheDay.js';
 import LiturgyOfAnyDay from './LiturgyOfAnyDay/LiturgyOfAnyDay.js';
 import PathBuilder from './PathBuilder/PathBuilder.js';
+import ReadingsRenderer from './ReadingsRenderer/ReadingsRenderer.js';
 import CalendarResourcePicker from './MetaComponents/CalendarResourcePicker.js';
 import DayViewer from './MetaComponents/DayViewer.js';
 import TodayViewer from './MetaComponents/TodayViewer.js';
@@ -47,6 +48,7 @@ export {
     LiturgyOfTheDay,
     LiturgyOfAnyDay,
     PathBuilder,
+    ReadingsRenderer,
     CalendarResourcePicker,
     DayViewer,
     TodayViewer,
