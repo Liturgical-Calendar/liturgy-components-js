@@ -29,6 +29,23 @@ prepared under that number was skipped, and everything it was to have delivered 
   published values, key order included, and was green before the refactor. They stay English, frozen, and
   keep the same keys in the same order; a static cannot know a locale.
 
+### Fixed
+
+- **`WebCalendar`'s liturgical-season column header was untranslated in English and mistranslated in
+  Italian.** The English value was the key name itself — `LITURGICAL_SEASON: 'LITURGICAL_SEASON'` — so an
+  English page, and every locale whose block lacks the key and falls back, rendered a column literally
+  headed `LITURGICAL_SEASON`. It is now `Season`.
+
+  The Italian read `Stagione`, which is the calendar sense (spring, summer). The liturgical term is
+  `Tempo`, as in _Tempo di Avvento_ and _Tempo Ordinario_. Latin already had this right (`Tempus`).
+
+  Only the header changes; the column's grouping behaviour is untouched.
+
+  **The same error class remains in roughly thirty other locales** — `Temporada`, `Saison`, `Estação`,
+  `Seizoen`, `Pora roku` ("time of year"), `Évad` (a television season) — all the calendar sense rather
+  than the liturgical one. They are left alone deliberately rather than guessed at: each needs the term
+  its own Missal uses.
+
 ## 2.10.0
 
 ### Added
