@@ -263,3 +263,88 @@ describe('the English label maps are derived, not restated', () => {
         expect(Object.isFrozen(ReadingsRenderer.massLabels)).toBe(true);
     });
 });
+
+describe('ReadingsRenderer locale', () => {
+    const FLAT = { first_reading: 'Numeri 6:22-27', gospel: 'Lucam 2:16-21' };
+
+    const renderText = (localeOrOptions, readings = FLAT) => {
+        const container = document.createElement('div');
+        new ReadingsRenderer(localeOrOptions).renderReadings(
+            readings,
+            container,
+        );
+        return container.textContent;
+    };
+
+    it('renders localized labels for a translated locale', () => {
+        expect(renderText('it')).toContain('Prima lettura: Numeri 6:22-27');
+        expect(renderText('it')).toContain('Vangelo: Lucam 2:16-21');
+    });
+
+    it('accepts a bare string, an Intl.Locale and an options bag alike', () => {
+        expect(renderText('it')).toContain('Prima lettura');
+        expect(renderText(new Intl.Locale('it-IT'))).toContain('Prima lettura');
+        expect(renderText({ locale: 'it' })).toContain('Prima lettura');
+    });
+
+    it('falls back to English for a block that lacks the readings keys', () => {
+        // `de` IS a catalogue block; Task 1 deliberately left it untranslated.
+        expect(renderText('de')).toContain('First Reading');
+    });
+
+    it('falls back to English for a language with no block at all', () => {
+        // `ceb` has no block in `Messages.js`, a different path through
+        // `message()` than the one above: `Messages[language]?.[key]` short-
+        // circuits on the optional chain rather than on the key.
+        expect(renderText('ceb')).toContain('First Reading');
+    });
+
+    it('defaults to English when no locale is supplied', () => {
+        expect(renderText(undefined)).toContain('First Reading');
+        expect(renderText(null)).toContain('First Reading');
+        expect(renderText({})).toContain('First Reading');
+        expect(renderText({ locale: null })).toContain('First Reading');
+    });
+
+    it('rejects a locale that is neither a string nor an Intl.Locale', () => {
+        expect(() => new ReadingsRenderer({ locale: 42 })).toThrow(
+            /ReadingsRenderer/,
+        );
+        expect(() => new ReadingsRenderer(['it'])).toThrow(/ReadingsRenderer/);
+    });
+
+    it('throws for an unparseable locale rather than silently using English', () => {
+        expect(() => new ReadingsRenderer('not a locale!')).toThrow(
+            /ReadingsRenderer/,
+        );
+    });
+
+    it('localizes the schema labels too', () => {
+        const text = renderText('it', {
+            vigil: { gospel: 'Mt 1:1-25' },
+            day: { gospel: 'Jn 1:1-18' },
+        });
+        expect(text).toContain('Messa della vigilia');
+        expect(text).toContain('Messa del giorno');
+    });
+
+    it('still accepts the class-name bag alongside a locale', () => {
+        const container = document.createElement('div');
+        new ReadingsRenderer({
+            locale: 'it',
+            readingsWrapperClassName: 'readings',
+        }).renderReadings(FLAT, container);
+        expect([...container.firstElementChild.classList]).toEqual([
+            'readings',
+        ]);
+        expect(container.textContent).toContain('Prima lettura');
+    });
+
+    it('leaves the public statics English regardless of the locale', () => {
+        new ReadingsRenderer('it');
+        expect(ReadingsRenderer.readingLabels.first_reading).toBe(
+            'First Reading',
+        );
+        expect(ReadingsRenderer.massLabels.vigil).toBe('Vigil Mass');
+    });
+});

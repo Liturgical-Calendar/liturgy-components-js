@@ -8,6 +8,8 @@
  */
 
 import { message } from '../MessageLookup.js';
+import { toIntlLocale } from '../LocaleValidation.js';
+import { normalizeComponentOptions } from '../OptionsValidation.js';
 
 /**
  * Maps each readings key to the `Messages` key naming it.
@@ -92,6 +94,7 @@ function englishLabels(messageKeys) {
 
 /**
  * @typedef {Object} ReadingsRendererOptions
+ * @property {string|Intl.Locale} [locale='en'] - The locale whose language the labels are read in.
  * @property {string} [readingsWrapperClassName=''] - CSS class for the readings wrapper element.
  * @property {string} [readingsLabelClassName=''] - CSS class for reading labels.
  * @property {string} [readingClassName=''] - CSS class for individual reading elements.
@@ -183,12 +186,24 @@ export default class ReadingsRenderer {
     /** @type {string} */
     #readingClassName = '';
 
+    /** @type {Intl.Locale} */
+    #locale;
+
     /**
      * Creates a new ReadingsRenderer instance.
      *
-     * @param {ReadingsRendererOptions} [options={}] - Configuration options.
+     * @param {ReadingsRendererOptions|string|Intl.Locale|null} [options={}] - Configuration
+     *        options, or a bare locale as a string or an `Intl.Locale`. `null` and
+     *        `undefined` mean "not supplied", both as the argument and as the `locale`
+     *        property, and yield English.
+     * @throws {Error} If `options` is none of a string, an `Intl.Locale`, a plain object
+     *         or nullish, or if the locale is invalid.
      */
     constructor(options = {}) {
+        options = normalizeComponentOptions(options, 'ReadingsRenderer');
+        // A nullish READ, not `Object.hasOwn`: `{ ...defaults, locale }` with an
+        // unset `locale` is ordinary JavaScript and must not throw. Issue #32.
+        this.#locale = toIntlLocale(options.locale ?? 'en', 'ReadingsRenderer');
         if (
             options.readingsWrapperClassName &&
             typeof options.readingsWrapperClassName === 'string'
@@ -345,7 +360,7 @@ export default class ReadingsRenderer {
                     );
                 }
                 labelEl.textContent =
-                    ReadingsRenderer.readingLabels[key] + ': ';
+                    message(READING_MESSAGE_KEYS[key], this.#locale) + ': ';
 
                 const valueEl = document.createElement('span');
                 valueEl.textContent = readings[key];
@@ -384,8 +399,9 @@ export default class ReadingsRenderer {
             // Iterate in predefined liturgical sequence rather than insertion order
             for (const schemaKey of ReadingsRenderer.#nestedSchemaKeys) {
                 if (Object.prototype.hasOwnProperty.call(readings, schemaKey)) {
-                    const schemaLabel =
-                        ReadingsRenderer.massLabels[schemaKey] || schemaKey;
+                    const schemaLabel = MASS_MESSAGE_KEYS[schemaKey]
+                        ? message(MASS_MESSAGE_KEYS[schemaKey], this.#locale)
+                        : schemaKey;
                     this.renderSingleReadings(
                         readings[schemaKey],
                         readingsWrapper,
