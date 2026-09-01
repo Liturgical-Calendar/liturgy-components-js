@@ -15,7 +15,8 @@ prepared under that number was skipped, and everything it was to have delivered 
   from this one.
 
   Readings are not a flat map: some celebrations carry several sets keyed by which Mass they belong to
-  (`vigil`, `night`, `dawn`, `day`, three alternative schemas, and two Easter-season variants), and a
+  (`vigil`, `night`, `dawn`, `day`, `evening`, three alternative schemas, and two Easter-season
+  variants), and a
   consumer that does not know which keys name a Mass renders `[object Object]` wherever a nested entry
   appears. `massLabels`, `readingOrder`, `readingLabels` and `hasNestedSchemas` are what make that
   renderable at all, independently of whether the consumer wants this component's markup — which for the
