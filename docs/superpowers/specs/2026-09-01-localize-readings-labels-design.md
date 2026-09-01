@@ -173,7 +173,8 @@ constructor body, so the renderer must be constructed (or reconfigured) after `#
 
 ### D8 — This is a deliberate behaviour change, with no opt-out
 
-Every non-English page using either widget starts rendering localized labels. That is the defect being
+A page whose locale block carries the new keys starts rendering localized labels — `it` and `la` today,
+per D9; every other locale falls back to English and is unchanged. That changed text is the defect being
 fixed, not a side effect, so it is recorded in the CHANGELOG under **Changed** rather than **Added**.
 
 No opt-out flag: a consumer wanting English passes `'en'`, and the pre-existing `announceUpdates`-style

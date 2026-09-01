@@ -75,7 +75,10 @@ library does — a `string` or an `Intl.Locale`, interchangeably, as the bare co
 options bag's `locale` property:
 
 ```javascript
+// With a locale string
 const renderer = new ReadingsRenderer('it');
+
+// With an options bag carrying the locale
 const renderer = new ReadingsRenderer({ locale: 'it', readingClassName: 'mb-1' });
 ```
 

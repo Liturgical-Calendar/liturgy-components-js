@@ -8,10 +8,12 @@ prepared under that number was skipped, and everything it was to have delivered 
 
 ### Changed
 
-- **`ReadingsRenderer` renders its labels in the locale it is given**, closing #105. Every non-English
-  page using `LiturgyOfTheDay` or `LiturgyOfAnyDay` renders different text: this is the defect being
-  fixed, not a side effect. The API already serves the lectionary per locale, so a non-English page was
-  rendering an English label against a localized citation — `First Reading: Numeri 6:22-27`.
+- **`ReadingsRenderer` renders its labels in the locale it is given**, closing #105. Concretely, an
+  Italian or Latin page using `LiturgyOfTheDay` or `LiturgyOfAnyDay` renders different text — those are
+  the two locales populated so far. Every other locale falls back to English and is unchanged by this
+  release. That changed text is the defect being fixed, not a side effect: the API already serves the
+  lectionary per locale, so a non-English page was rendering an English label against a localized
+  citation — `First Reading: Numeri 6:22-27`.
 
   The renderer now takes a locale under the library-wide contract (a `string` or an `Intl.Locale`, bare or
   as the bag's `locale`; nullish means English; anything else is rejected by name), and `LiturgyOfTheDay`

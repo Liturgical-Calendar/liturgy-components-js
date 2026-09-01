@@ -1018,6 +1018,11 @@ Insert immediately above `## 2.10.0` in `CHANGELOG.md`:
   fixed, not a side effect. The API already serves the lectionary per locale, so a non-English page was
   rendering an English label against a localized citation — `First Reading: Numeri 6:22-27`.
 
+> **Superseded — the drafted wording below overclaims.** "Every non-English page renders different text"
+> is false: only locales whose block carries the new keys (`it` and `la`) change, and every other locale
+> falls back to English unchanged. The entry that actually shipped in `CHANGELOG.md` states this
+> correctly; prefer that wording over the draft here.
+
   The renderer now takes a locale under the library-wide contract (a `string` or an `Intl.Locale`, bare or
   as the bag's `locale`; nullish means English; anything else is rejected by name), and `LiturgyOfTheDay`
   and `LiturgyOfAnyDay` forward the locale they already held. There is no opt-out: a consumer wanting
