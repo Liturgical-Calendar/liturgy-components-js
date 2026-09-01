@@ -165,6 +165,20 @@ export default class ApiOptions {
     #filtersSet = [];
 
     /**
+     * Callbacks registered through {@link ApiOptions#onSettled}.
+     *
+     * @type {Array<function(): void>}
+     */
+    #settledCallbacks = [];
+
+    /**
+     * The pending settled flush, or `null` when no batch is in flight.
+     *
+     * @type {?Promise<void>}
+     */
+    #pendingSettled = null;
+
+    /**
      * Whether the currently selected rite fixes the four temporal options
      * (Epiphany, Ascension, Corpus Christi, Eternal High Priest) itself.
      *
@@ -244,6 +258,121 @@ export default class ApiOptions {
         this.#inputs.yearTypeInput = new YearTypeInput(this.#locale);
         this.#inputs.acceptHeaderInput = new AcceptHeaderInput();
         this.#inputs.calendarPathInput = new CalendarPathInput(this.#locale);
+        this.#attachSettledListeners();
+    }
+
+    /**
+     * Marks the form dirty and schedules one settled notification for this turn.
+     *
+     * One user action moves several of these inputs: a rite change makes this class
+     * rewrite the calendar list, the locale options, the year floor and the calendar
+     * path, dispatching a synthetic `change` on each. Notifying per event would
+     * describe the state the user had just LEFT, which is the bug three separate
+     * consumers each had to defend against on their own — see issue #55.
+     *
+     * A microtask is the right horizon because every dispatch in that burst is
+     * synchronous, so the whole cascade has landed before this runs, and nothing
+     * beyond the current turn is swallowed. `ApiClient.#scheduleRefetch()` states the
+     * same reasoning at more length; this is that mechanism moved into the layer that
+     * CAUSES the burst rather than one that observes it.
+     *
+     * @returns {void}
+     * @private
+     */
+    #scheduleSettled() {
+        if (null !== this.#pendingSettled) {
+            return;
+        }
+        this.#pendingSettled = Promise.resolve().then(() => {
+            // Cleared BEFORE notifying, so a `change` raised by a subscriber
+            // schedules a NEW batch rather than joining a departing one.
+            this.#pendingSettled = null;
+            // `forEach`, not `for...of`: it captures the length before it starts, so
+            // a callback that registers another callback does not have that new one
+            // fired inside this same flush — which would contradict "does not fire on
+            // subscribe". `SubscriptionUrl` and `EventEmitter.emit()` notify this way
+            // for the same reason.
+            this.#settledCallbacks.forEach((registration) => {
+                // A subscriber's failure is its own. Left unguarded it would abandon
+                // the rest of the list and surface as an unhandled rejection, since
+                // this body runs on a microtask with no caller to catch it.
+                try {
+                    registration.callback();
+                } catch (error) {
+                    console.error(
+                        'ApiOptions.onSettled(): a subscriber threw; the remaining subscribers were still notified.',
+                        error,
+                    );
+                }
+            });
+        });
+    }
+
+    /**
+     * Registers a callback fired once after this form has settled, on a microtask.
+     *
+     * The callback takes no argument: read whatever state you need from the ten input
+     * accessors when it fires. A payload would be a second way to read state those
+     * accessors already expose, and the two could then drift.
+     *
+     * Does NOT fire on subscribe, matching `CalendarControls.onSelectionChange()`,
+     * `SubscriptionBuilder.onChange()` and `onError()`. The state is a synchronous,
+     * race-free read, so the initial pass is `read(); subscribe();`.
+     *
+     * Returns an unsubscribe function rather than `this`. `ApiOptions` has no
+     * `dispose()`, so a subscription registered here would otherwise have no lifecycle
+     * method to release it.
+     *
+     * @param {function(): void} callback - Invoked once per settled batch.
+     * @returns {function(): void} Removes this registration. Safe to call twice.
+     * @throws {Error} If `callback` is not a function.
+     */
+    onSettled(callback) {
+        if ('function' !== typeof callback) {
+            throw new Error(
+                `ApiOptions.onSettled(): Expected a function, but found: ${typeof callback}`,
+            );
+        }
+        // A REGISTRATION object rather than the bare callback, so the unsubscribe
+        // returned here removes THIS registration and no other. Filtering by the
+        // function itself removed every registration of it at once, which contradicted
+        // the `EventEmitter.off()` precedent cited below: that removes one occurrence,
+        // not every match. Registering the same function twice therefore yields two
+        // independent subscriptions here, and the flush visits both.
+        const registration = { callback };
+        this.#settledCallbacks.push(registration);
+        return () => {
+            // Calling this twice is safe and needs no latch: the registration object is
+            // the identity being removed, so a second call filters against something
+            // already gone and cannot touch a LATER registration of the same function.
+            // Replaces the array rather than splicing it, so a subscriber that removes
+            // itself mid-flush does not cause the next one to be skipped.
+            // `EventEmitter.off()` has been written this way since 2.2.0.
+            this.#settledCallbacks = this.#settledCallbacks.filter(
+                (registered) => registered !== registration,
+            );
+        };
+    }
+
+    /**
+     * Listens to every input this form owns, so any user edit produces a settled
+     * signal — not only the ones that originate a cascade.
+     *
+     * All ten are listened to regardless of `filter`. They all exist; `filter` decides
+     * only which are appended. This is the same rule theming follows, and keeping the
+     * two identical is what stops a filter change from silently narrowing the signal.
+     *
+     * @returns {void}
+     * @private
+     */
+    #attachSettledListeners() {
+        Object.values(this.#inputs)
+            .filter((input) => null !== input && undefined !== input)
+            .forEach((input) =>
+                input._domElement.addEventListener('change', () =>
+                    this.#scheduleSettled(),
+                ),
+            );
     }
 
     /**
@@ -994,6 +1123,15 @@ export default class ApiOptions {
 
         nationSelector._domElement.addEventListener('change', applySelection);
         dioceseSelector._domElement.addEventListener('change', applySelection);
+        // Separate listeners, same reasoning as the rite select above: the signal
+        // must fire once per batch regardless of which half of the pair originated
+        // it, and regardless of which branch `applySelection()` takes.
+        nationSelector._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
+        dioceseSelector._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**
@@ -1124,6 +1262,9 @@ export default class ApiOptions {
                 this.#applyTemporalInputState(true);
             }
         });
+        calendarSelect._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**
@@ -1330,6 +1471,7 @@ export default class ApiOptions {
             );
             this.#currentEndpoint.explicitRite = true;
             this.#linkedRiteSelect = riteSelect;
+            this.#attachRiteSettledListener(riteSelect);
         }
         this.#wireRiteIfReady();
         this.#linked = true;
@@ -1362,8 +1504,30 @@ export default class ApiOptions {
         }
         this.#currentEndpoint.explicitRite = true;
         this.#linkedRiteSelect = riteSelect;
+        this.#attachRiteSettledListener(riteSelect);
         this.#wireRiteIfReady();
         return this;
+    }
+
+    /**
+     * Attaches the settled-signal listener to a linked rite select.
+     *
+     * Attached at both call sites that set `#linkedRiteSelect` — the public
+     * `linkToRiteSelect()` and the deprecated `riteSelect` argument of
+     * `linkToCalendarSelect()` — rather than inside `#handleLinkedRiteSelect()`.
+     * That method only runs once BOTH halves of the rite/calendar pairing have
+     * arrived (`#wireRiteIfReady()`'s gate), but `linkToRiteSelect()` on its own,
+     * with no calendar select ever linked, is a supported — if otherwise inert —
+     * call, and a rite change on it is still a settled-worthy edit of this form.
+     *
+     * @param {RiteSelect} riteSelect - The rite select just linked.
+     * @returns {void}
+     * @private
+     */
+    #attachRiteSettledListener(riteSelect) {
+        riteSelect._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**

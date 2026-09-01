@@ -145,6 +145,17 @@ const internalAccessorsStayInternal: [false, false, false] = [
 void internalAccessorsStayInternal;
 
 /**
+ * `onSettled` (task 1 of the settled-signal work) must reach `dist/index.d.ts`
+ * as a function returning an unsubscribe function. `yarn compile` cannot see
+ * this — `checkJs` is off — so a malformed JSDoc return type would otherwise
+ * ship silently, the same class of bug the `VERSION` and `@readonly`-getter
+ * traps above describe.
+ */
+const apiOptions: ApiOptionsInstance = null as unknown as ApiOptionsInstance;
+const unsubscribeSettled: () => void = apiOptions.onSettled(() => {});
+unsubscribeSettled();
+
+/**
  * #67: the preset names must reach `dist/` as a usable VALUE, not only as a type.
  *
  * `ThemePreset` is the only export that originates in `src/MetaComponents/`, every

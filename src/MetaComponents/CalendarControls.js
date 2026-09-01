@@ -178,8 +178,22 @@ export default class CalendarControls {
     /** @type {Array<{element: HTMLElement, listener: function}>} */
     #selectionListeners = [];
 
-    /** @type {?Promise<void>} */
-    #pendingSelectionNotify = null;
+    /**
+     * Releases this component's `ApiOptions.onSettled()` registration.
+     *
+     * @type {?function(): void}
+     */
+    #unsubscribeSettled = null;
+
+    /**
+     * The pending fallback notification scheduled by `#listenForSelection()`'s
+     * listener, or `null` when none is in flight — the same pending-marker
+     * discipline `ApiOptions.#scheduleSettled()` uses, so one user action that
+     * moves both selects schedules one flush rather than two overlapping ones.
+     *
+     * @type {?Promise<void>}
+     */
+    #pendingSelection = null;
 
     /**
      * The last payload handed to the `onSelectionChange()` callbacks, flattened
@@ -432,6 +446,16 @@ export default class CalendarControls {
         this.#lastSelectionKey = CalendarControls.#selectionKey(
             this.#readSelection(),
         );
+        // `ApiOptions.onSettled()` fires once per settled batch, after the
+        // cascade a rite or calendar change provokes has fully landed —
+        // including `ApiOptions`' own `change` listener, so
+        // `predeterminedInputs` describes the new selection rather than the
+        // previous one. Subscribed via the private field, not the public
+        // `apiOptions` getter: that getter calls `#assertUsable()`, which
+        // throws on a disposed instance.
+        this.#unsubscribeSettled = this.#apiOptions.onSettled(() =>
+            this.#notifySelectionIfChanged(),
+        );
         this.#listenForSelection(this.#riteSelect._domElement);
         this.#listenForSelection(this.#calendarSelect._domElement);
     }
@@ -554,7 +578,7 @@ export default class CalendarControls {
     }
 
     /**
-     * Attaches the `change` listener that schedules a selection notification,
+     * Attaches the `change` listener that re-derives scoped visibility,
      * recording it so `dispose()` can remove it.
      *
      * Unlike the listeners `ApiClient.listenTo()` attaches — anonymous closures
@@ -565,18 +589,42 @@ export default class CalendarControls {
      * @returns {void}
      */
     #listenForSelection(element) {
-        // `#applyScopeVisibility()` is called from HERE, synchronously, rather
-        // than from `#scheduleSelectionNotify()`'s microtask — a scoped
-        // control's `hidden` must already reflect the new selection by the
-        // time this handler returns, not one turn later. This single listener
-        // is attached to BOTH the rite select and the calendar select below,
-        // which is deliberately the one place a rite change and a calendar
-        // change both land: see `CalendarScope.js`'s `deriveVisibility()` doc
-        // comment for what went wrong the last time visibility was re-derived
-        // from only one side of that pair.
+        // `#applyScopeVisibility()` is called from HERE, synchronously — a
+        // scoped control's `hidden` must already reflect the new selection by
+        // the time this handler returns, not one turn later. This single
+        // listener is attached to BOTH the rite select and the calendar select
+        // below, which is deliberately the one place a rite change and a
+        // calendar change both land: see `CalendarScope.js`'s
+        // `deriveVisibility()` doc comment for what went wrong the last time
+        // visibility was re-derived from only one side of that pair.
+        //
+        // The NOTIFICATION is normally `ApiOptions.onSettled()`'s job — see
+        // `#notifySelectionIfChanged()` and issue #55 — but that signal exists
+        // only once `ApiOptions` is LINKED to these two selects, which happens
+        // in `listenTo( apiClient )`. `apiClient` is OPTIONAL on `mountInto()`,
+        // so on an unwired instance nothing in the form ever dispatches a
+        // `change`, `#scheduleSettled()` never runs, and `onSelectionChange()`
+        // would silently never fire. `#scheduleSelectionNotification()` is the
+        // fallback that keeps that documented path working.
+        //
+        // On a WIRED instance this is NOT a race between two schedulings: this
+        // listener is attached in the CONSTRUCTOR, while `ApiOptions.linkTo*()`
+        // only happens later, inside `listenTo()`. So on every wired instance
+        // this fallback is scheduled FIRST and is DETERMINISTICALLY the one
+        // that notifies — `ApiOptions.onSettled()`'s own signal arrives second
+        // and is absorbed by `#lastSelectionKey`'s dedupe. That ordering is
+        // also why `#scheduleSelectionNotification()`'s microtask needs its own
+        // try/catch around `#notifySelectionIfChanged()`: it is not merely a
+        // defensive fallback path, it is in practice the path that always
+        // runs, so the guarded `ApiOptions.onSettled()` handler never gets the
+        // chance to catch a throwing subscriber here.
+        //
+        // Only the visibility call stays SYNCHRONOUS here: a scoped control's
+        // `hidden` must already reflect the new selection by the time this
+        // handler returns, not one turn later.
         const listener = () => {
-            this.#scheduleSelectionNotify();
             this.#applyScopeVisibility();
+            this.#scheduleSelectionNotification();
         };
         element.addEventListener('change', listener);
         this.#selectionListeners.push({ element, listener });
@@ -645,66 +693,80 @@ export default class CalendarControls {
     }
 
     /**
-     * Collapses the notifications one user action provokes into one, on a
-     * microtask.
+     * Schedules one fallback selection notification for this turn.
      *
-     * One action moves several inputs: a rite change makes `ApiOptions` rewrite
-     * the calendar list, the locale options and the year floor, each dispatching
-     * its own synchronous `change`, and the calendar select's own listener fires
-     * in that same burst. Notifying synchronously would hand a subscriber an
-     * intermediate payload naming the calendar the user had just left — and
-     * would hand it out before `ApiOptions`' own `change` listener had
-     * necessarily run, so `predeterminedInputs` could still describe the
-     * previous selection. Every dispatch in that burst is synchronous, so a
-     * microtask flush reads settled state and nothing beyond the current turn is
-     * swallowed.
+     * The FALLBACK path, for an instance with no `ApiClient` — see
+     * `#listenForSelection()` for why `ApiOptions.onSettled()` cannot reach that
+     * case at all. On a wired instance both paths run, but this one always
+     * arrives FIRST — see `#listenForSelection()` for why that ordering is
+     * deterministic, not a race — so `ApiOptions.onSettled()`'s later call is
+     * the one dropped by `#notifySelectionIfChanged()`'s own `#lastSelectionKey`
+     * comparison, costing one extra DOM read and notifying nobody twice.
      *
-     * The same shape as `SubscriptionUrl.#scheduleNotify()` and
-     * `ApiClient.#scheduleRefetch()`, for the structurally identical problem.
+     * The pending marker is cleared BEFORE notifying, exactly as
+     * `ApiOptions.#scheduleSettled()` clears its own: a `change` raised by a
+     * subscriber then schedules a NEW flush rather than joining a departing one.
+     *
+     * The `try`/`catch` here is required, not merely defensive: because this
+     * path always runs first on a wired instance (see above), a throwing
+     * `onSelectionChange()` subscriber is caught HERE. Left unguarded, the
+     * throw would escape this microtask's `.then()` body as an unhandled
+     * promise rejection instead of being reported via `console.error`.
      *
      * @returns {void}
+     * @private
      */
-    #scheduleSelectionNotify() {
-        if (null !== this.#pendingSelectionNotify) {
+    #scheduleSelectionNotification() {
+        if (null !== this.#pendingSelection) {
             return;
         }
-        this.#pendingSelectionNotify = Promise.resolve().then(() => {
-            this.#pendingSelectionNotify = null;
-            // NOT what stops a disposed instance notifying — `dispose()` empties
-            // `#selectionCallbacks` before this ever runs, so the loop below
-            // would already visit nothing. What this prevents is a disposed
-            // instance doing pointless work in a turn it no longer belongs to:
-            // reading its children's DOM and rewriting `#lastSelectionKey`. It
-            // returns rather than throwing through `#assertUsable()`, because
-            // this body runs on a microtask and a throw here would surface as an
-            // unhandled rejection with no caller to catch it.
-            if (true === this.#disposed) {
-                return;
+        this.#pendingSelection = Promise.resolve().then(() => {
+            this.#pendingSelection = null;
+            try {
+                this.#notifySelectionIfChanged();
+            } catch (error) {
+                console.error(
+                    'CalendarControls.onSelectionChange(): a subscriber threw.',
+                    error,
+                );
             }
-            const selection = this.#readSelection();
-            const key = CalendarControls.#selectionKey(selection);
-            // The documented contract is that this fires when the selection
-            // CHANGES. A `change` event that altered nothing it reports — a raw
-            // dispatch, reselecting the option already selected — notifies
-            // nobody, since there is nothing for a consumer to restyle.
-            // Compared against the LAST NOTIFIED key, not a set of every key
-            // ever seen, so changing away and back notifies both times.
-            if (key === this.#lastSelectionKey) {
-                return;
-            }
-            this.#lastSelectionKey = key;
-            // `forEach`, not `for...of`: it captures the length before it
-            // starts, so a callback that registers ANOTHER callback does not
-            // have that new one fired inside this same flush — which would
-            // contradict "does not fire on subscribe". `SubscriptionUrl` and
-            // `EventEmitter.emit()` both notify this way, for the same reason.
-            //
-            // A callback that THROWS still aborts the rest of the batch, here as
-            // in both of those. That is the library's existing behaviour for
-            // subscriptions rather than a choice made here, and it is documented
-            // rather than silently diverged from.
-            this.#selectionCallbacks.forEach((callback) => callback(selection));
         });
+    }
+
+    /**
+     * Notifies subscribers when the selection payload has changed.
+     *
+     * Called from `ApiOptions.onSettled()`, which is what guarantees the cascade has
+     * landed — including `ApiOptions`' own listener, so `predeterminedInputs` describes
+     * the new selection rather than the previous one. Until issue #55 this component
+     * scheduled its own microtask for exactly that reason. Also called from
+     * `#scheduleSelectionNotification()`, the fallback for an unwired instance that
+     * has no `ApiOptions.onSettled()` signal to ride on.
+     *
+     * @returns {void}
+     * @private
+     */
+    #notifySelectionIfChanged() {
+        // NOT what stops a disposed instance notifying — `dispose()` empties
+        // `#selectionCallbacks`, so the loop below would already visit nothing. What
+        // this prevents is a disposed instance doing pointless work in a turn it no
+        // longer belongs to: reading its children's DOM and rewriting
+        // `#lastSelectionKey`. It returns rather than throwing through
+        // `#assertUsable()`, because a throw here has no caller to catch it.
+        if (true === this.#disposed) {
+            return;
+        }
+        const selection = this.#readSelection();
+        const key = CalendarControls.#selectionKey(selection);
+        // Fires when the selection CHANGES. Compared against the LAST NOTIFIED key,
+        // not a set of every key ever seen, so changing away and back notifies twice.
+        if (key === this.#lastSelectionKey) {
+            return;
+        }
+        this.#lastSelectionKey = key;
+        // `forEach`, not `for...of`: a callback that registers another callback does
+        // not have that new one fired inside this same flush.
+        this.#selectionCallbacks.forEach((callback) => callback(selection));
     }
 
     /**
@@ -719,7 +781,7 @@ export default class CalendarControls {
      *
      * **Fired once per user action, on a microtask, and only when the payload
      * changed.** One action moves several inputs; see
-     * `#scheduleSelectionNotify()`.
+     * `#notifySelectionIfChanged()`, called from `ApiOptions.onSettled()`.
      *
      * **It does NOT fire on subscribe.** The initial state is available
      * synchronously and race-free from `selection`, so painting it is one extra
@@ -1461,7 +1523,8 @@ export default class CalendarControls {
         }
         this.#selectionListeners = [];
         this.#selectionCallbacks = [];
-        this.#pendingSelectionNotify = null;
+        this.#unsubscribeSettled?.();
+        this.#unsubscribeSettled = null;
         this.#subscriptions = [];
         this.#fetchedCallbacks = [];
         this.#errorCallbacks = [];
