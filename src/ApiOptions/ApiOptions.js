@@ -292,12 +292,12 @@ export default class ApiOptions {
             // fired inside this same flush — which would contradict "does not fire on
             // subscribe". `SubscriptionUrl` and `EventEmitter.emit()` notify this way
             // for the same reason.
-            this.#settledCallbacks.forEach((callback) => {
+            this.#settledCallbacks.forEach((registration) => {
                 // A subscriber's failure is its own. Left unguarded it would abandon
                 // the rest of the list and surface as an unhandled rejection, since
                 // this body runs on a microtask with no caller to catch it.
                 try {
-                    callback();
+                    registration.callback();
                 } catch (error) {
                     console.error(
                         'ApiOptions.onSettled(): a subscriber threw; the remaining subscribers were still notified.',
@@ -333,13 +333,23 @@ export default class ApiOptions {
                 `ApiOptions.onSettled(): Expected a function, but found: ${typeof callback}`,
             );
         }
-        this.#settledCallbacks.push(callback);
+        // A REGISTRATION object rather than the bare callback, so the unsubscribe
+        // returned here removes THIS registration and no other. Filtering by the
+        // function itself removed every registration of it at once, which contradicted
+        // the `EventEmitter.off()` precedent cited below: that removes one occurrence,
+        // not every match. Registering the same function twice therefore yields two
+        // independent subscriptions here, and the flush visits both.
+        const registration = { callback };
+        this.#settledCallbacks.push(registration);
         return () => {
+            // Calling this twice is safe and needs no latch: the registration object is
+            // the identity being removed, so a second call filters against something
+            // already gone and cannot touch a LATER registration of the same function.
             // Replaces the array rather than splicing it, so a subscriber that removes
             // itself mid-flush does not cause the next one to be skipped.
             // `EventEmitter.off()` has been written this way since 2.2.0.
             this.#settledCallbacks = this.#settledCallbacks.filter(
-                (registered) => registered !== callback,
+                (registered) => registered !== registration,
             );
         };
     }

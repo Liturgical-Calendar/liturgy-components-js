@@ -849,7 +849,9 @@ Under `## [Unreleased]`, in an `### Added` section:
 - [ ] **Step 4: Run the full verification set**
 
 Run: `yarn compile && yarn test && yarn lint:dts && yarn lint:md && yarn format:md && yarn format:js`
-Expected: all clean. The suite total should be the pre-change total plus the 11 new tests from Tasks 1–2.
+Expected: all clean. The suite total should be the pre-change total plus the 13 new tests from Tasks 1–2 — 8 from
+Task 1, and 5 from Task 2 (three linked-select, two cascade-origin). Corrected after the fact: this
+line said 11, which was right before Task 2 gained its Step 5 tests.
 
 - [ ] **Step 5: Commit**
 

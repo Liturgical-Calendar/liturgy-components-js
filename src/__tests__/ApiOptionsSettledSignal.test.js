@@ -100,6 +100,39 @@ describe('ApiOptions.onSettled()', () => {
         errors.mockRestore();
     });
 
+    it('treats the same callback registered twice as two independent subscriptions', async () => {
+        // `EventEmitter.off()` removes ONE occurrence, not every match, and the flush
+        // visits every entry — so unsubscribing one registration must leave the other
+        // firing. Filtering by the callback itself removed both at once.
+        const apiOptions = new ApiOptions('en');
+        const seen = jest.fn();
+        const unsubscribeFirst = apiOptions.onSettled(seen);
+        apiOptions.onSettled(seen);
+
+        apiOptions.yearInput._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+        expect(seen).toHaveBeenCalledTimes(2);
+
+        unsubscribeFirst();
+        apiOptions.yearInput._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+        expect(seen).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not remove a later registration when an unsubscribe is called twice', async () => {
+        const apiOptions = new ApiOptions('en');
+        const seen = jest.fn();
+        const unsubscribe = apiOptions.onSettled(seen);
+        unsubscribe();
+        apiOptions.onSettled(seen);
+        unsubscribe();
+
+        apiOptions.yearInput._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
+    });
+
     it('does not skip the next subscriber when one unsubscribes mid-flush', async () => {
         const apiOptions = new ApiOptions('en');
         const second = jest.fn();
