@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scoped widgets — Liturgical Calendar components</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+    <h1 class="h3 mb-4">Scoped widgets</h1>
+    <p class="text-muted">
+        Two <code>TodayViewer</code>s, each restricted with a <code>scope</code> option so it can only ever
+        show the calendars a specific site would actually want — see "Calendar scope" in the project
+        <code>CLAUDE.md</code> for the full model.
+    </p>
+    <div class="row g-4">
+        <section class="col-lg-6">
+            <h2 class="h5">Diocese of Rome</h2>
+            <p class="text-muted small">
+                <code>scope: { diocese: 'romamo_it' }</code> — one calendar, pinned by inference to the Roman
+                rite and to Rome's own locales. No rite select, no calendar select, no locale input: there is
+                only ever one choice for each, so none of the three has anything to offer.
+            </p>
+            <div id="romeControls" class="row g-2 mb-3"></div>
+            <div id="romeLiturgy"></div>
+        </section>
+        <section class="col-lg-6">
+            <h2 class="h5">Italian Bishops' Conference</h2>
+            <p class="text-muted small">
+                <code>scope: { nation: 'IT' }</code> — the Italian national calendar under the Roman rite, or
+                the bare Ambrosian calendar under Ambrosian (Italy has an Ambrosian diocese — Milan — even
+                though Ambrosian has no national tier). The calendar select stays hidden either way: Italy
+                resolves to exactly one calendar per rite. The locale input does not follow the same rule —
+                it is derived from the CURRENT calendar's own locales, not from the calendar count — so
+                switching the rite select to Ambrosian makes it appear: the bare Ambrosian calendar supports
+                both <code>it</code> and <code>la</code>, while Italy's own national calendar under Roman
+                supports only <code>it</code>.
+            </p>
+            <div id="italyControls" class="row g-2 mb-3"></div>
+            <div id="italyLiturgy"></div>
+        </section>
+    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "liturgy-components-js": "../../src/index.js"
+            }
+        }
+    </script>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -18,7 +18,12 @@
 import {
     ApiOptions,
     CalendarControls,
+    CalendarResourcePicker,
+    CalendarViewer,
+    DayViewer,
+    SubscriptionBuilder,
     ThemePreset,
+    TodayViewer,
     VERSION,
 } from '../dist/index.js';
 
@@ -174,3 +179,146 @@ void documentedRecipe;
 const narrowedCalendarType: 'general' | 'national' | 'diocesan' =
     null as unknown as ControlsInstance['selection']['calendarType'];
 void narrowedCalendarType;
+
+/**
+ * `TodayViewer` (calendar scope, task 9) must reach `dist/` at a usable type,
+ * and its documented `scope` recipe — `mountInto()`, `await settled`,
+ * `dispose()` — must compile for a consumer exactly as written in the docs.
+ * No runtime test can see a `.d.ts`-only regression here, the same class of
+ * bug as the `VERSION` and `@readonly`-getter traps above.
+ */
+async function scopedTodayViewer(): Promise<void> {
+    const viewer = await TodayViewer.mountInto('#today', {
+        locale: 'it',
+        scope: { rite: 'roman', diocese: 'romamo_it' },
+    });
+    await viewer?.settled;
+    viewer?.dispose();
+}
+void scopedTodayViewer;
+
+/**
+ * `scope` (task 10) must reach the emitted declarations as the named
+ * `CalendarScopeOptions` type, on every component that accepts it — not the
+ * bare `Object` (or, worse, an ENTIRELY ABSENT key) that let any object
+ * literal through and proved nothing. See `src/typedefs.js`'s doc comment on
+ * `CalendarScopeOptions` for the history: `grep -c "scope" dist/index.d.ts`
+ * printed `0`, and `scopedTodayViewer()` below — unchanged since task 9 —
+ * compiled throughout, because a bare `Object` parameter accepts any object
+ * literal regardless of its shape.
+ *
+ * The regressing check is the indexed access itself, not the assignment: for
+ * `CalendarControls`, `CalendarViewer` and `CalendarResourcePicker`, `scope`
+ * was undocumented on `mountInto()`'s OWN `@param` tags before this fix —
+ * `tsc` synthesises a factory's options type from that factory's own tags
+ * alone, so the "as the constructor, plus those below" prose is not honoured
+ * by the compiler — and `['scope']` on the emitted options type was a
+ * compile error (TS2339), not merely a loosely-typed pass.
+ */
+type ControlsScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarControls.mountInto>[1]>['scope']
+>;
+type ViewerScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarViewer.mountInto>[1]>['scope']
+>;
+type DayViewerScope = NonNullable<
+    NonNullable<Parameters<typeof DayViewer.mountInto>[1]>['scope']
+>;
+type PickerScope = NonNullable<
+    NonNullable<Parameters<typeof CalendarResourcePicker.mountInto>[1]>['scope']
+>;
+type SubscriptionBuilderScope = NonNullable<
+    NonNullable<Parameters<typeof SubscriptionBuilder.mountInto>[1]>['scope']
+>;
+
+const controlsScope: ControlsScope = { rite: 'roman' };
+const viewerScope: ViewerScope = { rite: ['roman', 'ambrosian'] };
+const dayViewerScope: DayViewerScope = { nation: 'US', includeDioceses: true };
+const pickerScope: PickerScope = { diocese: 'romamo_it' };
+const subscriptionBuilderScope: SubscriptionBuilderScope = { nation: 'IT' };
+void controlsScope;
+void viewerScope;
+void dayViewerScope;
+void pickerScope;
+void subscriptionBuilderScope;
+
+/**
+ * F9 (final whole-branch review, Ruling 24): `scope` must reach the
+ * CONSTRUCTOR path too, not only `mountInto()`. CLAUDE.md documents the
+ * constructor as the path every REAL consumer is actually on — "a real
+ * import would make it a value" is why `mountInto()` alone was not enough.
+ * Before this fix every constructor's emitted signature was the bare
+ * `options?: Object | string | Intl.Locale`, because an explicit UNION type
+ * on `[options]` suppresses `tsc`'s usual synthesis of an anonymous object
+ * type from dotted `@param [options.foo]` tags — that synthesis only fires
+ * when the top-level tag is the bare word `Object`, which is what makes
+ * `mountInto()`'s own `options` parameter (never a union — it never accepts
+ * a bare locale) work. Checked with an EXPLICITLY TYPED binding on each: a
+ * bare object literal would compile against the untyped `Object` union
+ * member regardless of its shape and prove nothing, exactly as the
+ * `mountInto()` regression above describes.
+ *
+ * The constructor's parameter is a UNION (`... | string | Intl.Locale`), so
+ * `['scope']` cannot be indexed directly off it — only one member of the
+ * union carries that key. `CtorOptionsBag` picks out that member the same
+ * way a caller narrowing the union would: excluding the two non-bag forms
+ * rather than trying to intersect them away.
+ */
+type CtorOptionsBag<T> = Exclude<NonNullable<T>, string | Intl.Locale>;
+
+type ControlsCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof CalendarControls>[0]>['scope']
+>;
+type ViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof CalendarViewer>[0]>['scope']
+>;
+type DayViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof DayViewer>[0]>['scope']
+>;
+type PickerCtorScope = NonNullable<
+    CtorOptionsBag<
+        ConstructorParameters<typeof CalendarResourcePicker>[0]
+    >['scope']
+>;
+type TodayViewerCtorScope = NonNullable<
+    CtorOptionsBag<ConstructorParameters<typeof TodayViewer>[0]>['scope']
+>;
+type SubscriptionBuilderCtorScope = NonNullable<
+    CtorOptionsBag<
+        ConstructorParameters<typeof SubscriptionBuilder>[0]
+    >['scope']
+>;
+
+const controlsCtorScope: ControlsCtorScope = { rite: 'roman' };
+const viewerCtorScope: ViewerCtorScope = { rite: ['roman', 'ambrosian'] };
+const dayViewerCtorScope: DayViewerCtorScope = {
+    nation: 'US',
+    includeDioceses: true,
+};
+const pickerCtorScope: PickerCtorScope = { diocese: 'romamo_it' };
+const todayViewerCtorScope: TodayViewerCtorScope = { rite: 'roman' };
+const subscriptionBuilderCtorScope: SubscriptionBuilderCtorScope = {
+    nation: 'IT',
+};
+void controlsCtorScope;
+void viewerCtorScope;
+void dayViewerCtorScope;
+void pickerCtorScope;
+void todayViewerCtorScope;
+void subscriptionBuilderCtorScope;
+
+/**
+ * `scope.rite` must accept both a string and a string array (a set with one
+ * member, and a set with several) — see `CalendarScope.js` and the calendar
+ * scope design doc for why the array form is future-proofing rather than
+ * dead weight today. Checked against the REAL emitted `rite` field via
+ * `TodayViewerScope`, not a standalone literal untethered from it.
+ */
+type TodayViewerScope = NonNullable<
+    NonNullable<Parameters<typeof TodayViewer.mountInto>[1]>['scope']
+>;
+
+const scopeRiteAcceptsString: TodayViewerScope['rite'] = 'roman';
+const scopeRiteAcceptsArray: TodayViewerScope['rite'] = ['roman', 'ambrosian'];
+void scopeRiteAcceptsString;
+void scopeRiteAcceptsArray;

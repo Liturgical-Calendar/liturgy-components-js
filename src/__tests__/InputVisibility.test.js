@@ -86,3 +86,56 @@ describe('resolveInputVisibility', () => {
         ).toThrow('CalendarControls: unknown inputs option `nope`');
     });
 });
+
+/**
+ * `riteSelect`, `calendarSelect` and `localeInput` are the three controls a
+ * calendar `scope` can hide, and their visibility is otherwise RUNTIME-derived
+ * by `CalendarScope.js`'s `deriveVisibility()` — so unlike `acceptHeader`, they
+ * carry NO default here and are absent from the resolved bag until a caller
+ * names one. This is what lets `deriveVisibility()` tell "not overridden" (key
+ * absent) from "overridden to true" (key present, `true`).
+ */
+describe.each(['riteSelect', 'calendarSelect', 'localeInput'])(
+    'resolveInputVisibility — %s',
+    (key) => {
+        it('is absent from the resolved bag when no bag is given', () => {
+            expect(
+                resolveInputVisibility(undefined, 'CalendarControls'),
+            ).not.toHaveProperty(key);
+            expect(
+                resolveInputVisibility(null, 'CalendarControls'),
+            ).not.toHaveProperty(key);
+            expect(
+                resolveInputVisibility({}, 'CalendarControls'),
+            ).not.toHaveProperty(key);
+        });
+
+        it('reads an explicit boolean', () => {
+            expect(
+                resolveInputVisibility({ [key]: true }, 'CalendarControls'),
+            ).toEqual({ acceptHeader: true, [key]: true });
+            expect(
+                resolveInputVisibility({ [key]: false }, 'CalendarControls'),
+            ).toEqual({ acceptHeader: true, [key]: false });
+        });
+
+        it('treats a key present with an explicit undefined as absent', () => {
+            expect(
+                resolveInputVisibility(
+                    { [key]: undefined },
+                    'CalendarControls',
+                ),
+            ).not.toHaveProperty(key);
+        });
+
+        it('rejects a non-boolean value, naming the key and the type', () => {
+            expect(() =>
+                resolveInputVisibility({ [key]: 'no' }, 'CalendarControls'),
+            ).toThrow(
+                new RegExp(
+                    `CalendarControls: inputs\\.${key}.*boolean.*found type: string`,
+                ),
+            );
+        });
+    },
+);

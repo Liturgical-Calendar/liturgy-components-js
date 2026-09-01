@@ -4,6 +4,7 @@ import { YearType } from '../Enums.js';
 import ReadingsRenderer from '../ReadingsRenderer/ReadingsRenderer.js';
 import { normalizeComponentOptions } from '../OptionsValidation.js';
 import { toIntlLocale } from '../LocaleValidation.js';
+import LiveAnnouncer from '../LiveAnnouncer.js';
 import Utils from '../Utils.js';
 
 export default class LiturgyOfTheDay {
@@ -63,6 +64,24 @@ export default class LiturgyOfTheDay {
 
     /** @type {boolean} */
     #showReadings = true;
+
+    /**
+     * The hidden live region, or `null` when `announceUpdates( false )` was set.
+     *
+     * @type {LiveAnnouncer|null}
+     */
+    #announcer = new LiveAnnouncer();
+
+    /**
+     * Whether a render carrying data has already happened.
+     *
+     * The FIRST one is deliberately silent: it is the page loading, not a user
+     * action, and a live region firing then talks over whatever the page is
+     * already announcing.
+     *
+     * @type {boolean}
+     */
+    #hasRendered = false;
 
     /**
      * Validates the given class name to ensure it is usable in a `class` attribute.
@@ -188,6 +207,12 @@ export default class LiturgyOfTheDay {
         this.#eventsElementsWrapper = document.createElement('div');
         this.#domElement.appendChild(this.#eventsElementsWrapper);
 
+        // Mounted once, as the last child, and never removed: `#updateEventDetails()`
+        // only clears `#eventsElementsWrapper`, so the region stays in the DOM
+        // across every re-render — which is what assistive technology needs in
+        // order to announce a change to it at all.
+        this.#announcer.mountInto(this.#domElement);
+
         if (typeof options === 'object' && options !== null) {
             if (Object.hasOwn(options, 'id')) {
                 this.id(options.id);
@@ -228,6 +253,9 @@ export default class LiturgyOfTheDay {
             if (Object.hasOwn(options, 'showReadings')) {
                 this.showReadings(options.showReadings);
             }
+            if (Object.hasOwn(options, 'announceUpdates')) {
+                this.announceUpdates(options.announceUpdates);
+            }
         }
     }
 
@@ -253,6 +281,12 @@ export default class LiturgyOfTheDay {
      * @private
      */
     #updateEventDetails(todaysEvents) {
+        // Replace, do not append. This method used to add to whatever was
+        // already there, so a second `calendarFetched` rendered the day twice
+        // and a third three times. It went unnoticed while nothing could
+        // trigger a refetch on this component; `TodayViewer` can, because a
+        // scope may leave a rite or calendar select on screen.
+        this.#eventsElementsWrapper.replaceChildren();
         todaysEvents.forEach((celebration) => {
             const lclzdGrade =
                 celebration.grade < 7 ? celebration.grade_lcl : '';
@@ -334,6 +368,35 @@ export default class LiturgyOfTheDay {
 
             this.#eventsElementsWrapper.appendChild(litEventElement);
         });
+
+        this.#announce(todaysEvents.length);
+    }
+
+    /**
+     * Announces the events just rendered, as a short summary and never the
+     * content itself.
+     *
+     * Silent on the first render — see `#hasRendered`. Reuses the title
+     * element's own text, set from `LITURGY_OF_THE_DAY` in the constructor,
+     * rather than deriving a second string: that is the same precedent
+     * `WebCalendar#captionText()` follows, reusing an existing string instead
+     * of minting a second set of translations.
+     *
+     * @param {number} count - The number of events just rendered.
+     * @returns {void}
+     * @private
+     */
+    #announce(count) {
+        if (null === this.#announcer) {
+            return;
+        }
+        if (false === this.#hasRendered) {
+            this.#hasRendered = true;
+            return;
+        }
+        this.#announcer.announce(
+            `${this.#titleElement.textContent} (${new Intl.NumberFormat(this.#locale.baseName).format(count)})`,
+        );
     }
 
     /**
@@ -672,6 +735,39 @@ export default class LiturgyOfTheDay {
     }
 
     /**
+     * Turns the live-region announcement on or off.
+     *
+     * Default `true`. An accessibility fix that is off by default fixes nobody:
+     * the consumers who need it are the least likely to know the option exists.
+     * Turn it off when the surrounding page already owns a live region for this
+     * content, so the update is not announced twice.
+     *
+     * @param {boolean} enabled - Whether to announce each replacement.
+     * @throws {Error} If `enabled` is not a boolean.
+     * @returns {LiturgyOfTheDay} The current instance for chaining.
+     */
+    announceUpdates(enabled) {
+        if (typeof enabled !== 'boolean') {
+            throw new Error(
+                'LiturgyOfTheDay.announceUpdates(): invalid type for parameter, must be of type boolean but found type: ' +
+                    typeof enabled,
+            );
+        }
+        if (false === enabled) {
+            this.#announcer?.dispose();
+            this.#announcer = null;
+        } else if (null === this.#announcer) {
+            this.#announcer = new LiveAnnouncer();
+            this.#announcer.mountInto(this.#domElement);
+            // A NEWLY inserted region, so the same silent-first-render rule a
+            // fresh instance gets applies here too: assistive technology needs
+            // the region present before its content changes.
+            this.#hasRendered = false;
+        }
+        return this;
+    }
+
+    /**
      * Sets the LiturgyOfTheDay instance to listen to the `calendarFetched` event emitted by the ApiClient.
      *
      * Upon receiving the event, it processes the liturgical calendar data and updates the liturgical events
@@ -739,7 +835,6 @@ export default class LiturgyOfTheDay {
             const todaysEvents = data.litcal.filter((event) => {
                 return new Date(event.date).getTime() === todaysTimestamp;
             });
-            console.log('todaysEvents: ', todaysEvents);
             this.#updateEventDetails(todaysEvents);
         });
         return this;

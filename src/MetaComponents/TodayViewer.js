@@ -1,6 +1,13 @@
 /**
- * A complete "liturgy of any day" page: a rite select, a calendar select, a locale
- * input and the `LiturgyOfAnyDay` widget, wired to one another and to an `ApiClient`.
+ * A complete "liturgy of today" page: a rite select, a calendar select, a locale
+ * input and the `LiturgyOfTheDay` widget, wired to one another and to an `ApiClient`.
+ *
+ * `TodayViewer` is `DayViewer`'s sibling with no date controls at all: `DayViewer`
+ * renders any day the caller picks and owns the day/month/year inputs that let them
+ * pick it, while `TodayViewer` always renders today and has nothing for the caller
+ * to pick. That is the whole difference — every other convention below (slots,
+ * scope, theme, `settled`, `dispose()`) is copied from `DayViewer`, which was just
+ * reviewed clean for the identical wiring.
  *
  * @author [John Romano D'Orazio](https://github.com/JohnRDOrazio)
  * @license Apache-2.0
@@ -11,7 +18,7 @@ import RiteSelect from '../RiteSelect/RiteSelect.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
 import ApiClient from '../ApiClient/ApiClient.js';
 import { resolveBase, assertSameBase } from '../ApiClient/ApiBase.js';
-import LiturgyOfAnyDay from '../LiturgyOfAnyDay/LiturgyOfAnyDay.js';
+import LiturgyOfTheDay from '../LiturgyOfTheDay/LiturgyOfTheDay.js';
 import Messages from '../Messages.js';
 import { ApiOptionsFilter } from '../Enums.js';
 import {
@@ -36,7 +43,29 @@ import {
 /** The slots a caller may name, in mount order. @type {Readonly<string[]>} */
 const SLOT_NAMES = Object.freeze(['rite', 'calendar', 'locale', 'liturgy']);
 
-export default class DayViewer {
+/**
+ * The `liturgy` role's per-child override keys this class actually applies,
+ * a subset of `Theme.js`'s `OVERRIDE_KEYS_BY_ROLE.liturgy`. That list is
+ * shared with `DayViewer`'s `LiturgyOfAnyDay` widget and includes
+ * `dateControlsClass`, which `LiturgyOfTheDay` has no setter for — this
+ * class has no date controls at all. `assertTheme()` still accepts
+ * `dateControlsClass` under `theme.liturgy` here, since the role-level key
+ * list is shared across both `liturgy`-role children; it is simply never
+ * applied, exactly as an unused overlap key on any other shared role.
+ *
+ * @type {Readonly<string[]>}
+ */
+const LITURGY_CLASS_KEYS = Object.freeze([
+    'titleClass',
+    'dateClass',
+    'eventsWrapperClass',
+    'eventClass',
+    'eventGradeClass',
+    'eventCommonClass',
+    'eventYearCycleClass',
+]);
+
+export default class TodayViewer {
     /** @type {string} */
     #locale = 'en';
 
@@ -52,7 +81,7 @@ export default class DayViewer {
     /** @type {ApiOptions} */
     #apiOptions;
 
-    /** @type {LiturgyOfAnyDay} */
+    /** @type {LiturgyOfTheDay} */
     #liturgy;
 
     /** @type {string} */
@@ -80,10 +109,11 @@ export default class DayViewer {
     /**
      * The API base this viewer's children were bound to at construction.
      *
-     * Resolved once and held, matching `CalendarSelect`: whichever base the
-     * `apiClient` option named — or the default in force at the time — is the one
-     * this viewer keeps for its lifetime, whatever is registered later. Held so
-     * `listenTo()` can refuse a client bound to a different base.
+     * Resolved once and held, matching `DayViewer` and `CalendarSelect`:
+     * whichever base the `apiClient` option named — or the default in force
+     * at the time — is the one this viewer keeps for its lifetime, whatever
+     * is registered later. Held so `listenTo()` can refuse a client bound to
+     * a different base.
      *
      * @type {import('../ApiClient/ApiBase.js').default}
      */
@@ -94,8 +124,8 @@ export default class DayViewer {
      * nothing" case that keeps every existing code path untouched. Read by
      * `#applyScopeVisibility()` on every call, so a rite or calendar change
      * always re-derives against the SAME resolved scope rather than a stale
-     * copy. See `CalendarControls.js`'s identical field for the full
-     * reasoning; this viewer builds its selects directly rather than through
+     * copy. See `DayViewer`'s identical field for the full reasoning; this
+     * viewer builds its selects directly rather than through
      * `CalendarControls`, which is why it needs its own copy of the wiring.
      *
      * @type {?Object}
@@ -105,7 +135,7 @@ export default class DayViewer {
     /**
      * The `change` listeners this viewer attached to the rite select and the
      * calendar select for scope re-derivation, so `dispose()` can remove
-     * them — mirroring `CalendarControls`' `#selectionListeners`.
+     * them — mirroring `DayViewer`'s `#scopeListeners`.
      *
      * @type {Array<{element: HTMLElement, listener: function}>}
      */
@@ -121,6 +151,9 @@ export default class DayViewer {
 
     /** @type {Array<function(Error): void>} */
     #errorCallbacks = [];
+
+    /** @type {Array<function(Object): void>} */
+    #fetchedCallbacks = [];
 
     /**
      * Errors already handed to the `onError()` callbacks, so a failure that
@@ -142,7 +175,7 @@ export default class DayViewer {
      *   this option existed.
      */
     constructor(options) {
-        options = normalizeComponentOptions(options, 'DayViewer');
+        options = normalizeComponentOptions(options, 'TodayViewer');
         const { locale, theme, showTitle, apiClient, scope } = options;
 
         // Validated here, by name, rather than left to whichever child happens to
@@ -151,23 +184,23 @@ export default class DayViewer {
         // directly touched. Canonicalising once and handing the canonical tag to
         // every child also means none of them re-derives it.
         if (locale !== undefined && locale !== null) {
-            this.#locale = canonicalizeLocale(locale, 'DayViewer');
+            this.#locale = canonicalizeLocale(locale, 'TodayViewer');
         }
         this.#language = new Intl.Locale(this.#locale).language;
-        assertTheme(theme, 'DayViewer');
+        assertTheme(theme, 'TodayViewer');
 
         // Resolved here, under this component's own name, so an `apiClient` that
-        // carries no base is reported as a DayViewer problem rather than by whichever
-        // child happens to construct first.
-        this.#base = resolveBase(apiClient, 'DayViewer');
+        // carries no base is reported as a TodayViewer problem rather than by
+        // whichever child happens to construct first.
+        this.#base = resolveBase(apiClient, 'TodayViewer');
 
         // Validated and resolved BEFORE any child is built, same reasoning as
-        // `CalendarControls`: a bad scope (an unknown key, an unmatched
-        // diocese, a rite that leaves no calendar to resolve) is a programmer
-        // error and must reject before anything half-mounts. `resolveScope()`
-        // returns `null` for a scope that restricts nothing, and every scope
-        // path below is a no-op on that value.
-        assertScope(scope, 'DayViewer', this.#base);
+        // `DayViewer`: a bad scope (an unknown key, an unmatched diocese, a
+        // rite that leaves no calendar to resolve) is a programmer error and
+        // must reject before anything half-mounts. `resolveScope()` returns
+        // `null` for a scope that restricts nothing, and every scope path
+        // below is a no-op on that value.
+        assertScope(scope, 'TodayViewer', this.#base);
         this.#scope = resolveScope(scope, this.#base);
 
         // No `text` on the rite label when `labelText` was not themed: omitting it
@@ -231,9 +264,9 @@ export default class DayViewer {
         // (`Rite.ROMAN`, since no `rite` option is passed above) may not be
         // the scope's initial rite, so the UNRESTRICTED, Roman-built list may
         // not even carry the scope's initial calendar id — and `value()`
-        // throws for any id no current option carries. See
-        // `CalendarControls`' identical comment for the full reasoning, and
-        // its comment on the `initialCalendarOffered` guard below (F4).
+        // throws for any id no current option carries. See `DayViewer`'s
+        // identical comment for the full reasoning, and `CalendarControls`'
+        // comment on the `initialCalendarOffered` guard below (F4).
         if (null !== this.#scope) {
             this.#calendarSelect._restrictToScope(
                 this.#scope.calendarsByRite[this.#scope.initial.rite],
@@ -251,14 +284,12 @@ export default class DayViewer {
             locale: this.#locale,
             apiClient,
         }).filter(ApiOptionsFilter.LOCALE_ONLY);
-        // The whole bundle, not just the locale input (issue #60), through the
-        // same helper `CalendarControls` calls. This viewer's `ApiOptions` is
-        // `LOCALE_ONLY`-filtered, so `localeInput` is the only one of the ten
-        // it ever appends — but the other nine exist here as they do anywhere
-        // else, and resolving them costs nothing when the bag names none of
-        // them. Routing this through the shared helper is also what keeps
-        // `theme.localeInput` and `theme.apiOptions.localeInput` meaning the
-        // same thing here as they do on `CalendarControls`.
+        // The whole bundle, not just the locale input, through the same
+        // helper `DayViewer` and `CalendarControls` call. This viewer's
+        // `ApiOptions` is `LOCALE_ONLY`-filtered, so `localeInput` is the
+        // only one of the ten it ever appends — but the other nine exist
+        // here as they do anywhere else, and resolving them costs nothing
+        // when the bag names none of them.
         applyApiOptionsTheme(
             this.#apiOptions,
             theme,
@@ -266,78 +297,28 @@ export default class DayViewer {
         );
         this.#apiOptions._localeInput.defaultValue(this.#language);
 
-        this.#liturgy = new LiturgyOfAnyDay({ locale: this.#locale });
-        // The `liturgy` role, not the default `select` one: `LiturgyOfAnyDay`
-        // takes eight further class setters that a `<select>` has no notion of,
-        // and the loop below is written to call them. Before issue #43 this asked
-        // for the select-shaped list, so all eight were stripped in transit and
-        // that loop never executed once.
+        this.#liturgy = new LiturgyOfTheDay({ locale: this.#locale });
+        // The `liturgy` role, not the default `select` one: `LiturgyOfTheDay`
+        // takes further class setters that a `<select>` has no notion of.
         const liturgyTheme = resolveChildTheme(theme, 'liturgy', 'liturgy');
         if (Object.hasOwn(liturgyTheme, 'class')) {
             this.#liturgy.class(liturgyTheme.class);
         }
-        for (const key of [
-            'titleClass',
-            'dateClass',
-            'dateControlsClass',
-            'eventsWrapperClass',
-            'eventClass',
-            'eventGradeClass',
-            'eventCommonClass',
-            'eventYearCycleClass',
-        ]) {
+        for (const key of LITURGY_CLASS_KEYS) {
             if (Object.hasOwn(liturgyTheme, key)) {
                 this.#liturgy[key](liturgyTheme[key]);
             }
         }
 
-        // The three date controls share one theme entry and differ only by label,
-        // because a consumer styling them differently from one another is a case
-        // nobody has needed; `liturgy` getter access covers it if that changes.
-        const controls = resolveChildTheme(theme, 'dateControls', 'input');
-
-        // `resolveChildTheme` can hand back a `wrapperClass` (from the flat
-        // `theme.wrapper` key, or a `dateControls.wrapperClass` override) with no
-        // `wrapper` element TYPE alongside it — the flat key supplies a class only.
-        // `dayInputConfig()`/`monthInputConfig()`/`yearInputConfig()` each call
-        // `Input.wrapperClass()` only when a wrapper element already exists, and
-        // `DayInput`/`MonthInput`/`YearInput` start with none, so a bare
-        // `{ select, label, wrapper }` bag — the theme bag's own canonical example,
-        // and the shape most consumers reach for first — crashed here with "Wrapper
-        // has not been set". `CalendarResourcePicker` never hits this because none of
-        // its children read `wrapperClass` without first reading `wrapper` too, so
-        // the fix belongs here, at the one call site that has the gap, rather than in
-        // `resolveChildTheme` itself, which every other meta-component also calls and
-        // has no such gap to paper over. `'div'` matches the element
-        // `LiturgyOfAnyDay` already wraps its own date controls in, so this changes
-        // no visual structure a caller could not already have gotten by passing
-        // `dateControls: { wrapper: 'div', wrapperClass: '...' }` explicitly — it
-        // only supplies the same default automatically for the flat key.
-        if (
-            Object.hasOwn(controls, 'wrapperClass') &&
-            false === Object.hasOwn(controls, 'wrapper')
-        ) {
-            controls.wrapper = 'div';
-        }
-
-        this.#liturgy
-            .dayInputConfig({ ...controls, labelText: this.#message('DAY') })
-            .monthInputConfig({
-                ...controls,
-                labelText: this.#message('MONTH'),
-            })
-            .yearInputConfig({ ...controls, labelText: this.#message('YEAR') })
-            .buildDateControls();
-
         if (false === showTitle) {
             this.#liturgy._titleElement.style.display = 'none';
         }
 
-        // Attached unconditionally, matching `CalendarControls`: a no-op for
-        // an unscoped viewer, since `#applyScopeVisibility()` itself is a
-        // no-op when `#scope` is `null`. This single listener, attached to
-        // BOTH the rite select and the calendar select, is deliberately the
-        // one place a rite change and a calendar change both land — see
+        // Attached unconditionally, matching `DayViewer`: a no-op for an
+        // unscoped viewer, since `#applyScopeVisibility()` itself is a no-op
+        // when `#scope` is `null`. This single listener, attached to BOTH the
+        // rite select and the calendar select, is deliberately the one place
+        // a rite change and a calendar change both land — see
         // `CalendarScope.js`'s `deriveVisibility()` doc comment for why
         // visibility must not be re-derived from only one side of that pair.
         this.#listenForScopeChange(this.#riteSelect._domElement);
@@ -361,8 +342,8 @@ export default class DayViewer {
      * exactly as before this option existed.
      *
      * **The restriction runs BEFORE the visibility derivation**, same
-     * reasoning as `CalendarControls.#applyScopeVisibility()`: a rite change
-     * can leave the calendar select's previous value no longer among the new
+     * reasoning as `DayViewer#applyScopeVisibility()`: a rite change can
+     * leave the calendar select's previous value no longer among the new
      * rite's entries, and `deriveVisibility()`'s `localeInput` answer depends
      * on which calendar ends up selected, not which was selected before this
      * ran.
@@ -392,7 +373,7 @@ export default class DayViewer {
     /**
      * Attaches the `change` listener that re-derives scope visibility,
      * recording it so `dispose()` can remove it. Mirrors
-     * `CalendarControls#listenForSelection()`.
+     * `DayViewer#listenForScopeChange()`.
      *
      * @param {HTMLElement} element - The select to listen to.
      * @returns {void}
@@ -406,11 +387,6 @@ export default class DayViewer {
     /**
      * Reads a message key for this viewer's language, falling back to English.
      *
-     * The fallback is per-KEY, not per-locale: `DAY`, `YEAR` and `LANGUAGE` are
-     * translated for the same 12 locales that carry `SELECT_A_RITE`, while `MONTH`
-     * and `SELECT_A_CALENDAR` are translated for all 84 — so a single locale can
-     * legitimately hit the fallback for one key and not another.
-     *
      * @param {string} key - The message key.
      * @returns {string} The translated string, or the English one.
      */
@@ -422,9 +398,7 @@ export default class DayViewer {
      * Chooses the locale to request, from those the selected calendar supports.
      *
      * Exact match, then language-prefix match, then the first available option,
-     * then the configured locale. Written once here because every consumer wrote it
-     * out by hand, and because the order is not self-evident: a page asking for
-     * `it-CH` should get Italian rather than English.
+     * then the configured locale. Copied from `DayViewer#matchLocale()`.
      *
      * @returns {string} The locale to request.
      */
@@ -477,11 +451,18 @@ export default class DayViewer {
     }
 
     /**
-     * The wired `LiturgyOfAnyDay` widget.
+     * The wired `LiturgyOfTheDay` widget.
+     *
+     * Exposed under this name — not `liturgyOfTheDay` — for symmetry with
+     * `DayViewer.liturgy`, which wraps `LiturgyOfAnyDay` under the same
+     * getter name. A consumer wanting to turn off the live-region
+     * announcement without a further option in this class' own bag writes
+     * `viewer.liturgy.announceUpdates( false )`, matching the precedent
+     * `CalendarViewer.webCalendar` and `DayViewer.liturgy` already set.
      *
      * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
      *
-     * @returns {LiturgyOfAnyDay} The wired liturgy widget.
+     * @returns {LiturgyOfTheDay} The wired liturgy widget.
      * @throws {Error} If this viewer has been disposed.
      */
     get liturgy() {
@@ -514,9 +495,6 @@ export default class DayViewer {
      * a caller is handed a working viewer immediately — which is what makes this
      * property load-bearing here rather than merely convenient.
      *
-     * The refetches `LiturgyOfAnyDay` drives for itself, through the client, are
-     * not observed here: this tracks the requests THIS class issues.
-     *
      * Throws once this viewer has been disposed; see [`dispose()`](#dispose).
      *
      * @returns {Promise<void>} Settles when the latest fetch has finished.
@@ -542,7 +520,7 @@ export default class DayViewer {
     #assertUsable() {
         if (true === this.#disposed) {
             throw new Error(
-                'DayViewer: this viewer has been disposed and can no longer be used.',
+                'TodayViewer: this viewer has been disposed and can no longer be used.',
             );
         }
     }
@@ -558,30 +536,19 @@ export default class DayViewer {
      *
      * `linkToRiteSelect()` is called here, from `listenTo()`, rather than in the
      * constructor — matching `mountInto()`'s own append-then-wire order and
-     * `CalendarResourcePicker`'s append-then-link convention for the same pairing.
-     * This is a house convention, not a DOM requirement: `CalendarSelect`'s half of
-     * `linkToRiteSelect()` only calls `addEventListener` and reads `.value`, both of
-     * which work identically on a detached node, and rebuilds its option list
-     * synchronously from the in-memory calendar index rather than reading anything
-     * from the document.
+     * `DayViewer.listenTo()`'s identical convention.
      *
      * @param {ApiClient} apiClient - The client to drive.
-     * @returns {DayViewer} This instance.
+     * @returns {TodayViewer} This instance.
      */
     listenTo(apiClient) {
         this.#assertUsable();
 
         // Rebinding is refused BEFORE anything is wired, so a rejected call leaves
         // the original client and its subscriptions exactly as they were.
-        //
-        // A second call already failed — `ApiOptions.linkToCalendarSelect()` is
-        // one-shot and throws — but it threw under `ApiOptions`' name, naming a
-        // component the caller never touched, and only by accident of being the
-        // first statement. Refusing here states the rule instead of relying on a
-        // child to enforce it.
         if (null !== this.#apiClient) {
             throw new Error(
-                'DayViewer.listenTo: this viewer is already wired to an ApiClient. A viewer drives one client for its lifetime; build a second DayViewer to drive a second client.',
+                'TodayViewer.listenTo: this viewer is already wired to an ApiClient. A viewer drives one client for its lifetime; build a second TodayViewer to drive a second client.',
             );
         }
 
@@ -591,7 +558,7 @@ export default class DayViewer {
         assertSameBase(
             this.#base,
             apiClient?.base,
-            'DayViewer.listenTo: this viewer and the ApiClient passed to it',
+            'TodayViewer.listenTo: this viewer and the ApiClient passed to it',
             'A viewer whose selects are filled from one API while its requests go to another would describe neither.',
         );
 
@@ -605,30 +572,50 @@ export default class DayViewer {
             .listenTo(this.#apiOptions);
         this.#apiClient = apiClient;
 
-        // Replays every callback registered through `onError()` BEFORE a client was
-        // wired: `onError()` only subscribes directly once `#apiClient` is already
-        // set, so a callback registered earlier would otherwise never be attached to
-        // the bus at all. The two paths are mutually exclusive — this loop replays
-        // only what was registered before `listenTo()` ran, and `onError()` subscribes
-        // directly only once a client already exists — so no callback is ever
-        // subscribed twice.
+        // Replays every callback registered through `onError()`/`onCalendarFetched()`
+        // BEFORE a client was wired: both only subscribe directly once `#apiClient`
+        // is already set, so a callback registered earlier would otherwise never be
+        // attached to the bus at all. The two paths are mutually exclusive — this
+        // loop replays only what was registered before `listenTo()` ran, and the two
+        // `on*()` methods subscribe directly only once a client already exists — so
+        // no callback is ever subscribed twice.
         for (const callback of this.#errorCallbacks) {
-            const listener = (error) => {
-                // Recorded so `#deliverError()` can tell a failure the bus already
-                // delivered from one it never will.
-                if (null !== error) {
-                    this.#deliveredErrors.add(error);
-                }
-                callback(error);
-            };
-            apiClient._eventBus.on('calendarFetchFailed', listener);
-            this.#subscriptions.push({
-                event: 'calendarFetchFailed',
-                listener,
-            });
+            this.#subscribe('calendarFetchFailed', callback);
+        }
+        for (const callback of this.#fetchedCallbacks) {
+            this.#subscribe('calendarFetched', callback);
         }
 
         return this;
+    }
+
+    /**
+     * Subscribes one callback to one client event, recording the registration so
+     * `dispose()` can pass the same reference back to `off()`.
+     *
+     * A callback registered before `listenTo()` is replayed by it; this method
+     * subscribes directly only once a client exists, so the two paths are
+     * mutually exclusive and nothing is ever subscribed twice. Mirrors
+     * `CalendarControls#subscribe()`.
+     *
+     * @param {string} event - The event name.
+     * @param {function} callback - The consumer's callback.
+     * @returns {void}
+     */
+    #subscribe(event, callback) {
+        if (null === this.#apiClient) {
+            return;
+        }
+        const listener = (payload) => {
+            // Recorded so `#deliverError()` can tell a failure the bus already
+            // delivered from one it never will.
+            if ('calendarFetchFailed' === event && null !== payload) {
+                this.#deliveredErrors.add(payload);
+            }
+            callback(payload);
+        };
+        this.#apiClient._eventBus.on(event, listener);
+        this.#subscriptions.push({ event, listener });
     }
 
     /**
@@ -649,13 +636,13 @@ export default class DayViewer {
         }
         if (typeof target !== 'string' || '' === target) {
             throw new Error(
-                `DayViewer.${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
+                `TodayViewer.${caller}: the ${slot} target must be a non-empty CSS selector or an HTMLElement.`,
             );
         }
         const element = document.querySelector(target);
         if (null === element) {
             throw new Error(
-                `DayViewer.${caller}: Element not found for the ${slot} slot: ${target}`,
+                `TodayViewer.${caller}: Element not found for the ${slot} slot: ${target}`,
             );
         }
         return element;
@@ -665,9 +652,7 @@ export default class DayViewer {
      * Mounts the viewer's children.
      *
      * Takes either a slots object naming a target per child, or a single target
-     * receiving all of them. The page this was extracted from mounts its parts into
-     * four separate containers, which a single target cannot express; a third party
-     * embedding the widget wants the single target.
+     * receiving all of them.
      *
      * An omitted slot means that child is not rendered.
      *
@@ -687,20 +672,14 @@ export default class DayViewer {
             typeof target === 'string' || target instanceof HTMLElement;
 
         // Anything that is neither a single target NOR a plausible slots object
-        // must be rejected here, by name: `Object.hasOwn(42, 'rite')` coerces a
-        // number to an object and returns `false` for every slot name, so without
-        // this guard the mount loop below silently does nothing, and `null`
-        // reaches `Object.hasOwn(null, ...)` and throws an unnamed raw TypeError.
-        // `assertPlainOptions` already rejects null, arrays, and any non-plain
-        // object (an `Intl.Locale`, a `Map`, ...) — exactly the shapes that are
-        // neither a target nor a slots object — so it is reused here rather than
-        // re-implementing the same check.
+        // must be rejected here, by name — see `DayViewer.appendTo()`'s identical
+        // comment for why.
         if (false === single) {
             try {
-                assertPlainOptions(target, `DayViewer.${caller}`);
+                assertPlainOptions(target, `TodayViewer.${caller}`);
             } catch {
                 throw new Error(
-                    `DayViewer.${caller}: target must be a CSS selector, an HTMLElement, or a slots object naming { rite, calendar, locale, liturgy } targets, but found type: ${describeType(target)}`,
+                    `TodayViewer.${caller}: target must be a CSS selector, an HTMLElement, or a slots object naming { rite, calendar, locale, liturgy } targets, but found type: ${describeType(target)}`,
                 );
             }
         }
@@ -719,7 +698,7 @@ export default class DayViewer {
             if (false === Object.hasOwn(slots, name)) {
                 continue;
             }
-            const element = DayViewer.#requireElement(
+            const element = TodayViewer.#requireElement(
                 slots[name],
                 name,
                 caller,
@@ -784,25 +763,33 @@ export default class DayViewer {
      * listening for `calendarFetchFailed`.
      *
      * @param {function(Error): void} callback - Receives the ApiClientError.
-     * @returns {DayViewer} This instance.
+     * @returns {TodayViewer} This instance.
      * @throws {Error} If this viewer has been disposed.
      */
     onError(callback) {
         this.#assertUsable();
         this.#errorCallbacks.push(callback);
-        if (null !== this.#apiClient) {
-            const listener = (error) => {
-                if (null !== error) {
-                    this.#deliveredErrors.add(error);
-                }
-                callback(error);
-            };
-            this.#apiClient._eventBus.on('calendarFetchFailed', listener);
-            this.#subscriptions.push({
-                event: 'calendarFetchFailed',
-                listener,
-            });
-        }
+        this.#subscribe('calendarFetchFailed', callback);
+        return this;
+    }
+
+    /**
+     * Registers a callback for successfully fetched calendar data.
+     *
+     * This replaces reaching for `apiClient._eventBus.on( 'calendarFetched', … )`
+     * directly, mirroring `CalendarControls.onCalendarFetched()`. `LiturgyOfTheDay`
+     * already listens to this same event to render itself; this is a second,
+     * independent subscription for a caller who wants to observe the payload too —
+     * to update a page title with today's feast, for instance.
+     *
+     * @param {function(Object): void} callback - Receives the calendar payload.
+     * @returns {TodayViewer} This instance.
+     * @throws {Error} If this viewer has been disposed.
+     */
+    onCalendarFetched(callback) {
+        this.#assertUsable();
+        this.#fetchedCallbacks.push(callback);
+        this.#subscribe('calendarFetched', callback);
         return this;
     }
 
@@ -821,15 +808,15 @@ export default class DayViewer {
         this.#assertUsable();
         if (null === this.#apiClient) {
             throw new Error(
-                'DayViewer.fetch: no ApiClient is wired. Call listenTo( apiClient ) first, or pass apiClient to mountInto().',
+                'TodayViewer.fetch: no ApiClient is wired. Call listenTo( apiClient ) first, or pass apiClient to mountInto().',
             );
         }
         const promise = this.#apiClient.fetchCalendar(this.#selectedLocale);
         // `settled` tracks the most recent fetch this viewer issued, so a
-        // hand-constructed viewer publishes the same signal `mountInto()` does
-        // (#61). Stored RAW and normalized in the getter — see
-        // `CalendarControls.fetch()` for why attaching a handler here would
-        // silence the caller's own unhandled-rejection report.
+        // hand-constructed viewer publishes the same signal `mountInto()` does.
+        // Stored RAW and normalized in the getter — see `DayViewer.fetch()` for
+        // why attaching a handler here would silence the caller's own
+        // unhandled-rejection report.
         this.#settled = promise;
         return promise;
     }
@@ -840,30 +827,28 @@ export default class DayViewer {
      * Precisely what this DOES and does NOT release:
      *
      * - **Released:** every subscription this viewer made on the client's event
-     *   bus through `onError()`/`listenTo()` — the `off()` calls this makes are why
-     *   `EventEmitter.off()` was added in this same phase. Without it teardown could
-     *   only ever be partial, with these subscriptions still firing against a
-     *   detached tree. The mounted DOM is also emptied, and `#errorCallbacks` and
-     *   `#subscriptions` are cleared. So are the `change` listeners this viewer
-     *   attached to the rite select and calendar select for scope re-derivation
+     *   bus through `onError()`/`onCalendarFetched()`/`listenTo()` — the `off()`
+     *   calls this makes rely on `EventEmitter.off()`. The mounted DOM is also
+     *   emptied, and `#errorCallbacks`, `#fetchedCallbacks` and `#subscriptions`
+     *   are cleared. So are the `change` listeners this viewer attached to the
+     *   rite select and calendar select for scope re-derivation
      *   (`#scopeListeners`) — these are this viewer's OWN listeners, unlike the
      *   ones described next.
      * - **NOT released, and cannot be from here:** two gaps, both pre-existing in
-     *   the wired components and neither closable from `DayViewer` itself:
+     *   the wired components and neither closable from `TodayViewer` itself:
      *   - The `change` listeners `ApiClient.listenTo()` attaches to the calendar
      *     select, rite select and `ApiOptions` inputs. Those are anonymous closures
-     *     created inside `ApiClient`'s own private `#listenToCalendarSelect`/
-     *     `#listenToRiteSelect`/`#listenToApiOptions` methods, attached via
-     *     `addEventListener`, with no reference stored anywhere `DayViewer` can
+     *     created inside `ApiClient`'s own private listener methods, attached via
+     *     `addEventListener`, with no reference stored anywhere `TodayViewer` can
      *     reach — not even by `ApiClient` itself.
-     *   - The `calendarFetched` listener `LiturgyOfAnyDay.listenTo()` attaches to
+     *   - The `calendarFetched` listener `LiturgyOfTheDay.listenTo()` attaches to
      *     the client's event bus, for the same reason: an anonymous closure inside
-     *     a method `DayViewer` does not own, with no reference `DayViewer` (or
-     *     `LiturgyOfAnyDay`) can reach to unsubscribe.
+     *     a method `TodayViewer` does not own, with no reference `TodayViewer` (or
+     *     `LiturgyOfTheDay`) can reach to unsubscribe.
      *
      *   Disposing a viewer therefore does not stop its selects or its `liturgy`
      *   widget from still driving the same `ApiClient` if a caller kept a separate
-     *   reference to them and the client — exactly as `CalendarResourcePicker.dispose()`
+     *   reference to them and the client — exactly as `DayViewer.dispose()`
      *   documents for the same reason.
      *
      * Idempotent; further use throws.
@@ -885,6 +870,7 @@ export default class DayViewer {
         this.#scopeListeners = [];
         this.#subscriptions = [];
         this.#errorCallbacks = [];
+        this.#fetchedCallbacks = [];
         for (const mount of this.#mounts) {
             mount.replaceChildren();
         }
@@ -897,32 +883,35 @@ export default class DayViewer {
      * Builds a viewer, mounts it, wires it and performs the initial fetch.
      *
      * Programmer error and runtime failure are answered differently, exactly as in
-     * `CalendarResourcePicker.mountInto()`: invalid options or an unusable target
-     * REJECT, while a failed calendar fetch reaches `onError()` (and, absent one,
-     * `console.error`) and leaves a working, mounted form behind — a page whose
-     * fetch failed is still a page the user can correct their selection on.
+     * `DayViewer.mountInto()`: invalid options or an unusable target REJECT, while
+     * a failed calendar fetch reaches `onError()` (and, absent one, `console.error`)
+     * and leaves a working, mounted form behind — a page whose fetch failed is
+     * still a page the user can correct their selection on.
      *
      * Resolves to `null` when a supplied signal aborted before mounting could
      * happen.
      *
      * @param {string|HTMLElement|Object<string, string|HTMLElement>} target - Slots, or one target.
      * @param {Object} [options] - As the constructor, plus those below.
+     * @param {string|Intl.Locale} [options.locale] - The display locale.
+     * @param {Object} [options.theme] - The theme bag; see `Theme.js`.
+     * @param {boolean} [options.showTitle=true] - Whether to show the widget's own heading.
      * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
      *   which calendars this viewer may show; see `CalendarScope.js`.
      * @param {Object} [options.apiClient] - The client to wire; when given, the initial fetch runs.
      * @param {AbortSignal} [options.signal] - Cancels the mount.
      * @param {function(Error): void} [options.onError] - Registered before the initial fetch.
-     * @returns {Promise<DayViewer|null>} The viewer, or `null` if cancelled.
+     * @returns {Promise<TodayViewer|null>} The viewer, or `null` if cancelled.
      * @throws {Error} If the options or any slot target are invalid.
      */
     static async mountInto(target, options = {}) {
-        const bag = normalizeComponentOptions(options, 'DayViewer');
+        const bag = normalizeComponentOptions(options, 'TodayViewer');
         const { apiClient, signal, onError } = bag;
 
         // Constructed BEFORE the abort check so that an invalid locale or theme
         // rejects even on an aborted mount: a typo should be reported whether or
         // not the caller changed their mind.
-        const viewer = new DayViewer(bag);
+        const viewer = new TodayViewer(bag);
         if (true === signal?.aborted) {
             return null;
         }
@@ -940,16 +929,9 @@ export default class DayViewer {
             // when this one finished read `viewer.settled`, which is the promise
             // captured here, and the `settled` getter normalizes it into a
             // promise that resolves with `undefined` either way; see
-            // `CalendarControls.mountInto()` for that reasoning.
+            // `DayViewer.mountInto()` for that reasoning.
             viewer.#settled = viewer.fetch().catch((error) => {
-                // The guard here used to be `0 === viewer.#errorCallbacks.length`,
-                // which assumed "a callback exists, therefore it will handle this".
-                // That is exactly false for a failure raised before the request goes
-                // out: no `calendarFetchFailed` is emitted, so the bus-bound callback
-                // never runs, the log was skipped because a callback existed, and
-                // this `.catch()` swallowed the rejection — total silence, and
-                // registering `onError()` made it strictly worse than omitting it.
-                deliverFetchFailure('DayViewer', error, (raised) =>
+                deliverFetchFailure('TodayViewer', error, (raised) =>
                     viewer.#deliverError(raised),
                 );
             });

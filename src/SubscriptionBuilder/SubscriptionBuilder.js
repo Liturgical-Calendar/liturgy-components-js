@@ -33,6 +33,8 @@ import {
     narrowTheme,
     resolveChildTheme,
 } from '../MetaComponents/Theme.js';
+import { assertScope } from '../MetaComponents/CalendarScope.js';
+import { resolveBase } from '../ApiClient/ApiBase.js';
 
 /** The slot names `appendTo()` accepts. */
 const SLOT_NAMES = Object.freeze(['controls', 'url']);
@@ -54,7 +56,7 @@ export default class SubscriptionBuilder {
     #disposed = false;
 
     /**
-     * @param {Object|string|Intl.Locale} [options] - Options bag, or a locale.
+     * @param {(Object & {scope?: import('../typedefs.js').CalendarScopeOptions})|string|Intl.Locale} [options] - Options bag, or a locale.
      * @param {string|Intl.Locale} [options.locale] - The display locale.
      * @param {Object} [options.theme] - The theme bag; see `Theme.js`. Its
      *   `theme.subscriptionUrl` override reaches the URL control's `class`
@@ -64,6 +66,10 @@ export default class SubscriptionBuilder {
      *   for why those are `class`'s only sibling keys.
      * @param {Object} [options.apiClient] - Binds the controls to that client's
      *   API base. Never used to fetch a calendar.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this builder may show; forwarded to `CalendarControls`,
+     *   see `CalendarScope.js`. A nullish or unrestricting scope leaves every
+     *   control visible, exactly as before this option existed.
      * @param {'https'|'webcal'} [options.scheme='https'] - The URL scheme.
      * @param {string|null} [options.copyIcon] - HTML for the copy glyph.
      * @param {string} [options.copyTitle] - The copy control's title.
@@ -90,6 +96,17 @@ export default class SubscriptionBuilder {
         // heard of, so the inner guard could neither accept it nor report it
         // honestly. `narrowTheme()` hands down only the keys the controls own.
         assertTheme(bag.theme, 'SubscriptionBuilder');
+        // The scope, under THIS class' name and before forwarding (F8): left
+        // to `CalendarControls`' own `assertScope()` call, a typo'd
+        // `scope.natoin` would report as `"CalendarControls: scope.natoin …"`
+        // — naming a class the caller never directly touched. Discarded here:
+        // this call exists only for attribution, and `CalendarControls`
+        // resolves the same bag again for real use.
+        assertScope(
+            bag.scope,
+            'SubscriptionBuilder',
+            resolveBase(bag.apiClient, 'SubscriptionBuilder'),
+        );
         this.#controls = new CalendarControls({
             ...bag,
             locale: intlLocale,
@@ -341,6 +358,8 @@ export default class SubscriptionBuilder {
      *
      * @param {{controls: (string|HTMLElement), url: (string|HTMLElement)}} slots - Where to mount.
      * @param {Object} [options] - As the constructor, plus `signal`.
+     * @param {import('../typedefs.js').CalendarScopeOptions} [options.scope] - Restricts
+     *   which calendars this builder may show; see `CalendarScope.js`.
      * @param {AbortSignal} [options.signal] - Cancels the mount.
      * @returns {Promise<SubscriptionBuilder|null>} The mounted builder, or
      *   `null` when the mount was cancelled.

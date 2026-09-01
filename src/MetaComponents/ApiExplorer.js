@@ -88,9 +88,29 @@ export default class ApiExplorer {
      * @param {Object} [options.apiClient] - Binds the controls to that client's
      *   API base, so the selects populate from `/calendars` metadata. Never used
      *   to fetch a calendar — see the class doc comment above.
+     * @throws {Error} If `options.scope` is present at all — see below.
      */
     constructor(options) {
         const bag = normalizeComponentOptions(options, 'ApiExplorer');
+        // `ApiExplorer` cannot take a `scope`, full stop — checked in THIS
+        // constructor, not left to `CalendarControls`' own scope+PATH_BUILDER
+        // guard. That guard reads the `filter` given to ITS constructor, and
+        // `appendTo()` below applies `PATH_BUILDER` to `#controls.apiOptions`
+        // AFTER construction (see the three-filter layout doc comment there),
+        // so a `scope` passed here would sail past that guard entirely and
+        // ship a scoped `RiteSelect`/`CalendarSelect` beside an unscoped
+        // `CalendarPathInput` that still composes any route the metadata
+        // allows — the exact bypass `CalendarControls`' guard exists to
+        // prevent. See `docs/meta-components.md`'s `ApiExplorer` Scope section.
+        if (undefined !== bag.scope) {
+            throw new Error(
+                'ApiExplorer: scope is not supported. This component composes arbitrary API ' +
+                    'routes via CalendarPathInput, which is unconditionally incompatible with ' +
+                    'restricting which calendars are reachable. Construct without a scope; a page ' +
+                    'that wants both a restricted calendar space and an explorable path needs two ' +
+                    'separate widgets.',
+            );
+        }
         // Validated here purely for ATTRIBUTION, and the result discarded — see
         // `CalendarViewer`'s constructor for why: `CalendarControls` applies the
         // same bag below, but names itself when rejecting it.
