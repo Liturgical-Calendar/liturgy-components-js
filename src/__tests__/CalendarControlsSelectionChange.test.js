@@ -166,6 +166,33 @@ describe('CalendarControls.onSelectionChange', () => {
         expect(seen[0].predeterminedInputs).toHaveLength(5);
     });
 
+    it('fires exactly once for one calendar change on controls with no ApiClient', async () => {
+        // `apiClient` is OPTIONAL on `mountInto()`, and it is `listenTo()` that
+        // links `ApiOptions` to the two selects — so on an unwired instance
+        // nothing in the form ever dispatches a `change`, and
+        // `ApiOptions.onSettled()` never fires at all. The fallback microtask
+        // scheduled from `#listenForSelection()`'s own listener is the only
+        // thing that notifies here. Every other test in this file goes through
+        // `build()`, which always passes a client, which is how this path
+        // reached 23 green tests while silently notifying nobody.
+        const controls = await CalendarControls.mountInto('#controls', {
+            locale: 'en',
+        });
+        const seen = [];
+        controls.onSelectionChange((payload) => seen.push(payload));
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0].calendarType).toBe('national');
+        expect(seen[0].calendarId).toBe('IT');
+        // Empty, not five: with no `ApiClient` the form is unlinked, so
+        // `ApiOptions` predetermines nothing — the caveat the last test in this
+        // file pins for `selection`, holding here too.
+        expect(seen[0].predeterminedInputs).toEqual([]);
+    });
+
     it('fires exactly once for one rite change, which moves several inputs', async () => {
         const controls = await build();
         const seen = [];

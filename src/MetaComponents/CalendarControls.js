@@ -186,6 +186,16 @@ export default class CalendarControls {
     #unsubscribeSettled = null;
 
     /**
+     * The pending fallback notification scheduled by `#listenForSelection()`'s
+     * listener, or `null` when none is in flight — the same pending-marker
+     * discipline `ApiOptions.#scheduleSettled()` uses, so one user action that
+     * moves both selects schedules one flush rather than two overlapping ones.
+     *
+     * @type {?Promise<void>}
+     */
+    #pendingSelection = null;
+
+    /**
      * The last payload handed to the `onSelectionChange()` callbacks, flattened
      * to one string — seeded in the constructor, so the first notification
      * compares against the state these controls started in rather than against
@@ -588,11 +598,25 @@ export default class CalendarControls {
         // `deriveVisibility()` doc comment for what went wrong the last time
         // visibility was re-derived from only one side of that pair.
         //
-        // The NOTIFICATION half of this listener's old job is gone: it is now
-        // `ApiOptions.onSettled()`'s job — see `#notifySelectionIfChanged()` and
-        // issue #55. Only the visibility call needs to stay synchronous here.
+        // The NOTIFICATION is normally `ApiOptions.onSettled()`'s job — see
+        // `#notifySelectionIfChanged()` and issue #55 — but that signal exists
+        // only once `ApiOptions` is LINKED to these two selects, which happens
+        // in `listenTo( apiClient )`. `apiClient` is OPTIONAL on `mountInto()`,
+        // so on an unwired instance nothing in the form ever dispatches a
+        // `change`, `#scheduleSettled()` never runs, and `onSelectionChange()`
+        // would silently never fire. `#scheduleSelectionNotification()` is the
+        // fallback that keeps that documented path working. On a WIRED instance
+        // it is harmless: the whole cascade is synchronous, so this microtask
+        // still reads settled state (it does not resurrect issue #68's stale
+        // payload), and `#lastSelectionKey` absorbs whichever of the two
+        // schedulings arrives second.
+        //
+        // Only the visibility call stays SYNCHRONOUS here: a scoped control's
+        // `hidden` must already reflect the new selection by the time this
+        // handler returns, not one turn later.
         const listener = () => {
             this.#applyScopeVisibility();
+            this.#scheduleSelectionNotification();
         };
         element.addEventListener('change', listener);
         this.#selectionListeners.push({ element, listener });
@@ -661,12 +685,41 @@ export default class CalendarControls {
     }
 
     /**
+     * Schedules one fallback selection notification for this turn.
+     *
+     * The FALLBACK path, for an instance with no `ApiClient` — see
+     * `#listenForSelection()` for why `ApiOptions.onSettled()` cannot reach that
+     * case at all. On a wired instance both paths run and the second one to arrive
+     * is dropped by `#notifySelectionIfChanged()`'s own `#lastSelectionKey`
+     * comparison, so the duplicate costs one extra DOM read and notifies nobody
+     * twice.
+     *
+     * The pending marker is cleared BEFORE notifying, exactly as
+     * `ApiOptions.#scheduleSettled()` clears its own: a `change` raised by a
+     * subscriber then schedules a NEW flush rather than joining a departing one.
+     *
+     * @returns {void}
+     * @private
+     */
+    #scheduleSelectionNotification() {
+        if (null !== this.#pendingSelection) {
+            return;
+        }
+        this.#pendingSelection = Promise.resolve().then(() => {
+            this.#pendingSelection = null;
+            this.#notifySelectionIfChanged();
+        });
+    }
+
+    /**
      * Notifies subscribers when the selection payload has changed.
      *
      * Called from `ApiOptions.onSettled()`, which is what guarantees the cascade has
      * landed — including `ApiOptions`' own listener, so `predeterminedInputs` describes
      * the new selection rather than the previous one. Until issue #55 this component
-     * scheduled its own microtask for exactly that reason.
+     * scheduled its own microtask for exactly that reason. Also called from
+     * `#scheduleSelectionNotification()`, the fallback for an unwired instance that
+     * has no `ApiOptions.onSettled()` signal to ride on.
      *
      * @returns {void}
      * @private

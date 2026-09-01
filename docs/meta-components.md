@@ -1346,8 +1346,9 @@ enum, whose values are the URL segments `nation`/`diocese`. `calendarId` is `nul
 **The callback fires once per user action, on a microtask, and only when the payload changed.** One
 action moves several inputs — a rite change makes `ApiOptions` rewrite the calendar list, the locale
 options and the year floor, each dispatching its own `change` — so notifying synchronously would hand out
-an intermediate payload naming the calendar the user had just left. This is the same coalescing
-`SubscriptionUrl` and `ApiClient` already apply, for the same reason. A `change` that alters nothing the
+an intermediate payload naming the calendar the user had just left. The coalescing itself lives one layer
+down, in `ApiOptions.onSettled()`, which both this and `SubscriptionUrl` subscribe to; `ApiClient` keeps a
+coalescer of its own, for the reason its own section gives. A `change` that alters nothing the
 payload reports — a raw dispatch, reselecting the option already selected, a locale change — notifies
 nobody, and neither does a callback registered by another callback during a notification — it is a
 subscription like any other, and hears the next action rather than the one in flight. A callback that
@@ -1534,9 +1535,12 @@ naming "disposed" once it has run.
 **What `dispose()` releases:** every subscription these controls made on the client's event bus through
 `onCalendarFetched()`/`onError()`/`listenTo()` — including the messages renderer, when a `messages` slot
 was named — all unsubscribed via `EventEmitter.off()`. Both mounts (`controls` and, if named, `messages`)
-are emptied. The two `change` listeners attached for `onSelectionChange()` are removed as well, and the
-callbacks registered through it are dropped: unlike the ones below, those are this class' own named
-closures, so they can be — and are — released.
+are emptied. Everything `onSelectionChange()` rests on is released too: the `ApiOptions.onSettled()`
+registration that normally drives the notification, through the unsubscribe function that call returns;
+the two `change` listeners on the rite and calendar selects, which re-derive scoped visibility and carry
+the fallback notification for an instance with no `ApiClient`; and the callbacks registered through
+`onSelectionChange()` itself. Unlike the ones below, all three are this class' own named closures, so they
+can be — and are — released.
 
 **What survives `dispose()`, and why it must — the same gap `DayViewer.dispose()` documents:** the
 `change` listeners `ApiClient.listenTo()` attaches internally to the rite select, calendar select and
