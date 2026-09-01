@@ -89,8 +89,9 @@ Three consequences, all wanted:
 - A key missing from `Messages.en` throws **at module load**, by `message()`'s existing contract, rather
   than assigning `undefined` to a `textContent`. Loud beats wrong.
 - The key ORDER of `READING_MESSAGE_KEYS` and `MASS_MESSAGE_KEYS` becomes load-bearing, because it
-  determines the public maps' key order and hence the render order. This must be pinned by test, not left
-  to care.
+  determines the public maps' key order — and, for `MASS_MESSAGE_KEYS` alone, the schema render order too
+  (see D2: `readingLabels`' order is not the per-reading render order, which stays the separate
+  `readingOrder` array). This must be pinned by test, not left to care.
 
 `ReadingsRenderer` currently has no imports at all; it gains one, on `MessageLookup.js`.
 

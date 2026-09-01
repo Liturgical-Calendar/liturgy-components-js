@@ -1250,10 +1250,13 @@ list free to drift from this one. Three points are load-bearing:
 - **The labels ARE routed through `Messages.js` (#105), and the English is DERIVED, not restated.**
   `READING_MESSAGE_KEYS` and `MASS_MESSAGE_KEYS` map each key to its `Messages` key; the public
   `readingLabels`/`massLabels` are built from `Messages.en` through them, so the English lives in one
-  place. **Their key ORDER is load-bearing**: it becomes the public maps' order, which is the render order
-  and — via `#nestedSchemaKeys` — the key set `hasNestedSchemas()` recognises. A hand-written second
-  statement of both maps in `ReadingsRenderer.test.js` pins this; do not "simplify" it into reading
-  `Messages.en` back, which would agree with itself.
+  place. **`READING_MESSAGE_KEYS`' key order is load-bearing**: it becomes `readingLabels`' published key
+  order (the actual per-reading render order is the separate `readingOrder` array, which
+  `renderSingleReadings()` iterates). **`MASS_MESSAGE_KEYS`' key order is load-bearing twice over**: it
+  becomes `massLabels`' published order, which IS the schema render order `renderReadings()` iterates, and
+  — via `#nestedSchemaKeys` — the key set `hasNestedSchemas()` recognises. A hand-written second statement
+  of both maps in `ReadingsRenderer.test.js` pins this; do not "simplify" it into reading `Messages.en`
+  back, which would agree with itself.
 - **The statics stay ENGLISH whatever locale a renderer holds**, because a static cannot know one. There
   is deliberately no `readingLabel( key, locale )` accessor pair: it was proposed and declined as
   speculative surface, and the likely future answer is a consumer-supplied translation bundle, which
