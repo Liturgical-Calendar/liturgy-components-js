@@ -261,6 +261,29 @@ describe('CalendarControls.onSelectionChange', () => {
         expect(seen).toEqual([]);
     });
 
+    it('reports a throwing subscriber via console.error rather than an unhandled rejection', async () => {
+        // Regression test: `#scheduleSelectionNotification()`'s microtask body
+        // used to have no try/catch, so a throwing `onSelectionChange()`
+        // callback propagated out of the `.then()` and became an unhandled
+        // promise rejection instead of a reported console error — on a WIRED
+        // instance too, since this fallback is scheduled first (in the
+        // constructor) and deterministically wins over
+        // `ApiOptions.onSettled()`.
+        const controls = await build();
+        const errors = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        controls.onSelectionChange(() => {
+            throw new Error('subscriber blew up');
+        });
+
+        userSelects(controls.calendarSelect._domElement, 'IT');
+        await flush();
+
+        expect(errors).toHaveBeenCalled();
+        errors.mockRestore();
+    });
+
     it('notifies every registered callback', async () => {
         const controls = await build();
         const first = [];

@@ -605,11 +605,19 @@ export default class CalendarControls {
         // so on an unwired instance nothing in the form ever dispatches a
         // `change`, `#scheduleSettled()` never runs, and `onSelectionChange()`
         // would silently never fire. `#scheduleSelectionNotification()` is the
-        // fallback that keeps that documented path working. On a WIRED instance
-        // it is harmless: the whole cascade is synchronous, so this microtask
-        // still reads settled state (it does not resurrect issue #68's stale
-        // payload), and `#lastSelectionKey` absorbs whichever of the two
-        // schedulings arrives second.
+        // fallback that keeps that documented path working.
+        //
+        // On a WIRED instance this is NOT a race between two schedulings: this
+        // listener is attached in the CONSTRUCTOR, while `ApiOptions.linkTo*()`
+        // only happens later, inside `listenTo()`. So on every wired instance
+        // this fallback is scheduled FIRST and is DETERMINISTICALLY the one
+        // that notifies — `ApiOptions.onSettled()`'s own signal arrives second
+        // and is absorbed by `#lastSelectionKey`'s dedupe. That ordering is
+        // also why `#scheduleSelectionNotification()`'s microtask needs its own
+        // try/catch around `#notifySelectionIfChanged()`: it is not merely a
+        // defensive fallback path, it is in practice the path that always
+        // runs, so the guarded `ApiOptions.onSettled()` handler never gets the
+        // chance to catch a throwing subscriber here.
         //
         // Only the visibility call stays SYNCHRONOUS here: a scoped control's
         // `hidden` must already reflect the new selection by the time this
@@ -689,14 +697,21 @@ export default class CalendarControls {
      *
      * The FALLBACK path, for an instance with no `ApiClient` — see
      * `#listenForSelection()` for why `ApiOptions.onSettled()` cannot reach that
-     * case at all. On a wired instance both paths run and the second one to arrive
-     * is dropped by `#notifySelectionIfChanged()`'s own `#lastSelectionKey`
-     * comparison, so the duplicate costs one extra DOM read and notifies nobody
-     * twice.
+     * case at all. On a wired instance both paths run, but this one always
+     * arrives FIRST — see `#listenForSelection()` for why that ordering is
+     * deterministic, not a race — so `ApiOptions.onSettled()`'s later call is
+     * the one dropped by `#notifySelectionIfChanged()`'s own `#lastSelectionKey`
+     * comparison, costing one extra DOM read and notifying nobody twice.
      *
      * The pending marker is cleared BEFORE notifying, exactly as
      * `ApiOptions.#scheduleSettled()` clears its own: a `change` raised by a
      * subscriber then schedules a NEW flush rather than joining a departing one.
+     *
+     * The `try`/`catch` here is required, not merely defensive: because this
+     * path always runs first on a wired instance (see above), a throwing
+     * `onSelectionChange()` subscriber is caught HERE. Left unguarded, the
+     * throw would escape this microtask's `.then()` body as an unhandled
+     * promise rejection instead of being reported via `console.error`.
      *
      * @returns {void}
      * @private
@@ -707,7 +722,14 @@ export default class CalendarControls {
         }
         this.#pendingSelection = Promise.resolve().then(() => {
             this.#pendingSelection = null;
-            this.#notifySelectionIfChanged();
+            try {
+                this.#notifySelectionIfChanged();
+            } catch (error) {
+                console.error(
+                    'CalendarControls.onSelectionChange(): a subscriber threw.',
+                    error,
+                );
+            }
         });
     }
 
