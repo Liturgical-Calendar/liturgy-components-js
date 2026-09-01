@@ -7,6 +7,89 @@
  * @module ReadingsRenderer
  */
 
+import { message } from '../MessageLookup.js';
+
+/**
+ * Maps each readings key to the `Messages` key naming it.
+ *
+ * Nineteen keys collapse onto twelve messages, because the psalm variants have
+ * always shared one label. The mapping is EXPLICIT rather than derived from the
+ * key name: `LiturgicalCalendarFrontend`'s `temporale.js` derives it
+ * mechanically and gets `palm_gospel` wrong as "Palm Gospel".
+ *
+ * KEY ORDER IS LOAD-BEARING — it becomes the key order of the public
+ * {@link ReadingsRenderer.readingLabels}, which shipped in 2.10.0.
+ *
+ * @type {Object<string, string>}
+ */
+const READING_MESSAGE_KEYS = Object.freeze({
+    first_reading: 'READING_FIRST',
+    responsorial_psalm: 'RESPONSORIAL_PSALM',
+    second_reading: 'READING_SECOND',
+    gospel_acclamation: 'GOSPEL_ACCLAMATION',
+    gospel: 'GOSPEL',
+    palm_gospel: 'GOSPEL_AT_PROCESSION',
+    epistle: 'EPISTLE',
+    responsorial_psalm_2: 'RESPONSORIAL_PSALM',
+    third_reading: 'READING_THIRD',
+    responsorial_psalm_3: 'RESPONSORIAL_PSALM',
+    fourth_reading: 'READING_FOURTH',
+    responsorial_psalm_4: 'RESPONSORIAL_PSALM',
+    fifth_reading: 'READING_FIFTH',
+    responsorial_psalm_5: 'RESPONSORIAL_PSALM',
+    sixth_reading: 'READING_SIXTH',
+    responsorial_psalm_6: 'RESPONSORIAL_PSALM',
+    seventh_reading: 'READING_SEVENTH',
+    responsorial_psalm_7: 'RESPONSORIAL_PSALM',
+    responsorial_psalm_epistle: 'RESPONSORIAL_PSALM',
+});
+
+/**
+ * Maps each nested mass-schema key to the `Messages` key naming it.
+ *
+ * KEY ORDER IS LOAD-BEARING TWICE OVER: it becomes the key order of the public
+ * {@link ReadingsRenderer.massLabels}, which is the order `renderReadings()`
+ * stacks the schemas in, and it is the key SET that
+ * `ReadingsRenderer.hasNestedSchemas()` recognises.
+ *
+ * @type {Object<string, string>}
+ */
+const MASS_MESSAGE_KEYS = Object.freeze({
+    vigil: 'MASS_VIGIL',
+    night: 'MASS_NIGHT',
+    dawn: 'MASS_DAWN',
+    day: 'MASS_DAY',
+    evening: 'MASS_EVENING',
+    schema_one: 'SCHEMA_ONE',
+    schema_two: 'SCHEMA_TWO',
+    schema_three: 'SCHEMA_THREE',
+    easter_season: 'EASTER_SEASON',
+    outside_easter_season: 'OUTSIDE_EASTER_SEASON',
+});
+
+/**
+ * Builds an English label map from a key→message-key table.
+ *
+ * The English strings live in `Messages.en` alone; this is what keeps the
+ * public maps from becoming a second copy free to drift, the same duplication
+ * #97 removed when `#nestedSchemaKeys` became `Object.keys( massLabels )`.
+ * `message()` throws for a key absent from English, so a typo fails at module
+ * load rather than rendering the word "undefined".
+ *
+ * @param {Object<string, string>} messageKeys - Key to `Messages` key.
+ * @returns {Object<string, string>} Frozen key to English label.
+ */
+function englishLabels(messageKeys) {
+    return Object.freeze(
+        Object.fromEntries(
+            Object.entries(messageKeys).map(([key, messageKey]) => [
+                key,
+                message(messageKey, 'en'),
+            ]),
+        ),
+    );
+}
+
 /**
  * @typedef {Object} ReadingsRendererOptions
  * @property {string} [readingsWrapperClassName=''] - CSS class for the readings wrapper element.
@@ -16,51 +99,31 @@
 
 export default class ReadingsRenderer {
     /**
-     * Mapping of reading property keys to human-readable labels.
+     * Mapping of reading property keys to human-readable English labels.
+     *
+     * DERIVED from `Messages.en` — see {@link englishLabels}. English regardless
+     * of any locale, because a static cannot know one; a localized label comes
+     * from rendering with a locale. Public since 2.10.0: same keys, same order.
+     *
      * @type {Object<string, string>}
      * @static
      * @readonly
      */
-    static readingLabels = Object.freeze({
-        first_reading: 'First Reading',
-        responsorial_psalm: 'Responsorial Psalm',
-        second_reading: 'Second Reading',
-        gospel_acclamation: 'Gospel Acclamation',
-        gospel: 'Gospel',
-        palm_gospel: 'Gospel at the Procession',
-        epistle: 'Epistle',
-        responsorial_psalm_2: 'Responsorial Psalm',
-        third_reading: 'Third Reading',
-        responsorial_psalm_3: 'Responsorial Psalm',
-        fourth_reading: 'Fourth Reading',
-        responsorial_psalm_4: 'Responsorial Psalm',
-        fifth_reading: 'Fifth Reading',
-        responsorial_psalm_5: 'Responsorial Psalm',
-        sixth_reading: 'Sixth Reading',
-        responsorial_psalm_6: 'Responsorial Psalm',
-        seventh_reading: 'Seventh Reading',
-        responsorial_psalm_7: 'Responsorial Psalm',
-        responsorial_psalm_epistle: 'Responsorial Psalm',
-    });
+    static readingLabels = englishLabels(READING_MESSAGE_KEYS);
 
     /**
-     * Mapping of mass schema keys to human-readable labels.
+     * Mapping of mass schema keys to human-readable English labels.
+     *
+     * DERIVED from `Messages.en` — see {@link englishLabels}. Its key ORDER is
+     * the order `renderReadings()` stacks schemas in, and its key SET is what
+     * `static #nestedSchemaKeys` derives from, so both come from
+     * {@link MASS_MESSAGE_KEYS} and neither may be reordered casually.
+     *
      * @type {Object<string, string>}
      * @static
      * @readonly
      */
-    static massLabels = Object.freeze({
-        vigil: 'Vigil Mass',
-        night: 'Mass during the Night',
-        dawn: 'Mass at Dawn',
-        day: 'Mass during the Day',
-        evening: 'Evening Mass',
-        schema_one: 'Schema I',
-        schema_two: 'Schema II',
-        schema_three: 'Schema III',
-        easter_season: 'Easter Season',
-        outside_easter_season: 'Outside Easter Season',
-    });
+    static massLabels = englishLabels(MASS_MESSAGE_KEYS);
 
     /**
      * Standard order for displaying liturgical readings.

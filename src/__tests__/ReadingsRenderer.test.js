@@ -192,3 +192,74 @@ describe('ReadingsRenderer rendering', () => {
         ]).toEqual(['label']);
     });
 });
+
+describe('the English label maps are derived, not restated', () => {
+    /**
+     * A hand-written second statement of both maps, in their exact current
+     * order. Deliberately NOT read from `Messages.en` — comparing the derived
+     * map against the catalogue it was built from would agree with itself and
+     * prove nothing. This is the FilterInputs.test.js pattern.
+     */
+    const EXPECTED_READING_LABELS = {
+        first_reading: 'First Reading',
+        responsorial_psalm: 'Responsorial Psalm',
+        second_reading: 'Second Reading',
+        gospel_acclamation: 'Gospel Acclamation',
+        gospel: 'Gospel',
+        palm_gospel: 'Gospel at the Procession',
+        epistle: 'Epistle',
+        responsorial_psalm_2: 'Responsorial Psalm',
+        third_reading: 'Third Reading',
+        responsorial_psalm_3: 'Responsorial Psalm',
+        fourth_reading: 'Fourth Reading',
+        responsorial_psalm_4: 'Responsorial Psalm',
+        fifth_reading: 'Fifth Reading',
+        responsorial_psalm_5: 'Responsorial Psalm',
+        sixth_reading: 'Sixth Reading',
+        responsorial_psalm_6: 'Responsorial Psalm',
+        seventh_reading: 'Seventh Reading',
+        responsorial_psalm_7: 'Responsorial Psalm',
+        responsorial_psalm_epistle: 'Responsorial Psalm',
+    };
+
+    const EXPECTED_MASS_LABELS = {
+        vigil: 'Vigil Mass',
+        night: 'Mass during the Night',
+        dawn: 'Mass at Dawn',
+        day: 'Mass during the Day',
+        evening: 'Evening Mass',
+        schema_one: 'Schema I',
+        schema_two: 'Schema II',
+        schema_three: 'Schema III',
+        easter_season: 'Easter Season',
+        outside_easter_season: 'Outside Easter Season',
+    };
+
+    it('yields exactly the published English values', () => {
+        expect({ ...ReadingsRenderer.readingLabels }).toEqual(
+            EXPECTED_READING_LABELS,
+        );
+        expect({ ...ReadingsRenderer.massLabels }).toEqual(
+            EXPECTED_MASS_LABELS,
+        );
+    });
+
+    /**
+     * Key ORDER is load-bearing and `toEqual` does not check it: massLabels'
+     * order is the render order, and readingLabels' order is part of the
+     * published shape.
+     */
+    it('preserves the published key order', () => {
+        expect(Object.keys(ReadingsRenderer.readingLabels)).toEqual(
+            Object.keys(EXPECTED_READING_LABELS),
+        );
+        expect(Object.keys(ReadingsRenderer.massLabels)).toEqual(
+            Object.keys(EXPECTED_MASS_LABELS),
+        );
+    });
+
+    it('keeps both maps frozen', () => {
+        expect(Object.isFrozen(ReadingsRenderer.readingLabels)).toBe(true);
+        expect(Object.isFrozen(ReadingsRenderer.massLabels)).toBe(true);
+    });
+});
