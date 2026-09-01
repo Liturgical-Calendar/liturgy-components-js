@@ -21,6 +21,7 @@ import {
     CalendarResourcePicker,
     CalendarViewer,
     DayViewer,
+    ReadingsRenderer,
     SubscriptionBuilder,
     ThemePreset,
     TodayViewer,
@@ -333,3 +334,41 @@ const scopeRiteAcceptsString: TodayViewerScope['rite'] = 'roman';
 const scopeRiteAcceptsArray: TodayViewerScope['rite'] = ['roman', 'ambrosian'];
 void scopeRiteAcceptsString;
 void scopeRiteAcceptsArray;
+
+/**
+ * #97: `ReadingsRenderer` must reach a consumer as a usable VALUE carrying its
+ * schema vocabulary, not merely as a type.
+ *
+ * The vocabulary is the whole point of the export — a consumer that cannot read
+ * `massLabels`, `readingOrder` and `hasNestedSchemas` renders `[object Object]`
+ * wherever a nested schema appears, which is the failure the issue describes.
+ * So each is asserted at the type it must arrive with, rather than merely
+ * asserting the class is exported.
+ *
+ * The three statics carry JSDoc `@readonly`, which is the exact tag that emits
+ * as the syntactically invalid `readonly get foo(): T;` when it lands on a
+ * GETTER (see the `ApiOptions` accessor block above). On a static FIELD it is
+ * valid — but nothing proved that while the class was unexported, because an
+ * unexported class emits no declaration at all for `yarn lint:dts` to check.
+ */
+const massLabel: string = ReadingsRenderer.massLabels.vigil;
+const readingLabel: string = ReadingsRenderer.readingLabels.first_reading;
+const firstReadingKey: string = ReadingsRenderer.readingOrder[0];
+void massLabel;
+void readingLabel;
+void firstReadingKey;
+
+/**
+ * `hasNestedSchemas` must be callable BOTH ways: as a static, which is what
+ * lets a consumer use the predicate without constructing a renderer whose
+ * markup it does not want, and on an instance, which is the spelling that
+ * existed before the export (#97) and which `LiturgyOfTheDay` and
+ * `LiturgyOfAnyDay` call.
+ * A `.d.ts` carrying only one of the two is invisible to `yarn test`.
+ */
+const staticPredicate: boolean = ReadingsRenderer.hasNestedSchemas({});
+const instancePredicate: boolean = new ReadingsRenderer({
+    readingsWrapperClassName: 'readings',
+}).hasNestedSchemas({});
+void staticPredicate;
+void instancePredicate;

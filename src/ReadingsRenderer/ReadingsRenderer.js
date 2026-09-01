@@ -91,23 +91,25 @@ export default class ReadingsRenderer {
     ]);
 
     /**
-     * Keys that indicate nested mass schemas in readings objects.
+     * Keys that indicate nested mass schemas in readings objects, in the order
+     * they are rendered.
+     *
+     * DERIVED from {@link ReadingsRenderer.massLabels} rather than restated, so
+     * the keys the renderer recognises and the labels it prints for them cannot
+     * drift apart — and so a consumer reading the public `massLabels` is reading
+     * the whole schema vocabulary, order included, rather than half of it.
+     *
+     * `Object.keys()` on a frozen object returns a fresh array, hence the
+     * freeze. `massLabels` is declared above this field because static field
+     * initializers run in source order.
+     *
      * @type {string[]}
      * @static
      * @readonly
      */
-    static #nestedSchemaKeys = Object.freeze([
-        'vigil',
-        'night',
-        'dawn',
-        'day',
-        'evening',
-        'schema_one',
-        'schema_two',
-        'schema_three',
-        'easter_season',
-        'outside_easter_season',
-    ]);
+    static #nestedSchemaKeys = Object.freeze(
+        Object.keys(ReadingsRenderer.massLabels),
+    );
 
     /** @type {string} */
     #readingsWrapperClassName = '';
@@ -198,15 +200,42 @@ export default class ReadingsRenderer {
     /**
      * Checks if the readings object has nested mass schemas (vigil/day, night/dawn, etc.)
      *
+     * Readings are not a flat map: some celebrations carry several sets, keyed
+     * by the schema names {@link ReadingsRenderer.massLabels} names. A consumer
+     * that renders without telling the two shapes apart prints `[object Object]`
+     * wherever a nested entry appears, which is what issue #97 was filed about.
+     *
+     * STATIC because this predicate, `massLabels` and `readingOrder` are the
+     * parts a consumer needs in order to render readings correctly at all,
+     * independently of whether it wants this renderer's markup — and reaching a
+     * predicate should not require constructing a renderer whose layout the
+     * caller has already decided against.
+     *
      * @param {Object} readings - The readings object to check.
      * @returns {boolean} True if the readings have nested schemas, false otherwise.
+     * @static
      */
-    hasNestedSchemas(readings) {
+    static hasNestedSchemas(readings) {
         if (!readings || typeof readings !== 'object') return false;
         const keys = Object.keys(readings);
         return keys.some((key) =>
             ReadingsRenderer.#nestedSchemaKeys.includes(key),
         );
+    }
+
+    /**
+     * Checks if the readings object has nested mass schemas (vigil/day, night/dawn, etc.)
+     *
+     * Delegates to {@link ReadingsRenderer.hasNestedSchemas}, which is the
+     * implementation. Kept because it is the spelling `LiturgyOfTheDay` and
+     * `LiturgyOfAnyDay` were written against, and the only one that existed
+     * before the class was exported (#97); the two cannot disagree.
+     *
+     * @param {Object} readings - The readings object to check.
+     * @returns {boolean} True if the readings have nested schemas, false otherwise.
+     */
+    hasNestedSchemas(readings) {
+        return ReadingsRenderer.hasNestedSchemas(readings);
     }
 
     /**

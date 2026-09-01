@@ -60,7 +60,7 @@ liturgy-components-js/
 │   ├── WebCalendar/                # Calendar table renderer and helpers
 │   ├── LiturgyOfTheDay/            # Daily liturgy widget
 │   ├── LiturgyOfAnyDay/            # Liturgy of any selected date widget
-│   ├── ReadingsRenderer/           # Lectionary readings renderer
+│   ├── ReadingsRenderer/           # Lectionary readings renderer, and the schema vocabulary
 │   ├── MetaComponents/
 │   │   ├── CalendarResourcePicker.js # RiteSelect + filtered CalendarSelect, bundled
 │   │   ├── DayViewer.js             # Rite, calendar, locale and LiturgyOfAnyDay, bundled
@@ -284,6 +284,7 @@ each other.
 | `LiturgyOfTheDay`        | Widget displaying today's liturgy                                      |
 | `LiturgyOfAnyDay`        | Widget displaying liturgy for any selected date                        |
 | `PathBuilder`            | Builds and displays API request URLs                                   |
+| `ReadingsRenderer`       | Renders lectionary readings; owns the mass-schema vocabulary           |
 | `CalendarResourcePicker` | Rite + filtered CalendarSelect, bundled and wired                      |
 | `DayViewer`              | Complete "liturgy of any day" page in one mount                        |
 | `CalendarControls`       | Rite + calendar + `ApiOptions`, wired, no renderer                     |
@@ -1226,6 +1227,36 @@ separate defect.
 proves a screen reader speaks. They prove the markup is present, correctly attributed, stable across a
 re-render, and written exactly once per action. Verifying the announcement itself needs a real browser and a
 real screen reader.
+
+## ReadingsRenderer
+
+Exported since #97, because a consumer rendering readings its own way needs the same vocabulary and
+otherwise rediscovers it by reading this file — which is what
+`LiturgicalCalendarFrontend`'s sanctorale viewer ended up doing, leaving a second copy of the key
+list free to drift from this one. Three points are load-bearing:
+
+- **The nested-schema key list is DERIVED from `massLabels`, not restated.** `static #nestedSchemaKeys`
+  is `Object.keys( ReadingsRenderer.massLabels )`, so the keys the renderer recognises and the labels it
+  prints for them cannot disagree, and a consumer reading the public `massLabels` is reading the whole
+  schema vocabulary — order included, since that key order IS the render order. It used to be a second
+  hand-maintained literal of the same ten keys in the same order. Do not restate it; `massLabels` is
+  declared above it because static field initializers run in source order.
+- **`hasNestedSchemas()` exists as BOTH a static and an instance method, and the instance one
+  delegates.** The static is the implementation. The predicate is the first thing a consumer needs and
+  the last thing it can guess, and reaching it must not require constructing a renderer whose markup the
+  caller has already decided against — while the instance spelling is the only one that existed before
+  the class was exported, and is what `LiturgyOfTheDay` and `LiturgyOfAnyDay` call. Neither is
+  deprecated.
+- **The labels are English and are NOT routed through `Messages.js`.** That is a real gap, deliberately
+  left as its own issue rather than folded into the export: #97 asked for the vocabulary to be reachable,
+  and localizing it would change what every existing consumer of `LiturgyOfTheDay` renders.
+
+The static private field leaks into the emitted declaration as `static readonly "__#21@#nestedSchemaKeys"`.
+That is a `tsc` quirk affecting every static `#private` in the package — twenty already-exported classes
+including `ApiBase`, `ApiClient`, `ApiOptions` and `CalendarControls` emit the same shape — not something
+this class introduced, and not something to work around here.
+
+Full documentation lives in `docs/readings-renderer.md`.
 
 ## Important Notes
 

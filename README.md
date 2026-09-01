@@ -50,6 +50,7 @@ ApiClient.init().then((apiClient) => {
 | [WebCalendar][web-calendar]                  | Full calendar table with customizable display      |
 | [LiturgyOfTheDay / LiturgyOfAnyDay][liturgy] | Daily liturgy widgets                              |
 | [PathBuilder][path-builder]                  | API URL builder tool                               |
+| [ReadingsRenderer][readings-renderer]        | Lectionary readings, and the schema vocabulary     |
 | [CalendarResourcePicker][meta-components]    | Rite + calendar picker, bundled and wired          |
 | [DayViewer][meta-components]                 | Complete "liturgy of any day" page in one mount    |
 | [CalendarControls][meta-components]          | Rite + calendar + `ApiOptions`, wired, no renderer |
@@ -64,6 +65,7 @@ ApiClient.init().then((apiClient) => {
 [web-calendar]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/web-calendar.md
 [liturgy]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/liturgy-components.md
 [path-builder]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/path-builder.md
+[readings-renderer]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/readings-renderer.md
 [meta-components]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/meta-components.md
 [utils]: https://github.com/Liturgical-Calendar/liturgy-components-js/blob/main/docs/utils.md
 
@@ -212,6 +214,7 @@ export {
     LiturgyOfTheDay,
     LiturgyOfAnyDay,
     PathBuilder,
+    ReadingsRenderer,
     CalendarResourcePicker,
     DayViewer,
     CalendarControls,

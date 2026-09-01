@@ -4,6 +4,38 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Added
+
+- **`ReadingsRenderer` is exported from the package**, closing #97. It was reachable only from inside
+  the package, so a consumer rendering lectionary readings its own way had to rediscover the schema
+  vocabulary by reading the source and copying it — which is what `LiturgicalCalendarFrontend`'s
+  sanctorale viewer did, leaving a second copy of the key list, the order and the labels free to drift
+  from this one.
+
+  Readings are not a flat map: some celebrations carry several sets keyed by which Mass they belong to
+  (`vigil`, `night`, `dawn`, `day`, three alternative schemas, and two Easter-season variants), and a
+  consumer that does not know which keys name a Mass renders `[object Object]` wherever a nested entry
+  appears. `massLabels`, `readingOrder`, `readingLabels` and `hasNestedSchemas` are what make that
+  renderable at all, independently of whether the consumer wants this component's markup — which for the
+  case that prompted the issue it did not.
+
+- **`ReadingsRenderer.hasNestedSchemas()` as a static method.** The predicate telling the two shapes
+  apart is the first thing a consumer needs, and reaching it should not require constructing a renderer
+  whose layout the caller has already decided against.
+
+  **Additive**: the instance method is unchanged, undeprecated, and now delegates to the static one, so
+  the two cannot disagree. Every existing call — including `LiturgyOfTheDay`'s and `LiturgyOfAnyDay`'s —
+  behaves exactly as before.
+
+### Changed
+
+- **`ReadingsRenderer`'s private nested-schema key list is now derived from `massLabels`** rather than
+  restating the same ten keys in the same order. No behaviour change: the two literals agreed. It means a
+  consumer reading the public `massLabels` is reading the whole schema vocabulary, render order included,
+  rather than half of it — and the two lists can no longer drift apart.
+
 ## 2.9.0
 
 `ApiOptions` now announces when its own synthetic change cascade has settled, so a consumer no longer has to
