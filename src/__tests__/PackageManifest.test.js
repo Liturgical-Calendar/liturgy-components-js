@@ -35,6 +35,42 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
+/**
+ * The one manifest out of `npm pack --dry-run --json`, whichever envelope the
+ * running npm used.
+ *
+ * npm 11 emits an ARRAY of manifests; npm 12 emits an OBJECT keyed by package
+ * name. Both are read rather than pinning a version, because the two workflows
+ * legitimately run different npms: `ci.yml` takes whatever Node 22 bundles,
+ * while `npm-publish.yml` installs `npm@latest` because trusted publishing
+ * needs a recent CLI. Pinning either shape breaks the other.
+ *
+ * An unrecognised shape THROWS naming the command, rather than yielding
+ * `undefined` for the caller to trip over one property access later — which is
+ * how this surfaced the first time, as a bare `Cannot read properties of
+ * undefined (reading 'files')` that named neither npm nor its version.
+ *
+ * @param {unknown} parsed The parsed stdout of `npm pack --dry-run --json`.
+ * @returns {{ files: { path: string }[] }} That single package's manifest.
+ */
+const manifestFrom = (parsed) => {
+    const manifest = Array.isArray(parsed)
+        ? parsed[0]
+        : Object.values(parsed ?? {})[0];
+    if (
+        undefined === manifest ||
+        null === manifest ||
+        undefined === manifest.files
+    ) {
+        throw new Error(
+            'Could not read a manifest out of `npm pack --dry-run --json`. Expected ' +
+                "either npm 11's array of manifests or npm 12's object keyed by " +
+                `package name, and got: ${JSON.stringify(parsed)?.slice(0, 200)}`,
+        );
+    }
+    return manifest;
+};
+
 /** @type {string[]} Every path `npm pack` would place in the tarball. */
 let paths;
 
@@ -64,10 +100,41 @@ beforeAll(() => {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
     });
-    paths = JSON.parse(output)[0].files.map((file) => file.path);
+    paths = manifestFrom(JSON.parse(output)).files.map((file) => file.path);
 });
 
 const under = (prefix) => paths.filter((path) => path.startsWith(prefix));
+
+describe('the npm pack --dry-run --json envelope', () => {
+    // npm 12 changed the shape: 11 returns an ARRAY of manifests, 12 returns an
+    // OBJECT keyed by package name. Only `npm-publish.yml` saw it, because it
+    // runs `npm install -g npm@latest` for trusted publishing while `ci.yml`
+    // uses whatever npm Node 22 bundles — so the same commit passed `verify`
+    // under npm 11 and failed the publish job under npm 12, with a TypeError
+    // that named neither npm nor the version.
+    it('reads the array form npm 11 emits', () => {
+        expect(
+            manifestFrom([{ name: 'pkg', files: [{ path: 'a.js' }] }]),
+        ).toEqual({
+            name: 'pkg',
+            files: [{ path: 'a.js' }],
+        });
+    });
+
+    it('reads the object form npm 12 emits', () => {
+        expect(
+            manifestFrom({ pkg: { name: 'pkg', files: [{ path: 'a.js' }] } }),
+        ).toEqual({
+            name: 'pkg',
+            files: [{ path: 'a.js' }],
+        });
+    });
+
+    it('throws naming npm and the shape when it recognises neither', () => {
+        expect(() => manifestFrom({})).toThrow(/npm pack --dry-run --json/);
+        expect(() => manifestFrom([])).toThrow(/npm pack --dry-run --json/);
+    });
+});
 
 describe('the published tarball', () => {
     it('contains exactly these top-level entries', () => {
