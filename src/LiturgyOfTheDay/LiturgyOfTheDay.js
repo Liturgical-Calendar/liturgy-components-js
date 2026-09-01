@@ -59,8 +59,13 @@ export default class LiturgyOfTheDay {
     /** @type {string} */
     #eventYearCycleClassName = '';
 
-    /** @type {ReadingsRenderer} */
-    #readingsRenderer = new ReadingsRenderer();
+    /**
+     * @type {ReadingsRenderer}
+     * Assigned in the constructor, not here: a field initializer runs BEFORE the
+     * constructor body, so `#locale` would still be null and every label would
+     * come out English however the widget was constructed.
+     */
+    #readingsRenderer;
 
     /** @type {boolean} */
     #showReadings = true;
@@ -176,6 +181,9 @@ export default class LiturgyOfTheDay {
         // `Object.hasOwn` sees `locale` whatever its value, so `{ ...defaults, locale }`
         // with an unset `locale` — ordinary JavaScript — used to throw here. Issue #32.
         this.#validateLocale(options.locale ?? 'en');
+        this.#readingsRenderer = new ReadingsRenderer({
+            locale: this.#locale,
+        });
         const now = new Date();
         this.#date = new Date(
             Date.UTC(
@@ -920,5 +928,17 @@ export default class LiturgyOfTheDay {
      */
     get _eventsElementsWrapper() {
         return this.#eventsElementsWrapper;
+    }
+
+    /**
+     * The readings renderer, for tests asserting the locale reached it.
+     *
+     * Package-internal, hence the underscore: see CLAUDE.md on what the prefix
+     * means. Not part of the public API and not exported in any documentation.
+     *
+     * @returns {ReadingsRenderer} The renderer this widget renders readings with.
+     */
+    get _readingsRenderer() {
+        return this.#readingsRenderer;
     }
 }
