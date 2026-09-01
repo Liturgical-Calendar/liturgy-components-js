@@ -1113,6 +1113,15 @@ export default class ApiOptions {
 
         nationSelector._domElement.addEventListener('change', applySelection);
         dioceseSelector._domElement.addEventListener('change', applySelection);
+        // Separate listeners, same reasoning as the rite select above: the signal
+        // must fire once per batch regardless of which half of the pair originated
+        // it, and regardless of which branch `applySelection()` takes.
+        nationSelector._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
+        dioceseSelector._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**
@@ -1243,6 +1252,9 @@ export default class ApiOptions {
                 this.#applyTemporalInputState(true);
             }
         });
+        calendarSelect._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**
@@ -1449,6 +1461,7 @@ export default class ApiOptions {
             );
             this.#currentEndpoint.explicitRite = true;
             this.#linkedRiteSelect = riteSelect;
+            this.#attachRiteSettledListener(riteSelect);
         }
         this.#wireRiteIfReady();
         this.#linked = true;
@@ -1481,8 +1494,30 @@ export default class ApiOptions {
         }
         this.#currentEndpoint.explicitRite = true;
         this.#linkedRiteSelect = riteSelect;
+        this.#attachRiteSettledListener(riteSelect);
         this.#wireRiteIfReady();
         return this;
+    }
+
+    /**
+     * Attaches the settled-signal listener to a linked rite select.
+     *
+     * Attached at both call sites that set `#linkedRiteSelect` — the public
+     * `linkToRiteSelect()` and the deprecated `riteSelect` argument of
+     * `linkToCalendarSelect()` — rather than inside `#handleLinkedRiteSelect()`.
+     * That method only runs once BOTH halves of the rite/calendar pairing have
+     * arrived (`#wireRiteIfReady()`'s gate), but `linkToRiteSelect()` on its own,
+     * with no calendar select ever linked, is a supported — if otherwise inert —
+     * call, and a rite change on it is still a settled-worthy edit of this form.
+     *
+     * @param {RiteSelect} riteSelect - The rite select just linked.
+     * @returns {void}
+     * @private
+     */
+    #attachRiteSettledListener(riteSelect) {
+        riteSelect._domElement.addEventListener('change', () =>
+            this.#scheduleSettled(),
+        );
     }
 
     /**

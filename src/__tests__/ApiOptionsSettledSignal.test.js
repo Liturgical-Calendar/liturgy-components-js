@@ -2,6 +2,9 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ApiBase from '../ApiClient/ApiBase.js';
 import ApiOptions from '../ApiOptions/ApiOptions.js';
+import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
+import RiteSelect from '../RiteSelect/RiteSelect.js';
+import { ApiOptionsFilter, CalendarSelectFilter } from '../Enums.js';
 import { FULL_METADATA } from '../__fixtures__/metadata.js';
 
 const API_URL = 'http://localhost:8000';
@@ -61,7 +64,9 @@ describe('ApiOptions.onSettled()', () => {
 
     it('throws for a non-function', () => {
         const apiOptions = new ApiOptions('en');
-        expect(() => apiOptions.onSettled('nope')).toThrow(/onSettled/);
+        expect(() => apiOptions.onSettled('nope')).toThrow(
+            /Expected a function/,
+        );
     });
 
     it('stops notifying after the returned unsubscribe is called', async () => {
@@ -105,5 +110,85 @@ describe('ApiOptions.onSettled()', () => {
         await Promise.resolve();
 
         expect(second).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('ApiOptions.onSettled() and the linked selects', () => {
+    it('notifies once for a rite change, not once per cascaded input', async () => {
+        const riteSelect = new RiteSelect('en');
+        const apiOptions = new ApiOptions('en').linkToRiteSelect(riteSelect);
+        const seen = jest.fn();
+        apiOptions.onSettled(seen);
+
+        riteSelect._domElement.value = 'ambrosian';
+        riteSelect._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
+    });
+
+    it('notifies once for a calendar change', async () => {
+        const calendarSelect = new CalendarSelect('en');
+        const apiOptions = new ApiOptions('en').linkToCalendarSelect(
+            calendarSelect,
+        );
+        const seen = jest.fn();
+        apiOptions.onSettled(seen);
+
+        calendarSelect._domElement.value = 'IT';
+        calendarSelect._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
+    });
+
+    it('an unlinked ApiOptions still signals for its own inputs', async () => {
+        const apiOptions = new ApiOptions('en');
+        const seen = jest.fn();
+        apiOptions.onSettled(seen);
+
+        apiOptions.localeInput._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
+    });
+
+    it('notifies once for a nation change in a linked nation/diocese pair', async () => {
+        const nationSelect = new CalendarSelect('en').filter(
+            CalendarSelectFilter.NATIONAL_CALENDARS,
+        );
+        const dioceseSelect = new CalendarSelect('en').filter(
+            CalendarSelectFilter.DIOCESAN_CALENDARS,
+        );
+        const apiOptions = new ApiOptions('en').linkToCalendarSelect([
+            nationSelect,
+            dioceseSelect,
+        ]);
+        const seen = jest.fn();
+        apiOptions.onSettled(seen);
+
+        nationSelect._domElement.value = 'IT';
+        nationSelect._domElement.dispatchEvent(new Event('change'));
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('ApiOptions.onSettled() and the path builder', () => {
+    it('notifies once for a calendar path change', async () => {
+        const apiOptions = new ApiOptions('en').filter(
+            ApiOptionsFilter.PATH_BUILDER,
+        );
+        apiOptions.appendTo('#opts');
+        const seen = jest.fn();
+        apiOptions.onSettled(seen);
+
+        apiOptions.calendarPathInput._domElement.dispatchEvent(
+            new Event('change'),
+        );
+        await Promise.resolve();
+
+        expect(seen).toHaveBeenCalledTimes(1);
     });
 });
