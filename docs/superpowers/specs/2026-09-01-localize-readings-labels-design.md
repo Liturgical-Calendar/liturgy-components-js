@@ -143,19 +143,26 @@ Per CLAUDE.md's "How components take a locale", and via `LocaleValidation.js` / 
 The bare-argument form is new here — the constructor previously took only an options bag of class names —
 and is added for consistency with the other six components rather than because a caller needs it.
 
-### D6 — Two locale-aware statics, beside the maps
+### D6 — No locale-aware statics: the renderer-only path, deliberately
 
-```javascript
-ReadingsRenderer.readingLabel( key, locale );   // 'Prima lettura'
-ReadingsRenderer.massLabel( key, locale );      // 'Messa della vigilia'
-```
+Two statics were proposed and **declined** — `ReadingsRenderer.readingLabel( key, locale )` and
+`massLabel( key, locale )`, which would have let a consumer read a localized label without rendering.
 
-These exist because #97's whole point was that a consumer may want the vocabulary without this renderer's
-markup. Shipping localization that only the renderer can reach would re-create, one release later, exactly
-the gap #97 was filed about. `locale` follows D5's rule, defaulting to English.
+The argument for them was that #97's whole point is that a consumer may want the vocabulary without this
+renderer's markup, so localization only the renderer can reach re-creates that gap one release later. The
+argument against, which prevailed: it is API surface added on speculation, in the same release that adds
+the mechanism, before any consumer has asked for it. Keep it simple; widening later is purely additive,
+whereas an accessor pair shipped now is permanent.
 
-An unknown `key` returns `undefined` rather than throwing, matching what indexing the public maps already
-does today.
+**What this means concretely, so it is not discovered later as a surprise:** a consumer rendering readings
+with its own markup can still read `readingLabels` and `massLabels`, but those are English. There is no
+supported way to obtain a localized label without going through `renderReadings()`. That is the accepted
+cost of this decision, not an oversight.
+
+**The likely future answer is not these two statics but a consumer-supplied translation bundle** — letting
+a developer attach their own labels, which serves both the consumer-markup case and any locale this
+library never populates, and subsumes the accessor pair rather than duplicating it. Out of scope here; the
+`Messages.js` lookup is behind one helper, so either direction stays open.
 
 ### D7 — Both widgets forward the locale they already hold
 
@@ -198,7 +205,7 @@ additive.
 
 - `ReadingsRenderer.test.js` extends: the constructor's locale contract (both forms, nullish, rejection,
   unparseable); labels rendering localized under `it`; falling back to English under an unpopulated locale;
-  the two new statics.
+  the English fallback when a locale has no block for the key.
 - **A hand-written second statement of the English maps**, asserting the derived `readingLabels` and
   `massLabels` equal an independently written literal — key order included. This is the
   `FilterInputs.test.js` pattern, and it is what makes D3's derivation safe: comparing the derived map to
