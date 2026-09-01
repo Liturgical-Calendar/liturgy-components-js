@@ -507,7 +507,14 @@ git commit -m "Signal settled for a linked rite or calendar change too (#55)"
 
 - Modify: `src/SubscriptionBuilder/SubscriptionUrl.js:60-66` (fields), `:408-421` (`#listen`), `:441-460`
   (`#scheduleNotify`), the constructor near `:226`, and `dispose()` near `:499`
-- Test: existing `src/__tests__/SubscriptionBuilder*.test.js` are the regression net — **do not edit them**
+- Test: existing `src/__tests__/SubscriptionUrl.test.js` and `src/__tests__/SubscriptionBuilder*.test.js` are
+  the regression net — **do not edit them**
+
+  > **Corrected after the fact.** This line originally named `src/__tests__/SubscriptionBuilder*.test.js`
+  > alone, a glob that excludes `SubscriptionUrl.test.js` — where the `onChange` dedupe, coalescing and
+  > dispose-race tests this task actually had to preserve all live. No code defect resulted (the full suite
+  > was run, so those tests did guard the change), but the plan named the wrong net and is corrected here
+  > rather than left standing, following the precedent of commit `d37f703`.
 
 **Interfaces:**
 

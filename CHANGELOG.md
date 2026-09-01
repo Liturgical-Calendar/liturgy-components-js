@@ -16,12 +16,19 @@ prepared under that number was skipped, and everything it was to have delivered 
   `ApiClient.#scheduleRefetch()` deliberately stays: `listenTo()` accepts selects with no `ApiOptions`
   mounted, so it coalesces because it multiplexes independent sources, not because it causes a cascade.
 
-  This migration also changes what a throwing subscriber callback does to the rest of the batch. Previously,
-  a callback passed to `CalendarControls.onSelectionChange()` (or `SubscriptionBuilder.onChange()`) that
-  threw produced an unhandled promise rejection from a private microtask, and aborted the remaining
-  subscribers. Now `ApiOptions.#scheduleSettled()` wraps each subscriber in its own try/catch, so the throw
-  is caught, reported via `console.error`, and the remaining subscribers still run, which the unguarded
-  `forEach` in the coalescers this replaces did not do.
+  This migration also changes what a throwing callback does, in exactly two ways — and leaves a third
+  thing unchanged. `ApiOptions.#scheduleSettled()` wraps each of its `onSettled` subscribers in its own
+  try/catch, and there is one such subscriber **per component**, not per consumer callback. So:
+
+  - a throwing callback no longer surfaces as an unhandled promise rejection from a private microtask; it
+    is caught and reported via `console.error`;
+  - a throw inside one component's notifier no longer prevents a **different** component subscribed to the
+    same `ApiOptions` from being notified — which matters concretely in `SubscriptionBuilder`, where the
+    `CalendarControls` and the `SubscriptionUrl` share one `ApiOptions`;
+  - **within a single component's own callback list, a throw still aborts the remaining callbacks.**
+    `CalendarControls.#notifySelectionIfChanged()` and `SubscriptionUrl.#notifyIfChanged()` still iterate
+    with an unguarded `forEach`, which is the library-wide convention for subscriptions documented in
+    `docs/meta-components.md`. Unchanged, deliberately.
 
   **Additive**: every per-input `change` dispatch fires exactly as before, and `PathBuilder`'s per-input
   listeners are untouched.
