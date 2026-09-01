@@ -4,7 +4,11 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
-## [Unreleased]
+## 2.9.0
+
+`ApiOptions` now announces when its own synthetic change cascade has settled, so a consumer no longer has to
+infer that from listener attachment order. Two of the three components that had each written their own
+microtask coalescer for want of that signal now subscribe to it instead.
 
 ### Added
 
