@@ -4,6 +4,28 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Added
+
+- **`ApiOptions.onSettled( callback )`**, closing #55 — one signal per settled batch, so a consumer no longer
+  has to infer "the cascade has finished" from listener attachment order. Returns an unsubscribe function
+  rather than `this`, because `ApiOptions` has no `dispose()` to release a subscription. `SubscriptionUrl`
+  and `CalendarControls` dropped their own microtask coalescers in favour of it.
+
+  `ApiClient.#scheduleRefetch()` deliberately stays: `listenTo()` accepts selects with no `ApiOptions`
+  mounted, so it coalesces because it multiplexes independent sources, not because it causes a cascade.
+
+  This migration also moves where a throwing subscriber callback surfaces. Previously, a callback passed to
+  `CalendarControls.onSelectionChange()` (or `SubscriptionBuilder.onChange()`) that threw produced an
+  unhandled promise rejection from a private microtask. Now `ApiOptions.#scheduleSettled()` wraps each
+  subscriber in try/catch, so the throw is caught, reported via `console.error`, and the remaining
+  subscribers still run — the `forEach` loop's abort-on-throw semantics are otherwise unchanged, only where
+  the resulting exception surfaces.
+
+  **Additive**: every per-input `change` dispatch fires exactly as before, and `PathBuilder`'s per-input
+  listeners are untouched.
+
 ## 2.8.0
 
 A declarative answer to "show only my calendar": a `scope` option on six components, restricting the

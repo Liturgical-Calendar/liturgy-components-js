@@ -354,6 +354,28 @@ rite; `ApiClient` coalesces the burst into a single refetch.
 
 `riteSelect` must be `null` (the default) or an instance of `RiteSelect`; passing anything else throws.
 
+## `onSettled( callback )`
+
+Fires once after the form has settled, on a microtask, and returns a function that removes the registration.
+
+```javascript
+const unsubscribe = apiOptions.onSettled(() => {
+    console.log(apiOptions.localeInput.value());
+});
+
+unsubscribe();
+```
+
+One user action moves several inputs at once — a rite change rewrites the calendar list, the locale options,
+the year floor and the calendar path, dispatching a synthetic `change` on each. Listening to those inputs
+individually means acting on a half-updated form. `onSettled()` fires once, after all of them.
+
+It does **not** fire on subscribe, matching `CalendarControls.onSelectionChange()`. The callback takes no
+argument: read what you need from the input accessors when it fires.
+
+Every per-input `change` event still fires exactly as before, so listening to individual inputs continues to
+work unchanged.
+
 ## Example: Bootstrap Styling
 
 ```javascript

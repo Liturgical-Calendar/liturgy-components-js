@@ -526,6 +526,16 @@ export default class ApiClient {
      * mirrors the split every data-fetching library draws between an automatic
      * refetch and an explicit one.
      *
+     * This is deliberately NOT replaced by `ApiOptions.onSettled()` (issue #55), and
+     * the two are not duplicates despite sharing five lines of idiom. `listenTo()`
+     * accepts a `CalendarSelect` or `RiteSelect` with no `ApiOptions` mounted at all,
+     * and a rite change on such a page still produces two events — the select's own,
+     * plus the one `CalendarSelect.#applyLinkedRite()` dispatches when it writes `''`
+     * — with no `ApiOptions` in the picture to describe that batch. `ApiOptions`
+     * coalesces because it CAUSES a cascade; this class coalesces because it
+     * MULTIPLEXES several independent sources. Removing this would reintroduce #50 on
+     * every page that wires selects without an options form.
+     *
      * @returns {Promise<Object>} The pending flush, shared by every call this turn.
      * @private
      */
