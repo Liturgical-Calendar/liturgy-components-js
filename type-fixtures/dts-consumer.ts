@@ -372,3 +372,25 @@ const instancePredicate: boolean = new ReadingsRenderer({
 }).hasNestedSchemas({});
 void staticPredicate;
 void instancePredicate;
+
+/**
+ * #105: `ReadingsRenderer`'s constructor must accept all three locale forms in
+ * the emitted declarations, not only the options bag.
+ *
+ * An explicitly typed binding on each, because a bare literal would compile
+ * against a loose `Object` parameter regardless of shape and prove nothing —
+ * the same trap the `scope` block above describes.
+ */
+type ReadingsRendererCtorArg = ConstructorParameters<
+    typeof ReadingsRenderer
+>[0];
+
+const readingsLocaleAsString: ReadingsRendererCtorArg = 'it';
+const readingsLocaleAsIntl: ReadingsRendererCtorArg = new Intl.Locale('it-IT');
+const readingsLocaleInBag: ReadingsRendererCtorArg = {
+    locale: 'it',
+    readingClassName: 'mb-1',
+};
+void readingsLocaleAsString;
+void readingsLocaleAsIntl;
+void readingsLocaleInBag;

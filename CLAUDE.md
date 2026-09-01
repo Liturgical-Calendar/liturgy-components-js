@@ -1247,9 +1247,21 @@ list free to drift from this one. Three points are load-bearing:
   caller has already decided against — while the instance spelling is the only one that existed before
   the class was exported, and is what `LiturgyOfTheDay` and `LiturgyOfAnyDay` call. Neither is
   deprecated.
-- **The labels are English and are NOT routed through `Messages.js`.** That is a real gap, deliberately
-  left as its own issue rather than folded into the export: #97 asked for the vocabulary to be reachable,
-  and localizing it would change what every existing consumer of `LiturgyOfTheDay` renders.
+- **The labels ARE routed through `Messages.js` (#105), and the English is DERIVED, not restated.**
+  `READING_MESSAGE_KEYS` and `MASS_MESSAGE_KEYS` map each key to its `Messages` key; the public
+  `readingLabels`/`massLabels` are built from `Messages.en` through them, so the English lives in one
+  place. **Their key ORDER is load-bearing**: it becomes the public maps' order, which is the render order
+  and — via `#nestedSchemaKeys` — the key set `hasNestedSchemas()` recognises. A hand-written second
+  statement of both maps in `ReadingsRenderer.test.js` pins this; do not "simplify" it into reading
+  `Messages.en` back, which would agree with itself.
+- **The statics stay ENGLISH whatever locale a renderer holds**, because a static cannot know one. There
+  is deliberately no `readingLabel( key, locale )` accessor pair: it was proposed and declined as
+  speculative surface, and the likely future answer is a consumer-supplied translation bundle, which
+  subsumes it. So a consumer rendering its own markup reads English labels — an accepted cost, recorded in
+  the design doc rather than discovered later.
+- **Only `en`, `it` and `la` are populated.** The other 81 blocks fall back through `message()`, the
+  documented normal case. `it`/`la` were drafted for maintainer review; `MASS_VIGIL`'s Italian
+  deliberately matches the API's own `Messa della vigilia` so the two projects agree.
 
 The static private field leaks into the emitted declaration as `static readonly "__#21@#nestedSchemaKeys"`.
 That is a `tsc` quirk affecting every static `#private` in the package — twenty already-exported classes

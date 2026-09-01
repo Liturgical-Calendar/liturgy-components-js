@@ -4,6 +4,29 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
+## [Unreleased]
+
+### Changed
+
+- **`ReadingsRenderer` renders its labels in the locale it is given**, closing #105. Every non-English
+  page using `LiturgyOfTheDay` or `LiturgyOfAnyDay` renders different text: this is the defect being
+  fixed, not a side effect. The API already serves the lectionary per locale, so a non-English page was
+  rendering an English label against a localized citation — `First Reading: Numeri 6:22-27`.
+
+  The renderer now takes a locale under the library-wide contract (a `string` or an `Intl.Locale`, bare or
+  as the bag's `locale`; nullish means English; anything else is rejected by name), and `LiturgyOfTheDay`
+  and `LiturgyOfAnyDay` forward the locale they already held. There is no opt-out: a consumer wanting
+  English passes `'en'`.
+
+  Twenty-two keys were added to `Messages.js`, populated for `en`, `it` and `la`. Every other locale falls
+  back to English through `message()`, which is the documented normal case for a partly translated key.
+  **The Italian and Latin are drafts pending review against the Missal.**
+
+- **The public `readingLabels` and `massLabels` are now derived from `Messages.en`** rather than restating
+  it. **No behaviour change** — a characterization test pins both against a hand-written copy of the
+  published values, key order included, and was green before the refactor. They stay English, frozen, and
+  keep the same keys in the same order; a static cannot know a locale.
+
 ## 2.10.0
 
 ### Added

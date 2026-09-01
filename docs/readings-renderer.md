@@ -68,8 +68,26 @@ first:
 readings with a psalm after each, the epistle, and the Palm Sunday procession gospel. Not every key appears
 in any given celebration — iterate the order and skip what is absent, which is what `renderReadings()` does.
 
-The labels are English. Localizing them is not yet implemented, in this component or anywhere else in the
-library's readings handling.
+### Locale
+
+The labels are localized. `ReadingsRenderer` takes a locale exactly as every other component in this
+library does — a `string` or an `Intl.Locale`, interchangeably, as the bare constructor argument or the
+options bag's `locale` property:
+
+```javascript
+const renderer = new ReadingsRenderer('it');
+const renderer = new ReadingsRenderer({ locale: 'it', readingClassName: 'mb-1' });
+```
+
+`null` and `undefined` both mean "not supplied" and yield English. Anything else is rejected, naming the
+component and the type found; an unparseable locale throws rather than silently falling back.
+
+A locale whose catalogue block does not carry a readings key falls back to that key's English, per
+`message()`. Only `en`, `it` and `la` are populated today — every other locale renders English labels,
+which is the documented normal case for a partly translated key.
+
+**The two static maps stay English whatever locale a renderer is given**, because a static cannot know
+one. They remain the vocabulary and the render order; a localized label comes from rendering.
 
 ### Using the vocabulary without the renderer
 
@@ -111,11 +129,12 @@ never as markup — the same boundary `sanitizeHtml()` exists for elsewhere in t
 
 ### Constructor Options
 
-| Option                     | Type     | Default | Purpose                             |
-| -------------------------- | -------- | ------- | ----------------------------------- |
-| `readingsWrapperClassName` | `string` | `''`    | Class for the wrapper element       |
-| `readingsLabelClassName`   | `string` | `''`    | Class for reading and schema labels |
-| `readingClassName`         | `string` | `''`    | Class for each reading row          |
+| Option                     | Type                      | Default | Purpose                             |
+| -------------------------- | ------------------------- | ------- | ----------------------------------- |
+| `locale`                   | `string` \| `Intl.Locale` | `'en'`  | Language the labels are read in     |
+| `readingsWrapperClassName` | `string`                  | `''`    | Class for the wrapper element       |
+| `readingsLabelClassName`   | `string`                  | `''`    | Class for reading and schema labels |
+| `readingClassName`         | `string`                  | `''`    | Class for each reading row          |
 
 A non-string value is ignored rather than rejected. Each has a chainable setter —
 `setReadingsWrapperClassName()`, `setReadingsLabelClassName()`, `setReadingClassName()` — which **does**
