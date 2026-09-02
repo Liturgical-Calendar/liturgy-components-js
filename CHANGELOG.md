@@ -4,7 +4,7 @@ Releases up to and including 1.5.0 are not recorded here; see the git history. T
 prepared under that number was skipped, and everything it was to have delivered ships in 2.0.0 instead. The
 2.0.0 entry therefore covers the whole span since 1.5.0, not only the work that forced the major.
 
-## [Unreleased]
+## 2.11.0
 
 ### Changed
 
@@ -22,7 +22,8 @@ prepared under that number was skipped, and everything it was to have delivered 
 
   Twenty-two keys were added to `Messages.js`, populated for `en`, `it` and `la`. Every other locale falls
   back to English through `message()`, which is the documented normal case for a partly translated key.
-  **The Italian and Latin are drafts pending review against the Missal.**
+  The Italian and Latin were drafted here and verified by the maintainer against the Missal before
+  release.
 
 - **The public `readingLabels` and `massLabels` are now derived from `Messages.en`** rather than restating
   it. **No behaviour change** — a characterization test pins both against a hand-written copy of the
