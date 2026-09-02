@@ -1,13 +1,22 @@
 /** @jest-environment jsdom */
 /**
- * The six components that sanitise a caller-supplied locale now share one
- * helper. This suite pins, per component, the four things that must not drift:
+ * Seven components now sanitise a caller-supplied locale through one shared
+ * helper: `CalendarSelect`, `RiteSelect`, `ApiOptions`, `WebCalendar`,
+ * `LiturgyOfTheDay`, `LiturgyOfAnyDay` and `ReadingsRenderer`. This suite
+ * covers the first six and pins, per component, the four things that must not
+ * drift:
  *
  * 1. a valid locale still produces the canonical tag it produced before;
  * 2. an underscored form still normalises;
  * 3. an unparseable string throws, naming the component AND the tag — the part
  *    that is new, since `Intl`'s own `RangeError` names neither;
  * 4. an ABSENT locale still defaults exactly as that component defaulted before.
+ *
+ * `ReadingsRenderer` is deliberately NOT added here: it is covered by its own
+ * local tests in `ReadingsRenderer.test.js` instead, because its underscored-
+ * form normalisation (2, above) is unobservable from outside — the component
+ * reads only `locale.language`, never the canonical tag, so there is nothing
+ * this suite's shared assertions could check that its own tests don't already.
  *
  * (4) matters most. An omission is not a failure and must keep meaning "use
  * English"; a locale that is present but unparseable must throw rather than

@@ -301,7 +301,8 @@ options bag, `WebCalendar.locale()`, and the `locale` argument of the `ApiClient
   `new CalendarSelect('it-IT')` and `new CalendarSelect(new Intl.Locale('it-IT'))` are the same call. Unicode
   extensions survive, including ones given as `Intl.Locale` constructor options rather than written in the tag.
 - **`null` and `undefined` both mean "not supplied"**, as the argument itself and as the `locale` property
-  alike, and take the component's default (`'en'` for the five constructors, `'en-US'` for `WebCalendar`).
+  alike, and take the component's default (`'en'` for the six constructors — `CalendarSelect`, `RiteSelect`,
+  `ApiOptions`, `LiturgyOfTheDay`, `LiturgyOfAnyDay` and `ReadingsRenderer` — `'en-US'` for `WebCalendar`).
 - **Anything else is rejected**, naming the component and the type it found — an array, a number, or any class
   instance other than `Intl.Locale`. The three accepted forms disambiguate in this order: `Intl.Locale` is a
   locale, any other object is an options bag, a string is a locale.
@@ -1013,7 +1014,9 @@ Type-safe enumerations for component configuration:
 input labels added for #59 (`YEAR_TYPE`, `EPIPHANY`, `ASCENSION`, `CORPUS_CHRISTI`, `ETERNAL_HIGH_PRIEST`,
 `HOLYDAYS_OF_OBLIGATION`) — are present in exactly twelve of the 84, the same twelve that carry
 `SELECT_A_RITE`. Every other locale reaches English through a fallback, so an unpopulated block degrades to
-English for that key rather than throwing.
+English for that key rather than throwing. A third, narrower tier exists for `ReadingsRenderer`'s reading
+and Mass-schema labels (`READING_MESSAGE_KEYS`/`MASS_MESSAGE_KEYS`, 22 keys): only `en`, `it` and `la` are
+populated — see the `ReadingsRenderer` section below for the full list and rationale.
 
 **`src/MessageLookup.js`'s `message( key, locale )` is the one place that fallback lives.** It is internal and
 not exported from `src/index.js`, on the same reasoning as `LocaleValidation.js`, `OptionsValidation.js` and
@@ -1247,9 +1250,24 @@ list free to drift from this one. Three points are load-bearing:
   caller has already decided against — while the instance spelling is the only one that existed before
   the class was exported, and is what `LiturgyOfTheDay` and `LiturgyOfAnyDay` call. Neither is
   deprecated.
-- **The labels are English and are NOT routed through `Messages.js`.** That is a real gap, deliberately
-  left as its own issue rather than folded into the export: #97 asked for the vocabulary to be reachable,
-  and localizing it would change what every existing consumer of `LiturgyOfTheDay` renders.
+- **The labels ARE routed through `Messages.js` (#105), and the English is DERIVED, not restated.**
+  `READING_MESSAGE_KEYS` and `MASS_MESSAGE_KEYS` map each key to its `Messages` key; the public
+  `readingLabels`/`massLabels` are built from `Messages.en` through them, so the English lives in one
+  place. **`READING_MESSAGE_KEYS`' key order is load-bearing**: it becomes `readingLabels`' published key
+  order (the actual per-reading render order is the separate `readingOrder` array, which
+  `renderSingleReadings()` iterates). **`MASS_MESSAGE_KEYS`' key order is load-bearing twice over**: it
+  becomes `massLabels`' published order, which IS the schema render order `renderReadings()` iterates, and
+  — via `#nestedSchemaKeys` — the key set `hasNestedSchemas()` recognises. A hand-written second statement
+  of both maps in `ReadingsRenderer.test.js` pins this; do not "simplify" it into reading `Messages.en`
+  back, which would agree with itself.
+- **The statics stay ENGLISH whatever locale a renderer holds**, because a static cannot know one. There
+  is deliberately no `readingLabel( key, locale )` accessor pair: it was proposed and declined as
+  speculative surface, and the likely future answer is a consumer-supplied translation bundle, which
+  subsumes it. So a consumer rendering its own markup reads English labels — an accepted cost, recorded in
+  the design doc rather than discovered later.
+- **Only `en`, `it` and `la` are populated.** The other 81 blocks fall back through `message()`, the
+  documented normal case. `it`/`la` were drafted for maintainer review; `MASS_VIGIL`'s Italian
+  deliberately matches the API's own `Messa della vigilia` so the two projects agree.
 
 The static private field leaks into the emitted declaration as `static readonly "__#21@#nestedSchemaKeys"`.
 That is a `tsc` quirk affecting every static `#private` in the package — twenty already-exported classes

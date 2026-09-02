@@ -44,8 +44,10 @@ describe('ReadingsRenderer is public API', () => {
 
     /**
      * `readingOrder` is the sequence a consumer iterates; `readingLabels` is
-     * what it prints for each key. A key in the order with no label prints
-     * `undefined: `, so the two lists have to agree.
+     * what it prints for each key. A key in the order with no matching entry
+     * in `READING_MESSAGE_KEYS` now throws from `message()` ("No message
+     * catalogue entry for key…") rather than silently printing `undefined: `,
+     * so the two lists have to agree.
      */
     it('has a label for every key in readingOrder', () => {
         const unlabelled = ReadingsRenderer.readingOrder.filter(
@@ -190,5 +192,167 @@ describe('ReadingsRenderer rendering', () => {
         expect([
             ...wrapper.firstElementChild.firstElementChild.classList,
         ]).toEqual(['label']);
+    });
+});
+
+describe('the English label maps are derived, not restated', () => {
+    /**
+     * A hand-written second statement of both maps, in their exact current
+     * order. Deliberately NOT read from `Messages.en` — comparing the derived
+     * map against the catalogue it was built from would agree with itself and
+     * prove nothing. This is the FilterInputs.test.js pattern.
+     */
+    const EXPECTED_READING_LABELS = {
+        first_reading: 'First Reading',
+        responsorial_psalm: 'Responsorial Psalm',
+        second_reading: 'Second Reading',
+        gospel_acclamation: 'Gospel Acclamation',
+        gospel: 'Gospel',
+        palm_gospel: 'Gospel at the Procession',
+        epistle: 'Epistle',
+        responsorial_psalm_2: 'Responsorial Psalm',
+        third_reading: 'Third Reading',
+        responsorial_psalm_3: 'Responsorial Psalm',
+        fourth_reading: 'Fourth Reading',
+        responsorial_psalm_4: 'Responsorial Psalm',
+        fifth_reading: 'Fifth Reading',
+        responsorial_psalm_5: 'Responsorial Psalm',
+        sixth_reading: 'Sixth Reading',
+        responsorial_psalm_6: 'Responsorial Psalm',
+        seventh_reading: 'Seventh Reading',
+        responsorial_psalm_7: 'Responsorial Psalm',
+        responsorial_psalm_epistle: 'Responsorial Psalm',
+    };
+
+    const EXPECTED_MASS_LABELS = {
+        vigil: 'Vigil Mass',
+        night: 'Mass during the Night',
+        dawn: 'Mass at Dawn',
+        day: 'Mass during the Day',
+        evening: 'Evening Mass',
+        schema_one: 'Schema I',
+        schema_two: 'Schema II',
+        schema_three: 'Schema III',
+        easter_season: 'Easter Season',
+        outside_easter_season: 'Outside Easter Season',
+    };
+
+    it('yields exactly the published English values', () => {
+        expect({ ...ReadingsRenderer.readingLabels }).toEqual(
+            EXPECTED_READING_LABELS,
+        );
+        expect({ ...ReadingsRenderer.massLabels }).toEqual(
+            EXPECTED_MASS_LABELS,
+        );
+    });
+
+    /**
+     * Key ORDER is load-bearing and `toEqual` does not check it: massLabels'
+     * order is the render order, and readingLabels' order is part of the
+     * published shape.
+     */
+    it('preserves the published key order', () => {
+        expect(Object.keys(ReadingsRenderer.readingLabels)).toEqual(
+            Object.keys(EXPECTED_READING_LABELS),
+        );
+        expect(Object.keys(ReadingsRenderer.massLabels)).toEqual(
+            Object.keys(EXPECTED_MASS_LABELS),
+        );
+    });
+
+    it('keeps both maps frozen', () => {
+        expect(Object.isFrozen(ReadingsRenderer.readingLabels)).toBe(true);
+        expect(Object.isFrozen(ReadingsRenderer.massLabels)).toBe(true);
+    });
+});
+
+describe('ReadingsRenderer locale', () => {
+    const FLAT = { first_reading: 'Numeri 6:22-27', gospel: 'Lucam 2:16-21' };
+
+    const renderText = (localeOrOptions, readings = FLAT) => {
+        const container = document.createElement('div');
+        new ReadingsRenderer(localeOrOptions).renderReadings(
+            readings,
+            container,
+        );
+        return container.textContent;
+    };
+
+    it('renders localized labels for a translated locale', () => {
+        expect(renderText('it')).toContain('Prima lettura: Numeri 6:22-27');
+        expect(renderText('it')).toContain('Vangelo: Lucam 2:16-21');
+    });
+
+    it('accepts a bare string, an Intl.Locale and an options bag alike', () => {
+        expect(renderText('it')).toContain('Prima lettura');
+        expect(renderText(new Intl.Locale('it-IT'))).toContain('Prima lettura');
+        expect(renderText({ locale: 'it' })).toContain('Prima lettura');
+    });
+
+    it('falls back to English for a block that lacks the readings keys', () => {
+        // `de` IS a catalogue block; Task 1 deliberately left it untranslated.
+        expect(renderText('de')).toContain('First Reading');
+    });
+
+    it('falls back to English for a language with no block at all', () => {
+        // `ceb` has no block in `Messages.js`, a different path through
+        // `message()` than the one above: `Messages[language]?.[key]` short-
+        // circuits on the optional chain rather than on the key.
+        expect(renderText('ceb')).toContain('First Reading');
+    });
+
+    it('defaults to English when no locale is supplied', () => {
+        expect(renderText(undefined)).toContain('First Reading');
+        expect(renderText(null)).toContain('First Reading');
+        expect(renderText({})).toContain('First Reading');
+        expect(renderText({ locale: null })).toContain('First Reading');
+    });
+
+    it('rejects a locale that is neither a string nor an Intl.Locale', () => {
+        expect(() => new ReadingsRenderer({ locale: 42 })).toThrow(
+            'ReadingsRenderer: Invalid type for locale, must be of type `string` or `Intl.Locale` but found type: number',
+        );
+        // An array is rejected as an invalid OPTIONS bag, not as an invalid
+        // locale — a different path through the same constructor, and the
+        // reason this assertion checks the full message rather than a regex
+        // that both paths would satisfy.
+        expect(() => new ReadingsRenderer(['it'])).toThrow(
+            'ReadingsRenderer: Invalid type for options, must be of type `object` but found type: array',
+        );
+    });
+
+    it('throws for an unparseable locale rather than silently using English', () => {
+        expect(() => new ReadingsRenderer('not a locale!')).toThrow(
+            'ReadingsRenderer: Invalid locale: not a locale!',
+        );
+    });
+
+    it('localizes the schema labels too', () => {
+        const text = renderText('it', {
+            vigil: { gospel: 'Mt 1:1-25' },
+            day: { gospel: 'Jn 1:1-18' },
+        });
+        expect(text).toContain('Messa della vigilia');
+        expect(text).toContain('Messa del giorno');
+    });
+
+    it('still accepts the class-name bag alongside a locale', () => {
+        const container = document.createElement('div');
+        new ReadingsRenderer({
+            locale: 'it',
+            readingsWrapperClassName: 'readings',
+        }).renderReadings(FLAT, container);
+        expect([...container.firstElementChild.classList]).toEqual([
+            'readings',
+        ]);
+        expect(container.textContent).toContain('Prima lettura');
+    });
+
+    it('leaves the public statics English regardless of the locale', () => {
+        new ReadingsRenderer('it');
+        expect(ReadingsRenderer.readingLabels.first_reading).toBe(
+            'First Reading',
+        );
+        expect(ReadingsRenderer.massLabels.vigil).toBe('Vigil Mass');
     });
 });

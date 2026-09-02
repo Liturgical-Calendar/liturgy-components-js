@@ -111,8 +111,13 @@ export default class LiturgyOfAnyDay {
     /** @type {string} */
     #currentYearType = YearType.CIVIL;
 
-    /** @type {ReadingsRenderer} */
-    #readingsRenderer = new ReadingsRenderer();
+    /**
+     * @type {ReadingsRenderer}
+     * Assigned in the constructor, not here: a field initializer runs BEFORE the
+     * constructor body, so `#locale` would still be null and every label would
+     * come out English however the widget was constructed.
+     */
+    #readingsRenderer;
 
     /** @type {boolean} */
     #showReadings = true;
@@ -186,6 +191,9 @@ export default class LiturgyOfAnyDay {
         // A nullish READ, not `Object.hasOwn`: see the identical note in
         // `LiturgyOfTheDay`. The key's presence is not the question — its value is.
         this.#validateLocale(options.locale ?? 'en');
+        this.#readingsRenderer = new ReadingsRenderer({
+            locale: this.#locale,
+        });
 
         const now = new Date();
         this.#selectedDate = new Date(
@@ -1243,5 +1251,17 @@ export default class LiturgyOfAnyDay {
      */
     get _yearInput() {
         return this.#yearInput;
+    }
+
+    /**
+     * The readings renderer, for tests asserting the locale reached it.
+     *
+     * Package-internal, hence the underscore: see CLAUDE.md on what the prefix
+     * means. Not part of the public API and not exported in any documentation.
+     *
+     * @returns {ReadingsRenderer} The renderer this widget renders readings with.
+     */
+    get _readingsRenderer() {
+        return this.#readingsRenderer;
     }
 }
