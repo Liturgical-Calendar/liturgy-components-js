@@ -29,6 +29,31 @@ prepared under that number was skipped, and everything it was to have delivered 
   published values, key order included, and was green before the refactor. They stay English, frozen, and
   keep the same keys in the same order; a static cannot know a locale.
 
+### Fixed
+
+- **`WebCalendar`'s liturgical-season column header was untranslated in English and mistranslated in
+  Italian.** The English value was the key name itself — `LITURGICAL_SEASON: 'LITURGICAL_SEASON'` — so an
+  English page, and every locale whose block lacks the key and falls back, rendered a column literally
+  headed `LITURGICAL_SEASON`. It is now `Season`.
+
+  The Italian read `Stagione`, which is the calendar sense (spring, summer). The liturgical term is
+  `Tempo`, as in _Tempo di Avvento_ and _Tempo Ordinario_. Latin already had this right (`Tempus`).
+
+  Only the header changes; the column's grouping behaviour is untouched.
+
+  Spanish, French, German and Portuguese carried the same category error and are corrected too —
+  `Temporada` → `Tiempo`, `Saison` → `Temps`, `Saison` → `Zeit`, `Estação` → `Tempo`. Each was verified
+  against two independent sources: this project's own API translations of the season names
+  (`Tiempo Ordinario`, `Temps ordinaire`, `Zeit im Jahreskreis`, `Tempo Comum`), and the relevant
+  episcopal conference or the Holy See — the Spanish Bishops' Conference and vatican.va, AELF for French,
+  the German Bishops' Conference, and the CNBB for Portuguese. German `Jahreszeit` was the same trap in
+  another form: it means a season _of the year_, so the liturgical root is `Zeit`.
+
+  **The error class remains in roughly twenty-five further locales** — `Seizoen`, `Pora roku`
+  ("time of year"), `Évad` (a television season), and others — all the calendar sense rather than the
+  liturgical one. They are left alone deliberately rather than guessed at: each needs the term its own
+  Missal uses, verified the way these five were.
+
 ## 2.10.0
 
 ### Added
