@@ -41,10 +41,18 @@ prepared under that number was skipped, and everything it was to have delivered 
 
   Only the header changes; the column's grouping behaviour is untouched.
 
-  **The same error class remains in roughly thirty other locales** — `Temporada`, `Saison`, `Estação`,
-  `Seizoen`, `Pora roku` ("time of year"), `Évad` (a television season) — all the calendar sense rather
-  than the liturgical one. They are left alone deliberately rather than guessed at: each needs the term
-  its own Missal uses.
+  Spanish, French, German and Portuguese carried the same category error and are corrected too —
+  `Temporada` → `Tiempo`, `Saison` → `Temps`, `Saison` → `Zeit`, `Estação` → `Tempo`. Each was verified
+  against two independent sources: this project's own API translations of the season names
+  (`Tiempo Ordinario`, `Temps ordinaire`, `Zeit im Jahreskreis`, `Tempo Comum`), and the relevant
+  episcopal conference or the Holy See — the Spanish Bishops' Conference and vatican.va, AELF for French,
+  the German Bishops' Conference, and the CNBB for Portuguese. German `Jahreszeit` was the same trap in
+  another form: it means a season _of the year_, so the liturgical root is `Zeit`.
+
+  **The error class remains in roughly twenty-five further locales** — `Seizoen`, `Pora roku`
+  ("time of year"), `Évad` (a television season), and others — all the calendar sense rather than the
+  liturgical one. They are left alone deliberately rather than guessed at: each needs the term its own
+  Missal uses, verified the way these five were.
 
 ## 2.10.0
 
