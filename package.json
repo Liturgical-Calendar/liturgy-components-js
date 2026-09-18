@@ -54,7 +54,7 @@
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@popperjs/core": "^2.11.8",
     "@storybook/addon-docs": "^10",
     "@storybook/html-vite": "^10.6.0",
@@ -65,7 +65,7 @@
     "jest": "^30.5.1",
     "jest-environment-jsdom": "^30.5.1",
     "markdownlint-cli2": "^0.23.2",
-    "playwright": "^1.62.1",
+    "playwright": "^1.63.0",
     "prettier": "^3.9.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
