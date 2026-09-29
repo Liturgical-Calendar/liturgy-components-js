@@ -36,7 +36,7 @@ import CalendarSelect from '../CalendarSelect/CalendarSelect.js';
 import RiteSelect from '../RiteSelect/RiteSelect.js';
 import HolydaysOfObligationInput from '../ApiOptions/Input/HolydaysOfObligationInput.js';
 import { Rite } from '../Enums.js';
-import { FULL_METADATA } from '../__fixtures__/metadata.js';
+import { FULL_METADATA, EUROPE_ROSTER } from '../__fixtures__/metadata.js';
 
 const API_URL = 'http://localhost:8000';
 
@@ -99,7 +99,13 @@ const IT_SETTINGS = {
 const metadataWith = (ambrosianSettings) => ({
     locales: ['en', 'it', 'la'],
     national_calendars: [
-        { calendar_id: 'IT', locales: ['it-IT'], settings: IT_SETTINGS },
+        {
+            calendar_id: 'IT',
+            locales: ['it-IT'],
+            wider_regions: ['Europe'],
+            wider_region: 'Europe',
+            settings: IT_SETTINGS,
+        },
     ],
     national_calendars_keys: ['IT'],
     diocesan_calendars: [
@@ -120,8 +126,16 @@ const metadataWith = (ambrosianSettings) => ({
     ],
     diocesan_calendars_keys: ['romamo_it', 'milano_it'],
     diocesan_groups: [],
-    wider_regions: [],
-    wider_regions_keys: [],
+    wider_regions: [
+        {
+            name: 'Europe',
+            locales: ['it_IT'],
+            api_path: '/data/widerregion/Europe',
+            national_calendars: ['IT'],
+            roster: EUROPE_ROSTER,
+        },
+    ],
+    wider_regions_keys: ['Europe'],
     ambrosian_calendars: [
         {
             calendar_id: 'ambrosian',

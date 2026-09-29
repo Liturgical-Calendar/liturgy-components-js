@@ -6,6 +6,66 @@
  * of fixtures contains no tests.
  */
 
+/**
+ * Every nation eligible to join each wider region, as `GET /calendars` serves a region's
+ * `roster` (verified against the dev API on 2026-09-29). Distinct from the region's
+ * `national_calendars`, which lists only the nations that have a calendar and declare it.
+ */
+export const AMERICAS_ROSTER = [
+    'AR',
+    'BO',
+    'BR',
+    'BZ',
+    'CA',
+    'CL',
+    'CO',
+    'CR',
+    'CU',
+    'DO',
+    'EC',
+    'GT',
+    'HN',
+    'MX',
+    'NI',
+    'PA',
+    'PE',
+    'PR',
+    'PY',
+    'SV',
+    'US',
+];
+export const EUROPE_ROSTER = [
+    'AT',
+    'BE',
+    'BG',
+    'CH',
+    'CY',
+    'CZ',
+    'DE',
+    'DK',
+    'EE',
+    'ES',
+    'FI',
+    'FR',
+    'GR',
+    'HR',
+    'HU',
+    'IE',
+    'IT',
+    'LI',
+    'LT',
+    'LU',
+    'LV',
+    'MT',
+    'NL',
+    'PL',
+    'PT',
+    'RO',
+    'SE',
+    'SI',
+    'SK',
+];
+
 /** A rite-aware (v6) index: announces `ambrosian_calendars`. */
 export const FULL_METADATA = {
     national_calendars: [
@@ -13,6 +73,8 @@ export const FULL_METADATA = {
             calendar_id: 'IT',
             locales: ['it_IT'],
             missals: ['EDITIO_TYPICA_1970'],
+            wider_regions: ['Europe'],
+            wider_region: 'Europe',
             settings: {
                 epiphany: 'JAN6',
                 ascension: 'SUNDAY',
@@ -24,6 +86,8 @@ export const FULL_METADATA = {
             calendar_id: 'US',
             locales: ['en_US'],
             missals: ['EDITIO_TYPICA_1970'],
+            wider_regions: ['Americas'],
+            wider_region: 'Americas',
             settings: {
                 epiphany: 'SUNDAY_JAN2_JAN8',
                 ascension: 'SUNDAY',
@@ -35,6 +99,7 @@ export const FULL_METADATA = {
             calendar_id: 'VA',
             locales: ['la', 'it_IT'],
             missals: ['EDITIO_TYPICA_1970'],
+            wider_regions: [],
             settings: {
                 epiphany: 'JAN6',
                 ascension: 'THURSDAY',
@@ -72,14 +137,24 @@ export const FULL_METADATA = {
     ],
     diocesan_calendars_keys: ['romamo_it', 'boston_us', 'milano_it'],
     diocesan_groups: [],
+    // `national_calendars` lists only the nations in this fixture that declare the region.
     wider_regions: [
+        {
+            name: 'Americas',
+            locales: ['en_US', 'es_MX', 'fr_CA', 'pt_BR'],
+            api_path: '/data/widerregion/Americas',
+            national_calendars: ['US'],
+            roster: AMERICAS_ROSTER,
+        },
         {
             name: 'Europe',
             locales: ['it_IT', 'la'],
             api_path: '/data/widerregion/Europe',
+            national_calendars: ['IT'],
+            roster: EUROPE_ROSTER,
         },
     ],
-    wider_regions_keys: ['Europe'],
+    wider_regions_keys: ['Americas', 'Europe'],
     locales: ['en', 'it', 'la'],
     // Exactly what `GET /calendars` returns for this entry, verified against the
     // dev API on 2026-08-14 — including the `settings` block, which the API now
@@ -196,6 +271,8 @@ export const OTHER_METADATA = {
             calendar_id: 'NL',
             locales: ['nl_NL'],
             missals: ['EDITIO_TYPICA_1970'],
+            wider_regions: ['Europe'],
+            wider_region: 'Europe',
             settings: {
                 epiphany: 'SUNDAY_JAN2_JAN8',
                 ascension: 'SUNDAY',
@@ -217,7 +294,15 @@ export const OTHER_METADATA = {
     ],
     diocesan_calendars_keys: ['haarlem_nl'],
     diocesan_groups: [],
-    wider_regions: [],
-    wider_regions_keys: [],
+    wider_regions: [
+        {
+            name: 'Europe',
+            locales: ['nl_NL'],
+            api_path: '/data/widerregion/Europe',
+            national_calendars: ['NL'],
+            roster: EUROPE_ROSTER,
+        },
+    ],
+    wider_regions_keys: ['Europe'],
     locales: ['nl'],
 };
