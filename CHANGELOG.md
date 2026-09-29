@@ -9,13 +9,13 @@ prepared under that number was skipped, and everything it was to have delivered 
 ### Changed
 
 - **The `/calendars` typedefs describe a national calendar that belongs to more than one wider region**, closing
-  #122 (LiturgicalCalendarAPI#1005). `NationalCalendar` gains a required `wider_regions: string[]`, ordered most
-  general first and empty when the nation declares none. The optional `wider_region: string` stays, marked
+  #122 (LiturgicalCalendarAPI#1005). `NationalCalendar` gains `wider_regions: string[]`, ordered most general
+  first and empty when the nation declares none. It is optional in the type because the v5 API does not send it,
+  and `nationalCalendars()` returns entries as served. The optional `wider_region: string` stays, marked
   deprecated in its description: the API still sends it, but only when a nation declares exactly one region, and
   will drop it. `WiderRegion` gains `national_calendars` (the nations that have a calendar and declare the region)
   and `roster` (every nation eligible to join it, with or without a calendar), both sorted ISO 3166-1 alpha-2
-  codes. Types only: no component read `wider_region`, so no runtime behaviour changes. A TypeScript consumer that
-  builds a `NationalCalendar` literal by hand must now supply `wider_regions`.
+  codes. Types only: no component read `wider_region`, so no runtime behaviour changes.
 
   The deprecation is stated in prose rather than with a `@deprecated` tag: inside a `@prop` description, `tsc`
   treats the tag as the start of a new block and silently drops every property declared after it from the emitted

@@ -184,8 +184,9 @@
  * @prop {string[]} locales - The locales supported by this calendar
  * @prop {string[]} missals - The Roman Missal editions available for this calendar
  * @prop {{epiphany: string, ascension: string, corpus_christi: string, eternal_high_priest: boolean, holydays_of_obligation: {[event_key: string]: boolean}}} settings - The calendar's default settings
- * @prop {string[]} wider_regions - The wider regions this calendar declares, ordered most general first
+ * @prop {string[]} [wider_regions] - The wider regions this calendar declares, ordered most general first
  *   (e.g. `['Europe', 'Nordic']`); an empty array when it declares none. The region layers apply in this order.
+ *   Absent on the v5 API, which sends only `wider_region`.
  * @prop {string} [wider_region] - DEPRECATED: read `wider_regions` instead; this field will be removed from the API.
  *   Present only when the calendar declares exactly one wider region.
  * @prop {string[]} [dioceses] - The calendar IDs of the dioceses within this nation
