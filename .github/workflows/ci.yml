@@ -45,7 +45,7 @@ jobs:
       # honours it. Without this, setup-node would use whatever yarn ships.
       - name: Enable Corepack
         run: corepack enable
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # Matches the Node line used by npm-publish.yml, so a green CI run
           # reflects the environment the package is actually built in.
