@@ -54,7 +54,7 @@
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
-    "@playwright/test": "^1.64.0",
+    "@playwright/test": "^1.64.1",
     "@popperjs/core": "^2.11.8",
     "@storybook/addon-docs": "^10",
     "@storybook/html-vite": "^10.6.2",
