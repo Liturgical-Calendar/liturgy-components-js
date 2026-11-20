@@ -1236,7 +1236,7 @@ __metadata:
     react-dom: "npm:^19.3.1"
     storybook: "npm:^10.6.7"
     typescript: "npm:^5.7.2"
-    vite: "npm:^8.3.6"
+    vite: "npm:^8.3.8"
   languageName: unknown
   linkType: soft
 
@@ -5954,7 +5954,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rolldown@npm:~1.2.16":
+"rolldown@npm:~1.2.18":
   version: 1.2.19
   resolution: "rolldown@npm:1.2.19"
   dependencies:
@@ -6686,15 +6686,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^8.3.6":
-  version: 8.3.6
-  resolution: "vite@npm:8.3.6"
+"vite@npm:^8.3.8":
+  version: 8.3.8
+  resolution: "vite@npm:8.3.8"
   dependencies:
     fsevents: "npm:~2.3.3"
     lightningcss: "npm:^1.33.0"
     picomatch: "npm:^4.0.7"
     postcss: "npm:^8.5.32"
-    rolldown: "npm:~1.2.16"
+    rolldown: "npm:~1.2.18"
     tinyglobby: "npm:^0.2.17"
   peerDependencies:
     "@types/node": ^20.19.0 || >=22.12.0
@@ -6739,7 +6739,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 10c0/59182f98865b9d41139edcc6ba7873fd63db9f30a6bb14d4b5125326cad1c1cda0aaeded4c0730c4a907991b7759119697296613bd9c4504a1d9db8fa7c6aa75
+  checksum: 10c0/21bf5b04159214fbc9f42e297afd26398a3630704959f85290e8b8eb9cac49be20a6a37a5765bfdb997b606c21ccba99f991671f81c5da5a590ae5cedad3e127
   languageName: node
   linkType: hard
 
