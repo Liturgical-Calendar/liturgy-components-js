@@ -1226,12 +1226,12 @@ __metadata:
     "@types/bootstrap": "npm:^5"
     "@types/react": "npm:^19"
     "@types/react-dom": "npm:^19"
-    bootstrap: "npm:^5.3.8"
+    bootstrap: "npm:^5.3.9"
     jest: "npm:^30.5.2"
     jest-environment-jsdom: "npm:^30.5.2"
-    markdownlint-cli2: "npm:^0.24.0"
+    markdownlint-cli2: "npm:^0.24.1"
     playwright: "npm:^1.65.0"
-    prettier: "npm:^3.9.10"
+    prettier: "npm:^3.10.1"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
     storybook: "npm:^10.6.7"
@@ -2606,13 +2606,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"argparse@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "argparse@npm:2.0.1"
-  checksum: 10c0/c5640c2d89045371c7cedd6a70212a04e360fd34d6edeae32f6952c63949e3525ea77dbec0289d8213a99bbaeab5abfa860b5c12cf88a2e6cf8106e90dd27a7e
-  languageName: node
-  linkType: hard
-
 "argparse@npm:^3.0.3":
   version: 3.0.4
   resolution: "argparse@npm:3.0.4"
@@ -2751,12 +2744,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bootstrap@npm:^5.3.8":
-  version: 5.3.8
-  resolution: "bootstrap@npm:5.3.8"
+"bootstrap@npm:^5.3.9":
+  version: 5.3.9
+  resolution: "bootstrap@npm:5.3.9"
   peerDependencies:
     "@popperjs/core": ^2.11.8
-  checksum: 10c0/0039a9df2c3e7bfa04f1abca199c299ff3b75869d578c0cb1721c6f1f203c91531788a5631ecbee01513481979314d0e4ba0d90c2011e6ce18fc2e0bc93e18d9
+  checksum: 10c0/6c707349e7db52b44f72c7b5e1e7973c9518adf3843748186d79fc6c38dd956cf0164be15192e3a1dfa8b2151cc6cb5dc13e74d1241e5666009bf651a631c0be
   languageName: node
   linkType: hard
 
@@ -4386,14 +4379,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:5.4.3":
-  version: 5.4.3
-  resolution: "js-yaml@npm:5.4.3"
+"js-yaml@npm:5.5.0":
+  version: 5.5.0
+  resolution: "js-yaml@npm:5.5.0"
   dependencies:
-    argparse: "npm:^2.0.1"
+    argparse: "npm:^3.0.3"
   bin:
     js-yaml: bin/js-yaml.mjs
-  checksum: 10c0/7180bf35feef9815a06cb2f8845c1196f1e4264430a04623884d87c3d21475de7d46a86c9c5142dcc1646c788bc0e676eb09ba817810707e0b4e984f7cf93a5f
+  checksum: 10c0/311619f44dd788657e9b81d4b5c60ff367441f364045e3796bc604a41f25819852748fb173ae82f2553d53cb609d7fdb79e0a74148892cb2c085eebe91839b53
   languageName: node
   linkType: hard
 
@@ -4743,28 +4736,28 @@ __metadata:
   languageName: node
   linkType: hard
 
-"markdownlint-cli2@npm:^0.24.0":
-  version: 0.24.0
-  resolution: "markdownlint-cli2@npm:0.24.0"
+"markdownlint-cli2@npm:^0.24.1":
+  version: 0.24.1
+  resolution: "markdownlint-cli2@npm:0.24.1"
   dependencies:
     globby: "npm:16.2.4"
-    js-yaml: "npm:5.4.3"
+    js-yaml: "npm:5.5.0"
     jsonc-parser: "npm:3.3.1"
     jsonpointer: "npm:5.0.1"
     markdown-it: "npm:15.0.3"
-    markdownlint: "npm:0.42.0"
+    markdownlint: "npm:0.42.1"
     markdownlint-cli2-formatter-default: "npm:0.0.6"
     micromatch: "npm:4.0.8"
     smol-toml: "npm:1.9.1"
   bin:
     markdownlint-cli2: markdownlint-cli2-bin.mjs
-  checksum: 10c0/b2a6ccee82860512624eea913d1630d34293e287f672a1aca7aef0a828b0877a12b9f415d4c062a075afc71ec688d33f3802b4e8184ff206f5cecbb2681f361e
+  checksum: 10c0/b99cce5b12fd3b6905ce024fa9c571a47473e3355f98ff48a12f7e7ccdda05aa4076126a572ac0370af7b84319f5923e64a2c9c0a89a378617439db786267c71
   languageName: node
   linkType: hard
 
-"markdownlint@npm:0.42.0":
-  version: 0.42.0
-  resolution: "markdownlint@npm:0.42.0"
+"markdownlint@npm:0.42.1":
+  version: 0.42.1
+  resolution: "markdownlint@npm:0.42.1"
   dependencies:
     micromark: "npm:4.0.3"
     micromark-core-commonmark: "npm:2.0.4"
@@ -4774,9 +4767,9 @@ __metadata:
     micromark-extension-gfm-table: "npm:2.1.2"
     micromark-extension-math: "npm:3.1.0"
     micromark-util-types: "npm:2.0.3"
-    re2js: "npm:2.8.6"
+    re2js: "npm:2.9.1"
     string-width: "npm:8.3.0"
-  checksum: 10c0/9c76296accde30fa8768542e397b2ef2f5455e4161e503b47ad379477d10c7da8470b561a87b1c7640197b1f488a4a5554a116e0b309a16f24db25af6d6b0ed1
+  checksum: 10c0/f052eebb2b7e27282a66ba8fcc4619fbcb3ca2fcf80f5df763c3d999dfc786e19cb95d6bb78f1ad6258bb88e1c3c3bbbfa33a61d7ac72e9ae888e17e7964440d
   languageName: node
   linkType: hard
 
@@ -5756,12 +5749,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.9.10":
-  version: 3.9.10
-  resolution: "prettier@npm:3.9.10"
+"prettier@npm:^3.10.1":
+  version: 3.10.1
+  resolution: "prettier@npm:3.10.1"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 10c0/0b3531593aa6fb36ac6baf629cb058bda472c59a6938774f931fe55283a07c62e6f56e621b043a82d8a3e21fc284c08c34f9e539fc70072635f79b7bae1a1067
+  checksum: 10c0/e8c03ea575a30e15afa75a3700e94609050502980d7c906374aea4cf623eef4dce0816100126207e675cc1ed54b7dfce60f02dbee8d61ec27dc69ce5df6c3723
   languageName: node
   linkType: hard
 
@@ -5833,10 +5826,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"re2js@npm:2.8.6":
-  version: 2.8.6
-  resolution: "re2js@npm:2.8.6"
-  checksum: 10c0/70a7ae4778429ddd8dfef6af3ee65e152999e31a894f19f3eb4820f5267d2ac0c5797b60f988139a5d72a9f06bb5c0b7fd05c4aaa6272970b006772aa956fb51
+"re2js@npm:2.9.1":
+  version: 2.9.1
+  resolution: "re2js@npm:2.9.1"
+  checksum: 10c0/799c179ab563b8c16422b80cbcccdfdc0e940c50999930c1aa91bd5fe54e08a00a50abcf5510ab1bb3d881c90235c6fb177ed9d710cf3e5b4e843f026407ba9b
   languageName: node
   linkType: hard
 
